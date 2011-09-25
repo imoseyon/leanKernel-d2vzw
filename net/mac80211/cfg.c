@@ -1837,6 +1837,9 @@ static int ieee80211_mgmt_tx(struct wiphy *wiphy, struct net_device *dev,
 		flags |= IEEE80211_TX_CTL_TX_OFFCHAN;
 	}
 
+	if (no_cck)
+		flags |= IEEE80211_TX_CTL_NO_CCK_RATE;
+
 	if (is_offchan && !offchan)
 		return -EBUSY;
 

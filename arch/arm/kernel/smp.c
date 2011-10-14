@@ -344,9 +344,6 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 */
 	platform_secondary_init(cpu);
 
-	/*
-	 * Enable local interrupts.
-	 */
 	notify_cpu_starting(cpu);
 
 	if (skip_secondary_calibrate())
@@ -366,6 +363,13 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	 */
 	percpu_timer_setup();
 
+	local_irq_enable();
+	local_fiq_enable();
+
+	/*
+	 * cpu_active bit is set, so it's safe to enalbe interrupts
+	 * now.
+	 */
 	local_irq_enable();
 	local_fiq_enable();
 

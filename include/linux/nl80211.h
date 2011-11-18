@@ -535,6 +535,9 @@
  *	OLBC handling in hostapd. Beacons are reported in %NL80211_CMD_FRAME
  *	messages. Note that per PHY only one application may register.
  *
+ * @NL80211_CMD_SET_NOACK_MAP: sets a bitmap for the individual TIDs whether
+ *      No Acknowledgement Policy should be applied.
+ *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
  */
@@ -673,6 +676,8 @@ enum nl80211_commands {
 	NL80211_CMD_REGISTER_BEACONS,
 
 	NL80211_CMD_UNEXPECTED_4ADDR_FRAME,
+
+	NL80211_CMD_SET_NOACK_MAP,
 
 	/* add new commands above here */
 
@@ -1186,6 +1191,8 @@ enum nl80211_commands {
  *
  * @NL80211_ATTR_FEATURE_FLAGS: This u32 attribute contains flags from
  *	&enum nl80211_feature_flags and is advertised in wiphy information.
+ * @NL80211_ATTR_NOACK_MAP: This u16 bitmap contains the No Ack Policy of
+ *      up to 16 TIDs.
  *
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -1429,6 +1436,8 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_DISABLE_HT,
 	NL80211_ATTR_HT_CAPABILITY_MASK,
+
+	NL80211_ATTR_NOACK_MAP,
 
 	/* add attributes here, update the policy in nl80211.c */
 

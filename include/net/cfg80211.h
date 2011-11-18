@@ -1669,7 +1669,9 @@ struct cfg80211_ops {
  *	when there are virtual interfaces in AP mode by calling
  *	cfg80211_report_obss_beacon().
  * @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD: When operating as an AP, the device
- *      responds to probe-requests in hardware.
+ *	responds to probe-requests in hardware.
+ * @WIPHY_FLAG_OFFCHAN_TX: Device supports direct off-channel TX.
+ * @WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL: Device supports remain-on-channel call.
  */
 enum wiphy_flags {
 	WIPHY_FLAG_CUSTOM_REGULATORY		= BIT(0),
@@ -1684,13 +1686,15 @@ enum wiphy_flags {
 	WIPHY_FLAG_MESH_AUTH			= BIT(10),
 	WIPHY_FLAG_SUPPORTS_SCHED_SCAN		= BIT(11),
 	WIPHY_FLAG_ENFORCE_COMBINATIONS		= BIT(12),
-	WIPHY_FLAG_SUPPORTS_FW_ROAM             = BIT(13),
-	WIPHY_FLAG_AP_UAPSD                     = BIT(14),
-	WIPHY_FLAG_SUPPORTS_TDLS                = BIT(15),
-	WIPHY_FLAG_TDLS_EXTERNAL_SETUP          = BIT(16),
-	WIPHY_FLAG_HAVE_AP_SME                  = BIT(17),
-	WIPHY_FLAG_REPORTS_OBSS                 = BIT(18),
-	WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD        = BIT(19),
+	WIPHY_FLAG_SUPPORTS_FW_ROAM		= BIT(13),
+	WIPHY_FLAG_AP_UAPSD			= BIT(14),
+	WIPHY_FLAG_SUPPORTS_TDLS		= BIT(15),
+	WIPHY_FLAG_TDLS_EXTERNAL_SETUP		= BIT(16),
+	WIPHY_FLAG_HAVE_AP_SME			= BIT(17),
+	WIPHY_FLAG_REPORTS_OBSS			= BIT(18),
+	WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD	= BIT(19),
+	WIPHY_FLAG_OFFCHAN_TX			= BIT(20),
+	WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL	= BIT(21),
 };
 
 /**

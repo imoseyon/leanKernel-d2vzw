@@ -2764,6 +2764,18 @@ enum nl80211_ap_sme_features {
  */
 
 /**
+ * enum nl80211_feature_flags - device/driver features
+ * @NL80211_FEATURE_SK_TX_STATUS: This driver supports reflecting back
+ *	TX status to the socket error queue when requested with the
+ *	socket option.
+ * @NL80211_FEATURE_HT_IBSS: This driver supports IBSS with HT datarates.
+ */
+enum nl80211_feature_flags {
+	NL80211_FEATURE_SK_TX_STATUS	= 1 << 0,
+	NL80211_FEATURE_HT_IBSS		= 1 << 1,
+};
+
+/**
  * enum nl80211_probe_resp_offload_support_attr - optional supported
  *     protocols for probe-response offloading by the driver/FW.
  *     To be used with the %NL80211_ATTR_PROBE_RESP_OFFLOAD attribute.
@@ -2783,17 +2795,6 @@ enum nl80211_probe_resp_offload_support_attr {
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS2 =       1<<1,
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_P2P =        1<<2,
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_80211U =     1<<3,
-};
-
-
-/**
- * enum nl80211_feature_flags - device/driver features
- * @NL80211_FEATURE_SK_TX_STATUS: This driver supports reflecting back
- *	TX status to the socket error queue when requested with the
- *	socket option.
- */
-enum nl80211_feature_flags {
-	NL80211_FEATURE_SK_TX_STATUS	= 1 << 0,
 };
 
 #endif /* __LINUX_NL80211_H */

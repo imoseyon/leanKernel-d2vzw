@@ -367,13 +367,6 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	local_fiq_enable();
 
 	/*
-	 * cpu_active bit is set, so it's safe to enalbe interrupts
-	 * now.
-	 */
-	local_irq_enable();
-	local_fiq_enable();
-
-	/*
 	 * OK, it's off to the idle thread for us
 	 */
 	cpu_idle();

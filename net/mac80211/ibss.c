@@ -512,7 +512,7 @@ static void ieee80211_sta_merge_ibss(struct ieee80211_sub_if_data *sdata)
 	if (ieee80211_sta_active_ibss(sdata))
 		return;
 
-	if (ifibss->fixed_channel)
+	if (ifibss->fixed_bssid)
 		return;
 
 	printk(KERN_DEBUG "%s: No active IBSS STAs - trying to scan for other "

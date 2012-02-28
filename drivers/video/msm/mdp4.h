@@ -792,4 +792,11 @@ bool samsung_has_cmc624(void);
 int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg);
 void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe);
 void mdp4_iommu_attach(void);
+int mdp4_v4l2_overlay_set(struct fb_info *info, struct mdp_overlay *req,
+		struct mdp4_overlay_pipe **ppipe);
+void mdp4_v4l2_overlay_clear(struct mdp4_overlay_pipe *pipe);
+int mdp4_v4l2_overlay_play(struct fb_info *info, struct mdp4_overlay_pipe *pipe,
+	unsigned long srcp0_addr, unsigned long srcp1_addr,
+	unsigned long srcp2_addr);
+
 #endif /* MDP_H */

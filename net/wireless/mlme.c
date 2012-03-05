@@ -1030,8 +1030,8 @@ int cfg80211_mlme_mgmt_tx(struct cfg80211_registered_device *rdev,
 				  cookie);
 }
 
-bool cfg80211_rx_mgmt(struct net_device *dev, int freq, const u8 *buf,
-		      size_t len, gfp_t gfp)
+bool cfg80211_rx_mgmt(struct net_device *dev, int freq, int sig_mbm,
+		      const u8 *buf, size_t len, gfp_t gfp)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct wiphy *wiphy = wdev->wiphy;
@@ -1070,7 +1070,8 @@ bool cfg80211_rx_mgmt(struct net_device *dev, int freq, const u8 *buf,
 		/* found match! */
 
 		/* Indicate the received Action frame to user space */
-		if (nl80211_send_mgmt(rdev, dev, reg->nlpid, freq,
+		if (nl80211_send_mgmt(rdev, dev, reg->nlpid,
+				      freq, sig_mbm,
 				      buf, len, gfp))
 			continue;
 

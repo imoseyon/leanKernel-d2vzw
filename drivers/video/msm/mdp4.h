@@ -260,6 +260,12 @@ struct mdp4_hsic_regs {
 	int32_t dirty;
 };
 
+struct mdp4_iommu_pipe_info {
+	struct ion_handle *ihdl[MDP4_MAX_PLANE];
+	struct ion_handle *prev_ihdl[MDP4_MAX_PLANE];
+	u8 mark_unmap;
+};
+
 struct mdp4_overlay_pipe {
 	uint32 pipe_used;
 	uint32 pipe_type;		/* rgb, video/graphic */
@@ -459,6 +465,7 @@ static inline int mdp4_overlay_dtv_unset(struct msm_fb_data_type *mfd,
 {
 	return 0;
 }
+
 static inline void mdp4_dma_e_done_dtv(void)
 {
     /* empty */
@@ -783,4 +790,5 @@ bool samsung_has_cmc624(void);
 #endif
 
 int mdp4_igc_lut_config(struct mdp_igc_lut_data *cfg);
+void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe);
 #endif /* MDP_H */

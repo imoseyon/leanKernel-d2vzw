@@ -65,7 +65,6 @@ static enum hrtimer_restart afe_hrtimer_callback(struct hrtimer *hrt)
 	struct snd_pcm_substream *substream = prtd->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	if (prtd->start) {
-		snd_pcm_period_elapsed(prtd->substream);
 		pr_debug("sending frame to DSP: poll_time: %d\n",
 				prtd->poll_time);
 		if (prtd->dsp_cnt == runtime->periods)
@@ -76,10 +75,6 @@ static enum hrtimer_restart afe_hrtimer_callback(struct hrtimer *hrt)
 				snd_pcm_lib_period_bytes(prtd->substream))),
 				snd_pcm_lib_period_bytes(prtd->substream));
 		prtd->dsp_cnt++;
-		prtd->poll_time = ((unsigned long)((
-				snd_pcm_lib_period_bytes(prtd->substream)
-				 * 1000 * 1000)/(runtime->rate
-				* runtime->channels * 2)));
 		hrtimer_forward_now(hrt, ns_to_ktime(prtd->poll_time
 					* 1000));
 
@@ -101,10 +96,6 @@ static enum hrtimer_restart afe_hrtimer_rec_callback(struct hrtimer *hrt)
 			* snd_pcm_lib_period_bytes(prtd->substream))),
 			snd_pcm_lib_period_bytes(prtd->substream));
 		prtd->dsp_cnt++;
-		prtd->poll_time = ((unsigned long)((
-				snd_pcm_lib_period_bytes(prtd->substream)
-					* 1000 * 1000)/(runtime->rate
-					* runtime->channels * 2)));
 		pr_debug("sending frame rec to DSP: poll_time: %d\n",
 				prtd->poll_time);
 		hrtimer_forward_now(hrt, ns_to_ktime(prtd->poll_time
@@ -142,11 +133,11 @@ static void pcm_afe_process_tx_pkt(uint32_t opcode,
 						1000 * 1000)/
 						(runtime->rate *
 						runtime->channels * 2)));
-				pr_info("prtd->poll_time: %d",
+				pr_debug("prtd->poll_time: %d",
 						prtd->poll_time);
 				hrtimer_start(&prtd->hrt,
-				ns_to_ktime(prtd->poll_time * 1000),
-				      HRTIMER_MODE_REL);
+					ns_to_ktime(0),
+					HRTIMER_MODE_REL);
 				break;
 			}
 			case AFE_EVENT_RTPORT_STOP:
@@ -171,6 +162,7 @@ static void pcm_afe_process_tx_pkt(uint32_t opcode,
 			pr_debug("write done\n");
 			prtd->pcm_irq_pos += snd_pcm_lib_period_bytes
 							(prtd->substream);
+			snd_pcm_period_elapsed(prtd->substream);
 			break;
 		default:
 			break;
@@ -210,9 +202,9 @@ static void pcm_afe_process_rx_pkt(uint32_t opcode,
 					* 1000 * 1000)/(runtime->rate
 					* runtime->channels * 2)));
 			hrtimer_start(&prtd->hrt,
-			ns_to_ktime(prtd->poll_time * 1000),
-			      HRTIMER_MODE_REL);
-			pr_info("prtd->poll_time : %d", prtd->poll_time);
+				ns_to_ktime(0),
+				HRTIMER_MODE_REL);
+			pr_debug("prtd->poll_time : %d", prtd->poll_time);
 			break;
 		}
 		case AFE_EVENT_RTPORT_STOP:
@@ -267,7 +259,7 @@ static int msm_afe_playback_prepare(struct snd_pcm_substream *substream)
 		pr_err("afe-pcm:register for events failed\n");
 		return ret;
 	}
-	pr_info("%s:success\n", __func__);
+	pr_debug("%s:success\n", __func__);
 	prtd->prepared++;
 	return ret;
 }
@@ -289,7 +281,7 @@ static int msm_afe_capture_prepare(struct snd_pcm_substream *substream)
 		pr_err("afe-pcm:register for events failed\n");
 		return ret;
 	}
-	pr_info("%s:success\n", __func__);
+	pr_debug("%s:success\n", __func__);
 	prtd->prepared++;
 	return 0;
 }
@@ -571,7 +563,7 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_card *card = rtd->card->snd_card;
 	int ret = 0;
 
-	pr_err("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 	return ret;
@@ -579,7 +571,7 @@ static int msm_asoc_pcm_new(struct snd_soc_pcm_runtime *rtd)
 
 static int msm_afe_afe_probe(struct snd_soc_platform *platform)
 {
-	pr_err("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return 0;
 }
 
@@ -591,14 +583,14 @@ static struct snd_soc_platform_driver msm_soc_platform = {
 
 static __devinit int msm_afe_probe(struct platform_device *pdev)
 {
-	pr_info("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
+	pr_debug("%s: dev name %s\n", __func__, dev_name(&pdev->dev));
 	return snd_soc_register_platform(&pdev->dev,
 				   &msm_soc_platform);
 }
 
 static int msm_afe_remove(struct platform_device *pdev)
 {
-	pr_err("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	snd_soc_unregister_platform(&pdev->dev);
 	return 0;
 }
@@ -614,14 +606,14 @@ static struct platform_driver msm_afe_driver = {
 
 static int __init msm_soc_platform_init(void)
 {
-	pr_err("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	return platform_driver_register(&msm_afe_driver);
 }
 module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {
-	pr_err("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&msm_afe_driver);
 }
 module_exit(msm_soc_platform_exit);

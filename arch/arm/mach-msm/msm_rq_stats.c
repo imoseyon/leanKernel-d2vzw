@@ -26,6 +26,7 @@
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 #include <linux/rq_stats.h>
+#include <asm/smp_plat.h>
 
 #ifdef CONFIG_SEC_DVFS_DUAL
 #include <linux/cpufreq.h>
@@ -298,6 +299,12 @@ rel:
 static int __init msm_rq_stats_init(void)
 {
 	int ret;
+
+	/* Bail out if this is not an SMP Target */
+	if (!is_smp()) {
+		rq_info.init = 0;
+		return -ENOSYS;
+	}
 
 	rq_wq = create_singlethread_workqueue("rq_stats");
 	BUG_ON(!rq_wq);

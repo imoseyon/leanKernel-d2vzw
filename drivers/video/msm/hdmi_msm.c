@@ -3983,21 +3983,21 @@ int hdmi_msm_clk(int on)
 
 	DEV_DBG("HDMI Clk: %s\n", on ? "Enable" : "Disable");
 	if (on) {
-		rc = clk_enable(hdmi_msm_state->hdmi_app_clk);
+		rc = clk_prepare_enable(hdmi_msm_state->hdmi_app_clk);
 		if (rc) {
 			DEV_ERR("'hdmi_app_clk' clock enable failed, rc=%d\n",
 				rc);
 			return rc;
 		}
 
-		rc = clk_enable(hdmi_msm_state->hdmi_m_pclk);
+		rc = clk_prepare_enable(hdmi_msm_state->hdmi_m_pclk);
 		if (rc) {
 			DEV_ERR("'hdmi_m_pclk' clock enable failed, rc=%d\n",
 				rc);
 			return rc;
 		}
 
-		rc = clk_enable(hdmi_msm_state->hdmi_s_pclk);
+		rc = clk_prepare_enable(hdmi_msm_state->hdmi_s_pclk);
 		if (rc) {
 			DEV_ERR("'hdmi_s_pclk' clock enable failed, rc=%d\n",
 				rc);
@@ -4005,9 +4005,9 @@ int hdmi_msm_clk(int on)
 		}
 		hdmi_msm_state->clk_status = true;
 	} else {
-		clk_disable(hdmi_msm_state->hdmi_app_clk);
-		clk_disable(hdmi_msm_state->hdmi_m_pclk);
-		clk_disable(hdmi_msm_state->hdmi_s_pclk);
+		clk_disable_unprepare(hdmi_msm_state->hdmi_app_clk);
+		clk_disable_unprepare(hdmi_msm_state->hdmi_m_pclk);
+		clk_disable_unprepare(hdmi_msm_state->hdmi_s_pclk);
 		hdmi_msm_state->clk_status = false;
 	}
 
@@ -4099,7 +4099,7 @@ static void hdmi_msm_hpd_read_work(struct work_struct *work)
 {
 	uint32 hpd_ctrl;
 
-	clk_enable(hdmi_msm_state->hdmi_app_clk);
+	clk_prepare_enable(hdmi_msm_state->hdmi_app_clk);
 	hdmi_msm_state->pd->core_power(1, 1);
 	hdmi_msm_state->pd->enable_5v(1);
 	hdmi_msm_set_mode(FALSE);
@@ -4126,7 +4126,7 @@ static void hdmi_msm_hpd_read_work(struct work_struct *work)
 	hdmi_msm_set_mode(FALSE);
 	hdmi_msm_state->pd->core_power(0, 1);
 	hdmi_msm_state->pd->enable_5v(0);
-	clk_disable(hdmi_msm_state->hdmi_app_clk);
+	clk_disable_unprepare(hdmi_msm_state->hdmi_app_clk);
 }
 
 static void hdmi_msm_hpd_off(void)

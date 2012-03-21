@@ -300,6 +300,7 @@ typedef struct dhd_info {
 #if defined(CONFIG_HAS_WAKELOCK) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	struct wake_lock wl_wifi;   /* Wifi wakelock */
 	struct wake_lock wl_rxwake; /* Wifi rx wakelock */
+	struct wake_lock wl_ctrlwake; /* Wifi ctrl wakelock */
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
@@ -310,7 +311,8 @@ typedef struct dhd_info {
 #endif
 	spinlock_t wakelock_spinlock;
 	int wakelock_counter;
-	int wakelock_timeout_enable;
+	int wakelock_rx_timeout_enable;
+	int wakelock_ctrl_timeout_enable;
 
 	/* Thread to issue ioctl for multicast */
 	unsigned char set_macaddress;
@@ -1695,7 +1697,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 	int i;
 	dhd_if_t *ifp;
 	wl_event_msg_t event;
-	int tout = DHD_PACKET_TIMEOUT_MS;
+	int tout_rx = 0;
+	int tout_ctrl = 0;
 #ifdef DHD_RX_DUMP
 #ifdef DHD_RX_FULL_DUMP
 	int k;
@@ -1703,7 +1706,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 	char *dump_data;
 	uint16 protocol;
 #endif /* DHD_RX_DUMP */
-
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -1848,13 +1850,16 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			&event,
 			&data);
 
-#ifdef WLBTAMP
 			wl_event_to_host_order(&event);
+			if (!tout_ctrl)
+				tout_ctrl = DHD_PACKET_TIMEOUT_MS;
 			if (event.event_type == WLC_E_BTA_HCI_EVENT) {
 				dhd_bta_doevt(dhdp, data, event.datalen);
+			} else if (event.event_type == WLC_E_PFN_NET_FOUND) {
+				tout_ctrl *= 2;
 			}
-			tout = DHD_EVENT_TIMEOUT_MS;
-#endif /* WLBTAMP */
+		} else {
+			tout_rx = DHD_PACKET_TIMEOUT_MS;
 		}
 
 		ASSERT(ifidx < DHD_MAX_IFS && dhd->iflist[ifidx]);
@@ -1887,7 +1892,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0) */
 		}
 	}
-	DHD_OS_WAKE_LOCK_TIMEOUT_ENABLE(dhdp, tout);
+	DHD_OS_WAKE_LOCK_RX_TIMEOUT_ENABLE(dhdp, tout_rx);
+	DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhdp, tout_ctrl);
 }
 
 void
@@ -2401,7 +2407,7 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 	/* send to dongle only if we are not waiting for reload already */
 	if (dhd->pub.hang_was_sent) {
 		DHD_ERROR(("%s: HANG was sent up earlier\n", __FUNCTION__));
-		DHD_OS_WAKE_LOCK_TIMEOUT_ENABLE(&dhd->pub, DHD_EVENT_TIMEOUT_MS);
+		DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(&dhd->pub, DHD_EVENT_TIMEOUT_MS);
 		DHD_OS_WAKE_UNLOCK(&dhd->pub);
 		return OSL_ERROR(BCME_DONGLE_DOWN);
 	}
@@ -3094,10 +3100,12 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	/* Initialize Wakelock stuff */
 	spin_lock_init(&dhd->wakelock_spinlock);
 	dhd->wakelock_counter = 0;
-	dhd->wakelock_timeout_enable = 0;
+	dhd->wakelock_rx_timeout_enable = 0;
+	dhd->wakelock_ctrl_timeout_enable = 0;
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_init(&dhd->wl_wifi, WAKE_LOCK_SUSPEND, "wlan_wake");
 	wake_lock_init(&dhd->wl_rxwake, WAKE_LOCK_SUSPEND, "wlan_rx_wake");
+	wake_lock_init(&dhd->wl_ctrlwake, WAKE_LOCK_SUSPEND, "wlan_ctrl_wake");
 #ifdef PNO_SUPPORT
 	wake_lock_init(&dhd->pub.pno_wakelock, WAKE_LOCK_SUSPEND, "pno_wake_lock");
 #endif
@@ -4360,9 +4368,11 @@ void dhd_detach(dhd_pub_t *dhdp)
 	if (dhd->dhd_state & DHD_ATTACH_STATE_WAKELOCKS_INIT) {
 #ifdef CONFIG_HAS_WAKELOCK
 		dhd->wakelock_counter = 0;
-		dhd->wakelock_timeout_enable = 0;
+		dhd->wakelock_rx_timeout_enable = 0;
+		dhd->wakelock_ctrl_timeout_enable = 0;
 		wake_lock_destroy(&dhd->wl_wifi);
 		wake_lock_destroy(&dhd->wl_rxwake);
+		wake_lock_destroy(&dhd->wl_ctrlwake);
 #ifdef PNO_SUPPORT
 	wake_lock_destroy(&dhdp->pno_wakelock);
 #endif
@@ -5320,13 +5330,18 @@ int dhd_os_wake_lock_timeout(dhd_pub_t *pub)
 
 	if (dhd) {
 		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		ret = dhd->wakelock_timeout_enable;
+		ret = dhd->wakelock_rx_timeout_enable > dhd->wakelock_ctrl_timeout_enable ?
+			dhd->wakelock_rx_timeout_enable : dhd->wakelock_ctrl_timeout_enable;
 #ifdef CONFIG_HAS_WAKELOCK
-		if (dhd->wakelock_timeout_enable)
+		if (dhd->wakelock_rx_timeout_enable)
 			wake_lock_timeout(&dhd->wl_rxwake,
-				msecs_to_jiffies(dhd->wakelock_timeout_enable));
+				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable));
+		if (dhd->wakelock_ctrl_timeout_enable)
+			wake_lock_timeout(&dhd->wl_ctrlwake,
+				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable));
 #endif
-		dhd->wakelock_timeout_enable = 0;
+		dhd->wakelock_rx_timeout_enable = 0;
+		dhd->wakelock_ctrl_timeout_enable = 0;
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 	}
 	return ret;
@@ -5357,27 +5372,51 @@ int net_os_wake_lock_timeout_for_pno(struct net_device *dev, int sec)
 }
 #endif
 
-int dhd_os_wake_lock_timeout_enable(dhd_pub_t *pub, int val)
+int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val)
 {
 	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
 	unsigned long flags;
 
 	if (dhd) {
 		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		if (val > dhd->wakelock_timeout_enable)
-			dhd->wakelock_timeout_enable = val;
+		if (val > dhd->wakelock_rx_timeout_enable)
+			dhd->wakelock_rx_timeout_enable = val;
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 	}
 	return 0;
 }
 
-int net_os_wake_lock_timeout_enable(struct net_device *dev, int val)
+int dhd_os_wake_lock_ctrl_timeout_enable(dhd_pub_t *pub, int val)
+{
+	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
+	unsigned long flags;
+
+	if (dhd) {
+		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
+		if (val > dhd->wakelock_ctrl_timeout_enable)
+			dhd->wakelock_ctrl_timeout_enable = val;
+		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
+	}
+	return 0;
+}
+
+int net_os_wake_lock_rx_timeout_enable(struct net_device *dev, int val)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 	int ret = 0;
 
 	if (dhd)
-		ret = dhd_os_wake_lock_timeout_enable(&dhd->pub, val);
+		ret = dhd_os_wake_lock_rx_timeout_enable(&dhd->pub, val);
+	return ret;
+}
+
+int net_os_wake_lock_ctrl_timeout_enable(struct net_device *dev, int val)
+{
+	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	int ret = 0;
+
+	if (dhd)
+		ret = dhd_os_wake_lock_ctrl_timeout_enable(&dhd->pub, val);
 	return ret;
 }
 

@@ -1254,6 +1254,18 @@ blsp_core_init:
 	dev->pos = 0;
 
 	/*
+	 * If bootloaders leave a pending interrupt on certain GSBI's,
+	 * then we reset the core before registering for interrupts.
+	 */
+	clk_prepare_enable(dev->clk);
+	clk_prepare_enable(dev->pclk);
+	writel_relaxed(1, dev->base + QUP_SW_RESET);
+	if (qup_i2c_poll_state(dev, 0, true) != 0)
+		goto err_reset_failed;
+	clk_disable_unprepare(dev->clk);
+	clk_disable_unprepare(dev->pclk);
+
+	/*
 	 * We use num_irqs to also indicate if we got 3 interrupts or just 1.
 	 * If we have just 1, we use err_irq as the general purpose irq
 	 * and handle the changes in ISR accordingly
@@ -1335,9 +1347,12 @@ blsp_core_init:
 
 err_request_irq_failed:
 	qup_i2c_free_gpios(dev);
-err_request_gpio_failed:
 	if (dev->gsbi)
 		iounmap(dev->gsbi);
+err_reset_failed:
+	clk_disable_unprepare(dev->clk);
+	clk_disable_unprepare(dev->pclk);
+err_request_gpio_failed:
 err_gsbi_failed:
 	iounmap(dev->base);
 err_ioremap_failed:

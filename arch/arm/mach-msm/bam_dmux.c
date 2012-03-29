@@ -1050,7 +1050,7 @@ static void rx_switch_to_interrupt_mode(void)
 
 fail:
 	pr_err("%s: reverting to polling\n", __func__);
-	queue_work(bam_mux_rx_workqueue, &rx_timer_work);
+	queue_work_on(0, bam_mux_rx_workqueue, &rx_timer_work);
 }
 
 static void rx_timer_work_func(struct work_struct *work)
@@ -1155,6 +1155,10 @@ static void bam_mux_rx_notify(struct sps_event_notify *notify)
 			}
 			grab_wakelock();
 			polling_mode = 1;
+			/*
+			 * run on core 0 so that netif_rx() in rmnet uses only
+			 * one queue
+			 */
 			queue_work_on(0, bam_mux_rx_workqueue, &rx_timer_work);
 		}
 		break;
@@ -2110,6 +2114,11 @@ static int bam_dmux_probe(struct platform_device *pdev)
 	if (rc)
 		pr_err("%s: unable to set dfab clock rate\n", __func__);
 
+	/*
+	 * setup the workqueue so that it can be pinned to core 0 and not
+	 * block the watchdog pet function, so that netif_rx() in rmnet
+	 * only uses one queue.
+	 */
 	bam_mux_rx_workqueue = alloc_workqueue("bam_dmux_rx",
 					WQ_MEM_RECLAIM | WQ_CPU_INTENSIVE, 1);
 	if (!bam_mux_rx_workqueue)

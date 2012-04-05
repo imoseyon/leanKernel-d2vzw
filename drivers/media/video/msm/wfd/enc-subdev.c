@@ -1740,6 +1740,46 @@ static long venc_flush_buffers(struct v4l2_subdev *sd, void *arg)
 	rc = vcd_flush(client_ctx->vcd_handle, VCD_FLUSH_INPUT);
 	if (rc) {
 		WFD_MSG_ERR("Failed to flush input buffers\n");
+		rc = -EIO;
+		goto flush_failed;
+	}
+	wait_for_completion(&client_ctx->event);
+	if (client_ctx->event_status) {
+		WFD_MSG_ERR("callback for vcd_flush input returned error: %u",
+				client_ctx->event_status);
+		rc = -EIO;
+		goto flush_failed;
+	}
+	rc = vcd_flush(client_ctx->vcd_handle, VCD_FLUSH_OUTPUT);
+	if (rc) {
+		WFD_MSG_ERR("Failed to flush output buffers\n");
+		rc = -EIO;
+		goto flush_failed;
+	}
+	wait_for_completion(&client_ctx->event);
+	if (client_ctx->event_status) {
+		WFD_MSG_ERR("callback for vcd_flush output returned error: %u",
+				client_ctx->event_status);
+		rc = -EIO;
+		goto flush_failed;
+	}
+
+flush_failed:
+	return rc;
+}
+
+static long venc_free_input_buffer(struct v4l2_subdev *sd, void *arg)
+{
+	int rc = 0;
+	struct venc_inst *inst = sd->dev_priv;
+	struct video_client_ctx *client_ctx = &inst->venc_client;
+	if (!client_ctx) {
+		WFD_MSG_ERR("Invalid input\n");
+		return -EINVAL;
+	}
+	rc = vcd_flush(client_ctx->vcd_handle, VCD_FLUSH_INPUT);
+	if (rc) {
+		WFD_MSG_ERR("Failed to flush input buffers\n");
 		goto flush_failed;
 	}
 	wait_for_completion(&client_ctx->event);

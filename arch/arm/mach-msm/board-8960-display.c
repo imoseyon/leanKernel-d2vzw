@@ -113,44 +113,44 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #if defined(CONFIG_FB_MSM_TRIPLE_BUFFER)
 /* prim = 540 x 960 x 4(bpp) x 3(pages) */
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (480 * 800 * 4 * 3)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((480 * 800 * 4), 4096) * 3)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (1280 * 800 * 4 * 3)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((1280 * 800 * 4), 4096) * 3)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (544 * 960 * 4 * 3)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((544 * 960 * 4), 4096) * 3)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (1280 * 736 * 4 * 3)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((1280 * 736 * 4), 4096) * 3)
 #else
-#define MSM_FB_PRIM_BUF_SIZE (480 * 800 * 4 * 3)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((480 * 800 * 4), 4096) * 3)
 #endif
 #else
 /* prim = 540 x 960 x 4(bpp) x 2(pages) */
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (480 * 800 * 4 * 2)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((480 * 800 * 4), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (1280 * 800 * 4 * 2)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((1280 * 800 * 4), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (544 * 960 * 4 * 2)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((544 * 960 * 4), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT_PANEL)
-#define MSM_FB_PRIM_BUF_SIZE (1280 * 736 * 4 * 2)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((1280 * 736 * 4), 4096) * 2)
 #else
-#define MSM_FB_PRIM_BUF_SIZE (480 * 800 * 4 * 2)
+#define MSM_FB_PRIM_BUF_SIZE (roundup((480 * 800 * 4), 4096) * 2)
 #endif
 #endif
 
 #if defined(CONFIG_FB_MSM_MIPI_DSI)
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
 /* 480 x 800 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (480 * 800 * 3 * 2)
+#define MIPI_DSI_WRITEBACK_SIZE (roundup((480 * 800 * 3), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT_PANEL)
 /* 1280 x 800 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (1280 * 800 * 3 * 2)
+#define MIPI_DSI_WRITEBACK_SIZE (roundup((1280 * 800 * 3), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL)
 /* 540 x 960 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (544 * 960 * 3 * 2)
+#define MIPI_DSI_WRITEBACK_SIZE (roundup((544 * 960 * 3), 4096) * 2)
 #elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT_PANEL)
 /*1280 x732 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (1280 * 736 * 3 * 2)
+#define MIPI_DSI_WRITEBACK_SIZE (roundup((1280 * 736 * 3), 4096) * 2)
 #endif
 #else
 #define MIPI_DSI_WRITEBACK_SIZE 0

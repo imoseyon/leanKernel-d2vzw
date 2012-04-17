@@ -291,3 +291,7 @@ extern struct platform_device msm_etm_device;
 extern struct platform_device msm8960_cpu_idle_device;
 
 extern struct platform_device msm8960_msm_gov_device;
+
+extern struct platform_device msm8960_iommu_domain_device;
+extern struct platform_device msm8930_iommu_domain_device;
+extern struct platform_device apq8064_iommu_domain_device;

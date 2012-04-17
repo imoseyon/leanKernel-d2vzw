@@ -414,6 +414,7 @@ struct mipi_dsi_platform_data {
 #endif /* CONFIG_FB_MSM_MIPI_PANEL_POWERON_LP11 */
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
+	char (*splash_is_enabled)(void);
 	int target_type;
 	void (*lcd_rst_up)(void);
 	void (*lcd_rst_down)(void);

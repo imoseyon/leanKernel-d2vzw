@@ -184,6 +184,7 @@ struct msm_fb_data_type {
 	u32 writeback_state;
 	boolean resume_state;
 	boolean backlight_ctrl_ongoing;
+	bool writeback_active_cnt;
 	int cont_splash_done;
 };
 

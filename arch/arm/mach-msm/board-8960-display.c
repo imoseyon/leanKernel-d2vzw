@@ -99,7 +99,6 @@ static struct platform_device cmc624_i2c_gpio_device = {
 #define OLED_ESD	PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_VGH_ESD_DET)
 #endif
 
-
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 static struct sec_esd_platform_data esd_pdata;
 static struct platform_device samsung_mipi_esd_refresh_device = {
@@ -138,47 +137,8 @@ static struct platform_device samsung_mipi_esd_refresh_device = {
 #endif
 #endif
 
-#if defined(CONFIG_FB_MSM_MIPI_DSI)
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
-/* 480 x 800 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (roundup((480 * 800 * 3), 4096) * 2)
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT_PANEL)
-/* 1280 x 800 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (roundup((1280 * 800 * 3), 4096) * 2)
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT_PANEL)
-/* 540 x 960 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (roundup((544 * 960 * 3), 4096) * 2)
-#elif defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT_PANEL)
-/*1280 x732 x 3 x 2 */
-#define MIPI_DSI_WRITEBACK_SIZE (roundup((1280 * 736 * 3), 4096) * 2)
-#endif
-#else
-#define MIPI_DSI_WRITEBACK_SIZE 0
-#endif
-
-#if defined(CONFIG_FB_MSM_HDMI_MSM_PANEL)
-/* hdmi = 1920 x 1088 x 2(bpp) x 1(page) */
-#define MSM_FB_EXT_BUF_SIZE 0x3FC000
-#elif defined(CONFIG_FB_MSM_TVOUT)
-/* tvout = 720 x 576 x 2(bpp) x 2(pages) */
-#define MSM_FB_EXT_BUF_SIZE 0x195000
-#else /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-#define MSM_FB_EXT_BUF_SIZE 0
-#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-
-#ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
-/* width x height x 3 bpp x 2 frame buffer */
-#define MSM_FB_WRITEBACK_SIZE 0x3FC000
-#define MSM_FB_WRITEBACK_OFFSET  \
-		(MSM_FB_PRIM_BUF_SIZE + MSM_FB_EXT_BUF_SIZE)
-#else
-#define MSM_FB_WRITEBACK_SIZE   0
-#define MSM_FB_WRITEBACK_OFFSET 0
-#endif
-
 /* Note: must be multiple of 4096 */
-#define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE + MSM_FB_EXT_BUF_SIZE + \
-				MSM_FB_WRITEBACK_SIZE, 4096)
+#define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE, 4096)
 
 #ifdef CONFIG_FB_MSM_OVERLAY0_WRITEBACK
 #define MSM_FB_OVERLAY0_WRITEBACK_SIZE roundup((1920 * 1200 * 3 * 2), 4096)

@@ -25,8 +25,7 @@
 
 #define KGSL_NAME "kgsl"
 
-/* Timestamp window used to detect rollovers
-   (half of integer range*/
+/* Timestamp window used to detect rollovers (half of integer range) */
 #define KGSL_TIMESTAMP_WINDOW 0x80000000
 
 /*cache coherency ops */
@@ -209,7 +208,7 @@ static inline uint8_t *kgsl_gpuaddr_to_vaddr(struct kgsl_memdesc *memdesc,
 
 static inline int timestamp_cmp(unsigned int a, unsigned int b)
 {
-	/* Check for equal*/
+	/* check for equal */
 	if (a == b)
 		return 0;
 

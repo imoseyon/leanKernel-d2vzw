@@ -1432,6 +1432,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.cont_splash_enabled = 0x0,
+	.mdp_iommu_split_domain = 0,
 };
 
 #ifndef CONFIG_FB_MSM_MIPI_PANEL_DETECT

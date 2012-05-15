@@ -48,6 +48,7 @@ extern spinlock_t mdp_spin_lock;
 extern spinlock_t mixer_reset_lock;
 #endif
 extern int mdp_rev;
+extern int mdp_iommu_split_domain;
 extern struct mdp_csc_cfg mdp_csc_convert[4];
 
 extern struct workqueue_struct *mdp_hist_wq;

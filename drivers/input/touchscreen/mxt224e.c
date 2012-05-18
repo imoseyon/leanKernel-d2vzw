@@ -273,6 +273,8 @@ static void set_dvfs_off(struct work_struct *work)
 	cpufreq_set_limit(TOUCH_BOOSTER_SECOND_STOP, 0);
 	data->dvfs_lock_status = false;
 	mutex_unlock(&data->dvfs_lock);
+
+	pr_info("[TSP] DVFS Off!");
 }
 
 static void set_dvfs_lock(struct mxt224_data *data, uint32_t on)
@@ -298,6 +300,7 @@ static void set_dvfs_lock(struct mxt224_data *data, uint32_t on)
 			schedule_delayed_work(&data->work_dvfs_chg,
 				msecs_to_jiffies(TOUCH_BOOSTER_CHG_TIME));
 			data->dvfs_lock_status = true;
+			pr_info("[TSP] DVFS On![%d]");
 		}
 	} else if (on == 2) {
 		cancel_delayed_work(&data->work_dvfs_off);

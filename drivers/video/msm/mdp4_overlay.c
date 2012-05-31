@@ -3271,6 +3271,14 @@ mddi:
 		}
 		mdp4_overlay_rgb_setup(pipe);   /* rgb pipe */
 	}
+
+	if (pipe->mixer_num != MDP4_MIXER2) {
+		if ((ctrl->panel_mode & MDP4_PANEL_DTV) ||
+			(ctrl->panel_mode & MDP4_PANEL_LCDC) ||
+			(ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO))
+			mdp4_overlay_reg_flush(pipe, 1);
+	}
+
 	mdp4_mixer_stage_up(pipe);
 	if (!(pipe->flags & MDP_OV_PLAY_NOWAIT))
 		mdp4_mixer_stage_commit(pipe->mixer_num);

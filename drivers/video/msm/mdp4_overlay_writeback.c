@@ -83,19 +83,17 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 		pipe = mdp4_overlay_pipe_alloc(OVERLAY_TYPE_BF, MDP4_MIXER2);
 		if (pipe == NULL)
 			pr_info("%s: pipe_alloc failed\n", __func__);
-		else{
-			pipe->pipe_used++;
-			pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
-			pipe->mixer_num  = MDP4_MIXER2;
-			pipe->src_format = MDP_ARGB_8888;
-			mdp4_overlay_panel_mode(pipe->mixer_num,
-				MDP4_PANEL_WRITEBACK);
-			ret = mdp4_overlay_format2pipe(pipe);
-			if (ret < 0)
-				pr_info("%s: format2type failed\n", __func__);
+		pipe->pipe_used++;
+		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
+		pipe->mixer_num  = MDP4_MIXER2;
+		pipe->src_format = MDP_ARGB_8888;
+		mdp4_overlay_panel_mode(pipe->mixer_num,
+		MDP4_PANEL_WRITEBACK);
+		ret = mdp4_overlay_format2pipe(pipe);
+		if (ret < 0)
+			pr_info("%s: format2type failed\n", __func__);
 
-			writeback_pipe = pipe; /* keep it */
-			}
+		writeback_pipe = pipe; /* keep it */
 
 	} else {
 		pipe = writeback_pipe;
@@ -275,11 +273,11 @@ void mdp4_writeback_kickoff_video(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mfd->writeback_mutex);
 
-	writeback_pipe->blt_addr = (ulong) (node ? node->addr : NULL);
+	writeback_pipe->ov_blt_addr = (ulong) (node ? node->addr : NULL);
 
-	if (!writeback_pipe->blt_addr) {
+	if (!writeback_pipe->ov_blt_addr) {
 		pr_err("%s: no writeback buffer 0x%x, %p\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr, node);
+			(unsigned int)writeback_pipe->ov_blt_addr, node);
 		mutex_unlock(&mfd->unregister_mutex);
 		return;
 	}
@@ -330,13 +328,13 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 	}
 	mutex_unlock(&mfd->writeback_mutex);
 
-	writeback_pipe->blt_addr = (ulong) (node ? node->addr : NULL);
+	writeback_pipe->ov_blt_addr = (ulong) (node ? node->addr : NULL);
 
 	mutex_lock(&mfd->dma->ov_mutex);
 	pr_debug("%s in writeback\n", __func__);
-	if (writeback_pipe && !writeback_pipe->blt_addr) {
+	if (writeback_pipe && !writeback_pipe->ov_blt_addr) {
 		pr_err("%s: no writeback buffer 0x%x\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr);
+				(unsigned int)writeback_pipe->ov_blt_addr);
 		ret = mdp4_overlay_writeback_update(mfd);
 		if (ret)
 			pr_err("%s: update failed writeback pipe NULL\n",
@@ -357,7 +355,7 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 		}
 
 		pr_debug("%s: in writeback pan display 0x%x\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr);
+				(unsigned int)writeback_pipe->ov_blt_addr);
 		mdp4_writeback_kickoff_ui(mfd, writeback_pipe);
 		mdp4_iommu_unmap(writeback_pipe);
 

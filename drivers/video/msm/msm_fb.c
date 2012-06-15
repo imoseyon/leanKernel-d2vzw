@@ -1454,7 +1454,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 					GEN_POOL,
 					fbi->fix.smem_len,
 					SZ_4K,
-					1,
+					0,
 					&(mfd->display_iova));
 
 	msm_iommu_map_contig_buffer(fbi->fix.smem_start,
@@ -1462,7 +1462,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 					GEN_POOL,
 					fbi->fix.smem_len,
 					SZ_4K,
-					1,
+					0,
 					&(mfd->rotator_iova));
 
 	if (!bf_supported || mfd->index == 0)

@@ -22,7 +22,6 @@ obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) += mdp4_video_enhance.o
 obj-$(CONFIG_FB_MSM_MIPI_BOEOT_TFT_VIDEO_WSVGA_PT) += mdp4_video_enhance.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT) += mdp4_video_enhance.o
 
-obj-y += mdp4_hsic.o
 else
 obj-y += mdp_hw_init.o
 obj-y += mdp_ppp.o

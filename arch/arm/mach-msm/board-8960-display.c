@@ -1509,16 +1509,6 @@ static char mipi_dsi_splash_is_enabled(void)
 	return mdp_pdata.cont_splash_enabled;
 }
 
-static struct platform_device mipi_dsi_renesas_panel_device = {
-	.name = "mipi_renesas",
-	.id = 0,
-};
-
-static struct platform_device mipi_dsi_simulator_panel_device = {
-	.name = "mipi_simulator",
-	.id = 0,
-};
-
 #define LPM_CHANNEL0 0
 #if defined(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA)
 static int toshiba_gpio[] = {LPM_CHANNEL0};
@@ -1928,20 +1918,12 @@ void __init msm8960_init_fb(void)
 	platform_device_register(&wfd_device);
 #endif
 
-	if (machine_is_msm8960_sim())
-		platform_device_register(&mipi_dsi_simulator_panel_device);
-
-	if (machine_is_msm8960_rumi3())
-		platform_device_register(&mipi_dsi_renesas_panel_device);
-
-	if (!machine_is_msm8960_sim() && !machine_is_msm8960_rumi3()) {
-		platform_device_register(&mipi_dsi_novatek_panel_device);
-		platform_device_register(&mipi_dsi_orise_panel_device);
+	platform_device_register(&mipi_dsi_novatek_panel_device);
+	platform_device_register(&mipi_dsi_orise_panel_device);
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
-		platform_device_register(&hdmi_msm_device);
+	platform_device_register(&hdmi_msm_device);
 #endif
-	}
 
 	if (machine_is_msm8960_liquid() \
 			|| machine_is_ESPRESSO_VZW()

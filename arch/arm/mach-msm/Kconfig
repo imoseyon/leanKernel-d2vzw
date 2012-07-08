@@ -904,6 +904,13 @@ config PHYS_OFFSET
 	default "0x40200000" if ARCH_MSM8X60
 	default "0x10000000"
 
+config HAVE_END_MEM
+	bool "Specify highest physical RAM address at compile time"
+
+config END_MEM
+	hex "Highest physical address where system RAM resides"
+	depends on HAVE_END_MEM
+
 config KERNEL_PMEM_EBI_REGION
 	bool "Enable in-kernel PMEM region for EBI"
 	default y if ARCH_MSM8X60

@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/linkage.h>
+#include <asm/memory.h>
 
 /*
  * Debugging stuff
@@ -581,9 +582,14 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
  * bits for the RAM area only.
  */
 		mov	r0, r3
+#if defined(PLAT_PHYS_OFFSET) && defined(END_MEM)
+		ldr	r9, =PLAT_PHYS_OFFSET	@ start of RAM
+		ldr	r10, =END_MEM		@ end of RAM
+#else
 		mov	r9, r0, lsr #18
 		mov	r9, r9, lsl #18		@ start of RAM
 		add	r10, r9, #0x10000000	@ a reasonable RAM size
+#endif
 		mov	r1, #0x12
 		orr	r1, r1, #3 << 10
 		add	r2, r3, #16384

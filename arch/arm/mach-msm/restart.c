@@ -348,6 +348,10 @@ void msm_kexec_hardboot(void)
 {
 	/* Set PM8XXX PMIC to reset on power off. */
 	pm8xxx_reset_pwr_off(1);
+
+	/* Reboot with the recovery kernel since the boot kernel decompressor may
+	 * not support the hardboot jump. */
+	__raw_writel(0x77665502, restart_reason);
 }
 #endif
 

@@ -28,6 +28,30 @@
 #ifdef __KERNEL__
 #include <linux/ion.h>
 #endif
+
+#define VFE_FRAME_NUM_MAX	0x00FFFFFF
+#define ZERO_OUT_FRAME		0xFF000000
+#define CLEAR_FOCUS_BIT		0x7FFFFFFF
+#define get_focus_bit(x) ({ \
+	(x & 0x80000000) >> 31; \
+})
+#define get_frame_num(x) ({ \
+	x & VFE_FRAME_NUM_MAX; \
+})
+#define get_focus_in_position(x) ({ \
+	(x & 00000001) << 31; \
+})
+#define increment_frame_num(x) ({ \
+	uint32_t num = get_frame_num(x); \
+	num = num + 1; \
+	(x & ZERO_OUT_FRAME) | num; \
+})
+#define decrement_frame_num(x) ({ \
+	uint32_t num = get_frame_num(x); \
+	num = num - 1; \
+	(x & ZERO_OUT_FRAME) | num; \
+})
+
 #define MSM_CAM_IOCTL_MAGIC 'm'
 
 #define MSM_CAM_IOCTL_GET_SENSOR_INFO \
@@ -202,6 +226,9 @@ struct ioctl_native_cmd {
 
 #define MSM_CAM_IOCTL_V4L2_EVT_NATIVE_FRONT_CMD \
 	_IOWR(MSM_CAM_IOCTL_MAGIC, 55, struct ioctl_native_cmd *)
+
+#define MCTL_CAM_IOCTL_SET_FOCUS \
+	_IOW(MSM_CAM_IOCTL_MAGIC, 53, uint32_t)
 
 struct msm_mctl_pp_cmd {
 	int32_t  id;

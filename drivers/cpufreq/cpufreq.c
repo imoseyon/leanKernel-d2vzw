@@ -1115,6 +1115,12 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 		pr_debug("initialization failed\n");
 		goto err_unlock_policy;
 	}
+
+        if (policy->max > 1512000) {
+                pr_info("[imoseyon] cpufreq policy max set to 1.5Ghz at boot");
+                policy->max = 1512000;
+        }
+
 	policy->user_policy.min = policy->min;
 	policy->user_policy.max = policy->max;
 

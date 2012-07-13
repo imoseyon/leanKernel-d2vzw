@@ -1651,9 +1651,11 @@ static struct acpu_level * __init select_freq_plan(void)
 		kraitv2_apply_vmin(acpu_freq_tbl);
 
 	/* Find the max supported scaling frequency. */
-	for (l = acpu_freq_tbl; l->speed.khz != 0; l++)
+	for (l = acpu_freq_tbl; l->speed.khz != 0; l++) {
 		if (l->use_for_scaling)
 			max_acpu_level = l;
+		if (l->speed.khz > 1458000) break;
+	}
 	BUG_ON(!max_acpu_level);
 	pr_info("Max ACPU freq: %u KHz\n", max_acpu_level->speed.khz);
 

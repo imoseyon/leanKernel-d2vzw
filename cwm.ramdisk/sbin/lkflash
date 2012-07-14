@@ -1,0 +1,2 @@
+#!/sbin/sh
+dd if=/sdcard/lkboot${1}.img of=/dev/block/mmcblk0p18

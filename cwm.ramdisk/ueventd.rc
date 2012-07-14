@@ -123,7 +123,7 @@
 /dev/qmi1                 0640   radio      radio
 /dev/qmi2                 0640   radio      radio
 /dev/bus/usb/*            0660   root       usb
-/dev/usb_mtp_gadget       0660   root       mtp
+/dev/mtp_usb              0660   root       mtp
 /dev/gemini0              0660   system     camera
 /dev/mdm                  0660   system     system
 /dev/ttyHSL1              0660   system     system
@@ -181,8 +181,6 @@
 /dev/mpu            0660  system       system
 /dev/mpuirq            0660  system       system
 /dev/timerirq            0660  system       system
-#/dev/accelirq       0660    system  system
-#/dev/compassirq     0660    system  system
 
 # for usb printer
 /dev/bus/usb/*         0660        system        usb

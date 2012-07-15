@@ -27,7 +27,7 @@ on boot
     # change cpufreq governor
     exec /system/bin/sh /init.qcom.lpm_boot.sh
 
-	class_start default
+	class_start core
 
 service ueventd /sbin/ueventd
     class core

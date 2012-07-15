@@ -100,8 +100,8 @@ interceptor_route_create_child_dst(struct dst_entry *dst, Boolean ipv6)
   if (dst_get_neighbour(dst) != NULL)
     dst_set_neighbour(child, neigh_clone(dst_get_neighbour(dst)));
 #else  /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
-  if (dst->neighbour != NULL)
-    child->neighbour = neigh_clone(dst->neighbour);
+  if (dst_get_neighbour(dst) != NULL)
+    child->_neighbour = neigh_clone(dst_get_neighbour(dst));
 #endif /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
 
   if (dst->dev)
@@ -670,7 +670,7 @@ ssh_interceptor_route_output_ipv6(SshInterceptor interceptor,
 #ifdef LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS
   neigh = dst_get_neighbour(&rt->dst);
 #else  /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
-  neigh = rt->rt6i_nexthop;
+  neigh = dst_get_neighbour(&rt->dst);
 #endif /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
 
   if (neigh != NULL)

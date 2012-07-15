@@ -30,6 +30,7 @@
 #include <linux/bitops.h>
 #include <linux/debugfs.h>
 #include <linux/platform_device.h>
+#include <linux/ctype.h>
 #include <linux/slab.h>
 #include <sound/ac97_codec.h>
 #include <sound/core.h>
@@ -2272,7 +2273,7 @@ static int soc_remove(struct platform_device *pdev)
 int snd_soc_poweroff(struct device *dev)
 {
 	struct snd_soc_card *card = dev_get_drvdata(dev);
-	int i;
+	int i, ac97_control = 0;
 
 	if (!card->instantiated)
 		return 0;

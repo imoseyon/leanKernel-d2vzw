@@ -2235,6 +2235,12 @@ config MSM_DCVS_FOR_MSM8260A
 	help
 	  To divide the dcvs for MSM8260A Model.
 
+config GPU_OVERCLOCK	
+        bool "Enable GPU Overclocking option"
+        default n	
+        help	
+          Adreno2xx overclocking up to 480 MHz
+
 config SEC_PERIPHERAL_SECURE_CHK
 	bool "PERIPHERAL SECURE check"
 	help

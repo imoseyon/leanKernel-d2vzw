@@ -58,8 +58,6 @@ struct videobuf2_contig_pmem {
 	int dirty;
 	unsigned int count;
 	void *alloc_ctx;
-	struct msm_mapped_buffer *msm_buffer;
-	int subsys_id;
 	unsigned long mapped_phyaddr;
 	struct ion_handle *ion_handle;
 #if defined(CACHABLE_MEMORY)

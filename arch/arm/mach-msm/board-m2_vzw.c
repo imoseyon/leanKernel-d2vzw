@@ -135,6 +135,7 @@
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
 #include <mach/scm.h>
+#include <mach/iommu_domains.h>
 
 #include <linux/fmem.h>
 
@@ -180,6 +181,12 @@ struct tsp_callbacks *charger_callbacks;
 struct tsp_callbacks {
 	void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
 };
+#endif
+
+#ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
+static unsigned char hdmi_is_primary = 1;
+#else
+static unsigned char hdmi_is_primary;
 #endif
 
 static struct platform_device msm_fm_platform_init = {
@@ -350,21 +357,29 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_PMEM_KERNEL_EBI1_SIZE  0x280000 /* 2.5MB */
-#define MSM_ION_SF_SIZE		0x5000000 /* 80MB */
+#ifdef CONFIG_MSM_IOMMU
+#define MSM_ION_MM_SIZE     0x3800000
+#define MSM_ION_SF_SIZE_FOR_2GB                0x0
+#define MSM_ION_SF_SIZE 0x0
+#define MSM_ION_QSECOM_SIZE        0x780000 /* (7.5MB) */
+#define MSM_ION_HEAP_NUM 7
+#else
+#define MSM_ION_SF_SIZE             0x5000000 /* 80MB */
 #define MSM_ION_SF_SIZE_FOR_2GB		0x6400000 /* 100MB */
-#define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
-#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
+#define MSM_ION_QSECOM_SIZE	0x1700000 /* (24MB) */
+#define MSM_ION_HEAP_NUM       8
+#endif
+#define MSM_ION_MM_FW_SIZE     0x200000 /* (2MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
-#define MSM_ION_HEAP_NUM	8
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
 
 #define MSM8960_FIXED_AREA_START 0xb0000000
 #define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		0x280000
+#define MSM_MM_FW_SIZE		0x200000
 #define MSM8960_FW_START	(MSM8960_FIXED_AREA_START - MSM_MM_FW_SIZE)
 
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
@@ -571,6 +586,8 @@ static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
 	.reusable = FMEM_ENABLED,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_MIDDLE,
+	.iommu_map_all = 1,
+	.iommu_2x_map_domain = VIDEO_DOMAIN,
 };
 
 static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
@@ -639,6 +656,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &cp_mfc_ion_pdata,
 		},
+#ifndef CONFIG_MSM_IOMMU
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -647,6 +665,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &co_ion_pdata,
 		},
+#endif
 		{
 			.id	= ION_IOMMU_HEAP_ID,
 			.type	= ION_HEAP_TYPE_IOMMU,
@@ -760,6 +779,7 @@ static void __init reserve_ion_memory(void)
 	fmem_pdata.size = 0;
 	fmem_pdata.reserved_size_low = 0;
 	fmem_pdata.reserved_size_high = 0;
+	fmem_pdata.align = PAGE_SIZE;
 	fixed_low_size = 0;
 	fixed_middle_size = 0;
 	fixed_high_size = 0;
@@ -787,6 +807,10 @@ static void __init reserve_ion_memory(void)
 	for (i = 0; i < ion_pdata.nr; ++i) {
 		struct ion_platform_heap *heap = &(ion_pdata.heaps[i]);
 
+		int align = SZ_4K;
+		int iommu_map_all = 0;
+		int adjacent_mem_id = INVALID_HEAP_ID;
+
 		if (heap->extra_data) {
 			int fixed_position = NOT_FIXED;
 			int mem_is_fmem = 0;
@@ -804,16 +828,34 @@ static void __init reserve_ion_memory(void)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_cp_heap_pdata *)
 					heap->extra_data)->fixed_position;
+				align = ((struct ion_cp_heap_pdata *)
+								heap->extra_data)->align;
+				iommu_map_all =
+						((struct ion_cp_heap_pdata *)
+						 heap->extra_data)->iommu_map_all;
 				break;
 			case ION_HEAP_TYPE_CARVEOUT:
 				mem_is_fmem = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->fixed_position;
+				adjacent_mem_id = ((struct ion_co_heap_pdata *)
+								heap->extra_data)->adjacent_mem_id;
 				break;
 			default:
 				break;
 			}
+
+			if (iommu_map_all) {
+				if (heap->size & (SZ_64K-1)) {
+					heap->size = ALIGN(heap->size, SZ_64K);
+					pr_info("Heap %s not aligned to 64K. Adjusting size to %x\n",
+									heap->name, heap->size);
+				}
+			}
+
+			if (mem_is_fmem && adjacent_mem_id != INVALID_HEAP_ID)
+				fmem_pdata.align = align;
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
@@ -1054,7 +1096,7 @@ static void __init msm8960_reserve(void)
 		pr_info("fmem start %lx (fixed) size %lx\n",
 			fmem_pdata.phys, fmem_pdata.size);
 #else
-		fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size);
+		fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size, fmem_pdata.align);
 #endif
 	}
 	if (system_rev >= 15) {
@@ -4491,28 +4533,15 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{0, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
 
-	{0, 1, "C1", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
-
 	{0, 2, "C2", "POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
 
 	{1, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
-
-	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.idle_enabled = 0,
-		.suspend_enabled = 0,
-	},
-
-	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
 		.idle_enabled = 0,
@@ -4533,13 +4562,6 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 		.suspend_enabled = 0,
 	},
 
-	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.idle_enabled = 0,
-		.suspend_enabled = 0,
-	},
-
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
 		.idle_supported = 1,
 		.suspend_supported = 0,
@@ -4554,13 +4576,6 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
 		true,
 		100, 650, 801, 200,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		2000, 200, 576000, 2000,
 	},
 
 	{

@@ -25,12 +25,15 @@ if test -f /data/lk_once; then
     /sbin/rm /data/lk_once
     /sbin/umount /data
     rm /dev/block/mmcblk0p15
-    /sbin/rm /init
-    /sbin/rm /init.rc
-    /sbin/mv /init_samsung /init
-    /sbin/mv /init.rc_samsung /init.rc
-    /sbin/mv /etc /etc.recovery
-    /sbin/mv /default.prop.kernel /default.prop
+    rm /charger
+    rm /init
+    rm /init.rc
+    mv /init_samsung /init
+    mv /init.rc_samsung /init.rc
+    mv /etc /etc.recovery
+    mv /default.prop.kernel /default.prop
+    mv /sbin /sbin.recovery
+    /sbin.recovery/mv /sbin.samsung /sbin
     exec /init
   fi
 fi

@@ -128,6 +128,7 @@ ifeq ($(CONFIG_BCM4334),y)
   DRIVER_TYPE = y
 endif
   DHDCFLAGS :=$(filter-out -DWL_CFG80211_GON_COLLISION,$(DHDCFLAGS))
+  DHDCFLAGS += -fno-pic
 endif
 
 ifneq ($(CONFIG_BCM4330),)

@@ -121,6 +121,8 @@ on boot
     write /proc/sys/net/ipv6/conf/rmnet_sdio6/accept_ra 2
     write /proc/sys/net/ipv6/conf/rmnet_sdio7/accept_ra 2
 
+    chmod 0755 /system/etc/install-recovery.sh
+
 # AuthenTec VPNClient Interceptor module
     insmod /system/lib/modules/vpnclient.ko
 

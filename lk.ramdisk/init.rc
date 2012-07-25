@@ -620,6 +620,7 @@ service console /system/bin/sh
 
 on property:ro.debuggable=1
     start console
+    setprop service.adb.root 1
 
 # adbd is controlled via property triggers in init.<platform>.usb.rc
 service adbd /sbin/adbd

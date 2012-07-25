@@ -1035,7 +1035,7 @@ early_param("ext_display", ext_display_setup);
 
 /* Exclude the last 4 kB to preserve the kexec hardboot page. */
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
-#define RAM_CONSOLE_START 0xfff00000
+#define RAM_CONSOLE_START 0xbff00000
 #define RAM_CONSOLE_SIZE  (SZ_1M-SZ_4K)
 
 static struct resource ram_console_resource[] = {

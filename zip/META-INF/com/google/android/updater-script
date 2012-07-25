@@ -1,0 +1,6 @@
+assert(getprop("ro.product.device") == "d2vzw" || getprop("ro.build.product") == "d2vzw");
+show_progress(0.500000, 0);
+mount("ext4", "EMMC", "/dev/block/mmcblk0p14", "/system");
+package_extract_dir("system", "/system");
+set_perm(0, 0, 0755, "/system/etc/install-recovery.sh");
+unmount("/system");

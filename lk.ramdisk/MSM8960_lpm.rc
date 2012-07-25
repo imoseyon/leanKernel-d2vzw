@@ -105,12 +105,12 @@ on fs
 on emmc-fs
 # mount mmc partitions
     wait /dev/block/mmcblk0p14
-    mount ext4 /dev/block/mmcblk0p14 /system ro barrier=1
+    mount ext4 /dev/block/mmcblk0p14 /system ro barrier=0 noauto_da_alloc
     wait /dev/block/mmcblk0p15
     exec /system/bin/e2fsck -p /dev/block/mmcblk0p15
-    mount ext4 /dev/block/mmcblk0p15 /data nosuid nodev barrier=1 noauto_da_alloc
+    mount ext4 /dev/block/mmcblk0p15 /data nosuid nodev barrier=0 noauto_da_alloc
     mount ext4 /dev/block/mmcblk0p16 /persist nosuid nodev barrier=1
-    mount ext4 /dev/block/mmcblk0p17 /cache nosuid nodev barrier=1
+    mount ext4 /dev/block/mmcblk0p17 /cache nosuid nodev barrier=0 noauto_da_alloc
     #Setting permissons for misc partition
     chmod 0666 /dev/block/mmcblk0p19
 

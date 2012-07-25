@@ -64,7 +64,7 @@ on emmc-fs
    exec /system/bin/sh /system/etc/init.qcom.mdm_links.sh
 
 on post-fs:
-   mount ext4 /dev/block/mmcblk0p14 /system ro remount barrier=1
+   mount ext4 /dev/block/mmcblk0p14 /system ro remount barrier=0
 
 on boot
    write /sys/devices/i2c-3/3-0024/cyttsp_update_fw 1

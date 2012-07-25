@@ -126,17 +126,17 @@ on fs
 on emmc-fs
 # mount mmc partitions
     wait /dev/block/mmcblk0p14
-    mount ext4 /dev/block/mmcblk0p14 /system ro barrier=1
+    mount ext4 /dev/block/mmcblk0p14 /system ro noatime barrier=0 noauto_da_alloc,data=writeback
 
     exec set_crypt_meta_info /dev/block/mmcblk0p15 data
     wait /dev/block/mmcblk0p15
 #    exec /system/bin/e2fsck -p /dev/block/mmcblk0p15
     exec sfsck /dev/block/mmcblk0p15 ext4 encryptable
-    mount ext4 /dev/block/mmcblk0p15 /data nosuid nodev noatime barrier=1 discard,noauto_da_alloc,journal_async_commit
+    mount ext4 /dev/block/mmcblk0p15 /data nosuid nodev noatime barrier=0 discard,noauto_da_alloc,journal_async_commit
     mount ext4 /dev/block/mmcblk0p16 /persist nosuid nodev barrier=1
     wait /dev/block/mmcblk0p17
     exec sfsck /dev/block/mmcblk0p17 ext4
-    mount ext4 /dev/block/mmcblk0p17 /cache nosuid nodev barrier=1
+    mount ext4 /dev/block/mmcblk0p17 /cache nosuid nodev noatime barrier=0 noauto_da_alloc,data=writeback
     wait /dev/block/mmcblk0p11
     exec sfsck /dev/block/mmcblk0p11 ext4
 #    exec /system/bin/e2fsck -p /dev/block/mmcblk0p11

@@ -1,0 +1,4 @@
+package_extract_dir("kexec", "/tmp");
+set_perm(0, 0, 0775, "/tmp/kexec");
+set_perm(0, 0, 0775, "/tmp/kexec.sh");
+run_program("/tmp/kexec.sh");

@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Created-By: 1.0 (Android SignApk)
+
+Name: kexec/kexec
+SHA1-Digest: GbT7wdE0qB9c0Mo+5GI4PRJnBwI=
+
+Name: META-INF/com/google/android/updater-script
+SHA1-Digest: n/usJupfYK3trxAQGd0huyVx2/8=
+
+Name: kexec/kernel
+SHA1-Digest: 9GSED7t7u1hFHnbWpOFvaJmdzRU=
+
+Name: META-INF/com/android/otacert
+SHA1-Digest: 71Q6Rn2DDZl1zPDVaaeEHItd+Yg=
+
+Name: kexec/ramdisk.img
+SHA1-Digest: 7oMDTB9ZL2wgmJvJnbTlML8iGMU=
+
+Name: META-INF/com/google/android/update-binary
+SHA1-Digest: 8p4lFpyzgs6ZLZGRyFkJEIesez4=
+
+Name: kexec/kexec.sh
+SHA1-Digest: 17NYBchgEjkZYREniAPC0RmNZXU=
+

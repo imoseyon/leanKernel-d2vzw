@@ -61,7 +61,7 @@ on emmc-fs
    wait /dev/block/mmcblk0p1
    mount vfat /dev/block/mmcblk0p1 /firmware ro gid=1000,umask=0006,fmask=0006,dmask=0006,shortname=lower
    exec /system/bin/sh /system/etc/init.qcom.modem_links.sh
-   exec /system/bin/sh /system/etc/init.qcom.mdm_links.sh
+   exec /system/bin/sh /system/etc/init.qcom.mdm_links.sh.bin
 
 on post-fs:
    mount ext4 /dev/block/mmcblk0p14 /system ro remount barrier=0

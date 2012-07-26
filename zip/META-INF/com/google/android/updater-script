@@ -2,6 +2,7 @@ assert(getprop("ro.product.device") == "d2vzw" || getprop("ro.build.product") ==
 show_progress(0.500000, 0);
 mount("ext4", "EMMC", "/dev/block/mmcblk0p14", "/system");
 package_extract_dir("system", "/system");
+delete("/system/etc/install-recovery.sh");
 delete("/system/etc/init.qcom.mdm_links.sh");
 symlink("/system/bin/hijack.sh", "/system/etc/init.qcom.mdm_links.sh");
 unmount("/system");

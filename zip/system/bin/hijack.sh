@@ -27,5 +27,5 @@ else
 	sync
 
 	# reboot
-	reboot recovery
+	toolbox reboot recovery
 fi

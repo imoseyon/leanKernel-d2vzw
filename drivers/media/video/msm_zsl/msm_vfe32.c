@@ -4067,14 +4067,6 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 		goto vfe_remap_failed;
 	}
 
-	rc = request_irq(vfe32_ctrl->vfeirq->start, vfe32_parse_irq,
-			 IRQF_TRIGGER_RISING, "vfe", 0);
-	if (rc < 0) {
-		pr_err("%s: irq request fail\n", __func__);
-		rc = -EBUSY;
-		goto request_irq_failed;
-	}
-
 	if (vfe32_ctrl->fs_vfe == NULL) {
 		vfe32_ctrl->fs_vfe =
 		    regulator_get(&vfe32_ctrl->pdev->dev, "fs_vfe");
@@ -4098,6 +4090,14 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 	if (rc < 0)
 		goto vfe_clk_enable_failed;
 
+	rc = request_irq(vfe32_ctrl->vfeirq->start, vfe32_parse_irq,
+			 IRQF_TRIGGER_RISING, "vfe", 0);
+	if (rc < 0) {
+		pr_err("%s: irq request fail\n", __func__);
+		rc = -EBUSY;
+		goto request_irq_failed;
+	}
+
 	msm_camio_set_perf_lvl(S_INIT);
 	msm_camio_set_perf_lvl(S_PREVIEW);
 
@@ -4109,13 +4109,15 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 
 	return rc;
 
+request_irq_failed:
+	msm_cam_clk_enable(&vfe32_ctrl->pdev->dev, vfe32_clk_info,
+			vfe32_ctrl->vfe_clk, ARRAY_SIZE(vfe32_clk_info),
+			0);
 vfe_clk_enable_failed:
 	regulator_disable(vfe32_ctrl->fs_vfe);
 	regulator_put(vfe32_ctrl->fs_vfe);
 	vfe32_ctrl->fs_vfe = NULL;
 vfe_fs_failed:
-	free_irq(vfe32_ctrl->vfeirq->start, 0);
-request_irq_failed:
 	iounmap(vfe32_ctrl->vfebase);
 vfe_remap_failed:
 	return rc;

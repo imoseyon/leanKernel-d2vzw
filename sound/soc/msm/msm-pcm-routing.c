@@ -253,12 +253,29 @@ void msm_pcm_routing_dereg_phy_stream(int fedai_id, int stream_type)
 	mutex_unlock(&routing_lock);
 }
 
+/* Check if FE/BE route is set */
+static bool msm_pcm_routing_route_is_set(u16 be_id, u16 fe_id)
+{
+	bool rc = false;
+
+	if (fe_id > MSM_FRONTEND_DAI_MM_MAX_ID) {
+		/* recheck FE ID in the mixer control defined in this file */
+		pr_err("%s: bad MM ID\n", __func__);
+		return rc;
+	}
+
+	if (test_bit(fe_id, &msm_bedais[be_id].fe_sessions))
+		rc = true;
+
+	return rc;
+}
+
 static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 {
 	int session_type, path_type;
 	u32 channels;
 
-	pr_debug("%s: reg %x val %x set %x\n", __func__, reg, val, set);
+	pr_info("%s: reg %x val %x set %x\n", __func__, reg, val, set);
 
 	if (val > MSM_FRONTEND_DAI_MM_MAX_ID) {
 		/* recheck FE ID in the mixer control defined in this file */
@@ -349,10 +366,12 @@ static int msm_routing_put_audio_mixer(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 
 
-	if (ucontrol->value.integer.value[0]) {
+	if (ucontrol->value.integer.value[0] &&
+	    msm_pcm_routing_route_is_set(mc->reg, mc->shift) == false) {
 		msm_pcm_routing_process_audio(mc->reg, mc->shift, 1);
 		snd_soc_dapm_mixer_update_power(widget, kcontrol, 1);
-	} else {
+	} else if (!ucontrol->value.integer.value[0] &&
+		msm_pcm_routing_route_is_set(mc->reg, mc->shift) == true) {
 		msm_pcm_routing_process_audio(mc->reg, mc->shift, 0);
 		snd_soc_dapm_mixer_update_power(widget, kcontrol, 0);
 	}
@@ -364,7 +383,7 @@ static void msm_pcm_routing_process_voice(u16 reg, u16 val, int set)
 {
 	u16 session_id = 0;
 
-	pr_debug("%s: reg %x val %x set %x\n", __func__, reg, val, set);
+	pr_info("%s: reg %x val %x set %x\n", __func__, reg, val, set);
 
 	if (val == MSM_FRONTEND_DAI_CS_VOICE)
 		session_id = voc_get_session_id(VOICE_SESSION_NAME);
@@ -1447,6 +1466,7 @@ static int msm_pcm_routing_hw_params(struct snd_pcm_substream *substream,
 
 	mutex_lock(&routing_lock);
 	msm_bedais[be_id].hw_params = params;
+	pr_info("%s : channel = %d\n", __func__ , params_channels(params));
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -1458,6 +1478,7 @@ static int msm_pcm_routing_close(struct snd_pcm_substream *substream)
 	int i, session_type;
 	struct msm_pcm_routing_bdai_data *bedai;
 
+	pr_info("%s : be_id = %d\n", __func__, be_id);
 	if (be_id >= MSM_BACKEND_DAI_MAX) {
 		pr_err("%s: unexpected be_id %d\n", __func__, be_id);
 		return -EINVAL;
@@ -1491,6 +1512,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 	struct msm_pcm_routing_bdai_data *bedai;
 	u32 channels;
 
+	pr_info("%s : be_id = %d\n", __func__, be_id);
 	if (be_id >= MSM_BACKEND_DAI_MAX) {
 		pr_err("%s: unexpected be_id %d\n", __func__, be_id);
 		return -EINVAL;

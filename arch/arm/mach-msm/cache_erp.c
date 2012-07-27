@@ -17,7 +17,12 @@
 #include <linux/errno.h>
 #include <linux/proc_fs.h>
 #include <linux/cpu.h>
+#include <linux/io.h>
 #include <mach/msm-krait-l2-accessors.h>
+#include <mach/msm_iomap.h>
+#include <asm/cputype.h>
+#include "acpuclock.h"
+#include <linux/ratelimit.h>
 
 #define CESR_DCTPE		BIT(0)
 #define CESR_DCDPE		BIT(1)
@@ -75,6 +80,15 @@
 
 #define MODULE_NAME "msm_cache_erp"
 
+#define L2_ERROR_RATELIMIT_INTERVAL 10
+#define L2_ERROR_RATELIMIT_BURST 10
+
+static DEFINE_RATELIMIT_STATE(_rs,				\
+				      L2_ERROR_RATELIMIT_INTERVAL,	\
+				      L2_ERROR_RATELIMIT_BURST);
+
+static unsigned int msm_l2_mpdcd_err_cnt;
+
 struct msm_l1_err_stats {
 	unsigned int dctpe;
 	unsigned int dcdpe;
@@ -102,7 +116,7 @@ static struct msm_l2_err_stats msm_l2_erp_stats;
 static int l1_erp_irq, l2_erp_irq;
 static struct proc_dir_entry *procfs_entry;
 
-static unsigned int l2_err_msg_mask = (L2ESR_MPDCD | L2ESR_TSESB
+static unsigned int l2_err_msg_mask = (L2ESR_TSESB
 	| L2ESR_TSEDB | L2ESR_DSESB | L2ESR_DSEDB | L2ESR_MSE
 	| L2ESR_MPLDREXNOK);
 
@@ -189,11 +203,23 @@ static irqreturn_t msm_l1_erp_irq(int irq, void *dev_id)
 	struct msm_l1_err_stats *l1_stats = dev_id;
 	unsigned int cesr = read_cesr();
 	unsigned int i_cesynr, d_cesynr;
+	unsigned int cpu = smp_processor_id();
 	int print_regs = cesr & CESR_PRINT_MASK;
 
+	void *const saw_bases[] = {
+		MSM_SAW0_BASE,
+		MSM_SAW1_BASE,
+	};
+
 	if (print_regs) {
-		pr_alert("L1 Error detected on CPU %d!\n", smp_processor_id());
-		pr_alert("\tCESR    = 0x%08x\n", cesr);
+		pr_alert("L1 / TLB Error detected on CPU %d!\n", cpu);
+		pr_alert("\tCESR      = 0x%08x\n", cesr);
+		pr_alert("\tCPU speed = %lu\n", acpuclk_get_rate(cpu));
+		pr_alert("\tMIDR      = 0x%08x\n", read_cpuid_id());
+		pr_alert("\tPTE fuses = 0x%08x\n",
+					readl_relaxed(MSM_QFPROM_BASE + 0xC0));
+		pr_alert("\tPMIC_VREG = 0x%08x\n",
+					readl_relaxed(saw_bases[cpu] + 0x14));
 	}
 
 	if (cesr & CESR_DCTPE) {
@@ -291,6 +317,9 @@ static irqreturn_t msm_l2_erp_irq(int irq, void *dev_id)
 			pr_alert("L2 master port decode error\n");
 		port_error++;
 		msm_l2_erp_stats.mpdcd++;
+
+		if (!__ratelimit(&_rs))
+			msm_l2_mpdcd_err_cnt++;
 	}
 
 	if (l2esr & L2ESR_MPSLV) {

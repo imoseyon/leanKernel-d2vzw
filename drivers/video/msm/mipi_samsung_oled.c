@@ -36,7 +36,7 @@ static unsigned int recovery_boot_mode;
 unsigned char bypass_lcd_id;
 static char elvss_value;
 int is_lcd_connected = 1;
-
+int in_early_suspend;
 #ifdef USE_READ_ID
 static char manufacture_id1[2] = {0xDA, 0x00}; /* DTYPE_DCS_READ */
 static char manufacture_id2[2] = {0xDB, 0x00}; /* DTYPE_DCS_READ */
@@ -704,8 +704,8 @@ end:
 static void mipi_samsung_disp_early_suspend(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd;
-	pr_info("%s", __func__);
-
+	pr_info("%s, disable blt mode", __func__);
+	in_early_suspend = 1;
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	set_esd_disable();
 #endif
@@ -732,6 +732,8 @@ static void mipi_samsung_disp_early_suspend(struct early_suspend *h)
 static void mipi_samsung_disp_late_resume(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd;
+	pr_info("%s, enable blt mode", __func__);
+	in_early_suspend = 0;
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 	is_negativeMode_on();

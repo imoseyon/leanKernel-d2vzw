@@ -1410,6 +1410,9 @@ void sii9234_process_msc_work(struct work_struct *work)
 	struct sii9234_data *sii9234 = container_of(work,
 						struct sii9234_data,
 						msc_work);
+	/*Do not process msc untill STATE_ESTABLISHED*/
+	if (sii9234->state != STATE_ESTABLISHED)
+		return;
 
 	mutex_lock(&sii9234->cbus_lock);
 	mutex_lock(&sii9234->lock);
@@ -1445,8 +1448,25 @@ void sii9234_process_msc_work(struct work_struct *work)
 		case CBUS_WRITE_STAT:
 			break;
 		case CBUS_SET_INT:
+                        if (p_msc_pkt->offset == MHL_RCHANGE_INT &&
+                                        p_msc_pkt->data_1 == MHL_INT_DSCR_CHG) {
+                                       /*Write burst final step... Req->GRT->Write->DSCR*/
+                                pr_debug("sii9234: MHL_RCHANGE_INT &"
+                                                "MHL_INT_DSCR_CHG\n");
+                        } else if (p_msc_pkt->offset == MHL_RCHANGE_INT &&
+                                        p_msc_pkt->data_1 == MHL_INT_DCAP_CHG) {
+                                pr_debug("sii9234: MHL_RCHANGE_INT &"
+                                                        "MHL_INT_DCAP_CHG\n");
+                                sii9234->cbus_pkt.command = CBUS_IDLE;
+                                sii9234_enqueue_msc_work(sii9234, CBUS_WRITE_STAT,
+                                                        MHL_STATUS_REG_CONNECTED_RDY,
+                                                        MHL_STATUS_DCAP_READY, 0x0);
+                        }
 			break;
 		case CBUS_WRITE_BURST:
+			sii9234_enqueue_msc_work(sii9234, CBUS_SET_INT,
+						MHL_RCHANGE_INT,
+						MHL_INT_DSCR_CHG, 0x0);
 			break;
 		case CBUS_READ_DEVCAP:
 			ret = cbus_read_reg(sii9234,
@@ -1592,9 +1612,6 @@ static int sii9234_msc_req_locked(struct sii9234_data *sii9234,
 {
 	int ret;
 	u8 start_command;
-
-	if (sii9234->state != STATE_ESTABLISHED)
-		return -ENOENT;
 
 	init_completion(&sii9234->msc_complete);
 

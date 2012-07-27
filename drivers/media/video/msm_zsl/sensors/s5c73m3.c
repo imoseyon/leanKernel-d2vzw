@@ -472,9 +472,9 @@ static int s5c73m3_wait_ISP_status(void)
 			"in ISP =====>> %d\n", index);
 		usleep(500); /* Just for test delay */
 
-	} while (index < 200);
+	} while (index < 400);
 
-	if (index == 200) {
+	if (index == 400) {
 		cam_err("FAIL : ISP has been not prepared!! : 0x%#x\n",
 			stream_status);
 
@@ -1541,8 +1541,15 @@ static int s5c73m3_set_caf_focus(int val)
 		val ? "start" : "stop", camera_focus.mode);
 
 	if (val) {
-		err = s5c73m3_writeb(S5C73M3_AF_MODE,
-			S5C73M3_AF_MODE_PREVIEW_CAF_START);
+		if (camera_focus.mode == FOCUS_MODE_CONTINOUS_VIDEO) {
+			CAM_DBG_M("Movie CAF\n");
+			err = s5c73m3_writeb(S5C73M3_AF_MODE,
+				S5C73M3_AF_MODE_MOVIE_CAF_START);
+		} else {
+			CAM_DBG_M("Preview CAF\n");
+			err = s5c73m3_writeb(S5C73M3_AF_MODE,
+				S5C73M3_AF_MODE_PREVIEW_CAF_START);
+		}
 	} else {
 		err = s5c73m3_writeb(S5C73M3_AF_CON, S5C73M3_AF_CON_STOP);
 	}
@@ -1954,9 +1961,9 @@ static int s5c73m3_set_jpeg_size(int width, int height)
 		s5c73m3_ctrl->jpeg_size = 0x0050;
 	else if (width == 1280 && height == 720)
 		s5c73m3_ctrl->jpeg_size = 0x0040;
-	else if (width == 800 && height == 600)
+	else if (width == 960 && height == 720)
 		s5c73m3_ctrl->jpeg_size = 0x0030;
-	else if (width == 800 && height == 450)
+	else if (width == 960 && height == 540)
 		s5c73m3_ctrl->jpeg_size = 0x0020;
 	else if (width == 640 && height == 480)
 		s5c73m3_ctrl->jpeg_size = 0x0010;
@@ -2150,11 +2157,11 @@ static int s5c73m3_set_preview_size(int32_t width, int32_t height)
 		s5c73m3_ctrl->preview_size = 0x000D;
 	else if (width == 2304 && height == 1296)
 		s5c73m3_ctrl->preview_size = 0x000C;
-	else if (width == 960 && height == 640)
+	else if (width == 720 && height == 480)
 		s5c73m3_ctrl->preview_size = 0x000B;
 	else if (width == 1920 && height == 1080)
 		s5c73m3_ctrl->preview_size = 0x000A;
-	else if (width == 704 && height == 576)
+	else if (width == 800 && height == 600)
 		s5c73m3_ctrl->preview_size = 0x0009;
 	else if (width == 1600 && height == 1200)
 		s5c73m3_ctrl->preview_size = 0x0008;

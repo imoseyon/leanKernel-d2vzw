@@ -1098,7 +1098,7 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 				pr_err("%s: card state has been never changed "
 						"to trans.!\n",
 						req->rq_disk->disk_name);
-				return 0;
+				goto cmd_err;
 			}
 		}
 

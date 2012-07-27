@@ -449,7 +449,7 @@ static struct msm_bus_vectors cam_zsl_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab  = 302071680,
+		.ab = 689376000,
 		.ib  = 1208286720,
 	},
 	{

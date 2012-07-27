@@ -1370,11 +1370,11 @@ static void sec_bat_cable_work(struct work_struct *work)
 			}
 		}
 
-		if (info->batt_int_irq_use) {
+/*		if (info->batt_int_irq_use) {
 			info->present = BATT_STATUS_PRESENT;
 			info->batt_health = POWER_SUPPLY_HEALTH_GOOD;
 			disable_irq_nosync(info->batt_int_irq);
-		}
+		}*/
 		wake_lock_timeout(&info->vbus_wake_lock, 5 * HZ);
 		cancel_delayed_work(&info->measure_work);
 		info->batt_full_status = BATT_NOT_FULL;
@@ -1433,7 +1433,8 @@ static void sec_bat_cable_work(struct work_struct *work)
 			pr_err("%s : failed to get input source(%d)\n",
 				__func__, ret);
 #endif
-		/* TODO : check DCIN state again */
+
+/*
 		if (((info->cable_type == CABLE_TYPE_AC) ||
 			(info->cable_type == CABLE_TYPE_USB)) &&
 			(info->batt_int != 0)) {
@@ -1442,6 +1443,8 @@ static void sec_bat_cable_work(struct work_struct *work)
 			info->present =
 				!gpio_get_value_cansleep(info->batt_int);
 		}
+*/
+
 		wake_lock_timeout(&info->vbus_wake_lock, 5 * HZ);
 		cancel_delayed_work(&info->measure_work);
 		info->charging_status = POWER_SUPPLY_STATUS_CHARGING;
@@ -1785,6 +1788,7 @@ static void sec_bat_measure_work(struct work_struct *work)
 	wake_unlock(&info->measure_wake_lock);
 }
 
+/*
 static irqreturn_t batt_removal_handler(int irq, struct sec_bat_info *info)
 {
 	struct power_supply *psy = power_supply_get_by_name(info->charger_name);
@@ -1808,12 +1812,10 @@ static irqreturn_t batt_removal_handler(int irq, struct sec_bat_info *info)
 	info->present = ret ? 0 : 1;
 	if (ret)
 		psy->set_property(psy, POWER_SUPPLY_PROP_PRESENT, &value);
-	/*
-	cancel_work_sync(&info->monitor_work);
-	queue_work(info->monitor_wqueue, &info->monitor_work);*/
 err:
 	return IRQ_HANDLED;
 }
+*/
 
 #define SEC_BATTERY_ATTR(_name)		\
 {									\
@@ -2722,7 +2724,7 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 				__func__, info->batt_int_irq);
 		}
 
-		ret = request_threaded_irq(
+/*		ret = request_threaded_irq(
 			info->batt_int_irq, NULL,
 			batt_removal_handler,
 			(IRQF_TRIGGER_FALLING|IRQF_TRIGGER_RISING),
@@ -2734,6 +2736,7 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 			goto err_request_irq;
 		}
 		disable_irq(info->batt_int_irq);
+*/
 	}
 
 	info->bat_early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;

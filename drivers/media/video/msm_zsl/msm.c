@@ -166,6 +166,12 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 		if (!rc)
 			rc = -ETIMEDOUT;
 		if (rc < 0) {
+			rcmd = msm_dequeue(queue, list_control);
+			if (rcmd) {
+				free_qcmd(rcmd);
+				rcmd = NULL;
+			}
+			kfree(isp_event);
 			pr_err("%s: wait_event error %d\n", __func__, rc);
 			return rc;
 		}
@@ -183,7 +189,10 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	memcpy(out, ctrlcmd, sizeof(struct msm_ctrl_cmd));
 	out->value = value;
 
-	free_qcmd(rcmd);
+	if (rcmd) {
+		free_qcmd(rcmd);
+		rcmd = NULL;
+	}
 	kfree(isp_event);
 	D("%s: rc %d\n", __func__, rc);
 	/* rc is the time elapsed. */
@@ -2260,6 +2269,7 @@ static int msm_setup_config_dev(int node, char *device_name)
 	rc = cdev_add(&config_cam->config_cdev, devno, 1);
 	if (rc < 0) {
 		pr_err("%s: error adding cdev: %d\n", __func__, rc);
+		kfree(config_cam);
 		device_destroy(msm_class, devno);
 		return rc;
 	}
@@ -2273,6 +2283,7 @@ static int msm_setup_config_dev(int node, char *device_name)
 	config_cam->config_stat_event_queue.pvdev = video_device_alloc();
 	if (config_cam->config_stat_event_queue.pvdev == NULL) {
 		pr_err("%s: video_device_alloc failed\n", __func__);
+		kfree(config_cam);
 		return -ENOMEM;
 	}
 

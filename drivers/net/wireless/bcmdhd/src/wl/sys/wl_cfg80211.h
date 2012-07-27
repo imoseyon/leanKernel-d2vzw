@@ -127,7 +127,7 @@ do {									\
 #define WL_SCAN_RETRY_MAX	3
 #define WL_NUM_PMKIDS_MAX	MAXPMKID
 #define WL_SCAN_BUF_MAX		(1024 * 8)
-#define WL_TLV_INFO_MAX 	1500 /* customer want to large size IE, so increase ie length */
+#define WL_TLV_INFO_MAX		1500 /* customer want to large size IE, so increase ie length */
 #define WL_SCAN_IE_LEN_MAX      2048
 #define WL_BSS_INFO_MAX		2048
 #define WL_ASSOC_INFO_MAX	512
@@ -455,7 +455,6 @@ struct wl_priv {
 	void *pub;
 	u32 iface_cnt;
 	u32 channel;		/* current channel */
-	s32 glom;
 #ifdef WL_CFG80211_SYNC_GON_TIME
 	u32 af_sent_channel;	/* channel action frame is sent */
 	/* save the next gon af subtype when it needs to wait more time for next gon af
@@ -799,4 +798,5 @@ extern s32 wl_update_wiphybands(struct wl_priv *wl);
 extern s32 wl_cfg80211_scan_abort(struct wl_priv *wl, struct net_device *ndev);
 
 extern s32 wl_cfg80211_if_is_group_owner(void);
+extern s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add);
 #endif				/* _wl_cfg80211_h_ */

@@ -114,6 +114,7 @@
 #if defined(CONFIG_CHARGER_SMB347)
 #define PMIC_GPIO_CHG_EN		PMIC_GPIO_OTG_EN
 #define PMIC_GPIO_CHG_STAT	17
+#define PMIC_GPIO_BATT_INT		37
 #endif
 
 /* gpio for changed list */

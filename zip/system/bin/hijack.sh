@@ -18,12 +18,6 @@ else
         echo 'install_zip("/cache/kexec-boot.zip");' \
                 > /cache/recovery/extendedcommand
 
-	# kill all the services we can
-	for i in $(getprop | grep init.svc | sed -r 's/^\[init\.svc\.(.+)\]:.*$/\1/'); do
-		# stop this service (or try to anyway)
-		stop ${i}
-	done
-
 	# remount all block filesystems read-only
 	for i in $(mount | grep /dev/block | awk '{print $3}') ; do
 		mount -o remount,ro ${i}

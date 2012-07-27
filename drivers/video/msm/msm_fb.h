@@ -182,8 +182,6 @@ struct msm_fb_data_type {
 	u32 ov_start;
 	u32 mem_hid;
 	u32 mdp_rev;
-	u32 use_ov0_blt, ov0_blt_state;
-	u32 use_ov1_blt, ov1_blt_state;
 	u32 writeback_state;
 	boolean resume_state;
 	boolean backlight_ctrl_ongoing;

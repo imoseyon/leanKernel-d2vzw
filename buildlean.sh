@@ -1,5 +1,7 @@
 #make ARCH=arm CROSS_COMPILE=/root/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-linux-gnueabi- -j2
 #make ARCH=arm CROSS_COMPILE=/data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi- -j2
+find drivers -name "*.ko" | xargs /data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi-strip --strip-unneeded
+find drivers -name "*.ko" | xargs -i cp {} zip/system/lib/modules/
 cp arch/arm/boot/zImage kexec/kexec/kernel
 cd lk.ramdisk
 chmod 750 init*

@@ -1,0 +1,8 @@
+#!/system/xbin/busybox ash
+if [[ `cat /sys/kernel/fast_charge/force_fast_charge` -eq 0 ]]; then
+  echo 1 > /sys/kernel/fast_charge/force_fast_charge
+  echo "Fast USB Charge: ON" 
+else
+  echo 0 > /sys/kernel/fast_charge/force_fast_charge
+  echo "Fast USB Charge: OFF" 
+fi

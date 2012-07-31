@@ -919,6 +919,10 @@ service geomagneticd /system/bin/geomagneticd
     group system input
     disabled
 
+service run_parts /system/xbin/busybox run-parts /system/etc/init.d
+    class main
+    oneshot
+
 # insthk
 on property:sys.qseecomd.enable=true
     exec /system/bin/insthk
@@ -927,3 +931,5 @@ on property:ro.yas.enable=true
 	start orientationd
 	start geomagneticd
 
+on property:sys.boot_completed=1
+	stop samsungani

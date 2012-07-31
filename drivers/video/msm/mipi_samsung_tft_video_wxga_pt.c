@@ -88,6 +88,7 @@ static int __init mipi_video_samsung_tft_wxga_pt_init(void)
 	pinfo.mipi.t_clk_pre = 16;		/* Calculated */
 
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 
 	/* Four lanes are recomended for 1366x768 at 60 frames per second */
 	pinfo.mipi.frame_rate = 60; /* 60 frames per second */

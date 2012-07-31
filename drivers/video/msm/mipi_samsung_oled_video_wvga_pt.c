@@ -1077,6 +1077,7 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 	pinfo.mipi.frame_rate = 60;
 #endif
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 
 
 	ret = mipi_samsung_device_register(&pinfo, MIPI_DSI_PRIM,

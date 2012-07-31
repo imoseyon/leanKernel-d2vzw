@@ -478,6 +478,8 @@ adreno_probe(struct platform_device *pdev)
 	if (status != 0)
 		goto error_close_pwrscale;
 
+	INIT_WORK(&device->print_fault_ib, adreno_print_fault_ib_work);
+
 	device->flags &= ~KGSL_FLAGS_SOFT_RESET;
 	return 0;
 error_close_pwrscale:

@@ -1060,8 +1060,8 @@ static int __init mipi_cmd_samsung_oled_qhd_pt_init(void)
 	 * include dummy(pad) data of 200 clk in addition to
 	 * width and porch/sync width values
 	 */
-	pinfo.mipi.xres_pad = 0;
-	pinfo.mipi.yres_pad = 0;
+	pinfo.lcdc.xres_pad = 0;
+	pinfo.lcdc.yres_pad = 0;
 
 	pinfo.type = MIPI_CMD_PANEL;
 	pinfo.pdest = DISPLAY_1;

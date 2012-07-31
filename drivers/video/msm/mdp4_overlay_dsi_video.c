@@ -595,7 +595,6 @@ void mdp4_dma_p_done_dsi_video(struct mdp_dma_data *dma)
 		blt_cfg_changed = 0;
 	}
 	complete_all(&dsi_video_comp);
-#endif
 }
 
 /*

@@ -1062,16 +1062,18 @@ static void __init msm8960_reserve(void)
 	msm_reserve();
 	if (fmem_pdata.size) {
 #if defined(CONFIG_ION_MSM) && defined(CONFIG_MSM_MULTIMEDIA_USE_ION)
-		fmem_pdata.phys = reserve_info->fixed_area_start +
-			MSM_MM_FW_SIZE;
-		pr_info("mm fw at %lx (fixed) size %x\n",
+		if (reserve_info->fixed_area_size) {
+			fmem_pdata.phys =
+					reserve_info->fixed_area_start + MSM_MM_FW_SIZE;
+			pr_info("mm fw at %lx (fixed) size %x\n",
 			reserve_info->fixed_area_start, MSM_MM_FW_SIZE);
-		pr_info("fmem start %lx (fixed) size %lx\n",
-			fmem_pdata.phys, fmem_pdata.size);
-#else
-		fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size, fmem_pdata.align);
+			pr_info("fmem start %lx (fixed) size %lx\n",
+			fmem_pdata.phys,
+			fmem_pdata.size);
+		}
 #endif
 	}
+
 	if (system_rev >= 14) {
 		pr_err("Reserving memory at address %x size: %x\n", address, size);
 		ret = memblock_remove(address, size);

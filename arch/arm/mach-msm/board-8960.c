@@ -844,13 +844,13 @@ static void __init msm8960_reserve(void)
 	if (fmem_pdata.size) {
 #if defined(CONFIG_ION_MSM) && defined(CONFIG_MSM_MULTIMEDIA_USE_ION)
 		if (reserve_info->fixed_area_size) {
-			msm8960_fmem_pdata.phys =
+			fmem_pdata.phys =
 				reserve_info->fixed_area_start + MSM_MM_FW_SIZE;
 			pr_info("mm fw at %lx (fixed) size %x\n",
 				reserve_info->fixed_area_start, MSM_MM_FW_SIZE);
 			pr_info("fmem start %lx (fixed) size %lx\n",
-				msm8960_fmem_pdata.phys,
-				msm8960_fmem_pdata.size);
+				fmem_pdata.phys,
+				fmem_pdata.size);
 		}
 #endif
 	}

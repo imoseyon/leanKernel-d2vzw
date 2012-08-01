@@ -2723,8 +2723,8 @@ static u32 mdp4_overlay_blt_enable(struct mdp_overlay *req,
 		blt_chq_req = 1;
 
 
-#if 0
-	if (pull_mode &&
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
+	if (blt_chq_req &&
 		(req->src_rect.h > req->dst_rect.h ||
 		req->src_rect.w > req->dst_rect.w ||
 		((!camera_mode) && (type == OVERLAY_TYPE_VIDEO) &&
@@ -2733,14 +2733,14 @@ static u32 mdp4_overlay_blt_enable(struct mdp_overlay *req,
 			mfd, perf_level, clk_rate, type))
 			use_blt = 1;
 	}
-#endif
-
+#else
 	if (blt_chq_req && (req->src_rect.h > req->dst_rect.h ||
 		req->src_rect.w > req->dst_rect.w)) {
 		if (mdp4_overlay_validate_downscale(req,
 			mfd, perf_level, clk_rate, type))
 			use_blt = 1;
 	}
+#endif
 
 	if (mfd->panel_info.type == MDDI_PANEL) {
 		if ((req->src_rect.h/2) >= req->dst_rect.h ||

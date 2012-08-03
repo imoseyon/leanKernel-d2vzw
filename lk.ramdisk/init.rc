@@ -935,3 +935,4 @@ on property:ro.yas.enable=true
 
 on property:sys.boot_completed=1
 	stop samsungani
+	write /sys/class/sec/led/led_pattern 0

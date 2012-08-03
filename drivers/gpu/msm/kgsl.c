@@ -522,6 +522,7 @@ void kgsl_early_suspend_driver(struct early_suspend *h)
 	pm_qos_update_request(&device->pm_qos_req_dma,
 				PM_QOS_DEFAULT_VALUE);
 	device->pwrctrl.resume_pm_qos = 0;
+	device->pwrctrl.restore_slumber = true;
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_SLUMBER);
 	kgsl_pwrctrl_sleep(device);
 	mutex_unlock(&device->mutex);
@@ -550,7 +551,7 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 					struct kgsl_device, display_off);
 	KGSL_PWR_WARN(device, "late resume start\n");
 	mutex_lock(&device->mutex);
-	device->pwrctrl.restore_slumber = 0;
+	device->pwrctrl.restore_slumber = false;
 	kgsl_pwrctrl_wake(device);
 	kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
 	mutex_unlock(&device->mutex);

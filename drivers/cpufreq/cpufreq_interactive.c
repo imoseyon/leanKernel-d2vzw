@@ -61,7 +61,6 @@ static DEFINE_PER_CPU(struct cpufreq_interactive_cpuinfo, cpuinfo);
 
 /* Workqueues handle frequency scaling */
 static struct task_struct *up_task;
-static struct workqueue_struct *down_wq;
 static struct work_struct freq_scale_down_work;
 static cpumask_t up_cpumask;
 static spinlock_t up_cpumask_lock;
@@ -275,7 +274,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		spin_lock_irqsave(&down_cpumask_lock, flags);
 		cpumask_set_cpu(data, &down_cpumask);
 		spin_unlock_irqrestore(&down_cpumask_lock, flags);
-		queue_work(down_wq, &freq_scale_down_work);
+		schedule_work(&freq_scale_down_work);
 	} else {
 		pcpu->target_freq = new_freq;
 		spin_lock_irqsave(&up_cpumask_lock, flags);
@@ -593,7 +592,7 @@ static int cpufreq_interactive_input_connect(struct input_handler *handler,
 		goto err;
 
 	inputopen.handle = handle;
-	queue_work(down_wq, &inputopen.inputopen_work);
+	schedule_work(&inputopen.inputopen_work);
 	return 0;
 err:
 	kfree(handle);
@@ -1020,13 +1019,6 @@ static int __init cpufreq_interactive_init(void)
 	sched_setscheduler_nocheck(up_task, SCHED_FIFO, &param);
 	get_task_struct(up_task);
 
-	/* No rescuer thread, bind to CPU queuing the work for possibly
-	   warm cache (probably doesn't matter much). */
-	down_wq = alloc_workqueue("knteractive_down", 0, 1);
-
-	if (!down_wq)
-		goto err_freeuptask;
-
 	INIT_WORK(&freq_scale_down_work,
 		  cpufreq_interactive_freq_down);
 
@@ -1037,10 +1029,6 @@ static int __init cpufreq_interactive_init(void)
 	idle_notifier_register(&cpufreq_interactive_idle_nb);
 	INIT_WORK(&inputopen.inputopen_work, cpufreq_interactive_input_open);
 	return cpufreq_register_governor(&cpufreq_gov_interactive);
-
-err_freeuptask:
-	put_task_struct(up_task);
-	return -ENOMEM;
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
@@ -1054,7 +1042,6 @@ static void __exit cpufreq_interactive_exit(void)
 	cpufreq_unregister_governor(&cpufreq_gov_interactive);
 	kthread_stop(up_task);
 	put_task_struct(up_task);
-	destroy_workqueue(down_wq);
 }
 
 module_exit(cpufreq_interactive_exit);

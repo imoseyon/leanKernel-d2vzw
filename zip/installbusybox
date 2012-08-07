@@ -1,0 +1,9 @@
+#!/system/bin/sh
+if test -f /system/xbin/basename; then
+  exit
+fi
+
+/tmp/busybox cp -a /tmp/busybox /system/xbin
+cd /system/xbin
+./busybox --install -s /system/xbin
+

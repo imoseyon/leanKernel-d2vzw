@@ -31,8 +31,6 @@ static int msm_cpuidle_enter(
 {
 	int ret;
 
-	local_irq_disable();
-
 #ifdef CONFIG_CPU_PM
 	cpu_pm_enter();
 #endif

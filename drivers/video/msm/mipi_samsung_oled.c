@@ -325,6 +325,7 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 		goto unknown_command;
 
 	if (lock) {
+		mipi_dsi_mdp_busy_wait(mfd);
 		/* Added to resolved cmd loss during dimming factory test */
 		mdelay(1);
 
@@ -332,6 +333,7 @@ static int mipi_samsung_disp_send_cmd(struct msm_fb_data_type *mfd,
 
 		mutex_unlock(&mfd->dma->ov_mutex);
 	} else {
+		mipi_dsi_mdp_busy_wait(mfd);
 		/* Added to resolved cmd loss during dimming factory test */
 		mdelay(1);
 		mipi_dsi_cmds_tx(&msd.samsung_tx_buf, cmd_desc, cmd_size);

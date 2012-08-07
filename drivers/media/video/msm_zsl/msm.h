@@ -231,6 +231,7 @@ struct msm_cam_media_controller {
 	struct pm_qos_request_list pm_qos_req_list;
 	struct msm_mctl_pp_info pp_info;
 	struct ion_client *client;
+	struct kref refcount;
 };
 
 /* abstract camera device represents a VFE and connected sensor */
@@ -285,6 +286,7 @@ struct msm_cam_v4l2_dev_inst {
 	int is_mem_map_inst;
 	struct img_plane_info plane_info;
 	int vbqueue_initialized;
+	struct mutex inst_lock;
 };
 /* abstract camera device for each sensor successfully probed*/
 struct msm_cam_v4l2_device {
@@ -383,7 +385,8 @@ struct msm_cam_server_dev {
 	int use_count;
 	/* all the registered ISP subdevice*/
 	struct msm_isp_ops *isp_subdev[MSM_MAX_CAMERA_CONFIGS];
-
+	struct mutex server_lock;
+	uint32_t server_evt_id;
 };
 
 /* camera server related functions */
@@ -493,6 +496,7 @@ int msm_mctl_pp_divert_done(
 
 extern void sensor_native_control(void __user *arg);
 
+void msm_release_ion_client(struct kref *ref);
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

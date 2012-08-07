@@ -965,6 +965,7 @@ struct vfe32_ctrl_type {
 	struct platform_device *pdev;
 	struct clk *vfe_clk[3];
 	spinlock_t  sd_notify_lock;
+	struct tasklet_struct vfe32_tasklet;
 };
 
 #define statsAeNum      0

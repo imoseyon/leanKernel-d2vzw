@@ -1,6 +1,6 @@
 /*
  * Automatically generated C config: don't edit
- * Linux/arm 3.0.38 Kernel Configuration
+ * Linux/arm 3.0.39 Kernel Configuration
  */
 /* ld script to make ARM Linux kernel
  * taken from the i386 version by Russell King
@@ -736,7 +736,6 @@ SECTIONS
  }
  . = ALIGN((1 << 12)); .data..percpu : AT(ADDR(.data..percpu) - 0) { __per_cpu_load = .; __per_cpu_start = .; *(.data..percpu..first) . = ALIGN((1 << 12)); *(.data..percpu..page_aligned) . = ALIGN((1 << 6)); *(.data..percpu..readmostly) . = ALIGN((1 << 6)); *(.data..percpu) *(.data..percpu..shared_aligned) __per_cpu_end = .; }
  . = ALIGN((1 << 12));
- __init_end = .;
  /*
 	 * unwind exit sections must be discarded before the rest of the
 	 * unwind sections get included.
@@ -748,6 +747,7 @@ SECTIONS
  
  }
  . = ALIGN(1<<20);
+ __init_end = .;
  .text : { /* Real text segment		*/
   _text = .; /* Text and read-only data	*/
    __exception_text_start = .;

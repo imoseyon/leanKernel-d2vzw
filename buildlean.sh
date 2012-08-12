@@ -12,6 +12,6 @@ cd ../kexec
 zip -r kexec-boot.zip *
 mv kexec-boot.zip ../zip/system/etc
 cd ../zip
-zip -r lk_aosp_jb_testv${1}.zip *
-mv lk_aosp_jb_testv${1}.zip /tmp
+zip -r lk_aosp_jb_beta-v${1}.zip *
+mv lk_aosp_jb_beta-v${1}.zip /tmp
 [[ $2 == "upload" ]] && /data/utils/s3_ftpupload.sh $1

@@ -3257,26 +3257,10 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 		}
 	}
 
-	if (mfd->panel_info.pdest == MDP4_MIXER0) {
-		if (dbg_force_ov0_blt)
-			mfd->use_ov0_blt |= (0x1 << 8);
-		else
-			mfd->use_ov0_blt &= ~(0x1 << 8);
-	}
-
-	if (mfd->use_ov0_blt &&
-	    mfd->panel_info.pdest == MDP4_MIXER0)
+	if (mfd->use_ov0_blt)
 		mdp4_overlay_update_blt_mode(mfd);
 
-	if (mfd->panel_info.pdest == MDP4_MIXER1) {
-		if (dbg_force_ov1_blt)
-			mfd->use_ov1_blt |= (0x1 << 8);
-		else
-			mfd->use_ov1_blt &= ~(0x1 << 8);
-	}
-
-	if (mfd->use_ov1_blt &&
-	    (mfd->panel_info.pdest == MDP4_MIXER1))
+	if (mfd->use_ov1_blt)
 		mdp4_overlay1_update_blt_mode(mfd);
 
 	if (pipe->mixer_num == MDP4_MIXER2 || ctrl->panel_mode & MDP4_PANEL_MDDI)

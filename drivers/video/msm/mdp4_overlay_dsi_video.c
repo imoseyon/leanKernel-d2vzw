@@ -701,6 +701,7 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	 } 
 #endif
 
+	mdp4_overlay_dsi_video_start();
 	return ret;
 }
 

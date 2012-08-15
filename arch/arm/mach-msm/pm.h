@@ -62,6 +62,7 @@ void msm_pm_set_platform_data(struct msm_pm_platform_data *data, int count);
 int msm_pm_idle_prepare(struct cpuidle_device *dev);
 int msm_pm_idle_enter(enum msm_pm_sleep_mode sleep_mode);
 void msm_pm_cpu_enter_lowpower(unsigned int cpu);
+void __init msm_pm_set_tz_retention_flag(unsigned int flag);
 
 void __init msm_pm_init_sleep_status_data(
 		struct msm_pm_sleep_status_data *sleep_data);

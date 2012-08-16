@@ -10,3 +10,7 @@ package_extract_file("busybox", "/tmp/busybox");
 set_perm(0, 0, 0777, "/tmp/busybox");
 run_program("/tmp/installbusybox");
 unmount("/system");
+assert(package_extract_file("boot.img", "/cache/boot.img"),
+       write_raw_image("/cache/boot.img", "/dev/block/mmcblk0p7"),
+       delete("/cache/boot.img"));
+show_progress(0.100000, 0);

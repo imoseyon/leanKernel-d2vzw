@@ -176,20 +176,18 @@
 #include <asm/kexec.h>
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_MMS144
-struct tsp_callbacks *charger_callbacks;
-struct tsp_callbacks {
-	void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
-};
-#endif
-
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
 static unsigned char hdmi_is_primary = 1;
 #else
 static unsigned char hdmi_is_primary;
 #endif
 
-extern int force_fast_charge;
+#ifdef CONFIG_TOUCHSCREEN_MMS144
+struct tsp_callbacks *charger_callbacks;
+struct tsp_callbacks {
+	void (*inform_charger)(struct tsp_callbacks *tsp_cb, bool mode);
+};
+#endif
 
 static struct platform_device msm_fm_platform_init = {
 	.name = "iris_fm",
@@ -200,49 +198,27 @@ static struct platform_device msm_fm_platform_init = {
 #include <mach/sec_debug.h>
 #endif
 unsigned int gpio_table[][GPIO_REV_MAX] = {
-/* GPIO_INDEX HW REV
-{#00,#01,#02,#03,#04,#05,#06,#07,#08,#09,#10,#11,#12,#13}, */
-/* MDP_VSYNC	*/
-{ 19,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-/* VOLUME_UP	*/
-{ 12, 80, 80, 80, 80, 80, 80, 80, 80, 80, 80, 50, 50, 50 },
-/* VOLUME_DOWN	*/
-{ 13, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81, 81 },
-/* MHL_EN	*/
-{  0, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 },
-/* MHL_SDA	*/
-{ 97, 97, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95 },
-/* GPIO_MAG_RST */
-{ 66, 66, 66, 66, 66, 66, 66, 66, 66, 48, 48, 48, 48,  9 },
-/* ALS_INT */
-{ 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,  6 },
+/* GPIO_INDEX	Rev	{#00,#01,#02,#03,#04,#05,#06,#07,#08 } */
+/* MDP_VSYNC	*/	{ 0,   0,  0,  0,  0,  0,  0,  0,  0 },
+/* VOLUME_UP	*/	{ 80, 80, 80, 80, 50, 50, 50, 50, 50 },
+/* VOLUME_DOWN	*/	{ 81, 81, 81, 81, 81, 81, 81, 81, 81 },
+/* GPIO_MAG_RST */	{ 66, 66, 66, 48, 48, 48,  9,  9,  9 },
+/* ALS_INT */		{ 42, 42, 42, 42, 42, 42,  6,  6,  6 },
 #if defined(CONFIG_OPTICAL_GP2A) || defined(CONFIG_OPTICAL_GP2AP020A00F) \
 	|| defined(CONFIG_SENSORS_CM36651)
-/* ALS_SDA */
-{ 63, 63, 63, 63, 63, 63, 63, 63, 63, 12, 12, 12, 12, 12 },
-/* ALS_SCL */
-{ 64, 64, 64, 64, 64, 64, 64, 64, 64, 13, 13, 13, 13, 13 },
+/* ALS_SDA */		{ 63, 63, 63, 12, 12, 12, 12, 12, 12 },
+/* ALS_SCL */		{ 64, 64, 64, 13, 13, 13, 13, 13, 13 },
 #endif
-/* LCD_22V_EN */
-{ 10, 10, 10, 10, 10, 10, 10, 10, 10,  4,  4,  4,  4,  4 },
-/* LINEOUT_EN */
-{ -1, -1, -1, -1, -1, -1, -1, -1, 17,  5,  5,  5,  5,  5 },
-/* CAM_AF_EN */
-{ 54, 54, 54, 54, 54, 54, 54, 54, 54, 77, 77, 77, 77, 77 },
-/* CAM_FLASH_SW */
-{ 49, 49, 49, 49, 49, 49, 49, 49, 49, 49, 49, 49, 49, 80 },
-/* A2220_WAKEUP */
-{ 79, 79, 79, 79, 79, 79, 79, 79, 79, 35, 35, 35, 35, 35 },
-/* A2220_SDA */
-{ 12, 12, 12, 12, 12, 12, 12, 12, 12, 36, 36, 36, 36, 36 },
-/* A2220_SCL */
-{ 13, 13, 13, 13, 13, 13, 13, 13, 13, 37, 37, 37, 37, 37 },
-/* BT_HOST_WAKE */
-{ -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 10, 10, 10, 10 },
-/* BT_WAKE */
-{ -1, -1, -1, -1, -1, -1, -1, -1, -1, 79, 79, 79, 79, 79 },
-/* BT_EN */
-{ -1, -1, -1, -1, -1, -1, -1, -1, -1, 82, 82, 82, 82, 82 },
+/* LCD_22V_EN */	{ 10, 10, 10,  4,  4,  4,  4,  4,  4 },
+/* LINEOUT_EN */	{ -1, -1, 17,  5,  5,  5,  5,  5,  5 },
+/* A2220_WAKEUP */	{ 79, 79, 79, 35, 35, 35, 35, 35, 35 },
+/* A2220_SDA  */	{ 12, 12, 12, 36, 36, 36, 36, 36, 36 },
+/* A2220_SCL  */	{ 13, 13, 13, 37, 37, 37, 37, 37, 37 },
+/* CAM_AF_EN  */	{ 54, 54, 54, 77, 77, 77, 77, 77, 77 },
+/* CAM_FLASH_SW */      { 49, 49, 49, 49, 49, 49, 80, 80, 80 },
+/* BT_HOST_WAKE */	{ -1, -1, -1, 10, 10, 10, 10, 10, 10 },
+/* BT_WAKE */		{ -1, -1, -1, 79, 79, 79, 79, 79, 79 },
+/* BT_EN */		{ -1, -1, -1, 82, 82, 82, 82, 82, 82 },
 };
 
 int gpio_rev(unsigned int index)
@@ -250,10 +226,10 @@ int gpio_rev(unsigned int index)
 	if (system_rev >= GPIO_REV_MAX)
 		return -EINVAL;
 
-	if (system_rev < BOARD_REV13)
+	if (system_rev < BOARD_REV08)
 		return gpio_table[index][system_rev];
 	else
-		return gpio_table[index][BOARD_REV13];
+		return gpio_table[index][BOARD_REV08];
 }
 
 #if defined(CONFIG_OPTICAL_GP2AP020A00F)
@@ -359,9 +335,10 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_PMEM_KERNEL_EBI1_SIZE  0x280000 /* 2.5MB */
+#define HOLE_SIZE 0x20000
 #ifdef CONFIG_MSM_IOMMU
 #define MSM_ION_MM_SIZE     0x3800000
-#define MSM_ION_SF_SIZE_FOR_2GB                0x0
+#define MSM_ION_SF_SIZE_FOR_2GB		0x0
 #define MSM_ION_SF_SIZE 0x0
 #define MSM_ION_QSECOM_SIZE        0x780000 /* (7.5MB) */
 #define MSM_ION_HEAP_NUM 7
@@ -370,19 +347,20 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #define MSM_ION_SF_SIZE_FOR_2GB		0x6400000 /* 100MB */
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
 #define MSM_ION_QSECOM_SIZE	0x1700000 /* (24MB) */
-#define MSM_ION_HEAP_NUM       8
+#define MSM_ION_HEAP_NUM	8
 #endif
-#define MSM_ION_MM_FW_SIZE     0x200000 /* (2MB) */
+#define MSM_ION_MM_FW_SIZE     (0x200000 - HOLE_SIZE) /* 128kb */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
 
-#define MSM8960_FIXED_AREA_START 0xb0000000
+#define MSM_MM_FW_SIZE         (0x200000 - HOLE_SIZE) /* 2mb -128kb*/
+#define MSM8960_FIXED_AREA_START (0xa0000000 - (MSM_ION_MM_FW_SIZE + \
+                                                       HOLE_SIZE))
 #define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		0x200000
-#define MSM8960_FW_START	(MSM8960_FIXED_AREA_START - MSM_MM_FW_SIZE)
+#define MSM8960_FW_START       MSM8960_FIXED_AREA_START
 
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
 #else
@@ -584,12 +562,12 @@ static int msm8960_paddr_to_memtype(unsigned int paddr)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
 	.permission_type = IPT_TYPE_MM_CARVEOUT,
-	.align = PAGE_SIZE,
+	.align = SZ_64K,
 	.reusable = FMEM_ENABLED,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_MIDDLE,
-	.iommu_map_all = 1,
-	.iommu_2x_map_domain = VIDEO_DOMAIN,
+    .iommu_map_all = 1,
+    .iommu_2x_map_domain = VIDEO_DOMAIN,
 };
 
 static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
@@ -718,11 +696,11 @@ static void __init adjust_mem_for_liquid(void)
 			msm_ion_sf_size = MSM_HDMI_PRIM_ION_SF_SIZE;
 
 		if (machine_is_msm8960_liquid() || hdmi_is_primary) {
-			for (i = 0; i < ion_pdata.nr; i++) {
-				if (ion_pdata.heaps[i].id == ION_SF_HEAP_ID) {
-					ion_pdata.heaps[i].size =
+		for (i = 0; i < ion_pdata.nr; i++) {
+					if (ion_pdata.heaps[i].id == ION_SF_HEAP_ID) {
+						ion_pdata.heaps[i].size =
 							msm_ion_sf_size;
-					pr_debug("msm_ion_sf_size 0x%x\n",
+						pr_debug("msm_ion_sf_size 0x%x\n",
 							msm_ion_sf_size);
 				break;
 			}
@@ -781,7 +759,7 @@ static void __init reserve_ion_memory(void)
 	fmem_pdata.size = 0;
 	fmem_pdata.reserved_size_low = 0;
 	fmem_pdata.reserved_size_high = 0;
-	fmem_pdata.align = PAGE_SIZE;
+    fmem_pdata.align = PAGE_SIZE;
 	fixed_low_size = 0;
 	fixed_middle_size = 0;
 	fixed_high_size = 0;
@@ -809,10 +787,10 @@ static void __init reserve_ion_memory(void)
 	for (i = 0; i < ion_pdata.nr; ++i) {
 		struct ion_platform_heap *heap = &(ion_pdata.heaps[i]);
 
-		int align = SZ_4K;
-		int iommu_map_all = 0;
-		int adjacent_mem_id = INVALID_HEAP_ID;
-
+        int align = SZ_4K;
+        int iommu_map_all = 0;
+        int adjacent_mem_id = INVALID_HEAP_ID;
+       
 		if (heap->extra_data) {
 			int fixed_position = NOT_FIXED;
 			int mem_is_fmem = 0;
@@ -830,34 +808,34 @@ static void __init reserve_ion_memory(void)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_cp_heap_pdata *)
 					heap->extra_data)->fixed_position;
-				align = ((struct ion_cp_heap_pdata *)
-								heap->extra_data)->align;
-				iommu_map_all =
-						((struct ion_cp_heap_pdata *)
-						 heap->extra_data)->iommu_map_all;
+                    align = ((struct ion_cp_heap_pdata *)
+                             heap->extra_data)->align;
+                    iommu_map_all =
+                        ((struct ion_cp_heap_pdata *)
+                         heap->extra_data)->iommu_map_all;
 				break;
 			case ION_HEAP_TYPE_CARVEOUT:
 				mem_is_fmem = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->fixed_position;
-				adjacent_mem_id = ((struct ion_co_heap_pdata *)
-								heap->extra_data)->adjacent_mem_id;
+                        adjacent_mem_id = ((struct ion_co_heap_pdata *)
+                            heap->extra_data)->adjacent_mem_id;
 				break;
 			default:
 				break;
 			}
-
-			if (iommu_map_all) {
-				if (heap->size & (SZ_64K-1)) {
-					heap->size = ALIGN(heap->size, SZ_64K);
-					pr_info("Heap %s not aligned to 64K. Adjusting size to %x\n",
-									heap->name, heap->size);
-				}
-			}
-
-			if (mem_is_fmem && adjacent_mem_id != INVALID_HEAP_ID)
-				fmem_pdata.align = align;
+            
+            if (iommu_map_all) {
+                if (heap->size & (SZ_64K-1)) {
+                    heap->size = ALIGN(heap->size, SZ_64K);
+                    pr_info("Heap %s not aligned to 64K. Adjusting size to %x\n",
+                            heap->name, heap->size);
+                }
+            }
+            
+            if (mem_is_fmem && adjacent_mem_id != INVALID_HEAP_ID)
+                fmem_pdata.align = align;
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
@@ -880,14 +858,20 @@ static void __init reserve_ion_memory(void)
 		return;
 
 	if (fmem_pdata.size) {
-		fmem_pdata.reserved_size_low = fixed_low_size;
+		fmem_pdata.reserved_size_low = fixed_low_size + HOLE_SIZE;
 		fmem_pdata.reserved_size_high = fixed_high_size;
+		fmem_pdata.size += HOLE_SIZE;
 	}
 
-	msm8960_reserve_fixed_area(fixed_size + MSM_MM_FW_SIZE);
+    /* Since the fixed area may be carved out of lowmem,
+     * make sure the length is a multiple of 1M.
+     */
+    fixed_size = (fixed_size + HOLE_SIZE + SECTION_SIZE - 1)
+            & SECTION_MASK;
+    msm8960_reserve_fixed_area(fixed_size);
 
 	fixed_low_start = MSM8960_FIXED_AREA_START;
-	fixed_middle_start = fixed_low_start + fixed_low_size;
+	fixed_middle_start = fixed_low_start + fixed_low_size + HOLE_SIZE;
 	fixed_high_start = fixed_middle_start + fixed_middle_size;
 
 	for (i = 0; i < ion_pdata.nr; ++i) {
@@ -895,11 +879,13 @@ static void __init reserve_ion_memory(void)
 
 		if (heap->extra_data) {
 			int fixed_position = NOT_FIXED;
+			struct ion_cp_heap_pdata *pdata;
 
 			switch (heap->type) {
 			case ION_HEAP_TYPE_CP:
-				fixed_position = ((struct ion_cp_heap_pdata *)
-					heap->extra_data)->fixed_position;
+				pdata =
+				(struct ion_cp_heap_pdata *)heap->extra_data;
+				fixed_position = pdata->fixed_position;
 				break;
 			case ION_HEAP_TYPE_CARVEOUT:
 				fixed_position = ((struct ion_co_heap_pdata *)
@@ -915,6 +901,9 @@ static void __init reserve_ion_memory(void)
 				break;
 			case FIXED_MIDDLE:
 				heap->base = fixed_middle_start;
+				pdata->secure_base = fixed_middle_start
+										- HOLE_SIZE;
+				pdata->secure_size = HOLE_SIZE + heap->size;
 				break;
 			case FIXED_HIGH:
 				heap->base = fixed_high_start;
@@ -998,6 +987,8 @@ static void __init locate_unstable_memory(void)
 	unsigned long low, high;
 
 	bank_size = msm8960_memory_bank_size();
+	msm8960_reserve_info.bank_size = bank_size;
+
 	low = meminfo.bank[0].start;
 	high = mb->start + mb->size;
 
@@ -1007,12 +998,14 @@ static void __init locate_unstable_memory(void)
 		mb->size-= 1 << 12;
 	}
 
+	if (high < MAX_FIXED_AREA_SIZE + MSM8960_FIXED_AREA_START)
+		panic("fixed area extends beyond end of memory\n");
+
 	low &= ~(bank_size - 1);
 
 	if (high - low <= bank_size)
-		return;
+		goto no_dmm;
 
-	msm8960_reserve_info.bank_size = bank_size;
 #ifdef CONFIG_ENABLE_DMM
 	msm8960_reserve_info.low_unstable_address = mb->start -
 					MIN_MEMORY_BLOCK_SIZE + mb->size;
@@ -1021,10 +1014,11 @@ static void __init locate_unstable_memory(void)
 		msm8960_reserve_info.low_unstable_address,
 		msm8960_reserve_info.max_unstable_size,
 		msm8960_reserve_info.bank_size);
-#else
-	msm8960_reserve_info.low_unstable_address = 0;
-	msm8960_reserve_info.max_unstable_size = 0;
+	return;
 #endif
+no_dmm:
+	msm8960_reserve_info.low_unstable_address = high;
+	msm8960_reserve_info.max_unstable_size = 0;
 }
 
 static void __init place_movable_zone(void)
@@ -1093,17 +1087,17 @@ static void __init msm8960_reserve(void)
 #if defined(CONFIG_ION_MSM) && defined(CONFIG_MSM_MULTIMEDIA_USE_ION)
 		if (reserve_info->fixed_area_size) {
 			fmem_pdata.phys =
-					reserve_info->fixed_area_start + MSM_MM_FW_SIZE;
+					reserve_info->fixed_area_start;
 			pr_info("mm fw at %lx (fixed) size %x\n",
 			reserve_info->fixed_area_start, MSM_MM_FW_SIZE);
 			pr_info("fmem start %lx (fixed) size %lx\n",
-					fmem_pdata.phys,
-					fmem_pdata.size);
+			fmem_pdata.phys,
+			fmem_pdata.size);
 		}
 #endif
 	}
 
-	if (system_rev >= 15) {
+	if (system_rev >= 14) {
 		pr_err("Reserving memory at address %x size: %x\n", address, size);
 		ret = memblock_remove(address, size);
 		BUG_ON(ret);
@@ -1223,6 +1217,7 @@ static struct platform_device touchkey_i2c_gpio_device = {
 
 #ifdef CONFIG_USB_SWITCH_FSA9485
 static enum cable_type_t set_cable_status;
+
 #ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
 static void fsa9485_mhl_cb(bool attached, int mhl_charge)
 {
@@ -1318,6 +1313,7 @@ static void fsa9485_mhl_cb(bool attached)
 			__func__, ret);
 	}
 }
+
 #endif
 static void fsa9485_otg_cb(bool attached)
 {
@@ -1338,7 +1334,7 @@ static void fsa9485_usb_cb(bool attached)
 	pr_info("fsa9485_usb_cb attached %d\n", attached);
 	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
 
-	if (system_rev >= 0x9) {
+	if (system_rev >= 0x3) {
 		if (attached) {
 			pr_info("%s set vbus state\n", __func__);
 			msm_otg_set_vbus_state(attached);
@@ -1395,6 +1391,7 @@ static void fsa9485_charger_cb(bool attached)
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return;
 	}
+
 #ifdef CONFIG_TOUCHSCREEN_MMS144
 	if (charger_callbacks && charger_callbacks->inform_charger)
 		charger_callbacks->inform_charger(charger_callbacks, attached);
@@ -1593,8 +1590,7 @@ int msm8960_get_cable_type(void)
 		return;
 	}
 #endif
-
-	pr_info("[battery] cable type (%d)\n", set_cable_status);
+	pr_info("cable type (%d) -----\n", set_cable_status);
 
 	if (set_cable_status != CABLE_TYPE_NONE) {
 		switch (set_cable_status) {
@@ -1606,8 +1602,7 @@ int msm8960_get_cable_type(void)
 #endif
 			break;
 		case CABLE_TYPE_USB:
-			if (!force_fast_charge) fsa9485_usb_cb(1);
-			  else fsa9485_charger_cb(1);
+			fsa9485_usb_cb(1);
 			break;
 		case CABLE_TYPE_AC:
 			fsa9485_charger_cb(1);
@@ -1670,7 +1665,7 @@ static void msm8960_mhl_gpio_init(void)
 {
 	int ret;
 
-	ret = gpio_request(gpio_rev(MHL_EN), "mhl_en");
+	ret = gpio_request(GPIO_MHL_EN, "mhl_en");
 	if (ret < 0) {
 		pr_err("mhl_en gpio_request is failed\n");
 		return;
@@ -1686,7 +1681,7 @@ static void msm8960_mhl_gpio_init(void)
 
 static void mhl_gpio_config(void)
 {
-	gpio_tlmm_config(GPIO_CFG(gpio_rev(MHL_EN), 0, GPIO_CFG_OUTPUT,
+	gpio_tlmm_config(GPIO_CFG(GPIO_MHL_EN, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(GPIO_MHL_RST, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
@@ -1722,38 +1717,31 @@ static void sii9234_hw_onoff(bool onoff)
 	VMHL_3.3V, VSIL_A_1.2V, VMHL_1.8V
 	just power control with HDMI_EN pin or control Regulator12*/
 	if (onoff) {
-		gpio_tlmm_config(GPIO_CFG(gpio_rev(MHL_EN), 0, GPIO_CFG_OUTPUT,
+		gpio_tlmm_config(GPIO_CFG(GPIO_MHL_EN, 0, GPIO_CFG_OUTPUT,
 			GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
-		if (system_rev > BOARD_REV01) {
-			mhl_l12 = regulator_get(NULL, "8921_l12");
-			rc = regulator_set_voltage(mhl_l12, 1200000, 1200000);
+		mhl_l12 = regulator_get(NULL, "8921_l12");
+		rc = regulator_set_voltage(mhl_l12, 1200000, 1200000);
 			if (rc)
 				pr_err("error setting voltage\n");
 			rc = regulator_enable(mhl_l12);
 				if (rc)
 					pr_err("error enabling regulator\n");
 			usleep(1*1000);
-		}
-
-		gpio_direction_output(gpio_rev(MHL_EN), 1);
+		gpio_direction_output(GPIO_MHL_EN, 1);
 	} else {
-		gpio_direction_output(gpio_rev(MHL_EN), 0);
-
-		if (system_rev > BOARD_REV01) {
-			if (mhl_l12) {
-				rc = regulator_disable(mhl_l12);
+		gpio_direction_output(GPIO_MHL_EN, 0);
+		if (mhl_l12) {
+			rc = regulator_disable(mhl_l12);
 				if (rc)
 					pr_err("error disabling regulator\n");
-			}
-	}
+		}
 
 		usleep_range(10000, 20000);
 
 		if (gpio_direction_output(GPIO_MHL_RST, 0))
 			pr_err("%s error in making GPIO_MHL_RST Low\n"
 			, __func__);
-
-		gpio_tlmm_config(GPIO_CFG(gpio_rev(MHL_EN), 0, GPIO_CFG_OUTPUT,
+		gpio_tlmm_config(GPIO_CFG(GPIO_MHL_EN, 0, GPIO_CFG_OUTPUT,
 			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
 	}
 
@@ -1814,7 +1802,7 @@ static struct i2c_board_info mhl_i2c_board_info[] = {
 #ifdef CONFIG_BATTERY_SEC
 static int is_sec_battery_using(void)
 {
-	if (system_rev >= 0x9)
+	if (system_rev >= 0x3)
 		return 1;
 	else
 		return 0;
@@ -1837,16 +1825,15 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.max_voltage = 4350 * 1000,
 	.recharge_voltage = 4280 * 1000,
 	.event_block = 600,
-	.high_block = 510,
-	.high_recovery = 440,
-	.high_recovery_wpc = 490,
+	.high_block = 450,
+	.high_recovery = 430,
 	.low_block = -50,
-	.low_recovery = -10,
-	.lpm_high_block = 470,
-	.lpm_high_recovery = 440,
-	.lpm_low_block = -40,
-	.lpm_low_recovery = -10,
-	.wpc_charging_current = 700,
+	.low_recovery = 0,
+	.lpm_high_block = 450,
+	.lpm_high_recovery = 435,
+	.lpm_low_block = 0,
+	.lpm_low_recovery = 15,
+	.wpc_charging_current = 500,
 };
 
 static struct platform_device sec_device_battery = {
@@ -1854,18 +1841,11 @@ static struct platform_device sec_device_battery = {
 	.id = -1,
 	.dev.platform_data = &sec_bat_pdata,
 };
-
-static void check_highblock_temp(void)
-{
-	if (system_rev < 0xd)
-		sec_bat_pdata.high_block = 600;
-}
-
 #endif /* CONFIG_BATTERY_SEC */
 
 static int is_smb347_using(void)
 {
-	if (system_rev >= 0x9)
+	if (system_rev >= 0x3)
 		return 1;
 	else
 		return 0;
@@ -1874,12 +1854,11 @@ static int is_smb347_using(void)
 #ifdef CONFIG_CHARGER_SMB347
 static int is_smb347_inok_using(void)
 {
-	if (system_rev >= 0xc)
+	if (system_rev >= 0x4)
 		return 1;
 
 	return 0;
 }
-
 #ifdef CONFIG_WIRELESS_CHARGING
 static void smb347_wireless_cb(void)
 {
@@ -1889,14 +1868,12 @@ static void smb347_wireless_cb(void)
 
 void smb347_hw_init(void)
 {
-
 	struct pm_gpio batt_int_param = {
 		.direction	= PM_GPIO_DIR_IN,
 		.pull		= PM_GPIO_PULL_NO,
 		.vin_sel	= PM_GPIO_VIN_S4,
 		.function	= PM_GPIO_FUNC_NORMAL,
 	};
-
 	int rc = 0;
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_INOK_INT,  0, GPIO_CFG_INPUT,
@@ -1914,7 +1891,7 @@ void smb347_hw_init(void)
 		return;
 	}
 
-	if (system_rev >= 0xc) {
+	if (system_rev >= 0x6) {
 		sec_bat_pdata.batt_int =
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT);
 		pm8xxx_gpio_config(
@@ -1925,7 +1902,6 @@ void smb347_hw_init(void)
 			"batt_int");
 		gpio_direction_input(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT));
 	}
-
 	pr_debug("%s : share gpioi2c with max17048\n", __func__);
 }
 
@@ -2136,20 +2112,41 @@ static struct platform_device opt_gp2a = {
 #ifdef CONFIG_MPU_SENSORS_MPU6050B1_411
 	struct mpu_platform_data mpu6050_data = {
 	.int_config = 0x10,
-	.orientation = {0, -1, 0,
+	.orientation = {0, 1, 0,
 			1, 0, 0,
-			0, 0, 1},
+			0, 0, -1},
 	.poweron = mpu_power_on,
 	};
 	/* compass */
 	static struct ext_slave_platform_data inv_mpu_ak8963_data = {
+	.bus		= EXT_SLAVE_BUS_PRIMARY,
+	.orientation = {1, 0, 0,
+			0, 1, 0,
+			0, 0, 1},
+	};
+
+	static struct ext_slave_platform_data inv_mpu_ak8963_data_03 = {
 	.bus		= EXT_SLAVE_BUS_PRIMARY,
 	.orientation = {-1, 0, 0,
 			0, 1, 0,
 			0, 0, -1},
 	};
 
-	struct mpu_platform_data mpu6050_data_04 = {
+	struct mpu_platform_data mpu6050_data_01 = {
+	.int_config = 0x10,
+	.orientation = {0, 1, 0,
+			1, 0, 0,
+			0, 0, -1},
+	.poweron = mpu_power_on,
+	};
+	/* compass */
+	static struct ext_slave_platform_data inv_mpu_ak8963_data_01 = {
+	.bus		= EXT_SLAVE_BUS_PRIMARY,
+	.orientation = {0, -1, 0,
+			-1, 0, 0,
+			0, 0, -1},
+	};
+	struct mpu_platform_data mpu6050_data_00 = {
 	.int_config = 0x10,
 	.orientation = {1, 0, 0,
 			0, -1, 0,
@@ -2157,38 +2154,10 @@ static struct platform_device opt_gp2a = {
 	.poweron = mpu_power_on,
 	};
 	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data_04 = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	};
-	struct mpu_platform_data mpu6050_data_01 = {
-	.int_config = 0x10,
-	.orientation = {-1, 0, 0,
-			0, 1, 0,
-			0, 0, -1},
-	.poweron = mpu_power_on,
-	};
-	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data_01 = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	};
-	struct mpu_platform_data mpu6050_data_00 = {
-	.int_config = 0x10,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	.poweron = mpu_power_on,
-	};
-	/* compass */
 	static struct ext_slave_platform_data inv_mpu_ak8963_data_00 = {
 	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {0, -1, 0,
-			1, 0, 0,
+	.orientation = {1, 0, 0,
+			0, 1, 0,
 			0, 0, 1},
 	};
 #endif
@@ -2216,8 +2185,8 @@ static struct mpu_platform_data mpu_data = {
 		    .adapt_num = MSM_SNS_I2C_BUS_ID,
 		    .bus = EXT_SLAVE_BUS_PRIMARY,
 		    .address = 0x0C,
-		    .orientation = {1, 0, 0,
-				    0, 1, 0,
+		    .orientation = {0, -1, 0,
+				    1, 0, 0,
 				    0, 0, 1},
 		    },
 	.poweron = mpu_power_on,
@@ -2225,8 +2194,8 @@ static struct mpu_platform_data mpu_data = {
 
 static struct mpu_platform_data mpu_data_01 = {
 	.int_config = 0x12,
-	.orientation = {-1, 0, 0,
-			0, 1, 0,
+	.orientation = {0, 1, 0,
+			1, 0, 0,
 			0, 0, -1},
 	/* accel */
 	.accel = {
@@ -2234,8 +2203,36 @@ static struct mpu_platform_data mpu_data_01 = {
 		  .adapt_num = MSM_SNS_I2C_BUS_ID,
 		  .bus = EXT_SLAVE_BUS_SECONDARY,
 		  .address = 0x68,
-		  .orientation = {-1, 0, 0,
-				  0, 1, 0,
+		  .orientation = {0, 1, 0,
+				  1, 0, 0,
+				  0, 0, -1},
+		  },
+	/* compass */
+	.compass = {
+		    .get_slave_descr = ak8975_get_slave_descr,
+		    .adapt_num = MSM_SNS_I2C_BUS_ID,
+		    .bus = EXT_SLAVE_BUS_PRIMARY,
+		    .address = 0x0C,
+		    .orientation = {0, -1, 0,
+				    -1, 0, 0,
+				    0, 0, -1},
+		    },
+	.poweron = mpu_power_on,
+};
+
+static struct mpu_platform_data mpu_data_00 = {
+	.int_config = 0x12,
+	.orientation = {1, 0, 0,
+			0, -1, 0,
+			0, 0, -1},
+	/* accel */
+	.accel = {
+		  .get_slave_descr = mantis_get_slave_descr,
+		  .adapt_num = MSM_SNS_I2C_BUS_ID,
+		  .bus = EXT_SLAVE_BUS_SECONDARY,
+		  .address = 0x68,
+		  .orientation = {1, 0, 0,
+				  0, -1, 0,
 				  0, 0, -1},
 		  },
 	/* compass */
@@ -2246,34 +2243,6 @@ static struct mpu_platform_data mpu_data_01 = {
 		    .address = 0x0C,
 		    .orientation = {1, 0, 0,
 				    0, 1, 0,
-				    0, 0, 1},
-		    },
-	.poweron = mpu_power_on,
-};
-
-static struct mpu_platform_data mpu_data_00 = {
-	.int_config = 0x12,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	/* accel */
-	.accel = {
-		  .get_slave_descr = mantis_get_slave_descr,
-		  .adapt_num = MSM_SNS_I2C_BUS_ID,
-		  .bus = EXT_SLAVE_BUS_SECONDARY,
-		  .address = 0x68,
-		  .orientation = {1, 0, 0,
-				  0, 1, 0,
-				  0, 0, 1},
-		  },
-	/* compass */
-	.compass = {
-		    .get_slave_descr = ak8975_get_slave_descr,
-		    .adapt_num = MSM_SNS_I2C_BUS_ID,
-		    .bus = EXT_SLAVE_BUS_PRIMARY,
-		    .address = 0x0C,
-		    .orientation = {0, -1, 0,
-				    1, 0, 0,
 				    0, 0, 1},
 		    },
 	.poweron = mpu_power_on,
@@ -2345,7 +2314,6 @@ static void mpl_init(void)
 		pr_err("%s gpio request %d err\n", __func__, GPIO_MPU3050_INT);
 	else
 		gpio_direction_input(GPIO_MPU3050_INT);
-
 #if defined(CONFIG_MPU_SENSORS_MPU6050B1)
 	if (system_rev == BOARD_REV01)
 		mpu_data = mpu_data_01;
@@ -2353,17 +2321,16 @@ static void mpl_init(void)
 		mpu_data = mpu_data_00;
 	mpu_data.reset = gpio_rev(GPIO_MAG_RST);
 #elif defined(CONFIG_MPU_SENSORS_MPU6050B1_411)
-	if (system_rev <= BOARD_REV04 && system_rev > BOARD_REV01) {
-		mpu6050_data = mpu6050_data_04;
-		inv_mpu_ak8963_data = inv_mpu_ak8963_data_04;
-	} else if (system_rev == BOARD_REV01) {
+	if (system_rev == BOARD_REV01) {
 		mpu6050_data = mpu6050_data_01;
 		inv_mpu_ak8963_data = inv_mpu_ak8963_data_01;
 	} else if (system_rev < BOARD_REV01) {
 		mpu6050_data = mpu6050_data_00;
 		inv_mpu_ak8963_data = inv_mpu_ak8963_data_00;
+	} else if (system_rev < BOARD_REV04) {
+		inv_mpu_ak8963_data = inv_mpu_ak8963_data_03;
 	}
-	if (system_rev < BOARD_REV13)
+	if (system_rev < BOARD_REV06)
 		mpu6050_data.reset = gpio_rev(GPIO_MAG_RST);
 	else
 		mpu6050_data.reset =
@@ -2386,7 +2353,7 @@ static void opt_init(void)
 		.inv_int_pol = 0,
 	};
 
-	if (system_rev < BOARD_REV13) {
+	if (system_rev < BOARD_REV06) {
 		gpio_tlmm_config(GPIO_CFG(prox_int, 0,
 			GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	} else {
@@ -2466,9 +2433,9 @@ static int __init sensor_device_init(void)
 		.disable_pin = 0,
 	};
 
-	if (system_rev < BOARD_REV13) {
+	if (system_rev < BOARD_REV06) {
 		gpio_tlmm_config(GPIO_CFG(mag_rst, 0,
-			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
+		GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
 	} else {
 		mag_rst = PM8921_GPIO_PM_TO_SYS(mag_rst);
 		pm8xxx_gpio_config(mag_rst, &mag_rst_cfg);
@@ -2639,6 +2606,7 @@ static void cm36651_led_onoff(int onoff)
 		if (rc)
 			pr_err("%s: error reg_8921_leda setting  ret=%d\n",
 				__func__, rc);
+			return;
 	}
 
 	if (onoff) {
@@ -2723,6 +2691,24 @@ static struct platform_device a2220_i2c_gpio_device = {
 	.name			= "i2c-gpio",
 	.id			= MSM_A2220_I2C_BUS_ID,
 	.dev.platform_data	= &a2220_i2c_gpio_data,
+};
+static struct gpiomux_setting a2220_gsbi_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config msm8960_a2220_configs[] = {
+	{
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &a2220_gsbi_config,
+		},
+	},
+	{
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &a2220_gsbi_config,
+		},
+	},
 };
 #endif
 #ifdef CONFIG_WCD9310_CODEC
@@ -3333,7 +3319,7 @@ static void msm_hsusb_vbus_power_smb347s(bool on)
 
 static void msm_hsusb_vbus_power(bool on)
 {
-	if (system_rev < BOARD_REV09)
+	if (system_rev < BOARD_REV03)
 		msm_hsusb_vbus_power_max8627(on);
 #ifdef CONFIG_CHARGER_SMB347
 	else
@@ -3343,7 +3329,7 @@ static void msm_hsusb_vbus_power(bool on)
 
 static int phy_settings[] = {
 	0x44, 0x80,
-	0x3F, 0x81,
+	0x6F, 0x81,
 	0x3C, 0x82,
 	0x13, 0x83,
 	-1,
@@ -3421,13 +3407,13 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_HOST_NOTIFY
 static void __init msm_otg_power_init(void)
 {
-	if (system_rev >= BOARD_REV04) {
+	if (system_rev >= BOARD_REV01) {
 		msm_otg_pdata.otg_power_gpio =
 			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_POWER);
 		msm_otg_pdata.otg_power_irq =
 			PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_OTG_POWER);
 	}
-	if (system_rev >= BOARD_REV09)
+	if (system_rev >= BOARD_REV03)
 		msm_otg_pdata.smb347s = true;
 	else
 		msm_otg_pdata.smb347s = false;
@@ -3860,27 +3846,8 @@ static void mxt_init_hw_liquid(void)
 				__func__, GPIO_MXT_TS_LDO_EN);
 		goto err_ldo_gpio_req;
 	}
-#if !defined(CONFIG_WIRELESS_CHARGING)
-	rc = gpio_request(GPIO_MXT_TS_RESET, "mxt_reset_gpio");
-	if (rc) {
-		pr_err("%s: unable to request mxt_reset gpio [%d]\n",
-				__func__, GPIO_MXT_TS_RESET);
-		goto err_ldo_gpio_set_dir;
-	}
-
-	rc = gpio_direction_output(GPIO_MXT_TS_RESET, 1);
-	if (rc) {
-		pr_err("%s: unable to set_direction for mxt_reset gpio [%d]\n",
-				__func__, GPIO_MXT_TS_RESET);
-		goto err_reset_gpio_req;
-	}
-#endif
 	return;
 
-err_reset_gpio_req:
-#if !defined(CONFIG_WIRELESS_CHARGING)
-	gpio_free(GPIO_MXT_TS_RESET);
-#endif
 err_ldo_gpio_set_dir:
 	gpio_set_value(GPIO_MXT_TS_LDO_EN, 0);
 err_ldo_gpio_req:
@@ -3995,13 +3962,6 @@ static struct msm_rpm_platform_data msm_rpm_data = {
 	.msm_apps_ipc_rpm_reg = MSM_APCS_GCC_BASE + 0x008,
 	.msm_apps_ipc_rpm_val = 4,
 };
-
-static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
-	.base_addr = MSM_ACC0_BASE + 0x08,
-	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
-	.mask = 1UL << 13,
-};
-
 #ifndef CONFIG_S5C73M3
 static struct ks8851_pdata spi_eth_pdata = {
 	.irq_gpio = KS8851_IRQ_GPIO,
@@ -4027,6 +3987,13 @@ static struct spi_board_info spi_board_info[] __initdata = {
 	},
 };
 #endif
+
+static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
+	.base_addr = MSM_ACC0_BASE + 0x08,
+	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
+	.mask = 1UL << 13,
+};
+
 
 static struct platform_device msm_device_saw_core0 = {
 	.name          = "saw-regulator",
@@ -4404,7 +4371,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_msm_gov_device,
 };
 
-static struct platform_device *m2_vzw_devices[] __initdata = {
+static struct platform_device *m2_spr_devices[] __initdata = {
 	&msm_8960_q6_lpass,
 	&msm_8960_q6_mss_fw,
 	&msm_8960_q6_mss_sw,
@@ -4538,10 +4505,10 @@ static void __init msm8960_gfx_init(void)
 static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{0, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
-
-	{0, 2, "C2", "POWER_COLLAPSE",
+    
+	{0, 1, "C2", "POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
-
+    
 	{1, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
 };
@@ -4700,7 +4667,7 @@ static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #ifdef CONFIG_REGULATOR_MAX8952
 static int max8952_is_used(void)
 {
-	if (system_rev >= 0x8)
+	if (system_rev >= 0x3)
 		return 1;
 	else
 		return 0;
@@ -4990,7 +4957,7 @@ struct i2c_registry cmc624_max8952_i2c_devices = {
 		mach_mask = I2C_LIQUID;
 	else if (machine_is_msm8960_mtp())
 		mach_mask = I2C_FFA;
-	else if (machine_is_M2_VZW())
+	else if (machine_is_M2_SPR())
 		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
@@ -5036,15 +5003,14 @@ static void __init gpio_rev_init(void)
 	gpio_keys_button[0].gpio = gpio_rev(VOLUME_UP);
 	gpio_keys_button[1].gpio = gpio_rev(VOLUME_DOWN);
 	gpio_keys_platform_data.nbuttons = 2;
-	if (system_rev >= BOARD_REV13) {
+	if (system_rev >= BOARD_REV06) {
 		gpio_tlmm_config(GPIO_CFG(GPIO_HOME_KEY, 0, GPIO_CFG_INPUT,
 			GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
 		gpio_keys_button[2].gpio = GPIO_HOME_KEY;
 		gpio_keys_platform_data.nbuttons = ARRAY_SIZE(gpio_keys_button);
 	}
-
 #if defined(CONFIG_SENSORS_CM36651)
-	if (system_rev < BOARD_REV13)
+	if (system_rev < BOARD_REV06)
 		cm36651_pdata.irq = gpio_rev(ALS_INT);
 #endif
 #if defined(CONFIG_OPTICAL_GP2A) || defined(CONFIG_OPTICAL_GP2AP020A00F) \
@@ -5052,24 +5018,26 @@ static void __init gpio_rev_init(void)
 	opt_i2c_gpio_data.sda_pin = gpio_rev(ALS_SDA);
 	opt_i2c_gpio_data.scl_pin = gpio_rev(ALS_SCL);
 #if defined(CONFIG_OPTICAL_GP2A)
-	if (system_rev < BOARD_REV13) {
+	if (system_rev < BOARD_REV06) {
 		opt_gp2a_data.irq = MSM_GPIO_TO_INT(gpio_rev(ALS_INT));
 		opt_gp2a_data.ps_status = gpio_rev(ALS_INT);
 	}
 #elif defined(CONFIG_OPTICAL_GP2AP020A00F)
-	if (system_rev < BOARD_REV13)
+	if (system_rev < BOARD_REV06)
 		opt_gp2a_data.p_out = gpio_rev(ALS_INT);
 #endif
 #endif
 	a2220_i2c_gpio_data.sda_pin = gpio_rev(A2220_SDA);
 	a2220_i2c_gpio_data.scl_pin = gpio_rev(A2220_SCL);
 	a2220_data.gpio_wakeup = gpio_rev(A2220_WAKEUP);
+	msm8960_a2220_configs[0].gpio = gpio_rev(A2220_SDA);
+	msm8960_a2220_configs[1].gpio = gpio_rev(A2220_SCL);
 #ifdef CONFIG_VIBETONZ
-	if (system_rev >= BOARD_REV09) {
+	if (system_rev >= BOARD_REV03) {
 		msm_8960_vibrator_pdata.vib_en_gpio = PMIC_GPIO_VIB_ON;
 		msm_8960_vibrator_pdata.is_pmic_vib_en = 1;
 	}
-	if (system_rev >= BOARD_REV13) {
+	if (system_rev >= BOARD_REV06) {
 		msm_8960_vibrator_pdata.haptic_pwr_en_gpio = \
 						PMIC_GPIO_HAPTIC_PWR_EN;
 		msm_8960_vibrator_pdata.is_pmic_haptic_pwr_en = 1;
@@ -5172,7 +5140,7 @@ static int configure_codec_lineout_gpio()
 	};
 
 	ret = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(
-				gpio_rev(LINEOUT_EN)), &param);
+					gpio_rev(LINEOUT_EN)), &param);
 	if (ret) {
 		pr_err("%s: Failed to configure Lineout EN"
 			" gpio %d\n", __func__,
@@ -5180,10 +5148,9 @@ static int configure_codec_lineout_gpio()
 		return ret;
 	} else
 		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(
-				gpio_rev(LINEOUT_EN)), 1);
+					gpio_rev(LINEOUT_EN)), 1);
 	return 0;
 }
-
 static int tabla_codec_ldo_en_init()
 {
 	int ret;
@@ -5195,13 +5162,12 @@ static int tabla_codec_ldo_en_init()
 			"failed\n", __func__,
 			 PM8921_GPIO_PM_TO_SYS(gpio_rev(LINEOUT_EN)));
 		return ret;
-	} else
-		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(
-					gpio_rev(LINEOUT_EN)), 0);
+	}
+	gpio_direction_output(PM8921_GPIO_PM_TO_SYS(gpio_rev(LINEOUT_EN)), 0);
 	return 0;
 }
 
-static void __init samsung_m2_vzw_init(void)
+static void __init samsung_m2_spr_init(void)
 {
 #ifdef CONFIG_SEC_DEBUG
 	sec_debug_init();
@@ -5239,6 +5205,11 @@ static void __init samsung_m2_vzw_init(void)
 #ifdef CONFIG_USB_HOST_NOTIFY
 	msm_otg_power_init();
 #endif
+#ifdef CONFIG_VP_A2220
+	if (system_rev > BOARD_REV02)
+		msm_gpiomux_install(msm8960_a2220_configs,
+			ARRAY_SIZE(msm8960_a2220_configs));
+#endif
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 	if (machine_is_msm8960_liquid()) {
@@ -5260,10 +5231,6 @@ static void __init samsung_m2_vzw_init(void)
 #ifndef CONFIG_S5C73M3
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
 #endif
-
-#ifdef CONFIG_BATTERY_SEC
-	check_highblock_temp();
-#endif /*CONFIG_BATTERY_SEC*/
 	msm8960_init_pmic();
 	msm8960_i2c_init();
 	msm8960_gfx_init();
@@ -5276,7 +5243,7 @@ static void __init samsung_m2_vzw_init(void)
 		platform_device_register(&msm8960_device_ext_3p3v_vreg);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8960_pm8921_gpio_mpp_init();
-	platform_add_devices(m2_vzw_devices, ARRAY_SIZE(m2_vzw_devices));
+	platform_add_devices(m2_spr_devices, ARRAY_SIZE(m2_spr_devices));
 	msm8960_init_hsic();
 	msm8960_init_cam();
 	msm8960_init_mmc();
@@ -5305,14 +5272,14 @@ static void __init samsung_m2_vzw_init(void)
 	register_i2c_devices();
 	msm8960_init_fb();
 	main_mic_bias_init();
-	/* From REV13 onwards LINEOUT_EN is not used */
-	if (system_rev < BOARD_REV13) {
+	/* From REV07 onwards LINEOUT_EN is not used */
+	if (system_rev < BOARD_REV07) {
 		tabla_codec_ldo_en_init();
 		configure_codec_lineout_gpio();
 	}
 
 #ifdef CONFIG_SAMSUNG_JACK
-	if (system_rev < BOARD_REV13) {
+	if (system_rev < BOARD_REV08) {
 		pr_info("%s : system rev = %d, MBHC Using\n",
 			__func__, system_rev);
 		memset(&sec_jack_data, 0, sizeof(sec_jack_data));
@@ -5335,22 +5302,21 @@ static void __init samsung_m2_vzw_init(void)
 	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 #if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
 	printk(KERN_INFO "[WIFI] system_rev = %d\n", system_rev);
-	if (system_rev >= BOARD_REV09)
+	if (system_rev >= BOARD_REV03)
 		brcm_wlan_init();
 #endif
 
 	if (PLATFORM_IS_CHARM25())
 		platform_add_devices(mdm_devices, ARRAY_SIZE(mdm_devices));
-
 }
 
-MACHINE_START(M2_VZW, "SAMSUNG M2_VZW")
+MACHINE_START(M2_SPR, "SAMSUNG M2_SPR")
 	.map_io = msm8960_map_io,
 	.reserve = msm8960_reserve,
 	.init_irq = msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
-	.init_machine = samsung_m2_vzw_init,
+	.init_machine = samsung_m2_spr_init,
 	.init_early = msm8960_allocate_memory_regions,
 	.init_very_early = msm8960_early_memory,
 MACHINE_END

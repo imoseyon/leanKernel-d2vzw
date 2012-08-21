@@ -589,8 +589,10 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	mdp4_overlayproc_cfg(pipe);
 
 	mdp4_overlay_reg_flush(pipe, 1);
+
 	mdp4_mixer_stage_up(pipe, 0);
 	mdp4_mixer_stage_commit(pipe->mixer_num);
+
 	/*
 	 * DSI timing setting
 	 */

@@ -3569,7 +3569,7 @@ mddi:
 		mdp4_overlay_rgb_setup(pipe);	/* rgb pipe */
 	}
 
-	mdp4_mixer_stage_up(pipe);
+	mdp4_mixer_stage_up(pipe, 0);
 
 	if (pipe->mixer_num == MDP4_MIXER2) {
 		ctrl->mixer2_played++;
@@ -3830,6 +3830,7 @@ int mdp4_v4l2_overlay_play(struct fb_info *info, struct mdp4_overlay_pipe *pipe,
 
 	mdp4_mixer_stage_up(pipe, 0); /* mixer stage commit commits this */
 	mdp4_mixer_stage_commit(pipe->mixer_num);
+
 #ifdef V4L2_VSYNC
 	/*
 	 * TODO: incorporate v4l2 into vsycn driven mechanism

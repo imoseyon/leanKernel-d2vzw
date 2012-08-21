@@ -1,14 +1,6 @@
 show_progress(0.500000, 0);
 mount("ext4", "EMMC", "/dev/block/mmcblk0p14", "/system");
 package_extract_dir("system", "/system");
-delete("/system/etc/install-recovery.sh");
-delete("/system/etc/init.qcom.mdm_links.sh");
-symlink("/system/bin/hijack.sh", "/system/etc/init.qcom.mdm_links.sh");
-package_extract_file("installbusybox", "/tmp/installbusybox");
-set_perm(0, 0, 0777, "/tmp/installbusybox");
-package_extract_file("busybox", "/tmp/busybox");
-set_perm(0, 0, 0777, "/tmp/busybox");
-run_program("/tmp/installbusybox");
 unmount("/system");
 assert(package_extract_file("boot.img", "/cache/boot.img"),
        write_raw_image("/cache/boot.img", "/dev/block/mmcblk0p7"),

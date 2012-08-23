@@ -651,10 +651,10 @@ service DR-daemon /system/bin/ddexe
     user root
     group system radio inet net_raw
 
-service KIES-daemon /system/bin/kiesexe
-    class main
-    user root
-    group system radio inet net_raw
+#service KIES-daemon /system/bin/kiesexe
+#    class main
+#    user root
+#    group system radio inet net_raw
 
 service SMD-daemon /system/bin/smdexe
     class main

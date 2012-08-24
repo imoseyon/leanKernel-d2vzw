@@ -325,15 +325,15 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 	},
 };
 
-#define MSM_PMEM_ADSP_SIZE                 0x9600000 /* 150 Mbytes */
-#define MSM_PMEM_ADSP_SIZE_FOR_2GB         0x9600000 /* 150 Mbytes */
-#define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
+#define MSM_PMEM_ADSP_SIZE                 0x9600000
+#define MSM_PMEM_ADSP_SIZE_FOR_2GB         0x9600000
+#define MSM_PMEM_AUDIO_SIZE                0x4CF000
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
 #define MSM_LIQUID_PMEM_SIZE 0x4000000 /* 64 Mbytes */
 #define MSM_HDMI_PRIM_PMEM_SIZE 0x4000000 /* 64 Mbytes */
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#define MSM_PMEM_KERNEL_EBI1_SIZE  0x280000 /* 2.5MB */
+#define MSM_PMEM_KERNEL_EBI1_SIZE  0x65000
 #define HOLE_SIZE 0x20000
 #ifdef CONFIG_MSM_IOMMU
 #define MSM_ION_MM_SIZE     0x3800000
@@ -350,7 +350,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #endif
 #define MSM_ION_MM_FW_SIZE     (0x200000 - HOLE_SIZE) /* 128kb */
 #define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
@@ -528,8 +528,8 @@ static void __init size_pmem_devices(void)
 	}
 
 	android_pmem_pdata.size = pmem_size;
-#endif
 	android_pmem_audio_pdata.size = MSM_PMEM_AUDIO_SIZE;
+#endif
 #endif
 }
 
@@ -544,8 +544,8 @@ static void __init reserve_pmem_memory(void)
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-#endif
 	reserve_memory_for(&android_pmem_audio_pdata);
+#endif
 	msm8960_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }

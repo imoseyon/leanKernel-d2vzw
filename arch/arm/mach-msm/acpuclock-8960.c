@@ -1667,6 +1667,7 @@ static struct acpuclk_data acpuclk_8960_data = {
 	.get_rate = acpuclk_8960_get_rate,
 	.power_collapse_khz = STBY_KHZ,
 	.wait_for_irq_khz = STBY_KHZ,
+	.switch_time_us = 20,
 };
 
 static int __init acpuclk_8960_init(struct acpuclk_soc_data *soc_data)

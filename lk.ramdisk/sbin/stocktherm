@@ -1,0 +1,6 @@
+#!/system/bin/sh
+mount -o rw,remount /system
+cp /sbin/thermald /system/bin/thermald
+mount -o ro,remount /system
+pkill thermald
+echo "thermald restored to stock version. If you want leanKernel version, flash kernel again."

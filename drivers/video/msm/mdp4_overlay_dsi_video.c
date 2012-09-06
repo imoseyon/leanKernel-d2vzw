@@ -58,6 +58,7 @@ static struct vsycn_ctrl {
 	int ov_koff;
 	int ov_done;
 	atomic_t suspend;
+	atomic_t vsync_resume;
 	int wait_vsync_cnt;
 	int blt_change;
 	int blt_free;
@@ -281,14 +282,15 @@ void mdp4_dsi_video_vsync_ctrl(struct fb_info *info, int enable)
 
 	pr_debug("%s: vsync enable=%d\n", __func__, enable);
 
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vctrl->vsync_irq_enabled = enable;
 
 	if (enable)
 		vsync_irq_enable(INTR_PRIMARY_VSYNC, MDP_PRIM_VSYNC_TERM);
 	else
 		vsync_irq_disable(INTR_PRIMARY_VSYNC, MDP_PRIM_VSYNC_TERM);
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+
+	if (vctrl->vsync_irq_enabled &&  atomic_read(&vctrl->suspend) == 0)
+		atomic_set(&vctrl->vsync_resume, 1);
 }
 
 void mdp4_dsi_video_wait4vsync(int cndx, long long *vtime)
@@ -412,14 +414,14 @@ static ssize_t vsync_show_event(struct device *dev,
 
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
- 
-	if (atomic_read(&vctrl->suspend) > 0)
+
+	if (atomic_read(&vctrl->suspend) > 0 ||
+		atomic_read(&vctrl->vsync_resume) == 0)
 		return 0;
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (vctrl->wait_vsync_cnt == 0)
 		INIT_COMPLETION(vctrl->vsync_comp);
-
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 	wait_for_completion(&vctrl->vsync_comp);
@@ -452,6 +454,7 @@ void mdp4_dsi_vsync_init(int cndx)
 	init_completion(&vctrl->dmap_comp);
 	init_completion(&vctrl->ov_comp);
 	atomic_set(&vctrl->suspend, 0);
+	atomic_set(&vctrl->vsync_resume, 1);
 	spin_lock_init(&vctrl->spin_lock);
 }
 void mdp4_dsi_video_base_swap(int cndx, struct mdp4_overlay_pipe *pipe)
@@ -729,15 +732,12 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	pipe = vctrl->base_pipe;
 
 	atomic_set(&vctrl->suspend, 1);
+	atomic_set(&vctrl->vsync_resume, 0);
 
 	msleep(20);	/* >= 17 ms */
 
-	if (vctrl->wait_vsync_cnt) {
-		vctrl->wait_vsync_cnt = 0;
-		complete_all(&vctrl->vsync_comp);
-	}
+	complete_all(&vctrl->vsync_comp);
 
-	need_wait=0;
 	if (pipe->ov_blt_addr) {
 		spin_lock_irqsave(&vctrl->spin_lock, flags);
 		if (vctrl->ov_koff != vctrl->ov_done)

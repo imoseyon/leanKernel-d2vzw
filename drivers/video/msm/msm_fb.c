@@ -3881,7 +3881,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	case MSMFB_OVERLAY_COMMIT:
 		ret = msmfb_overlay_commit(info, argp);
 		break;
-case MSMFB_OVERLAY_PLAY:
+	case MSMFB_OVERLAY_PLAY:
 		ret = msmfb_overlay_play(info, argp);
 		break;
 	case MSMFB_OVERLAY_PLAY_ENABLE:

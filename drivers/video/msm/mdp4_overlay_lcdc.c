@@ -360,7 +360,7 @@ static void mdp4_lcdc_wait4ov(int cndx)
 }
 
 static ssize_t vsync_show_event(struct device *dev,
-	struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	int cndx;
 	struct vsycn_ctrl *vctrl;
@@ -382,7 +382,7 @@ static ssize_t vsync_show_event(struct device *dev,
 	wait_for_completion(&vctrl->vsync_comp);
 
 	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
-				ktime_to_ns(vctrl->vsync_time));
+			ktime_to_ns(vctrl->vsync_time));
 	buf[strlen(buf) + 1] = '\0';
 	return ret;
 }
@@ -677,6 +677,15 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 
 	complete_all(&vctrl->vsync_comp);
 
+	if (pipe->ov_blt_addr) {
+		spin_lock_irqsave(&vctrl->spin_lock, flags);
+		if (vctrl->ov_koff != vctrl->ov_done)
+			need_wait = 1;
+		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+		if (need_wait)
+			mdp4_lcdc_wait4ov(0);
+	}
+
 	MDP_OUTP(MDP_BASE + LCDC_BASE, 0);
 
 	lcdc_enabled = 0;
@@ -697,7 +706,7 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 				vctrl->base_pipe->pipe_ndx, 1);
 		}
 	}
-	
+
 	/* MDP clock disable */
 	mdp_clk_ctrl(0);
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);

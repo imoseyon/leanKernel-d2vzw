@@ -249,7 +249,7 @@ void mdp4_dtv_vsync_ctrl(struct fb_info *info, int enable)
 	int cndx = 0;
 
 	vctrl = &vsync_ctrl_db[cndx];
-	
+
 	if (!external_common_state->hpd_state)
 		complete_all(&vctrl->vsync_comp);
 
@@ -344,7 +344,6 @@ static ssize_t vsync_show_event(struct device *dev,
 	buf[strlen(buf) + 1] = '\0';
 	return ret;
 }
-
 void mdp4_dtv_vsync_init(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
@@ -633,8 +632,8 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	atomic_set(&vctrl->vsync_resume, 0);
 
 	if (vctrl->vsync_irq_enabled) {
-	while (vctrl->wait_vsync_cnt)
-		msleep(20);	/* >= 17 ms */
+		while (vctrl->wait_vsync_cnt)
+			msleep(20);     /* >= 17 ms */
 	}
 
 	complete_all(&vctrl->vsync_comp);

@@ -38,15 +38,13 @@ on emmc-fs
     # these partition flashed on the device. Failure to mount any partition in fstab file
     # results in failure to launch late-start class.
     wait /dev/block/platform/msm_sdcc.1/by-name/cache
-    mount ext4 /dev/block/platform/msm_sdcc.1/by-name/cache /cache nosuid nodev noatime barrier=0,noauto_da_alloc,data=writeback
+    mount ext4 /dev/block/platform/msm_sdcc.1/by-name/cache /cache nosuid nodev barrier=1
 
     wait /dev/block/platform/msm_sdcc.1/by-name/persist
     mount ext4 /dev/block/platform/msm_sdcc.1/by-name/persist /persist nosuid nodev barrier=1
 
     wait /dev/block/platform/msm_sdcc.1/by-name/modem
     mount vfat /dev/block/platform/msm_sdcc.1/by-name/modem /firmware ro shortname=lower dmask=177 fmask=177
-
-    exec /system/bin/sh /system/etc/init.qcom.modem_links.sh
 
 on boot
     write /sys/devices/i2c-3/3-0024/cyttsp_update_fw 1

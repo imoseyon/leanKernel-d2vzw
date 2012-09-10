@@ -6,7 +6,7 @@
   make ARCH=arm CROSS_COMPILE=/data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi- -j2 && cp .config arch/arm/configs/lk_defconfig
 find drivers -name "*.ko" | xargs /data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi-strip --strip-unneeded
 find drivers -name "*.ko" | xargs -i cp {} zip/system/lib/modules/
-cd cm.ramdisk
+cd lk.ramdisk
 chmod 750 init* charger
 chmod 644 default* uevent*
 find . | cpio -o -H newc | gzip > /tmp/ramdisk.img

@@ -418,10 +418,6 @@ static int cpufreq_interactive_speedchange_task(void *data)
 			if (suspended && (max_freq > screen_off_max))
                                max_freq = screen_off_max;
 
-			for_each_cpu(j, pcpu->policy->cpus) {
-				struct cpufreq_interactive_cpuinfo *pjcpu =
-					&per_cpu(cpuinfo, j);
-
 			__cpufreq_driver_target(pcpu->policy,
 						max_freq,
 						CPUFREQ_RELATION_H);
@@ -690,7 +686,8 @@ static struct early_suspend interactive_power_suspend = {
         .suspend = interactive_early_suspend,
         .resume = interactive_late_resume,
         .level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1,
-}
+};
+
 static int cpufreq_interactive_idle_notifier(struct notifier_block *nb,
 					     unsigned long val,
 					     void *data)

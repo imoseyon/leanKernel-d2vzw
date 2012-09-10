@@ -31,6 +31,7 @@
 #include <linux/syscore_ops.h>
 
 #include <trace/events/power.h>
+#include <linux/semaphore.h>
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -411,7 +412,7 @@ static ssize_t show_thermal_max_freq(struct cpufreq_policy *policy, char *buf)
 	return sprintf(buf, "%u\n", findmax(policy->max, 1512000));
 }
 
-show_one(cpu_utilization, utils);
+show_one(cpu_utilization, util);
 
 static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				struct cpufreq_policy *policy);

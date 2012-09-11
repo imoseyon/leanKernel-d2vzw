@@ -648,7 +648,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 			dev_info(&client->dev, "usb connect\n");
 
 			if (pdata->usb_cb) {
-				if (force_fast_charge != 0) {
+				if (pdata->charger_cb && force_fast_charge != 0) {
 				  dev_info(&client->dev, "[imoseyon] fastcharge\n");
 				  pdata->charger_cb(FSA9485_ATTACHED);
 				} else pdata->usb_cb(FSA9485_ATTACHED);
@@ -827,8 +827,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 		/* USB */
 		if (usbsw->dev1 & DEV_USB ||
 				usbsw->dev2 & DEV_T2_USB_MASK) {
-			if (pdata->usb_cb)
-				pdata->usb_cb(FSA9485_DETACHED);
+			if (pdata->usb_cb) {
+			  if (pdata->charger_cb && force_fast_charge != 0) {
+                            dev_info(&client->dev, "[imoseyon] fastcharge detached\n");
+			    pdata->charger_cb(FSA9485_DETACHED); 
+			  } else pdata->usb_cb(FSA9485_DETACHED);
+			}
 		} else if (usbsw->dev1 & DEV_USB_CHG) {
 			if (pdata->usb_cdp_cb)
 				pdata->usb_cdp_cb(FSA9485_DETACHED);

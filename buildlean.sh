@@ -12,6 +12,8 @@ chmod 644 default* uevent*
 find . | cpio -o -H newc | gzip > /tmp/ramdisk.img
 cd ../
 /data/unpack-mkbootimg/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31' --base 0x80200000 --ramdiskaddr 0x81500000 --kernel arch/arm/boot/zImage --ramdisk /tmp/ramdisk.img -o zip/boot.img
+cp -a lk.ramdisk/sbin/ffc zip/system/xbin
+cp -a lk.ramdisk/sbin/stocktherm zip/system/xbin
 cd zip
 zip -r lk_aosp_jb_beta-v${1}.zip *
 mv lk_aosp_jb_beta-v${1}.zip /tmp

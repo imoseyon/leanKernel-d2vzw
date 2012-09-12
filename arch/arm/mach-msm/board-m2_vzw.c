@@ -189,8 +189,6 @@ static unsigned char hdmi_is_primary = 1;
 static unsigned char hdmi_is_primary;
 #endif
 
-extern int force_fast_charge;
-
 static struct platform_device msm_fm_platform_init = {
 	.name = "iris_fm",
 	.id   = -1,
@@ -1607,8 +1605,7 @@ int msm8960_get_cable_type(void)
 #endif
 			break;
 		case CABLE_TYPE_USB:
-			if (!force_fast_charge) fsa9485_usb_cb(1);
-			  else fsa9485_charger_cb(1);
+			fsa9485_usb_cb(1);
 			break;
 		case CABLE_TYPE_AC:
 			fsa9485_charger_cb(1);

@@ -99,7 +99,7 @@ struct vsync {
 	struct device *dev;
 	struct work_struct vsync_work;
 	int vsync_irq_enabled;
-	struct completion vsync_wait;
+	int disabled_clocks;
 };
 
 extern struct vsync vsync_cntrl;

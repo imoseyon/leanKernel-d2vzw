@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_common.c 357867 2012-09-20 06:57:44Z $
+ * $Id: dhd_common.c 355340 2012-09-06 09:34:37Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -339,7 +339,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		else if (int_val & DHD_WL_VAL)
 			wl_cfg80211_enable_trace(FALSE, WL_DBG_DBG);
 		if (!(int_val & DHD_WL_VAL2))
-#endif
+#endif /* WL_CFG80211 */
 		dhd_msg_level = int_val;
 		break;
 	case IOV_GVAL(IOV_BCMERRORSTR):

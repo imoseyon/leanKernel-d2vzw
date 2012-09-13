@@ -82,12 +82,9 @@ s32 dhd_cfg80211_set_p2p_info(struct wl_priv *wl, int val)
 	dhd->op_mode |= val;
 	WL_ERR(("Set : op_mode=%d\n", dhd->op_mode));
 #if defined(ARP_OFFLOAD_SUPPORT)
-	if ((dhd->op_mode & CONCURRENT_MULTI_CHAN) !=
-		CONCURRENT_MULTI_CHAN) {
-		/* IF P2P is enabled, disable arpoe */
-		dhd_arp_offload_set(dhd, 0);
-		dhd_arp_offload_enable(dhd, false);
-	}
+	/* IF P2P is enabled, disable arpoe */
+	dhd_arp_offload_set(dhd, 0);
+	dhd_arp_offload_enable(dhd, false);
 #endif /* ARP_OFFLOAD_SUPPORT */
 
 	return 0;

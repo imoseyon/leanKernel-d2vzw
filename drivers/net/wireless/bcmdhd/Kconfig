@@ -1,5 +1,5 @@
-config BCMDHD_SAMSUNG
-    tristate "Broadcom 43xx wireless cards support (Samsung variant)"
+config BCMDHD
+    tristate "Broadcom 43xx wireless cards support"
     depends on MMC
     default m
     ---help---
@@ -13,14 +13,14 @@ config BCMDHD_SAMSUNG
 
 config BCM4330
 	bool "Broadcom 4330 wireless cards support"
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
 	---help---
 	  This module adds support for wireless adapters based on
 	  Broadcom 4330 chipset.
 
 config BCM4334
 	bool "Broadcom 4334 wireless cards support"
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
     default y
 	---help---
 	  This module adds support for wireless adapters based on
@@ -28,20 +28,20 @@ config BCM4334
 
 config BCM43241
 	bool "Broadcom 43241 wireless cards support"
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
 	---help---
 	  This module adds support for wireless adapters based on
 	  Broadcom 43241 chipset.
 
 config BCMDHD_FW_PATH
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
 	string "Firmware path"
 	default "/system/etc/firmware/fw_bcmdhd.bin"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_PATH
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
 	string "NVRAM path"
 	default "/system/etc/wifi/bcmdhd.cal"
 	---help---
@@ -49,7 +49,7 @@ config BCMDHD_NVRAM_PATH
 
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
-	depends on BCMDHD_SAMSUNG && CFG80211 = n
+	depends on BCMDHD && CFG80211 = n
 	select WIRELESS_EXT
 	select WEXT_PRIV
 	help
@@ -57,14 +57,14 @@ config BCMDHD_WEXT
 
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
-	depends on BCMDHD_SAMSUNG
+	depends on BCMDHD
 	default n
 	---help---
 	  Use memory preallocated in platform
 
 config DHD_USE_SCHED_SCAN
 	bool "Use CFG80211 sched scan"
-	depends on BCMDHD_SAMSUNG && CFG80211
+	depends on BCMDHD && CFG80211
 	default n
 	---help---
 	  Use CFG80211 sched scan

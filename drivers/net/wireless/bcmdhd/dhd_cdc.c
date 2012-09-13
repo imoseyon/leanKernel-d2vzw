@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_cdc.c 357848 2012-09-20 05:38:41Z $
+ * $Id: dhd_cdc.c 355825 2012-09-10 03:22:40Z $
  *
  * BDC is like CDC, except it includes a header for data packets to convey
  * packet priority over the bus, and flags (e.g. to indicate checksum status
@@ -892,7 +892,7 @@ _dhd_wlfc_pullheader(athost_wl_status_info_t* ctx, void* pktbuf)
 
 	if (PKTLEN(ctx->osh, pktbuf) < (h->dataOffset << 2)) {
 		WLFC_DBGMESG(("%s: rx data too short (%d < %d)\n", __FUNCTION__,
-			PKTLEN(ctx->osh, pktbuf), (h->dataOffset << 2)));
+		           PKTLEN(ctx->osh, pktbuf), (h->dataOffset << 2)));
 		return BCME_ERROR;
 	}
 	/* pull wl-header */

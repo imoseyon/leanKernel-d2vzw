@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.c 354184 2012-08-30 08:08:08Z $
+ * $Id: wl_android.c 355613 2012-09-07 13:03:47Z $
  */
 
 #include <linux/module.h>
@@ -225,6 +225,10 @@ int wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len)
 #endif /* WL_CFG80211 */
 extern int dhd_os_check_if_up(void *dhdp);
 extern void *bcmsdh_get_drvdata(void);
+#if defined(PROP_TXSTATUS) && !defined(PROP_TXSTATUS_VSDB)
+extern int dhd_wlfc_init(dhd_pub_t *dhd);
+extern void dhd_wlfc_deinit(dhd_pub_t *dhd);
+#endif
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
 /* wl_roam.c */
@@ -1239,6 +1243,9 @@ int wl_android_wifi_on(struct net_device *dev)
 			if (dhd_dev_init_ioctl(dev) < 0)
 				ret = -EFAULT;
 		}
+#if defined(PROP_TXSTATUS) && !defined(PROP_TXSTATUS_VSDB)
+		dhd_wlfc_init(bcmsdh_get_drvdata());
+#endif
 		g_wifi_on = TRUE;
 	}
 
@@ -1260,6 +1267,9 @@ int wl_android_wifi_off(struct net_device *dev)
 
 	dhd_net_if_lock(dev);
 	if (g_wifi_on) {
+#if defined(PROP_TXSTATUS) && !defined(PROP_TXSTATUS_VSDB)
+		dhd_wlfc_deinit(bcmsdh_get_drvdata());
+#endif
 		ret = dhd_dev_reset(dev, TRUE);
 		sdioh_stop(NULL);
 		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
@@ -1411,7 +1421,7 @@ wl_android_sta_diassoc(struct net_device *dev, const char* straddr)
 	bcm_ether_atoe(straddr, &scbval.ea);
 
 	DHD_INFO(("%s: deauth STA: "MACDBG "\n", __FUNCTION__,
-		STR_TO_MACD(scbval.ea.octet)));
+		MAC2STRDBG(scbval.ea.octet)));
 
 	wldev_ioctl(dev, WLC_SCB_DEAUTHENTICATE_FOR_REASON, &scbval,
 		sizeof(scb_val_t), true);

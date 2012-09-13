@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgp2p.c 357864 2012-09-20 06:41:42Z $
+ * $Id: wl_cfgp2p.c 354837 2012-09-04 06:58:44Z $
  *
  */
 #include <typedefs.h>
@@ -409,7 +409,7 @@ wl_cfgp2p_ifadd(struct wl_priv *wl, struct ether_addr *mac, u8 if_type,
 	memcpy(ifreq.addr.octet, mac->octet, sizeof(ifreq.addr.octet));
 
 	CFGP2P_DBG(("---wl p2p_ifadd "MACDBG" %s %u\n",
-		STR_TO_MACD(ifreq.addr.octet),
+		MAC2STRDBG(ifreq.addr.octet),
 		(if_type == WL_P2P_IF_GO) ? "go" : "client",
 	        (chspec & WL_CHANSPEC_CHAN_MASK) >> WL_CHANSPEC_CHAN_SHIFT));
 
@@ -438,7 +438,7 @@ wl_cfgp2p_ifdisable(struct wl_priv *wl, struct ether_addr *mac)
 	struct net_device *netdev = wl_to_prmry_ndev(wl);
 
 	CFGP2P_INFO(("------primary idx %d : wl p2p_ifdis "MACDBG"\n",
-		netdev->ifindex, STR_TO_MACD(mac->octet)));
+		netdev->ifindex, MAC2STRDBG(mac->octet)));
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdis", mac, sizeof(*mac),
 		wl->ioctl_buf, WLC_IOCTL_MAXLEN, &wl->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
@@ -459,7 +459,7 @@ wl_cfgp2p_ifdel(struct wl_priv *wl, struct ether_addr *mac)
 	struct net_device *netdev = wl_to_prmry_ndev(wl);
 
 	CFGP2P_INFO(("------primary idx %d : wl p2p_ifdel "MACDBG"\n",
-	    netdev->ifindex, STR_TO_MACD(mac->octet)));
+	    netdev->ifindex, MAC2STRDBG(mac->octet)));
 	ret = wldev_iovar_setbuf(netdev, "p2p_ifdel", mac, sizeof(*mac),
 		wl->ioctl_buf, WLC_IOCTL_MAXLEN, &wl->ioctl_buf_sync);
 	if (unlikely(ret < 0)) {
@@ -488,7 +488,7 @@ wl_cfgp2p_ifchange(struct wl_priv *wl, struct ether_addr *mac, u8 if_type,
 	memcpy(ifreq.addr.octet, mac->octet, sizeof(ifreq.addr.octet));
 
 	CFGP2P_INFO(("---wl p2p_ifchange "MACDBG" %s %u"
-		" chanspec 0x%04x\n", STR_TO_MACD(ifreq.addr.octet),
+		" chanspec 0x%04x\n", MAC2STRDBG(ifreq.addr.octet),
 		(if_type == WL_P2P_IF_GO) ? "go" : "client",
 		(chspec & WL_CHANSPEC_CHAN_MASK) >> WL_CHANSPEC_CHAN_SHIFT,
 		ifreq.chspec));
@@ -520,7 +520,7 @@ wl_cfgp2p_ifidx(struct wl_priv *wl, struct ether_addr *mac, s32 *index)
 	u8 getbuf[64];
 	struct net_device *dev = wl_to_prmry_ndev(wl);
 
-	CFGP2P_INFO(("---wl p2p_if "MACDBG"\n", STR_TO_MACD(mac->octet)));
+	CFGP2P_INFO(("---wl p2p_if "MACDBG"\n", MAC2STRDBG(mac->octet)));
 
 	ret = wldev_iovar_getbuf_bsscfg(dev, "p2p_if", mac, sizeof(*mac), getbuf,
 		sizeof(getbuf), wl_to_p2p_bss_bssidx(wl, P2PAPI_BSSCFG_PRIMARY), NULL);

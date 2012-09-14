@@ -1059,7 +1059,7 @@ static int __devinit mipi_samsung_disp_probe(struct platform_device *pdev)
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 	msd.early_suspend.suspend = mipi_samsung_disp_early_suspend;
 	msd.early_suspend.resume = mipi_samsung_disp_late_resume;
-	msd.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+	msd.early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 10;
 	register_early_suspend(&msd.early_suspend);
 
 #endif

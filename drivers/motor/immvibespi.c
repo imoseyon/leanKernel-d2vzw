@@ -317,6 +317,10 @@ static int32_t ImmVibeSPI_ForceOut_SetSamples(u_int8_t nActuatorIndex,
 	} else {
 		if (nforce > 0)
 			nforce = 127 - nforce;
+		if (nforce < 10) { 
+			nforce = -127;
+//			pr_info("[imosey] nforce'ed to -127\n");
+		}
 		/* Map force from [-127, 127] to [0, PWM_DUTY_MAX] */
 		/* printk(KERN_DEBUG "[tspdrv]nForce===%d\n", nforce); */
 		if (pre_nforce != nforce) {

@@ -532,7 +532,11 @@ static int msm8960_paddr_to_memtype(unsigned int paddr)
 	return MEMTYPE_EBI1;
 }
 
+#ifdef CONFIG_QCACHE
+#define FMEM_ENABLED 1
+#else
 #define FMEM_ENABLED 0
+#endif
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION

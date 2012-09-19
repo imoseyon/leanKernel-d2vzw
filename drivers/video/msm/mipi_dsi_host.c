@@ -1053,8 +1053,10 @@ void mipi_dsi_mdp_busy_wait(struct msm_fb_data_type *mfd)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d\n",
 				__func__, current->pid);
-		wait_for_completion(&dsi_mdp_comp);
-
+		if (!wait_for_completion_timeout(&dsi_mdp_comp,
+					msecs_to_jiffies(200))) {
+			pr_err("%s: dma timeout error\n", __func__);
+		}
 	}
 	pr_debug("%s: done pid=%d\n",
 			__func__, current->pid);
@@ -1616,7 +1618,6 @@ int mipi_dsi_cmds_rx_lp(struct msm_fb_data_type *mfd,
 #endif
 int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 {
-
 	unsigned long flags;
 	ktime_t tx_start;
 	unsigned int tx_time;

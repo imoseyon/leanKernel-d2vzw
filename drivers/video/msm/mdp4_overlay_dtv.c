@@ -908,6 +908,8 @@ void mdp4_dmae_done_dtv(void)
 
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
+	if (pipe == NULL)
+		return;
 	pr_debug("%s: cpu=%d\n", __func__, smp_processor_id());
 
 	spin_lock(&vctrl->spin_lock);
@@ -948,6 +950,8 @@ void mdp4_overlay1_done_dtv(void)
 
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
+	if (pipe == NULL)
+		return;
 
 	spin_lock(&vctrl->spin_lock);
 	if (pipe->ov_blt_addr == 0) {

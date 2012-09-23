@@ -20,6 +20,7 @@ on early-init
     write /sys/module/pm_8x60/modes/cpu1/retention/idle_enabled 1
     write /sys/module/pm_8x60/modes/cpu0/retention/suspend_enabled 1
     write /sys/module/pm_8x60/modes/cpu1/retention/suspend_enabled 1
+    write /sys/devices/platform/kgsl-3d0.0/kgsl/kgsl-3d0/max_gpuclk 400000000
     # Set init and its forked children's oom_adj.
     write /proc/1/oom_adj -16
 

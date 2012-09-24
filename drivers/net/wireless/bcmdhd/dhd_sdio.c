@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_sdio.c 355144 2012-09-05 14:04:28Z $
+ * $Id: dhd_sdio.c 357859 2012-09-20 06:34:26Z $
  */
 
 #include <typedefs.h>
@@ -416,7 +416,6 @@ static const uint retry_limit = 2;
 
 /* Force even SD lengths (some host controllers mess up on odd bytes) */
 static bool forcealign;
-
 
 #define ALIGNMENT  4
 
@@ -1111,11 +1110,12 @@ dhdsdio_htclk(dhd_bus_t *bus, bool on, bool pendok)
 				DHD_ERROR(("%s: HT Avail request error: %d\n", __FUNCTION__, err));
 			}
 
-		else {
-			if (ht_avail_error == HT_AVAIL_ERROR_MAX)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
+			else if (ht_avail_error == HT_AVAIL_ERROR_MAX) {
 				dhd_os_send_hang_message(bus->dhd);
-		}
-return BCME_ERROR;
+			}
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27) */
+			return BCME_ERROR;
 		} else {
 			ht_avail_error = 0;
 		}
@@ -3105,7 +3105,8 @@ dhd_serialconsole(dhd_bus_t *bus, bool set, bool enable, int *bcmerror)
 	if (bus->sih->chip == BCM4330_CHIP_ID) {
 		uart_enab = CC_PLL_CHIPCTRL_SERIAL_ENAB;
 	}
-	else if (bus->sih->chip == BCM4334_CHIP_ID) {
+	else if (bus->sih->chip == BCM4334_CHIP_ID ||
+		bus->sih->chip == BCM43341_CHIP_ID) {
 		if (enable) {
 			/* Moved to PMU chipcontrol 1 from 4330 */
 			int_val &= ~gpio_sel;
@@ -6656,6 +6657,8 @@ dhdsdio_chipmatch(uint16 chipid)
 	if (chipid == BCM4314_CHIP_ID)
 		return TRUE;
 	if (chipid == BCM4334_CHIP_ID)
+		return TRUE;
+	if (chipid == BCM43341_CHIP_ID)
 		return TRUE;
 	if (chipid == BCM43239_CHIP_ID)
 		return TRUE;

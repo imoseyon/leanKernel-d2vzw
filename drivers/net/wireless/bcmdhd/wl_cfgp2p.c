@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgp2p.c 354837 2012-09-04 06:58:44Z $
+ * $Id: wl_cfgp2p.c 357347 2012-09-17 21:22:01Z $
  *
  */
 #include <typedefs.h>
@@ -2298,21 +2298,23 @@ static int wl_cfgp2p_do_ioctl(struct net_device *net, struct ifreq *ifr, int cmd
 
 static int wl_cfgp2p_if_open(struct net_device *net)
 {
+	extern struct wl_priv *wlcfg_drv_priv;
 	struct wireless_dev *wdev = net->ieee80211_ptr;
-
-	if (!wdev)
+	struct wl_priv *wl = NULL;
+	wl = wlcfg_drv_priv;
+	if (!wdev || !wl || !wl->p2p)
 		return -EINVAL;
-
+	WL_TRACE(("Enter\n"));
 	/* If suppose F/W download (ifconfig wlan0 up) hasn't been done by now,
 	 * do it here. This will make sure that in concurrent mode, supplicant
 	 * is not dependent on a particular order of interface initialization.
 	 * i.e you may give wpa_supp -iwlan0 -N -ip2p0 or wpa_supp -ip2p0 -N
 	 * -iwlan0.
 	 */
-	wl_cfg80211_do_driver_init(net);
-
 	wdev->wiphy->interface_modes |= (BIT(NL80211_IFTYPE_P2P_CLIENT)
 		| BIT(NL80211_IFTYPE_P2P_GO));
+	wl->p2p->dev_open = true;
+	wl_cfg80211_do_driver_init(net);
 
 	return 0;
 }
@@ -2343,10 +2345,6 @@ static int wl_cfgp2p_if_stop(struct net_device *net)
 	wdev->wiphy->interface_modes = (wdev->wiphy->interface_modes)
 					& (~(BIT(NL80211_IFTYPE_P2P_CLIENT)|
 					BIT(NL80211_IFTYPE_P2P_GO)));
-#if defined(CUSTOMER_HW4)
-	if (net->flags & IFF_UP)
-		net->flags &= ~IFF_UP;
-#endif
-
+	wl->p2p->dev_open = false;
 	return 0;
 }

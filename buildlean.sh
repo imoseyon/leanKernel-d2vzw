@@ -1,4 +1,8 @@
 #!/bin/bash
+prefix="lk_aosp_jb"
+device="vzw"
+filename="${prefix}_${device}-v${1}.zip"
+
 [[ `diff arch/arm/configs/lk_defconfig .config ` ]] && \
         { echo "Unmatched defconfig!"; exit -1; }
 [[ $2 == "compile" ]] &&
@@ -14,12 +18,12 @@ find . | cpio -o -H newc | gzip > /tmp/ramdisk.img
 cd ../
 /data/unpack-mkbootimg/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31' --base 0x80200000 --ramdiskaddr 0x81500000 --kernel arch/arm/boot/zImage --ramdisk /tmp/ramdisk.img -o zip/boot.img
 cd zip
-zip -r lk_aosp_jb_beta-v${1}.zip *
-mv lk_aosp_jb_beta-v${1}.zip /tmp
+zip -r $filename *
+mv $filename /tmp
 if [[ $2 == "upload" ]]; then
   git log --pretty=format:"%aN: %s" -n 200 > /tmp/s3_commit.log
   /data/utils/s3_ftpupload2.sh $1
   /bin/rm -f /tmp/s3_commit.log
 fi  
 echo
-md5sum /tmp/lk_aosp_jb_beta-v${1}.zip
+md5sum /tmp/$filename

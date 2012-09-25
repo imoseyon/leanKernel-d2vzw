@@ -57,6 +57,8 @@
 static DEFINE_PER_CPU(struct mutex, cpufreq_remove_mutex);
 #endif
 
+int allow_vmin = 0;
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -687,6 +689,7 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 
 extern ssize_t vc_get_vdd(char *buf);
 extern void vc_set_vdd(const char *buf);
+extern void override_vmin_all();
 
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
@@ -696,6 +699,19 @@ static ssize_t store_UV_mV_table
 (struct cpufreq_policy *policy, const char *buf, size_t count)
 {  
         vc_set_vdd(buf);
+	return count;
+}
+static ssize_t show_override_vmin(struct cpufreq_policy *policy, char *buf)
+{
+	return sprintf(buf, "%d\n", allow_vmin);
+}
+static ssize_t store_override_vmin
+(struct cpufreq_policy *policy, const char *buf, size_t count)
+{  
+	int i;
+	char *vtable;
+	sscanf(buf, "%du", &allow_vmin);
+	if (allow_vmin) override_vmin_all();
 	return count;
 }
 
@@ -718,6 +734,7 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
+cpufreq_freq_attr_rw(override_vmin);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -736,6 +753,7 @@ static struct attribute *default_attrs[] = {
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
 	&UV_mV_table.attr,
+	&override_vmin.attr,
 	NULL
 };
 

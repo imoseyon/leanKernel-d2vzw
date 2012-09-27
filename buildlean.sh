@@ -6,7 +6,7 @@ filename="${prefix}_${device}-v${1}.zip"
 [[ `diff arch/arm/configs/lk_defconfig .config ` ]] && \
         { echo "Unmatched defconfig!"; exit -1; }
 [[ $2 == "compile" ]] &&
-  sed -i s/CONFIG_LOCALVERSION=\".*\"/CONFIG_LOCALVERSION=\"-leanKernel-${1}\"/ .config &&
+  sed -i s/CONFIG_LOCALVERSION=\".*\"/CONFIG_LOCALVERSION=\"-leanKernel-${device}-${1}-\"/ .config &&
   make ARCH=arm CROSS_COMPILE=/data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi- -j2 && cp .config arch/arm/configs/lk_defconfig
 find drivers -name "*.ko" | xargs /data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi-strip --strip-unneeded
 find drivers -name "*.ko" | xargs -i cp {} zip/system/lib/modules/

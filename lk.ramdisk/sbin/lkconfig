@@ -1,0 +1,49 @@
+#!/system/bin/sh
+BB="/system/xbin/busybox"
+SCRIPT="/system/etc/init.d/00leanKernel"
+
+echo
+echo "leanKernel configurator"
+echo
+echo "---"
+echo "1) Restore stock behavior of keeping voltage minimum at 1150mV if CPU needs it."
+echo "2) Remove the above vmin override (leanKernel default)."
+echo "3) Overclock 3D GPU to 480Mhz (exp build only, for now)."
+echo "4) Return to stock GPU max at 400Mhz (exp build only, for now)."
+echo "5) Revert /system/bin/thermald to stock."
+echo 
+echo -n "Please enter a number between 1 and 5 (or press enter to exit): "
+
+read option
+
+$BB mount -o rw,remount /system /system
+
+case $option in
+  1) 
+	$BB sed -i s/^VMIN=.*$/VMIN=1/ $SCRIPT
+	$SCRIPT
+	echo "vmin override re-enabled."
+	;;
+  2) 
+	$BB sed -i s/^VMIN=.*$/VMIN=0/ $SCRIPT
+	$SCRIPT
+	echo "vmin override bypassed."
+	;;
+  3) 
+	$BB sed -i s/^GPU=.*$/GPU=1/ $SCRIPT
+	$SCRIPT
+ 	echo "gpu OC'ed to 480mhz."	
+	;;
+  4) 
+	$BB sed -i s/^GPU=.*$/GPU=0/ $SCRIPT
+	$SCRIPT
+ 	echo "gpu OC removed."	
+	;;
+  5) 
+	$BB cp -f /sbin/thermald /system/bin/thermald
+	pkill thermald
+	echo "thermald reverted to stock."
+	;;
+esac
+$BB mount -r /system /system
+echo

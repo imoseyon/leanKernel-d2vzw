@@ -69,7 +69,8 @@ if [ "$MD5" == "$SUM" ]; then
   cd /sdcard/lk
   $BB unzip -q kernel.zip
   $BB mount -o rw,remount /system /system
-  $BB cp -af system/* /system/
+  $BB cp -f system/* /system/
+  chmod 755 /system/bin/thermald /system/etc/init.d/00leanKernel
   $BB mount -r /system /system
   $BB dd if=boot.img of=/dev/block/mmcblk0p7 2> /dev/null
   $BB rm -rf /sdcard/lk/*

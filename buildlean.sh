@@ -17,7 +17,7 @@ chmod 755 sbin
 chmod 700 sbin/lkflash sbin/lkconfig
 find . | cpio -o -H newc | gzip > /tmp/ramdisk.img
 cd ../
-/data/unpack-mkbootimg/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31' --base 0x80200000 --ramdiskaddr 0x81500000 --kernel arch/arm/boot/zImage --ramdisk /tmp/ramdisk.img -o zip/boot.img
+/data/unpack-mkbootimg/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31 zcache' --base 0x80200000 --ramdiskaddr 0x81500000 --kernel arch/arm/boot/zImage --ramdisk /tmp/ramdisk.img -o zip/boot.img
 cd zip
 zip -r $filename *
 mv $filename /tmp

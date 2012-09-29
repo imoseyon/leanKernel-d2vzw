@@ -23,8 +23,10 @@ zip -r $filename *
 mv $filename /tmp
 if [[ $2 == "upload" ]]; then
   git log --pretty=format:"%aN: %s" -n 200 > /tmp/s3_commit.log
-  /data/utils/s3_ftpupload2.sh $1
-  /bin/rm -f /tmp/s3_commit.log
+  lkflash="http://imoseyon.host4droid.com/s3/$filename `md5sum /tmp/$filename | awk '{ print \$1}'` ${1}"
+  echo $lkflash > /tmp/${device}-aosp
+  /data/utils/s3_ftpupload2.sh $1 $device
+  /bin/rm -f /tmp/s3_commit.log /tmp/${device}-aosp
 fi  
 echo
-md5sum /tmp/$filename
+echo $lkflash

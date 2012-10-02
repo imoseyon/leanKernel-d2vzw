@@ -11,10 +11,13 @@ filename="${prefix}_${device}-v${1}.zip"
 find drivers -name "*.ko" | xargs /data/linaro/android-toolchain-eabi/bin/arm-linux-androideabi-strip --strip-unneeded
 find drivers -name "*.ko" | xargs -i cp {} zip/system/lib/modules/
 cd lk.ramdisk
-chmod 750 init* charger
-chmod 644 default* uevent*
+chmod 750 init* charger sbin/adbd
+chmod 644 default* uevent* res/images/charger/* lpm.rc
 chmod 755 sbin
 chmod 700 sbin/lkflash sbin/lkconfig
+chmod 755 res res/images res/images/charger
+chmod 640 fstab.qcom
+
 find . | cpio -o -H newc | gzip > /tmp/ramdisk.img
 cd ../
 /data/unpack-mkbootimg/mkbootimg --cmdline 'console=null androidboot.hardware=qcom user_debug=31 zcache' --base 0x80200000 --ramdiskaddr 0x81500000 --kernel arch/arm/boot/zImage --ramdisk /tmp/ramdisk.img -o zip/boot.img

@@ -896,7 +896,7 @@ struct vcd_buffer_entry *vcd_find_buffer_pool_entry
 	if(pool->entries==NULL)
 		return NULL;
 
-	for (i = 0; i <= pool->count && !found; i++) {
+	for (i = 1; i <= pool->count && !found; i++) {
 		if (pool->entries[i].virtual == addr)
 			found = true;
 

@@ -1145,14 +1145,18 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 	struct mdp4_overlay_pipe *pipe;
 	unsigned long flags;
 
+	mutex_lock(&mfd->dma->ov_mutex);
 	vctrl = &vsync_ctrl_db[cndx];
 
-	if (!mfd->panel_power_on)
+	if (!mfd->panel_power_on) {
+		mutex_unlock(&mfd->dma->ov_mutex);
 		return;
+	}
 
 	pipe = vctrl->base_pipe;
 	if (pipe == NULL) {
 		pr_err("%s: NO base pipe\n", __func__);
+		mutex_unlock(&mfd->dma->ov_mutex);
 		return;
 	}
 
@@ -1160,6 +1164,7 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 	if (!vctrl->clk_enabled) {
 		pr_err("%s: mdp clocks disabled\n", __func__);
 		mutex_unlock(&vctrl->update_lock);
+		mutex_unlock(&mfd->dma->ov_mutex);
 		return;
 
 	}
@@ -1183,9 +1188,7 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
-	mutex_lock(&mfd->dma->ov_mutex);
 	mdp4_dsi_cmd_pipe_commit(0, 0);
-	mutex_unlock(&mfd->dma->ov_mutex);
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 
@@ -1193,4 +1196,6 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 	if (mfd->cmd_panel_disp_on)
 		mfd->cmd_panel_disp_on(mfd);
 #endif
+	
+	mutex_unlock(&mfd->dma->ov_mutex);
 }

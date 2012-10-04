@@ -895,6 +895,7 @@ static ssize_t led_blink_store(struct device *dev,
 	unsigned int delayon = 0;
 	unsigned int delayoff = 0;
 	unsigned int argb_count = 0;
+	bool is_blinking;
 
 	printk(KERN_DEBUG "led_blink input =%s, size=%d\n", buf, size);
 	if (size < 7) {
@@ -942,11 +943,14 @@ static ssize_t led_blink_store(struct device *dev,
 		brightness_b = hex_to_dec(buf[8], buf[9]);
 	}
 
+	is_blinking = delayon > 0 || delayoff > 0;
+
 	pm8xxx_led_work_pat_led_off(info);
 	mutex_lock(&info->led_work_lock);
 
 	led_cfg = &info->pdata->configs[PM8XXX_LED_PAT8_BLUE];
 	brightness_b = brightness_b * 100 / 255;
+	led_cfg->pwm_duty_cycles->duty_pcts[0] = is_blinking ? 0 : brightness_b;
 	led_cfg->pwm_duty_cycles->duty_pcts[1] = brightness_b;
 	pm8xxx_set_led_mode_and_max_brightness(&info->led[PM8XXX_LED_PAT8_BLUE],
 				led_cfg->mode, led_cfg->max_current);
@@ -958,6 +962,7 @@ static ssize_t led_blink_store(struct device *dev,
 
 	led_cfg = &info->pdata->configs[PM8XXX_LED_PAT8_GREEN];
 	brightness_g = brightness_g * 100 / 255;
+	led_cfg->pwm_duty_cycles->duty_pcts[0] = is_blinking ? 0 : brightness_g;
 	led_cfg->pwm_duty_cycles->duty_pcts[1] = brightness_g;
 	pm8xxx_set_led_mode_and_max_brightness(
 			&info->led[PM8XXX_LED_PAT8_GREEN],
@@ -970,6 +975,7 @@ static ssize_t led_blink_store(struct device *dev,
 	
 	led_cfg = &info->pdata->configs[PM8XXX_LED_PAT8_RED];
 	brightness_r = brightness_r * 100 / 255;
+	led_cfg->pwm_duty_cycles->duty_pcts[0] = is_blinking ? 0 : brightness_r;
 	led_cfg->pwm_duty_cycles->duty_pcts[1] = brightness_r;
 	pm8xxx_set_led_mode_and_max_brightness(&info->led[PM8XXX_LED_PAT8_RED],
 				led_cfg->mode, led_cfg->max_current);

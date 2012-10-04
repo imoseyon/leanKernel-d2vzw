@@ -8,8 +8,8 @@ BB="/system/xbin/busybox"
 
 CUR=`$BB uname -a | $BB awk -F- '{ print \$4 }'`
 DEVICE=`$BB uname -a | $BB awk -F- '{ print \$3 }'`
-STABLE="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}-aosp"
-EXP="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}-aosp-exp"
+STABLE="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}-tw"
+EXP="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}-tw-exp"
 
 $BB mkdir -p /sdcard/lk
 

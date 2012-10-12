@@ -2,6 +2,11 @@
 
 SO_MAX=810000
 COLOR=2
+# GPU: set it to 1 to OC 3D GPU to 480Mhz (exp only)
+GPU=0
+
+[ $GPU -gt 0 ] && GPU=480000000 || GPU=400000000
+echo $GPU > /sys/devices/platform/kgsl-3d0.0/kgsl/kgsl-3d0/max_gpuclk
 
 if test -f /sys/devices/system/cpu/cpufreq/interactive/screen_off_maxfreq
 then

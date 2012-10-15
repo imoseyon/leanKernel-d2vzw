@@ -2074,12 +2074,24 @@ static int mdp_off(struct platform_device *pdev)
 	ret = panel_next_off(pdev);
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_clk_ctrl(0);
-	
+
 	if (mdp_rev >= MDP_REV_41 && mfd->panel.type == MIPI_CMD_PANEL)
 		mdp_dsi_cmd_overlay_suspend(mfd);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
+
+#ifdef CONFIG_FB_MSM_MDP303
+unsigned is_mdp4_hw_reset(void)
+{
+	return 0;
+}
+void mdp4_hw_init(void)
+{
+	/* empty */
+}
+
+#endif
 
 static int mdp_on(struct platform_device *pdev)
 {
@@ -2089,24 +2101,29 @@ static int mdp_on(struct platform_device *pdev)
 
 	pr_debug("%s:+\n", __func__);
 
-#ifdef CONFIG_FB_MSM_MDP40
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-	mdp_clk_ctrl(1);
-	mdp4_hw_init();
-	outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
-	if (mfd->panel.type == MIPI_CMD_PANEL) {
-		mdp_vsync_cfg_regs(mfd, FALSE);
-		mdp4_dsi_cmd_on(pdev);
-	} else if (mfd->panel.type == MIPI_VIDEO_PANEL)
-		mdp4_dsi_video_on(pdev);
-	else if (mfd->panel.type == HDMI_PANEL ||
-			mfd->panel.type == LCDC_PANEL ||
-			mfd->panel.type == LVDS_PANEL)
-		mdp4_lcdc_on(pdev);
+	if (mdp_rev >= MDP_REV_40) {
+		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+		mdp_clk_ctrl(1);
+		mdp4_hw_init();
+		outpdw(MDP_BASE + 0x0038, mdp4_display_intf);
+		if (mfd->panel.type == MIPI_CMD_PANEL) {
+			mdp_vsync_cfg_regs(mfd, FALSE);
+			mdp4_dsi_cmd_on(pdev);
+		} else if (mfd->panel.type == MIPI_VIDEO_PANEL) {
+			mdp4_dsi_video_on(pdev);
+		} else if (mfd->panel.type == HDMI_PANEL ||
+				mfd->panel.type == LCDC_PANEL ||
+				mfd->panel.type == LVDS_PANEL) {
+			mdp4_lcdc_on(pdev);
+		} else if (mfd->panel.type == MDDI_PANEL) {
+			mdp_vsync_cfg_regs(mfd, FALSE);
+			mdp4_mddi_on(pdev);
+		}
 
-	mdp_clk_ctrl(0);
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-#endif
+		mdp_clk_ctrl(0);
+		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+	}
+
 
 	if ((mdp_rev == MDP_REV_303) &&
 			(mfd->panel.type == MIPI_CMD_PANEL))

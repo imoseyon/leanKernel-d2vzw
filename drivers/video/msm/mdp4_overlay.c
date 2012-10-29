@@ -3342,6 +3342,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 				pp->solid_fill = 1;
 			}
 			mdp4_overlay_dtv_unset(mfd, pipe);
+		}
 	}
 
 	mdp4_stat.overlay_unset[pipe->mixer_num]++;

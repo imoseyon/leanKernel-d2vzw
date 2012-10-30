@@ -31,6 +31,7 @@
 #include <linux/types.h>
 #include <linux/clk.h>
 #include <linux/qseecom.h>
+#include <linux/freezer.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/scm.h>
@@ -438,7 +439,7 @@ static int qseecom_unregister_listener(struct qseecom_dev_handle *data)
 	spin_unlock_irqrestore(&qseecom.registered_listener_list_lock, flags);
 
 	while (atomic_read(&data->ioctl_count) > 1) {
-		if (wait_event_interruptible(data->abort_wq,
+		if (wait_event_freezable(data->abort_wq,
 				atomic_read(&data->ioctl_count) <= 1)) {
 			pr_err("Interrupted from abort\n");
 			ret = -ERESTARTSYS;
@@ -546,7 +547,7 @@ static int __qseecom_process_incomplete_cmd(struct qseecom_dev_handle *data,
 		}
 		pr_debug("waking up rcv_req_wq and "
 				"waiting for send_resp_wq\n");
-		if (wait_event_interruptible(qseecom.send_resp_wq,
+		if (wait_event_freezable(qseecom.send_resp_wq,
 				__qseecom_listener_has_sent_rsp(data))) {
 			pr_warning("Interrupted: exiting send_cmd loop\n");
 			return -ERESTARTSYS;
@@ -707,7 +708,7 @@ static int __qseecom_cleanup_app(struct qseecom_dev_handle *data)
 {
 	wake_up_all(&qseecom.send_resp_wq);
 	while (atomic_read(&data->ioctl_count) > 1) {
-		if (wait_event_interruptible(data->abort_wq,
+		if (wait_event_freezable(data->abort_wq,
 					atomic_read(&data->ioctl_count) <= 1)) {
 			pr_err("Interrupted from abort\n");
 			return -ERESTARTSYS;
@@ -784,7 +785,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data)
 		data->abort = 1;
 		wake_up_all(&qseecom.send_resp_wq);
 		while (atomic_read(&data->ioctl_count) > 0) {
-			if (wait_event_interruptible(data->abort_wq,
+			if (wait_event_freezable(data->abort_wq,
 					atomic_read(&data->ioctl_count) <= 0)) {
 				pr_err("Interrupted from abort\n");
 				ret = -ERESTARTSYS;
@@ -872,7 +873,7 @@ static int __qseecom_send_cmd_legacy(struct qseecom_dev_handle *data,
 
 		pr_debug("waking up rcv_req_wq and "
 				"waiting for send_resp_wq\n");
-		if (wait_event_interruptible(qseecom.send_resp_wq,
+		if (wait_event_freezable(qseecom.send_resp_wq,
 				__qseecom_listener_has_sent_rsp(data))) {
 			pr_warning("qseecom Interrupted: exiting send_cmd loop\n");
 			return -ERESTARTSYS;
@@ -1080,7 +1081,7 @@ static int qseecom_receive_req(struct qseecom_dev_handle *data)
 
 	this_lstnr = __qseecom_find_svc(data->listener.id);
 	while (1) {
-		if (wait_event_interruptible(this_lstnr->rcv_req_wq,
+		if (wait_event_freezable(this_lstnr->rcv_req_wq,
 				__qseecom_listener_has_rcvd_req(data,
 				this_lstnr))) {
 			pr_warning("Interrupted: exiting wait_rcv_req loop\n");
@@ -1165,6 +1166,12 @@ static void qsee_disable_clock_vote(void)
 {
 	if (!qsee_perf_client)
 		return;
+
+	/* Check if the clk is valid */
+	if (IS_ERR_OR_NULL(qseecom_bus_clk)) {
+		pr_warn("qseecom bus clock is null or error");
+		return;
+	}
 
 	/* Check if the clk is valid */
 	if (IS_ERR_OR_NULL(qseecom_bus_clk)) {
@@ -1374,7 +1381,6 @@ static int qseecom_release(struct inode *inode, struct file *file)
 		mutex_unlock(&pil_access_lock);
 	}
 	kfree(data);
-	qsee_disable_clock_vote();
 
 	return ret;
 }
@@ -1500,6 +1506,7 @@ static int __init qseecom_init(void)
 		}
 	}
 	return 0;
+
 err:
 	device_destroy(driver_class, qseecom_device_no);
 class_destroy:
@@ -1511,6 +1518,8 @@ unregister_chrdev_region:
 
 static void __exit qseecom_exit(void)
 {
+	clk_put(qseecom_bus_clk);
+
 	device_destroy(driver_class, qseecom_device_no);
 	class_destroy(driver_class);
 	unregister_chrdev_region(qseecom_device_no, 1);

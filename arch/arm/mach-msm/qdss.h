@@ -67,6 +67,7 @@ void funnel_exit(void);
 int etm_init(void);
 void etm_exit(void);
 
+void __etb_disable(void);
 void etb_enable(void);
 void etb_disable(void);
 void etb_dump(void);

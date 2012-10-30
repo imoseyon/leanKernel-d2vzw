@@ -256,6 +256,9 @@ ion_phys_addr_t ion_cp_allocate(struct ion_heap *heap,
 		return ION_CP_ALLOCATE_FAIL;
 	}
 
+	printk(KERN_WARNING "heap %s allocated %lx (total allocated_bytes %lx)\n",
+		heap->name, size, cp_heap->allocated_bytes);
+
 	return offset;
 }
 

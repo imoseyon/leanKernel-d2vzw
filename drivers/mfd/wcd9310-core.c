@@ -780,6 +780,7 @@ static int __devinit tabla_i2c_probe(struct i2c_client *client,
 	}
 	dev_set_drvdata(&client->dev, tabla);
 	tabla->dev = &client->dev;
+	dev_set_drvdata(&client->dev, tabla);
 	tabla->reset_gpio = pdata->reset_gpio;
 
 	ret = tabla_enable_supplies(tabla);
@@ -986,6 +987,7 @@ static int tabla_slim_remove(struct slim_device *pdev)
 	tabla_disable_supplies(tabla);
 	slim_remove_device(tabla->slim_slave);
 	tabla_device_exit(tabla);
+	kfree(tabla);
 	return 0;
 }
 
@@ -1018,10 +1020,11 @@ static int tabla_slim_resume(struct slim_device *sldev)
 static int tabla_i2c_resume(struct i2c_client *i2cdev)
 {
 	struct tabla *tabla = dev_get_drvdata(&i2cdev->dev);
-	if (tabla)
-		return tabla_resume(tabla);
-	else
+	if (tabla == NULL) {
+		pr_err("tabla is NULL\n");
 		return 0;
+	}
+	return tabla_resume(tabla);
 }
 
 static int tabla_suspend(struct tabla *tabla, pm_message_t pmesg)
@@ -1075,10 +1078,11 @@ static int tabla_slim_suspend(struct slim_device *sldev, pm_message_t pmesg)
 static int tabla_i2c_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
 	struct tabla *tabla = dev_get_drvdata(&i2cdev->dev);
-	if (tabla)
-		return tabla_suspend(tabla, pmesg);
-	else
+	if (tabla == NULL) {
+		pr_err("tabla is NULL\n");
 		return 0;
+	}
+	return tabla_suspend(tabla, pmesg);
 }
 
 static const struct slim_device_id slimtest_id[] = {

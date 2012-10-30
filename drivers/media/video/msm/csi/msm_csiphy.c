@@ -106,6 +106,8 @@ static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 {
 	uint32_t irq;
 	struct csiphy_device *csiphy_dev = data;
+	if (!csiphy_dev->base)
+		return IRQ_HANDLED; /* null check */
 	irq = msm_io_r(csiphy_dev->base + MIPI_CSIPHY_INTERRUPT_STATUS0_ADDR);
 	msm_io_w(irq, csiphy_dev->base + MIPI_CSIPHY_INTERRUPT_CLEAR0_ADDR);
 	CDBG("%s MIPI_CSIPHY%d_INTERRUPT_STATUS0 = 0x%x\n",
@@ -293,7 +295,7 @@ static int __devinit csiphy_probe(struct platform_device *pdev)
 csiphy_no_resource:
 	mutex_destroy(&new_csiphy_dev->mutex);
 	kfree(new_csiphy_dev);
-	return 0;
+	return rc;
 }
 
 static struct platform_driver csiphy_driver = {

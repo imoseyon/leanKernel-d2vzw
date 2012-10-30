@@ -77,21 +77,7 @@ static int msm_headset_gpios_configured;
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
 
-static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
-				    bool dapm);
-
-static struct tabla_mbhc_config mbhc_cfg = {
-	.headset_jack = &hs_jack,
-	.button_jack = &button_jack,
-	.read_fw_bin = false,
-	.calibration = NULL,
-	.micbias = TABLA_MICBIAS2,
-	.mclk_cb_fn = msm_enable_codec_ext_clk,
-	.mclk_rate = TABLA_EXT_CLK_RATE,
-	.gpio = 0, /* MBHC GPIO is not configured */
-	.gpio_irq = 0,
-	.gpio_level_insert = 1,
-};
+static void *tabla_mbhc_cal;
 
 static void msm_enable_ext_spk_amp_gpio(u32 spk_amp_gpio)
 {
@@ -314,8 +300,8 @@ static int msm_spkramp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
-				    bool dapm)
+int msm_enable_codec_ext_clk(
+		struct snd_soc_codec *codec, int enable)
 {
 	pr_debug("%s: enable = %d\n", __func__, enable);
 	if (enable) {
@@ -328,7 +314,7 @@ static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 		if (codec_clk) {
 			clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
 			clk_enable(codec_clk);
-			tabla_mclk_enable(codec, 1, dapm);
+			tabla_mclk_enable(codec, 1);
 		} else {
 			pr_err("%s: Error setting Tabla MCLK\n", __func__);
 			clk_users--;
@@ -342,9 +328,9 @@ static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 		if (!clk_users) {
 			pr_debug("%s: disabling MCLK. clk_users = %d\n",
 					 __func__, clk_users);
-			tabla_mclk_enable(codec, 0, dapm);
 			clk_disable(codec_clk);
 			clk_put(codec_clk);
+			tabla_mclk_enable(codec, 0);
 		}
 	}
 	return 0;
@@ -368,7 +354,7 @@ static int msm_mclk_event(struct snd_soc_dapm_widget *w,
 		if (codec_clk) {
 			clk_set_rate(codec_clk, 12288000);
 			clk_enable(codec_clk);
-			tabla_mclk_enable(w->codec, 1, true);
+			tabla_mclk_enable(w->codec, 1);
 
 		} else {
 			pr_err("%s: Error setting Tabla MCLK\n", __func__);
@@ -389,9 +375,9 @@ static int msm_mclk_event(struct snd_soc_dapm_widget *w,
 			pr_debug("%s: disabling MCLK. clk_users = %d\n",
 					__func__, clk_users);
 
-			tabla_mclk_enable(w->codec, 0, true);
 			clk_disable(codec_clk);
 			clk_put(codec_clk);
+			tabla_mclk_enable(w->codec, 0);
 		}
 		break;
 	}
@@ -733,9 +719,11 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		return err;
 	}
 
-	err = tabla_hs_detect(codec, &mbhc_cfg);
+	tabla_hs_detect(codec, &hs_jack, &button_jack, tabla_mbhc_cal,
+			TABLA_MICBIAS2, msm_enable_codec_ext_clk, 0,
+			TABLA_EXT_CLK_RATE);
 
-	return err;
+	return 0;
 }
 
 static struct snd_soc_dsp_link lpa_fe_media = {
@@ -1237,8 +1225,8 @@ static int __init msm_audio_init(void)
 		return -ENODEV;
 	}
 
-	mbhc_cfg.calibration = def_tabla_mbhc_cal();
-	if (!mbhc_cfg.calibration) {
+	tabla_mbhc_cal = def_tabla_mbhc_cal();
+	if (!tabla_mbhc_cal) {
 		pr_err("Calibration data allocation failed\n");
 		return -ENOMEM;
 	}
@@ -1246,7 +1234,7 @@ static int __init msm_audio_init(void)
 	msm_snd_device = platform_device_alloc("soc-audio", 0);
 	if (!msm_snd_device) {
 		pr_err("Platform device allocation failed\n");
-		kfree(mbhc_cfg.calibration);
+		kfree(tabla_mbhc_cal);
 		return -ENOMEM;
 	}
 
@@ -1254,7 +1242,7 @@ static int __init msm_audio_init(void)
 	ret = platform_device_add(msm_snd_device);
 	if (ret) {
 		platform_device_put(msm_snd_device);
-		kfree(mbhc_cfg.calibration);
+		kfree(tabla_mbhc_cal);
 		return ret;
 	}
 
@@ -1277,7 +1265,6 @@ static void __exit msm_audio_exit(void)
 	}
 	msm_free_headset_mic_gpios();
 	platform_device_unregister(msm_snd_device);
-	kfree(mbhc_cfg.calibration);
 }
 module_exit(msm_audio_exit);
 

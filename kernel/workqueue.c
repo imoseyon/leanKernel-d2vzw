@@ -43,6 +43,9 @@
 #include <linux/idr.h>
 
 #include "workqueue_sched.h"
+#if CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 enum {
 	/* global_cwq flags */
@@ -1867,6 +1870,7 @@ __acquires(&gcwq->lock)
 	lock_map_acquire_read(&cwq->wq->lockdep_map);
 	lock_map_acquire(&lockdep_map);
 	trace_workqueue_execute_start(work);
+	secdbg_sched_msg("@%pS", f);
 	f(work);
 	/*
 	 * While we must be careful to not use "work" after this, the trace

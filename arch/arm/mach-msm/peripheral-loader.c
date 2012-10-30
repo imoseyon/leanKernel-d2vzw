@@ -30,6 +30,10 @@
 
 #include "peripheral-loader.h"
 
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+#include <mach/sec_debug.h>
+#endif
+
 struct pil_device {
 	struct pil_desc *desc;
 	int count;
@@ -169,11 +173,25 @@ static int load_image(struct pil_device *pil)
 	const struct elf32_phdr *phdr;
 	const struct firmware *fw;
 
+#ifdef CONFIG_SEC_DEBUG
+	static int load_count;
+#endif
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+	static int load_count_fwd;
+	static int load_count_auth;
+#endif
+
 	down_read(&pil_pm_rwsem);
 	snprintf(fw_name, sizeof(fw_name), "%s.mdt", pil->desc->name);
+	printk(KERN_DEBUG "%s: load %s image", __func__, fw_name);
 	ret = request_firmware(&fw, fw_name, pil->desc->dev);
 	if (ret) {
 		dev_err(pil->desc->dev, "Failed to locate %s\n", fw_name);
+#ifdef CONFIG_SEC_DEBUG
+		load_count++;
+		if (load_count > 10)
+			panic("Failed to load %s image!", fw_name);
+#endif
 		goto out;
 	}
 
@@ -204,10 +222,21 @@ static int load_image(struct pil_device *pil)
 
 	ret = pil->desc->ops->init_image(pil->desc, fw->data, fw->size);
 	if (ret) {
-		dev_err(pil->desc->dev, "Invalid firmware metadata\n");
+		dev_err(pil->desc->dev, "Invalid firmware metadata %d\n",
+				ret);
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+		load_count_fwd++;
+		if (load_count_fwd > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
+#else
 		goto release_fw;
+#endif
 	}
-
 	phdr = (const struct elf32_phdr *)(fw->data + sizeof(struct elf32_hdr));
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
 		if (!segment_is_loadable(phdr))
@@ -223,8 +252,21 @@ static int load_image(struct pil_device *pil)
 
 	ret = pil->desc->ops->auth_and_reset(pil->desc);
 	if (ret) {
-		dev_err(pil->desc->dev, "Failed to bring out of reset\n");
+		dev_err(pil->desc->dev, "Failed to bring out of reset %d\n",
+				ret);
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+		load_count_auth++;
+		if (load_count_auth > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
+#else
 		goto release_fw;
+#endif
+
 	}
 	dev_info(pil->desc->dev, "brought out of reset\n");
 
@@ -273,6 +315,7 @@ void *pil_get(const char *name)
 	}
 
 	ret = load_image(pil);
+	printk(KERN_ERR "LOAD IMAGE %s, ret %d\n", name, ret);
 	if (ret) {
 		retval = ERR_PTR(ret);
 		goto unlock;
@@ -301,10 +344,19 @@ void pil_put(void *peripheral_handle)
 
 	mutex_lock(&pil->lock);
 	WARN(!pil->count, "%s: Reference count mismatch\n", __func__);
+	/* TODO: Peripheral shutdown support */
+	
+	printk(KERN_DEBUG "%s: pil->count[%d]", __func__, pil->count);
+	if (!strncmp(pil->desc->name, "modem", 5)) {
+		printk(KERN_DEBUG "%s: modem::pil->count[%d]", __func__, pil->count);
+	if (pil->count == 1)
+		goto unlock;
+	}
 	if (pil->count)
 		pil->count--;
 	if (pil->count == 0)
 		pil->desc->ops->shutdown(pil->desc);
+unlock:
 	mutex_unlock(&pil->lock);
 
 	pil_d = find_peripheral(pil->desc->depends_on);

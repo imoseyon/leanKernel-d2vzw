@@ -32,6 +32,10 @@
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include "smd_private.h"
 
 struct subsys_soc_restart_order {
@@ -62,6 +66,9 @@ static LIST_HEAD(subsystem_list);
 static DEFINE_MUTEX(subsystem_list_lock);
 static DEFINE_MUTEX(soc_order_reg_lock);
 static DEFINE_MUTEX(restart_log_mutex);
+
+int msm8960_ssr_inprogress;
+EXPORT_SYMBOL(msm8960_ssr_inprogress);
 
 /* SOC specific restart orders go here */
 
@@ -331,10 +338,13 @@ static int subsystem_restart_thread(void *data)
 
 	pr_debug("[%p]: Attempting to get shutdown lock!\n", current);
 
+	msm8960_ssr_inprogress = 1;
+
 	/* Try to acquire shutdown_lock. If this fails, these subsystems are
 	 * already being restarted - return.
 	 */
 	if (!mutex_trylock(shutdown_lock)) {
+		msm8960_ssr_inprogress = 0;
 		kfree(data);
 		do_exit(0);
 	}
@@ -388,11 +398,17 @@ static int subsystem_restart_thread(void *data)
 	 */
 	mutex_unlock(shutdown_lock);
 
+#ifdef CONFIG_SEC_DEBUG
+	/* Print the modem crash details to klog */
+	print_modem_dump_info();
+#endif
+
 	/* Collect ram dumps for all subsystems in order here */
 	for (i = 0; i < restart_list_count; i++) {
 		if (!restart_list[i])
 			continue;
 
+		pr_info("%s: enable_ramdumps[%d]", __func__, enable_ramdumps);
 		if (restart_list[i]->ramdump)
 			if (restart_list[i]->ramdump(enable_ramdumps,
 							subsys) < 0)
@@ -428,6 +444,8 @@ static int subsystem_restart_thread(void *data)
 
 	mutex_unlock(&soc_order_reg_lock);
 
+	msm8960_ssr_inprogress = 0;
+
 	pr_debug("[%p]: Released powerup lock!\n", current);
 
 	kfree(data);
@@ -444,6 +462,20 @@ int subsystem_restart(const char *subsys_name)
 		pr_err("Invalid subsystem name.\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+	if (!sec_debug_is_enabled_for_ssr())
+#else
+	if (!sec_debug_is_enabled())
+#endif
+		restart_level = RESET_SUBSYS_INDEPENDENT;
+	else
+		restart_level = RESET_SOC;
+#endif
+
+	if (strcmp(subsys_name, "riva") == 0)
+		restart_level = RESET_SUBSYS_INDEPENDENT;
 
 	pr_info("Restart sequence requested for %s, restart_level = %d.\n",
 		subsys_name, restart_level);
@@ -544,12 +576,29 @@ static int ssr_panic_handler(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
 	struct subsys_data *subsys;
+	int counter = 0;
+	printk(KERN_ERR "%s : %d\n", __func__, __LINE__);
 
-	list_for_each_entry(subsys, &subsystem_list, list)
+	list_for_each_entry(subsys, &subsystem_list, list) {
 		if (subsys->crash_shutdown)
 			subsys->crash_shutdown(subsys);
+		printk(KERN_EMERG "subsystem(%d) shtdown crash\n", ++counter);
+	}
 	return NOTIFY_DONE;
 }
+int ssr_panic_handler_for_sec_dbg(void)
+{
+	struct subsys_data *subsys;
+
+	list_for_each_entry(subsys, &subsystem_list, list) {
+		if (subsys->crash_shutdown)
+			subsys->crash_shutdown(subsys);
+		printk(KERN_EMERG "subsystem(%s) shtdown crash\n",
+		subsys->name);
+	}
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL(ssr_panic_handler_for_sec_dbg);
 
 static struct notifier_block panic_nb = {
 	.notifier_call  = ssr_panic_handler,
@@ -594,7 +643,25 @@ static int __init subsys_restart_init(void)
 {
 	int ret = 0;
 
+#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+	if (!sec_debug_is_enabled_for_ssr()) {
+#else
+	if (!sec_debug_is_enabled()) {
+#endif
+
+#ifdef CONFIG_SEC_SSR_DUMP
+		/* Collect RAM dumps whenever SSR is enabled */
+		enable_ramdumps = 1;
+#endif
+		pr_info("%s: enable_ramdumps[%d]", __func__, enable_ramdumps);
+		restart_level = RESET_SUBSYS_INDEPENDENT;
+	} else {
+		restart_level = RESET_SOC;
+	}
+#else
 	restart_level = RESET_SOC;
+#endif
 
 	ret = ssr_init_soc_restart_orders();
 

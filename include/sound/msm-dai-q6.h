@@ -36,4 +36,8 @@ struct msm_mi2s_data {
 	u32 capability; /* RX or TX */
 	u16 sd_lines;
 };
+
+extern int msm8960_aux_pcm_get_gpios(void);
+extern int msm8960_aux_pcm_free_gpios(void);
+
 #endif

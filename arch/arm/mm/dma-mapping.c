@@ -463,6 +463,10 @@ void ___dma_single_dev_to_cpu(const void *kaddr, size_t size,
 		unsigned long paddr = __pa(kaddr);
 		outer_inv_range(paddr, paddr + size);
 	}
+#else
+	if (!virt_addr_valid(kaddr) ||
+			!virt_addr_valid(kaddr + size - 1))
+		return;
 #endif
 	dmac_unmap_area(kaddr, size, dir);
 }

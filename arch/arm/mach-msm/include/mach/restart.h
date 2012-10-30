@@ -25,5 +25,9 @@ void msm_set_restart_mode(int mode);
 
 extern int pmic_reset_irq;
 
+#ifdef CONFIG_SEC_DEBUG
+extern void *restart_reason;
+#endif
+
 #endif
 

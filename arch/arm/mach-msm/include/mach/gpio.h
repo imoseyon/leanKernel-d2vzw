@@ -190,7 +190,8 @@ enum msm_tlmm_hdrive_tgt {
 };
 
 enum msm_tlmm_pull_tgt {
-	TLMM_PULL_SDC4_CMD = 0,
+	TLMM_PULL_SDC4_CLK = 0,
+	TLMM_PULL_SDC4_CMD,
 	TLMM_PULL_SDC4_DATA,
 	TLMM_PULL_SDC3_CLK,
 	TLMM_PULL_SDC3_CMD,

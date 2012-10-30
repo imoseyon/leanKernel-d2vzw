@@ -530,6 +530,8 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 
 	version = pm8xxx_get_version(pmic->dev);
 
+	version = pm8xxx_get_version(pmic->dev);
+
 	if (pdata->irq_pdata) {
 		pdata->irq_pdata->irq_cdata.nirqs = PM8921_NR_IRQS;
 		pdata->irq_pdata->irq_cdata.base_addr = REG_IRQ_BASE;
@@ -836,7 +838,15 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 	}
 	val &= PM8921_RESTART_REASON_MASK;
 	pr_info("PMIC Restart Reason: %s\n", pm8921_restart_reason[val]);
-
+/*
+	// Set power-on-reset to 3 seconds
+	val = 0xBB;
+	rc = msm_ssbi_write(pdev->dev.parent, REG_PM8921_PON_CNTRL_4, &val, 1);
+	if (rc) {
+		pr_err("Cannot write power-on-reset rc=%d\n", rc);
+		goto err;
+	}
+*/
 	rc = pm8921_add_subdevices(pdata, pmic);
 	if (rc) {
 		pr_err("Cannot add subdevices rc=%d\n", rc);

@@ -754,9 +754,9 @@ static void cfg80211_process_wdev_events(struct wireless_dev *wdev)
 				NULL);
 			break;
 		case EVENT_ROAMED:
-			__cfg80211_roamed(wdev, ev->rm.channel, ev->rm.bssid,
-					  ev->rm.req_ie, ev->rm.req_ie_len,
-					  ev->rm.resp_ie, ev->rm.resp_ie_len);
+			__cfg80211_roamed(wdev, ev->rm.bss, ev->rm.req_ie,
+					  ev->rm.req_ie_len, ev->rm.resp_ie,
+					  ev->rm.resp_ie_len);
 			break;
 		case EVENT_DISCONNECTED:
 			__cfg80211_disconnected(wdev->netdev,
@@ -1013,33 +1013,4 @@ int cfg80211_can_change_interface(struct cfg80211_registered_device *rdev,
 	}
 
 	return -EBUSY;
-}
-
-int ieee80211_get_ratemask(struct ieee80211_supported_band *sband,
-			   const u8 *rates, unsigned int n_rates,
-			   u32 *mask)
-{
-	int i, j;
-	if (n_rates == 0 || n_rates > NL80211_MAX_SUPP_RATES)
-		return -EINVAL;
-	*mask = 0;
-	for (i = 0; i < n_rates; i++) {
-		int rate = (rates[i] & 0x7f) * 5;
-		bool found = false;
-		for (j = 0; j < sband->n_bitrates; j++) {
-			if (sband->bitrates[j].bitrate == rate) {
-				found = true;
-				*mask |= BIT(j);
-				break;
-			}
-		}
-		if (!found)
-			return -EINVAL;
-	}
-	/*
-	 * mask must have at least one bit set here since we
-	 * didn't accept a 0-length rates array nor allowed
-	 * entries in the array that didn't exist
-	 */
-	return 0;
 }

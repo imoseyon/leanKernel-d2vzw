@@ -64,7 +64,9 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg.h>
-
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+#include <linux/usb/composite.h>
+#endif
 #include "ci13xxx_udc.h"
 
 
@@ -298,6 +300,7 @@ static int hw_device_init(void __iomem *base)
  */
 static int hw_device_reset(struct ci13xxx *udc)
 {
+	printk(KERN_INFO "usb:: %s\n", __func__);
 	/* should flush & stop before reset */
 	hw_cwrite(CAP_ENDPTFLUSH, ~0, ~0);
 	hw_cwrite(CAP_USBCMD, USBCMD_RS, 0);
@@ -348,16 +351,28 @@ static int hw_device_reset(struct ci13xxx *udc)
  */
 static int hw_device_state(u32 dma)
 {
+
+	printk(KERN_INFO "usb:: %s dma: %x\n", __func__, dma);
 	if (dma) {
 		hw_cwrite(CAP_ENDPTLISTADDR, ~0, dma);
 		/* interrupt, error, port change, reset, sleep/suspend */
 		hw_cwrite(CAP_USBINTR, ~0,
 			     USBi_UI|USBi_UEI|USBi_PCI|USBi_URI|USBi_SLI);
 		hw_cwrite(CAP_USBCMD, USBCMD_RS, USBCMD_RS);
+
+		printk(KERN_INFO "usb:: %s hw_read(CAP_ENDPTLISTADDR, ~0): %x\n",
+			__func__, hw_cread(CAP_ENDPTLISTADDR, ~0));
+
 	} else {
 		hw_cwrite(CAP_USBCMD, USBCMD_RS, 0);
 		hw_cwrite(CAP_USBINTR, ~0, 0);
 	}
+
+	printk(KERN_INFO "usb:: %s hw_read(CAP_USBINTR, ~0): %x\n",
+			__func__, hw_cread(CAP_USBINTR, ~0));
+	printk(KERN_INFO "usb:: %s hw_read(CAP_USBCMD, USBCMD_RS): %x\n",
+			__func__, hw_cread(CAP_USBCMD, USBCMD_RS));
+
 	return 0;
 }
 
@@ -878,7 +893,7 @@ static void dbg_print(u8 addr, const char *name, int status, const char *extra)
 	stamp = stamp * 1000000 + tval.tv_usec;
 
 	scnprintf(dbg_data.buf[dbg_data.idx], DBG_DATA_MSG,
-		  "%04X\t» %02X %-7.7s %4i «\t%s\n",
+		  "%04X\t?%02X %-7.7s %4i ?t%s\n",
 		  stamp, addr, name, status, extra);
 
 	dbg_inc(&dbg_data.idx);
@@ -886,7 +901,7 @@ static void dbg_print(u8 addr, const char *name, int status, const char *extra)
 	write_unlock_irqrestore(&dbg_data.lck, flags);
 
 	if (dbg_data.tty != 0)
-		pr_notice("%04X\t» %02X %-7.7s %4i «\t%s\n",
+		pr_notice("%04X\t?%02X %-7.7s %4i ?t%s\n",
 			  stamp, addr, name, status, extra);
 }
 
@@ -1046,15 +1061,15 @@ static ssize_t show_inters(struct device *dev, struct device_attribute *attr,
 
 	n += scnprintf(buf + n, PAGE_SIZE - n, "*test = %d\n",
 		       isr_statistics.test);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "» ui  = %d\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "?ui  = %d\n",
 		       isr_statistics.ui);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "» uei = %d\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "?uei = %d\n",
 		       isr_statistics.uei);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "» pci = %d\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "?pci = %d\n",
 		       isr_statistics.pci);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "» uri = %d\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "?uri = %d\n",
 		       isr_statistics.uri);
-	n += scnprintf(buf + n, PAGE_SIZE - n, "» sli = %d\n",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "?sli = %d\n",
 		       isr_statistics.sli);
 	n += scnprintf(buf + n, PAGE_SIZE - n, "*none = %d\n",
 		       isr_statistics.none);
@@ -1927,6 +1942,7 @@ __acquires(udc->lock)
 	int retval;
 
 	trace("%p", udc);
+	printk(KERN_INFO "usb:: %s udc: %p\n", __func__, udc);
 
 	if (udc == NULL) {
 		err("EINVAL");
@@ -2148,6 +2164,8 @@ dequeue:
 					mReq->req.length)
 				mEpTemp = &_udc->ep0in;
 			mReq->req.complete(&mEpTemp->ep, &mReq->req);
+			if (mEp->type == USB_ENDPOINT_XFER_CONTROL)
+				mReq->req.complete = NULL;
 			spin_lock(mEp->lock);
 		}
 	}
@@ -2627,7 +2645,12 @@ static int ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 
 	dbg_event(_usb_addr(mEp), "DEQUEUE", 0);
 
-	hw_ep_flush(mEp->num, mEp->dir);
+	if ((mEp->type == USB_ENDPOINT_XFER_CONTROL)) {
+		hw_ep_flush(_udc->ep0out.num, RX);
+		hw_ep_flush(_udc->ep0in.num, TX);
+	} else {
+		hw_ep_flush(mEp->num, mEp->dir);
+	}
 
 	/* pop request */
 	list_del_init(&mReq->queue);
@@ -2645,6 +2668,8 @@ static int ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 				mReq->req.length)
 			mEpTemp = &_udc->ep0in;
 		mReq->req.complete(&mEpTemp->ep, &mReq->req);
+		if (mEp->type == USB_ENDPOINT_XFER_CONTROL)
+			mReq->req.complete = NULL;
 		spin_lock(mEp->lock);
 	}
 
@@ -2770,7 +2795,12 @@ static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
 	unsigned long flags;
 	int gadget_ready = 0;
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	struct usb_composite_dev *cdev;
+	cdev = get_gadget_data(_gadget);
+#endif
 
+	printk(KERN_INFO "usb:: %s,%d\n", __func__, __LINE__);
 	if (!(udc->udc_driver->flags & CI13XXX_PULLUP_ON_VBUS))
 		return -EOPNOTSUPP;
 
@@ -2778,15 +2808,28 @@ static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 	udc->vbus_active = is_active;
 	if (udc->driver)
 		gadget_ready = 1;
+
+	printk(KERN_INFO "usb:: %s gadget_ready:%d, is_active:%d\n",
+		__func__, gadget_ready, is_active);
 	spin_unlock_irqrestore(udc->lock, flags);
 
 	if (gadget_ready) {
 		if (is_active) {
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+			if (cdev != NULL)
+				cdev->cable_connect = true;
+#endif
 			pm_runtime_get_sync(&_gadget->dev);
 			hw_device_reset(udc);
+			printk(KERN_INFO "usb:: %s softconnect: %d\n",
+				__func__, udc->softconnect);
 			if (udc->softconnect)
 				hw_device_state(udc->ep0out.qh.dma);
 		} else {
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+			if (cdev != NULL)
+				cdev->cable_connect = false;
+#endif
 			hw_device_state(0);
 			_gadget_stop_activity(&udc->gadget);
 			pm_runtime_put_sync(&_gadget->dev);
@@ -2810,10 +2853,15 @@ static int ci13xxx_pullup(struct usb_gadget *_gadget, int is_active)
 	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
 	unsigned long flags;
 
+	printk(KERN_INFO "usb:: %s is_active: %d\n", __func__, is_active);
 	spin_lock_irqsave(udc->lock, flags);
 	udc->softconnect = is_active;
 	if (((udc->udc_driver->flags & CI13XXX_PULLUP_ON_VBUS) &&
 			!udc->vbus_active) || !udc->driver) {
+		printk(KERN_INFO "usb:: %s udc->udc_driver->flags:%lx\n",
+			__func__, udc->udc_driver->flags);
+		printk(KERN_INFO "usb:: %s !udc->vbus_active:%x, !udc->driver:%x\n",
+			__func__, !udc->vbus_active, !udc->driver);
 		spin_unlock_irqrestore(udc->lock, flags);
 		return 0;
 	}

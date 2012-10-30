@@ -287,7 +287,7 @@ struct fb_cmap {
 
 struct fb_con2fbmap {
 	__u32 console;
-	__u32 framebuffer;
+	__s32 framebuffer;
 };
 
 /* VESA Blanking Levels */

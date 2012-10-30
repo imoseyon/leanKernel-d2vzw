@@ -509,6 +509,9 @@ void kgsl_early_suspend_driver(struct early_suspend *h)
 					struct kgsl_device, display_off);
 	KGSL_PWR_WARN(device, "early suspend start\n");
 	mutex_lock(&device->mutex);
+	pm_qos_update_request(&device->pm_qos_req_dma,
+				PM_QOS_DEFAULT_VALUE);
+	device->pwrctrl.resume_pm_qos = 0;
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_SLUMBER);
 	kgsl_pwrctrl_sleep(device);
 	mutex_unlock(&device->mutex);
@@ -2342,8 +2345,8 @@ EXPORT_SYMBOL(kgsl_device_platform_remove);
 static int __devinit
 kgsl_ptdata_init(void)
 {
-	kgsl_driver.ptpool = kgsl_mmu_ptpool_init(KGSL_PAGETABLE_SIZE,
-						kgsl_pagetable_count);
+	kgsl_driver.ptpool = kgsl_mmu_ptpool_init(kgsl_pagetable_count);
+
 	if (!kgsl_driver.ptpool)
 		return -ENOMEM;
 	return 0;
@@ -2377,7 +2380,7 @@ static int __init kgsl_core_init(void)
 				  KGSL_NAME);
 	if (result < 0) {
 		KGSL_CORE_ERR("alloc_chrdev_region failed err = %d\n", result);
-		goto err;
+		goto alloc_chrdev_region_err;
 	}
 
 	cdev_init(&kgsl_driver.cdev, &kgsl_fops);
@@ -2389,7 +2392,7 @@ static int __init kgsl_core_init(void)
 	if (result) {
 		KGSL_CORE_ERR("kgsl: cdev_add() failed, dev_num= %d,"
 			     " result= %d\n", kgsl_driver.major, result);
-		goto err;
+		goto cdev_add_err;
 	}
 
 	kgsl_driver.class = class_create(THIS_MODULE, KGSL_NAME);
@@ -2397,7 +2400,7 @@ static int __init kgsl_core_init(void)
 	if (IS_ERR(kgsl_driver.class)) {
 		result = PTR_ERR(kgsl_driver.class);
 		KGSL_CORE_ERR("failed to create class %s", KGSL_NAME);
-		goto err;
+		goto err_class_create;
 	}
 
 	/* Make a virtual device for managing core related things
@@ -2407,7 +2410,7 @@ static int __init kgsl_core_init(void)
 	result = device_register(&kgsl_driver.virtdev);
 	if (result) {
 		KGSL_CORE_ERR("driver_register failed\n");
-		goto err;
+		goto err_device_register;
 	}
 
 	/* Make kobjects in the virtual device for storing statistics */
@@ -2434,7 +2437,7 @@ static int __init kgsl_core_init(void)
 	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_get_mmutype()) {
 		result = kgsl_ptdata_init();
 		if (result)
-			goto err;
+			goto err_mmu_set;
 	}
 
 	result = kgsl_drm_init(NULL);
@@ -2444,6 +2447,18 @@ static int __init kgsl_core_init(void)
 
 	return 0;
 
+err_mmu_set:
+	device_unregister(&kgsl_driver.virtdev);
+err_device_register:
+	if (kgsl_driver.class) {
+		class_destroy(kgsl_driver.class);
+		kgsl_driver.class = NULL;
+	}
+err_class_create:
+cdev_add_err:
+	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
+alloc_chrdev_region_err:
+	return result;
 err:
 	kgsl_core_exit();
 	return result;

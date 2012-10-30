@@ -383,6 +383,9 @@ static int msm_bus_fabric_clk_commit(int enable, struct msm_bus_fabric *fabric)
 	unsigned int i, nfound = 0, status = 0;
 	struct msm_bus_inode_info *info[fabric->pdata->nslaves];
 
+	for (i = 0; i < fabric->pdata->nslaves; i++)
+		info[i] = NULL;
+
 	if (fabric->clk_dirty == false) {
 		MSM_BUS_DBG("No clocks have been touched for fabric: %d\n",
 			fabric->fabdev.id);
@@ -610,7 +613,7 @@ static struct msm_bus_fab_algorithm msm_bus_algo = {
 
 static int msm_bus_fabric_probe(struct platform_device *pdev)
 {
-	int ctx, ret = 0;
+	int i, ctx, ret = 0;
 	struct msm_bus_fabric *fabric;
 	struct msm_bus_fabric_registration *pdata;
 
@@ -671,7 +674,7 @@ static int msm_bus_fabric_probe(struct platform_device *pdev)
 				MSM_BUS_ERR("Couldn't get clock %s\n",
 					pdata->fabclk[ctx]);
 				ret = -EINVAL;
-				goto err;
+				goto err_fabric_dev;
 			}
 			fabric->info.nodeclk[ctx].enable = false;
 			fabric->info.nodeclk[ctx].dirty = false;
@@ -683,7 +686,7 @@ static int msm_bus_fabric_probe(struct platform_device *pdev)
 	if (ret) {
 		MSM_BUS_ERR("Could not register fabric %d info, ret: %d\n",
 			fabric->fabdev.id, ret);
-		goto err;
+		goto err_fabric_dev;
 	}
 	if (!fabric->ahb) {
 		/* Allocate memory for commit data */
@@ -694,12 +697,18 @@ static int msm_bus_fabric_probe(struct platform_device *pdev)
 				MSM_BUS_ERR("Failed to alloc commit data for "
 					"fab: %d, ret = %d\n",
 					fabric->fabdev.id, ret);
-				goto err;
+				goto err_fabric_info;
 			}
 		}
 	}
 
 	return ret;
+
+err_fabric_info:
+	for (i = 0; ctx > 0 && i < ctx ; i++)
+		free_commit_data(fabric->cdata[i]);
+err_fabric_dev:
+	msm_bus_fabric_device_unregister(&fabric->fabdev);
 err:
 	kfree(fabric->info.node_info);
 	kfree(fabric);

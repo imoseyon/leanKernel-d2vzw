@@ -29,6 +29,7 @@
 #include <linux/mutex.h>
 #include <linux/shmem_fs.h>
 #include <linux/ashmem.h>
+#include <linux/delay.h>
 #include <asm/cacheflush.h>
 
 #define ASHMEM_NAME_PREFIX "dev/ashmem/"
@@ -286,9 +287,19 @@ calc_vm_may_flags(unsigned long prot)
 static int ashmem_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct ashmem_area *asma = file->private_data;
-	int ret = 0;
+	int ret = 0, count = 1000;
 
-	mutex_lock(&ashmem_mutex);
+	/* Try to lock ashmem_mutex for 1sec. to avoid deadlock */
+	while (1) {
+		if (mutex_trylock(&ashmem_mutex))
+			break;
+		if (--count == 0) {
+			ret = -EBUSY;
+			WARN(1, KERN_ERR "%s: FAIL to lock mutex", __func__);
+			goto out;
+		}
+		msleep(1);
+	}
 
 	/* user needs to SET_SIZE before mapping */
 	if (unlikely(!asma->size)) {
@@ -361,7 +372,12 @@ static int ashmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	if (!sc->nr_to_scan)
 		return lru_count;
 
-	mutex_lock(&ashmem_mutex);
+	if (mutex_trylock(&ashmem_mutex) == 0) {
+		if (ashmem_mutex.owner == current)
+			return -1;
+		else
+			mutex_lock(&ashmem_mutex);
+	}
 	list_for_each_entry_safe(range, next, &ashmem_lru_list, lru) {
 		struct inode *inode = range->asma->file->f_dentry->d_inode;
 		loff_t start = range->pgstart * PAGE_SIZE;

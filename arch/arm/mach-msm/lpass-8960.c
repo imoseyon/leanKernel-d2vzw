@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/err.h>
+#include <linux/debugfs.h>
 
 #include <mach/irqs.h>
 #include <mach/scm.h>
@@ -35,6 +36,8 @@
 /* Subsystem restart: QDSP6 data, functions */
 static void lpass_fatal_fn(struct work_struct *);
 static DECLARE_WORK(lpass_fatal_work, lpass_fatal_fn);
+static void send_q6_nmi(void);
+
 struct lpass_ssr {
 	void *lpass_ramdump_dev;
 } lpass_ssr;
@@ -68,6 +71,7 @@ static void lpass_fatal_fn(struct work_struct *work)
 {
 	pr_err("%s %s: Watchdog bite received from Q6!\n", MODULE_NAME,
 		__func__);
+	send_q6_nmi();
 	panic(MODULE_NAME ": Resetting the SoC");
 }
 
@@ -76,6 +80,10 @@ static void lpass_smsm_state_cb(void *data, uint32_t old_state,
 {
 	/* Ignore if we're the one that set SMSM_RESET */
 	if (q6_crash_shutdown)
+		return;
+
+	/* Ignore if we're doing ssr */
+	if (q6_ssr_8960)
 		return;
 
 	if (new_state & SMSM_RESET) {
@@ -153,6 +161,36 @@ static struct subsys_data lpass_8960 = {
 	.crash_shutdown = lpass_crash_shutdown
 };
 
+static int lpass_debug_set(void *data, u64 val)
+{
+	if (val == 1)
+		subsystem_restart("lpass");
+
+	return 0;
+}
+
+static int lpass_debug_get(void *data, u64 *val)
+{
+	*val = 0;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(lpass_debug_fops, lpass_debug_get, lpass_debug_set,
+				"%llu\n");
+
+static int lpass_debugfs_init(void)
+{
+	struct dentry *dent;
+	dent = debugfs_create_dir("lpass_debug", 0);
+
+	if (IS_ERR(dent))
+		return PTR_ERR(dent);
+
+	debugfs_create_file("reset_lpass", 0644, dent, NULL,
+		&lpass_debug_fops);
+	return 0;
+}
+
 static int __init lpass_restart_init(void)
 {
 	return ssr_register_subsystem(&lpass_8960);
@@ -175,13 +213,13 @@ static int __init lpass_fatal_init(void)
 	if (ret < 0) {
 		pr_err("%s: Unable to request LPASS_Q6SS_WDOG_EXPIRED irq.",
 			__func__);
-		goto out;
+		goto register_err;
 	}
 	ret = lpass_restart_init();
 	if (ret < 0) {
 		pr_err("%s: Unable to reg with lpass ssr. (%d)\n",
 				__func__, ret);
-		goto out;
+		goto irq_err;
 	}
 
 	lpass_ssr_8960.lpass_ramdump_dev = create_ramdump_device("lpass");
@@ -190,7 +228,7 @@ static int __init lpass_fatal_init(void)
 		pr_err("%s: Unable to create ramdump device.\n",
 				__func__);
 		ret = -ENOMEM;
-		goto out;
+		goto irq_err;
 	}
 	ssr_notif_hdle = subsys_notif_register_notifier("riva",
 							&rnb);
@@ -198,12 +236,18 @@ static int __init lpass_fatal_init(void)
 		ret = PTR_ERR(ssr_notif_hdle);
 		pr_err("%s: subsys_register_notifier for Riva: err = %d\n",
 			__func__, ret);
-		free_irq(LPASS_Q6SS_WDOG_EXPIRED, NULL);
-		goto out;
+		goto irq_err;
 	}
 
+	ret = lpass_debugfs_init();
+
 	pr_info("%s: lpass SSR driver init'ed.\n", __func__);
-out:
+irq_err:
+	free_irq(LPASS_Q6SS_WDOG_EXPIRED, NULL);
+register_err:
+	smsm_state_cb_deregister(SMSM_Q6_STATE, SMSM_RESET,
+					lpass_smsm_state_cb, 0);
+
 	return ret;
 }
 

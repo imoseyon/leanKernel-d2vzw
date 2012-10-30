@@ -6,22 +6,18 @@
 
 #include <linux/ioctl.h>
 
-/*! \name AK8975 operation mode
- \anchor AK8975_Mode
- Defines an operation mode of the AK8975.*/
-/*! @{*/
-#define AK8975_MODE_SNG_MEASURE   0x01
-#define	AK8975_MODE_SELF_TEST     0x08
-#define	AK8975_MODE_FUSE_ACCESS   0x0F
-#define	AK8975_MODE_POWER_DOWN    0x00
-/*! @}*/
+/* Defines an operation mode of the AK8975.*/
+
+#define AK8975_MODE_SNG_MEASURE   0x11
+#define	AK8975_MODE_SELF_TEST     0x18
+#define	AK8975_MODE_FUSE_ACCESS   0x1F
+#define	AK8975_MODE_POWER_DOWN    0x10
+
 
 #define RBUFF_SIZE		8	/* Rx buffer size */
 
-/*! \name AK8975 register address
-\anchor AK8975_REG
-Defines a register address of the AK8975.*/
-/*! @{*/
+/* Defines a register address of the AK8975.*/
+
 #define AK8975_REG_WIA		0x00
 #define AK8975_REG_INFO		0x01
 #define AK8975_REG_ST1		0x02
@@ -38,16 +34,13 @@ Defines a register address of the AK8975.*/
 #define AK8975_REG_TS1		0x0D
 #define AK8975_REG_TS2		0x0E
 #define AK8975_REG_I2CDIS	0x0F
-/*! @}*/
 
-/*! \name AK8975 fuse-rom address
-\anchor AK8975_FUSE
-Defines a read-only address of the fuse ROM of the AK8975.*/
-/*! @{*/
+
+/* Defines a read-only address of the fuse ROM of the AK8975.*/
+
 #define AK8975_FUSE_ASAX	0x10
 #define AK8975_FUSE_ASAY	0x11
 #define AK8975_FUSE_ASAZ	0x12
-/*! @}*/
 
 #define AKMIO                   0xA1
 

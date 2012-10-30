@@ -51,6 +51,7 @@
 #include <mach/msm_dsps.h>
 #endif
 
+#include <mach/msm8960-gpio.h>
 
 /* Address of GSBI blocks */
 #define MSM_GSBI1_PHYS		0x16000000
@@ -67,6 +68,9 @@
 #define MSM_GSBI12_PHYS		0x12480000
 
 #define MSM_UART2DM_PHYS	(MSM_GSBI2_PHYS + 0x40000)
+#ifdef CONFIG_FELICA
+#define MSM_UART4DM_PHYS	(MSM_GSBI4_PHYS + 0x40000)
+#endif /* CONFIG_FELICA */
 #define MSM_UART5DM_PHYS	(MSM_GSBI5_PHYS + 0x40000)
 #define MSM_UART6DM_PHYS	(MSM_GSBI6_PHYS + 0x40000)
 
@@ -235,6 +239,35 @@ struct platform_device msm8960_device_uart_gsbi2 = {
 	.num_resources	= ARRAY_SIZE(resources_uart_gsbi2),
 	.resource	= resources_uart_gsbi2,
 };
+#ifdef CONFIG_FELICA
+static struct resource resources_uart_gsbi4[] = {
+	{
+		.start	= GSBI4_UARTDM_IRQ,
+		.end	= GSBI4_UARTDM_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= MSM_UART4DM_PHYS,
+		.end	= MSM_UART4DM_PHYS + PAGE_SIZE - 1,
+		.name	= "uartdm_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= MSM_GSBI4_PHYS,
+		.end	= MSM_GSBI4_PHYS + PAGE_SIZE - 1,
+		.name	= "gsbi_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8960_device_uart_gsbi4 = {
+	.name	= "msm_serial_hsl",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_uart_gsbi4),
+	.resource	= resources_uart_gsbi4,
+};
+
+#endif /* CONFIG_FELICA */
 /* GSBI 6 used into UARTDM Mode */
 static struct resource msm_uart_dm6_resources[] = {
 	{
@@ -281,21 +314,27 @@ struct platform_device msm_device_uart_dm6 = {
 
 static struct resource resources_uart_gsbi5[] = {
 	{
-		.start	= GSBI5_UARTDM_IRQ,
-		.end	= GSBI5_UARTDM_IRQ,
-		.flags	= IORESOURCE_IRQ,
+		.start = GSBI5_UARTDM_IRQ,
+		.end   = GSBI5_UARTDM_IRQ,
+		.flags = IORESOURCE_IRQ,
 	},
 	{
-		.start	= MSM_UART5DM_PHYS,
-		.end	= MSM_UART5DM_PHYS + PAGE_SIZE - 1,
-		.name	= "uartdm_resource",
-		.flags	= IORESOURCE_MEM,
+		.start = MSM_UART5DM_PHYS,
+		.end   = MSM_UART5DM_PHYS + PAGE_SIZE - 1,
+		.name  = "uartdm_resource",
+		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start	= MSM_GSBI5_PHYS,
-		.end	= MSM_GSBI5_PHYS + PAGE_SIZE - 1,
-		.name	= "gsbi_resource",
-		.flags	= IORESOURCE_MEM,
+		.start = MSM_GSBI5_PHYS,
+		.end   = MSM_GSBI5_PHYS + PAGE_SIZE - 1,
+		.name  = "gsbi_resource",
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = 23,	/* GSBI5[2] UART_RX */
+		.end   = 23,
+		.name  = "wakeup_gpio",
+		.flags = IORESOURCE_IO,
 	},
 };
 
@@ -541,7 +580,7 @@ static struct msm_bus_vectors vidc_vdec_1080p_turbo_vectors[] = {
 		.ib  = 10000000,
 	},
 };
-
+ 
 static struct msm_bus_paths vidc_bus_client_config[] = {
 	{
 		ARRAY_SIZE(vidc_init_vectors),
@@ -944,6 +983,8 @@ static struct pil_q6v4_pdata msm_8960_q6_mss_fw_data = {
 	.aclk_reg = SFAB_MSS_Q6_FW_ACLK_CTL,
 	.jtag_clk_reg = MSS_Q6FW_JTAG_CLK_CTL,
 	.xo_id = MSM_XO_CXO,
+	.xo1_id = MSM_XO_TCXO_A0,
+	.xo2_id = MSM_XO_TCXO_A1,
 	.name = "modem_fw",
 	.depends = "q6",
 	.pas_id = PAS_MODEM_FW,
@@ -1033,7 +1074,7 @@ struct platform_device msm_device_bam_dmux = {
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
 	.pet_time = 10000,
-	.bark_time = 11000,
+	.bark_time = 20000,
 	.has_secure = true,
 };
 
@@ -1092,6 +1133,34 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	return platform_device_register(pdev);
 }
 
+static struct resource resources_qup_i2c_gsbi7[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI7_PHYS,
+		.end	= MSM_GSBI7_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI7_QUP_PHYS,
+		.end	= MSM_GSBI7_QUP_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= GSBI7_QUP_IRQ,
+		.end	= GSBI7_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi7 = {
+	.name		= "qup_i2c",
+	.id		= 7,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi7),
+	.resource	= resources_qup_i2c_gsbi7,
+};
+
 static struct resource resources_qup_i2c_gsbi4[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
@@ -1118,6 +1187,46 @@ struct platform_device msm8960_device_qup_i2c_gsbi4 = {
 	.id		= 4,
 	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi4),
 	.resource	= resources_qup_i2c_gsbi4,
+};
+
+static struct resource resources_qup_i2c_gsbi1[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI1_PHYS,
+		.end	= MSM_GSBI1_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI1_QUP_PHYS,
+		.end	= MSM_GSBI1_QUP_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= MSM8960_GSBI1_QUP_IRQ,
+		.end	= MSM8960_GSBI1_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "i2c_clk",
+		.start	= GPIO_CODEC_I2C_SCL,
+		.end	= GPIO_CODEC_I2C_SCL,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "i2c_sda",
+		.start	= GPIO_CODEC_I2C_SDA,
+		.end	= GPIO_CODEC_I2C_SDA,
+		.flags	= IORESOURCE_IO,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi1 = {
+	.name		= "qup_i2c",
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi1),
+	.resource	= resources_qup_i2c_gsbi1,
 };
 
 static struct resource resources_qup_i2c_gsbi3[] = {
@@ -1560,6 +1669,147 @@ struct platform_device msm8960_device_qup_spi_gsbi1 = {
 	.resource	= resources_qup_spi_gsbi1,
 };
 
+#ifdef CONFIG_S5C73M3
+static struct resource resources_qup_spi_gsbi11[] = {
+	{
+		.name   = "spi_base",
+		.start  = MSM_GSBI11_QUP_PHYS,
+		.end    = MSM_GSBI11_QUP_PHYS + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "gsbi_base",
+		.start  = MSM_GSBI11_PHYS,
+		.end    = MSM_GSBI11_PHYS + 4 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "spi_irq_in",
+		.start  = GSBI11_QUP_IRQ,
+		.end    = GSBI11_QUP_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+	/*test: Qualcomm, DMA SPI, start */
+	{
+		.name	= "spidm_channels",
+		.start	= 9,
+		.end	= 10,
+		.flags	= IORESOURCE_DMA,
+	},
+	{
+		.name	= "spidm_crci",
+		.start	= 12,
+		.end	= 13,
+		.flags	= IORESOURCE_DMA,
+	},
+	/*test: Qualcomm, DMA SPI, end */
+	{
+		.name   = "spi_clk",
+		.start  = GPIO_CAM_SPI_SCLK,
+		.end    = GPIO_CAM_SPI_SCLK,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_miso",
+		.start  = GPIO_CAM_SPI_MISO,
+		.end    = GPIO_CAM_SPI_MISO,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_mosi",
+		.start  = GPIO_CAM_SPI_MOSI,
+		.end    = GPIO_CAM_SPI_MOSI,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_cs",
+		.start  = GPIO_CAM_SPI_SSN,
+		.end    = GPIO_CAM_SPI_SSN,
+		.flags  = IORESOURCE_IO,
+	},
+#ifdef CONFIG_VP_A2220
+	{
+		.name   = "a2220_sda",
+		.start  = GPIO_A2220_I2C_SDA,
+		.end    = GPIO_A2220_I2C_SDA,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "a2220_sck",
+		.start  = GPIO_A2220_I2C_SCL,
+		.end    = GPIO_A2220_I2C_SCL,
+		.flags  = IORESOURCE_IO,
+	},
+#endif
+};
+
+struct platform_device msm8960_device_qup_spi_gsbi11 = {
+	.name	= "spi_qsd",
+	.id	= 0,
+	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi11),
+	.resource	= resources_qup_spi_gsbi11,
+};
+#endif
+
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || \
+		defined(CONFIG_ISDBT_NMI)
+static struct resource resources_qup_spi_gsbi8[] = {
+	{
+		.name   = "spi_base",
+		.start  = MSM_GSBI8_QUP_PHYS,
+		.end    = MSM_GSBI8_QUP_PHYS + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "gsbi_base",
+		.start  = MSM_GSBI8_PHYS,
+		.end    = MSM_GSBI8_PHYS + 4 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "spi_irq_in",
+		.start  = GSBI8_QUP_IRQ,
+		.end    = GSBI8_QUP_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_spi_gsbi8 = {
+	.name	= "spi_qsd",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi8),
+	.resource	= resources_qup_spi_gsbi8,
+};
+#else
+static struct resource resources_qup_i2c_gsbi8[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI8_PHYS,
+		.end	= MSM_GSBI8_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI8_QUP_PHYS,
+		.end	= MSM_GSBI8_QUP_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= GSBI8_QUP_IRQ,
+		.end	= GSBI8_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi8 = {
+	.name		= "qup_i2c",
+	.id		= 8,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi8),
+	.resource	= resources_qup_i2c_gsbi8,
+};
+#endif
+
 struct platform_device msm_pcm = {
 	.name	= "msm-pcm-dsp",
 	.id	= -1,
@@ -1583,6 +1833,16 @@ struct platform_device msm_cpudai0 = {
 struct platform_device msm_cpudai1 = {
 	.name	= "msm-dai-q6",
 	.id	= 0x4001,
+};
+
+struct platform_device msm_i2s_cpudai0 = {
+	.name	= "msm-dai-q6",
+	.id	= PRIMARY_I2S_RX,
+};
+
+struct platform_device msm_i2s_cpudai1 = {
+	.name	= "msm-dai-q6",
+	.id	= PRIMARY_I2S_TX,
 };
 
 struct platform_device msm_cpudai_hdmi_rx = {
@@ -2105,17 +2365,30 @@ static struct clk_lookup msm_clocks_8960_dummy[] = {
 	CLK_DUMMY("core_clk",	GSBI10_UART_CLK,	NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI11_UART_CLK,	NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI12_UART_CLK,	NULL, OFF),
+#ifdef CONFIG_S5C73M3
+	CLK_DUMMY("core_clk",	GSBI1_QUP_CLK,		NULL, OFF),
+#else
 	CLK_DUMMY("core_clk",	GSBI1_QUP_CLK,		"spi_qsd.0", OFF),
+#endif
 	CLK_DUMMY("core_clk",	GSBI2_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI3_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI4_QUP_CLK,		"qup_i2c.4", OFF),
 	CLK_DUMMY("core_clk",	GSBI5_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI6_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI7_QUP_CLK,		NULL, OFF),
-	CLK_DUMMY("core_clk",	GSBI8_QUP_CLK,		NULL, OFF),
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || \
+		defined(CONFIG_ISDBT_NMI)
+	CLK_DUMMY("core_clk",	GSBI8_QUP_CLK,		"spi_qsd.1", OFF),
+#else
+	CLK_DUMMY("core_clk",	GSBI8_QUP_CLK,		"qup_i2c.8", OFF),
+#endif
 	CLK_DUMMY("core_clk",	GSBI9_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",	GSBI10_QUP_CLK,		NULL, OFF),
+#ifdef CONFIG_S5C73M3
+	CLK_DUMMY("core_clk",	GSBI11_QUP_CLK,		"spi_qsd.0", OFF),
+#else
 	CLK_DUMMY("core_clk",	GSBI11_QUP_CLK,		NULL, OFF),
+#endif
 	CLK_DUMMY("core_clk",	GSBI12_QUP_CLK,		NULL, OFF),
 	CLK_DUMMY("core_clk",		PDM_CLK,		NULL, OFF),
 	CLK_DUMMY("mem_clk",		PMEM_CLK,		NULL, OFF),
@@ -2137,7 +2410,11 @@ static struct clk_lookup msm_clocks_8960_dummy[] = {
 	CLK_DUMMY("sys_clk",		USB_FS2_SYS_CLK,	NULL, OFF),
 	CLK_DUMMY("iface_clk",		CE2_CLK,	     "qce.0", OFF),
 	CLK_DUMMY("core_clk",		CE1_CORE_CLK,	     "qce.0", OFF),
+#ifdef CONFIG_S5C73M3
+	CLK_DUMMY("iface_clk",		GSBI1_P_CLK, NULL, OFF),
+#else
 	CLK_DUMMY("iface_clk",		GSBI1_P_CLK, "spi_qsd.0", OFF),
+#endif
 	CLK_DUMMY("iface_clk",		GSBI2_P_CLK,
 						  "msm_serial_hsl.0", OFF),
 	CLK_DUMMY("iface_clk",		GSBI3_P_CLK,		NULL, OFF),
@@ -2145,10 +2422,19 @@ static struct clk_lookup msm_clocks_8960_dummy[] = {
 	CLK_DUMMY("iface_clk",		GSBI5_P_CLK,		NULL, OFF),
 	CLK_DUMMY("iface_clk",		GSBI6_P_CLK,		NULL, OFF),
 	CLK_DUMMY("iface_clk",		GSBI7_P_CLK,		NULL, OFF),
-	CLK_DUMMY("iface_clk",		GSBI8_P_CLK,		NULL, OFF),
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || \
+		defined(CONFIG_ISDBT_NMI)
+	CLK_DUMMY("iface_clk",		GSBI8_P_CLK,	"spi_qsd.1", OFF),
+#else
+	CLK_DUMMY("iface_clk",		GSBI8_P_CLK,	"qup_i2c.8", OFF),
+#endif
 	CLK_DUMMY("iface_clk",		GSBI9_P_CLK,		NULL, OFF),
 	CLK_DUMMY("iface_clk",		GSBI10_P_CLK,		NULL, OFF),
+#ifdef CONFIG_S5C73M3
+	CLK_DUMMY("iface_clk",		GSBI11_P_CLK,		"spi_qsd.0", OFF),
+#else
 	CLK_DUMMY("iface_clk",		GSBI11_P_CLK,		NULL, OFF),
+#endif
 	CLK_DUMMY("iface_clk",		GSBI12_P_CLK,		NULL, OFF),
 	CLK_DUMMY("iface_clk",		GSBI12_P_CLK,		NULL, OFF),
 	CLK_DUMMY("iface_clk",		TSIF_P_CLK,		NULL, OFF),
@@ -2526,10 +2812,10 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 			.bus_freq = 0,
 		},
 	},
-	.init_level = 0,
+	.init_level = 1,
 	.num_levels = 5,
 	.set_grp_async = NULL,
-	.idle_timeout = HZ/20,
+	.idle_timeout = HZ/12,
 	.nap_allowed = true,
 	.clk_map = KGSL_CLK_CORE | KGSL_CLK_IFACE | KGSL_CLK_MEM_IFACE,
 #ifdef CONFIG_MSM_BUS_SCALING

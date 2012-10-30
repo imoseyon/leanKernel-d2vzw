@@ -194,7 +194,7 @@ static ssize_t msm_rpm_log_file_read(struct file *file, char __user *bufu,
 		return -EINVAL;
 	if (!buf->data)
 		return -ENOMEM;
-	if (!bufu || count < 0)
+	if (!bufu)
 		return -EINVAL;
 	if (!access_ok(VERIFY_WRITE, bufu, count))
 		return -EFAULT;
@@ -310,6 +310,7 @@ static int __devinit msm_rpm_log_probe(struct platform_device *pdev)
 			pdev->dev.platform_data, &msm_rpm_log_file_fops);
 	if (!dent) {
 		pr_err("%s: ERROR debugfs_create_file failed\n", __func__);
+		iounmap(pdata->reg_base);
 		return -ENOMEM;
 	}
 

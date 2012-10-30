@@ -27,10 +27,17 @@
 #include <mach/subsystem_restart.h>
 #include <mach/subsystem_notif.h>
 #include <mach/socinfo.h>
+#include <mach/msm_xo.h>
+
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 #include "smd_private.h"
 #include "modem_notifier.h"
 #include "ramdump.h"
+struct msm_xo_voter *xo1;
+struct msm_xo_voter *xo2;
 
 static int crash_shutdown;
 
@@ -136,6 +143,9 @@ static int modem_shutdown(const struct subsys_data *subsys)
 		return -ENOMEM;
 	}
 
+	msm_xo_mode_vote(xo1, MSM_XO_MODE_ON);
+	msm_xo_mode_vote(xo2, MSM_XO_MODE_ON);
+
 	writel_relaxed(0x0, q6_fw_wdog_addr);
 	writel_relaxed(0x0, q6_sw_wdog_addr);
 	mb();
@@ -182,6 +192,15 @@ static struct ramdump_segment smem_segments[] = {
 	{0x80000000, 0x00200000},
 };
 
+#ifdef CONFIG_SEC_SSR_DUMP
+/* Defining the kernel ramdump address and its Size */
+static struct ramdump_segment kernel_log_segments[] = {
+	{0x88d00008, 0x00080000},
+};
+/* Declaring the kernel ramdump device */
+static void *kernel_log_ramdump_dev;
+#endif
+
 static void *modemfw_ramdump_dev;
 static void *modemsw_ramdump_dev;
 static void *smem_ramdump_dev;
@@ -191,6 +210,7 @@ static int modem_ramdump(int enable,
 {
 	int ret = 0;
 
+	pr_info("%s: enable[%d]", __func__, enable);
 	if (enable) {
 		ret = do_ramdump(modemsw_ramdump_dev, modemsw_segments,
 			ARRAY_SIZE(modemsw_segments));
@@ -217,6 +237,19 @@ static int modem_ramdump(int enable,
 			pr_err("Unable to dump smem memory (rc = %d).\n", ret);
 			goto out;
 		}
+
+#ifdef CONFIG_SEC_SSR_DUMP
+		pr_debug("Before kernel log do_ramdump\n");
+		ret = do_ramdump(kernel_log_ramdump_dev, kernel_log_segments,
+			ARRAY_SIZE(kernel_log_segments));
+
+		if (ret < 0) {
+			pr_err("Unable to dump kernel memory (rc = %d).\n",
+			ret);
+			goto out;
+		}
+		pr_debug("After kernel do_ramdump\n");
+#endif
 	}
 
 out:
@@ -305,13 +338,25 @@ static int __init modem_8960_init(void)
 		pr_err("%s: Unable to register SMSM callback! (%d)\n",
 				__func__, ret);
 
+	xo1 = msm_xo_get(MSM_XO_TCXO_A0, "modem-8960");
+	if (IS_ERR(xo1)) {
+		ret = PTR_ERR(xo1);
+		goto out;
+	}
+
+	xo2 = msm_xo_get(MSM_XO_TCXO_A1, "modem-8960");
+	if (IS_ERR(xo2)) {
+		ret = PTR_ERR(xo2);
+		goto msm_xo_err;
+	}
+
 	ret = request_irq(Q6FW_WDOG_EXPIRED_IRQ, modem_wdog_bite_irq,
 			IRQF_TRIGGER_RISING, "modem_wdog_fw", NULL);
 
 	if (ret < 0) {
 		pr_err("%s: Unable to request q6fw watchdog IRQ. (%d)\n",
 				__func__, ret);
-		goto out;
+		goto irq_err;
 	}
 
 	ret = request_irq(Q6SW_WDOG_EXPIRED_IRQ, modem_wdog_bite_irq,
@@ -321,7 +366,7 @@ static int __init modem_8960_init(void)
 		pr_err("%s: Unable to request q6sw watchdog IRQ. (%d)\n",
 				__func__, ret);
 		disable_irq_nosync(Q6FW_WDOG_EXPIRED_IRQ);
-		goto out;
+		goto free_irq_Q6FW;
 	}
 
 	ret = modem_subsystem_restart_init();
@@ -329,40 +374,73 @@ static int __init modem_8960_init(void)
 	if (ret < 0) {
 		pr_err("%s: Unable to reg with subsystem restart. (%d)\n",
 				__func__, ret);
-		goto out;
+		goto free_irq_Q6SW;
 	}
 
-	modemfw_ramdump_dev = create_ramdump_device("modem_fw");
+#ifdef CONFIG_SEC_SSR_DUMP
+	/* Create the ramdump device files whenever SSR is enabled */
+	if (get_restart_level() == RESET_SUBSYS_INDEPENDENT) {
+
+	pr_info("%s: SSR enabled, creating ramdump devices", __func__);
+	
+		modemfw_ramdump_dev = create_ramdump_device("modem_fw");
 
 	if (!modemfw_ramdump_dev) {
 		pr_err("%s: Unable to create modem fw ramdump device. (%d)\n",
-				__func__, -ENOMEM);
+			__func__, -ENOMEM);
 		ret = -ENOMEM;
-		goto out;
+		goto free_irq_Q6SW;
 	}
 
 	modemsw_ramdump_dev = create_ramdump_device("modem_sw");
 
 	if (!modemsw_ramdump_dev) {
 		pr_err("%s: Unable to create modem sw ramdump device. (%d)\n",
-				__func__, -ENOMEM);
+			__func__, -ENOMEM);
 		ret = -ENOMEM;
-		goto out;
+		goto free_irq_Q6SW;
 	}
 
 	smem_ramdump_dev = create_ramdump_device("smem");
 
 	if (!smem_ramdump_dev) {
 		pr_err("%s: Unable to create smem ramdump device. (%d)\n",
-				__func__, -ENOMEM);
+			__func__, -ENOMEM);
 		ret = -ENOMEM;
-		goto out;
+		goto free_irq_Q6SW;
 	}
+	pr_debug("Before create_ramdump_device: kernel\n");
+	kernel_log_ramdump_dev = create_ramdump_device("kernel_log");
 
+	if (!kernel_log_ramdump_dev) {
+		pr_err("%s: Unable to create kernel ramdump device. (%d)\n",
+			__func__, -ENOMEM);
+		ret = -ENOMEM;
+		goto free_irq_Q6SW;
+	}
+	pr_debug("After create_ramdump_device: kernel\n");
+	}
+#endif
 	ret = modem_debugfs_init();
 
 	pr_info("%s: modem fatal driver init'ed.\n", __func__);
+	return ret;
+
+free_irq_Q6SW:
+	free_irq(Q6SW_WDOG_EXPIRED_IRQ, NULL);
+
+free_irq_Q6FW:
+	free_irq(Q6FW_WDOG_EXPIRED_IRQ, NULL);
+
+irq_err:
+	msm_xo_put(xo2); 
+
+msm_xo_err:
+	msm_xo_put(xo1); 
+
 out:
+	smsm_state_cb_deregister(SMSM_MODEM_STATE, SMSM_RESET,
+			smsm_state_cb, 0);
 	return ret;
 }
 

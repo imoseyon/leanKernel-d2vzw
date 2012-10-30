@@ -168,6 +168,14 @@
 #define MSM_CAM_IOCTL_RELEASE_FREE_FRAME \
 	_IOR(MSM_CAM_IOCTL_MAGIC, 46, struct msm_cam_evt_divert_frame *)
 
+struct ioctl_native_cmd {
+	unsigned short mode;
+	unsigned short address;
+	unsigned short value_1;
+	unsigned short value_2;
+	unsigned short value_3;
+};
+
 #define MSM_CAM_IOCTL_PICT_PP_DIVERT_DONE \
 	_IOR(MSM_CAM_IOCTL_MAGIC, 47, struct msm_pp_frame *)
 
@@ -184,10 +192,16 @@
 	_IOW(MSM_CAM_IOCTL_MAGIC, 51, uint32_t *)
 
 #define MSM_CAM_IOCTL_GET_MCTL_INFO \
-	_IOR(MSM_CAM_IOCTL_MAGIC, 51, struct msm_mctl_node_info *)
+	_IOR(MSM_CAM_IOCTL_MAGIC, 52, struct msm_mctl_node_info *)
 
 #define MSM_CAM_IOCTL_MCTL_DIVERT_DONE \
-	_IOR(MSM_CAM_IOCTL_MAGIC, 52, struct msm_cam_evt_divert_frame *)
+	_IOR(MSM_CAM_IOCTL_MAGIC, 53, struct msm_cam_evt_divert_frame *)
+
+#define MSM_CAM_IOCTL_V4L2_EVT_NATIVE_CMD \
+	_IOWR(MSM_CAM_IOCTL_MAGIC, 54, struct ioctl_native_cmd *)
+
+#define MSM_CAM_IOCTL_V4L2_EVT_NATIVE_FRONT_CMD \
+	_IOWR(MSM_CAM_IOCTL_MAGIC, 55, struct ioctl_native_cmd *)
 
 struct msm_mctl_pp_cmd {
 	int32_t  id;
@@ -304,8 +318,18 @@ struct msm_cam_evt_divert_frame {
 	unsigned short op_mode;
 	unsigned short inst_idx;
 	unsigned short node_idx;
+	unsigned long  phy_addr;
+	uint32_t       phy_offset;
+	uint32_t       y_off;
+	uint32_t       cbcr_off;
+	int32_t        fd;
+	uint32_t       frame_id;
+	int            path;
+	uint32_t       length;
+	struct timeval timestamp;
 	struct msm_pp_frame frame;
 	int            do_pp;
+	uint32_t       vb;
 };
 
 struct msm_mctl_pp_cmd_ack_event {
@@ -388,11 +412,11 @@ struct msm_camera_cfg_cmd {
 #define CMD_STATS_AF_ENABLE		13
 #define CMD_STATS_AEC_ENABLE		14
 #define CMD_STATS_AWB_ENABLE		15
-#define CMD_STATS_ENABLE  		16
+#define CMD_STATS_ENABLE		16
 
 #define CMD_STATS_AXI_CFG		17
 #define CMD_STATS_AEC_AXI_CFG		18
-#define CMD_STATS_AF_AXI_CFG 		19
+#define CMD_STATS_AF_AXI_CFG		19
 #define CMD_STATS_AWB_AXI_CFG		20
 #define CMD_STATS_RS_AXI_CFG		21
 #define CMD_STATS_CS_AXI_CFG		22
@@ -682,7 +706,8 @@ struct msm_stats_buf {
 #define MSM_V4L2_PID_STROBE_FLASH           (V4L2_CID_PRIVATE_BASE+15)
 #define MSM_V4L2_PID_MMAP_ENTRY             (V4L2_CID_PRIVATE_BASE+16)
 #define MSM_V4L2_PID_MMAP_INST              (V4L2_CID_PRIVATE_BASE+17)
-#define MSM_V4L2_PID_PP_PLANE_INFO          (V4L2_CID_PRIVATE_BASE+18)
+#define MSM_V4L2_PID_PREVIEW_SIZE           (V4L2_CID_PRIVATE_BASE+18)
+#define MSM_V4L2_PID_PP_PLANE_INFO          (V4L2_CID_PRIVATE_BASE+19)
 #define MSM_V4L2_PID_MAX                    MSM_V4L2_PID_PP_PLANE_INFO
 
 /* camera operation mode for video recording - two frame output queues */
@@ -776,12 +801,19 @@ struct msm_snapshot_pp_status {
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
 
-#define SENSOR_PREVIEW_MODE		0
-#define SENSOR_SNAPSHOT_MODE		1
-#define SENSOR_RAW_SNAPSHOT_MODE	2
-#define SENSOR_HFR_60FPS_MODE 3
-#define SENSOR_HFR_90FPS_MODE 4
-#define SENSOR_HFR_120FPS_MODE 5
+#define CAMERA_MODE_INIT		0
+#define CAMERA_MODE_PREVIEW		1
+#define CAMERA_MODE_CAPTURE		2
+#define CAMERA_MODE_RECORDING		3
+
+#define SENSOR_SNAPSHOT_MODE	0
+#define  SENSOR_RAW_SNAPSHOT_MODE	1
+#define  SENSOR_PREVIEW_MODE	2
+#define  SENSOR_VIDEO_MODE	3
+#define  SENSOR_HFR_60FPS_MODE	4
+#define  SENSOR_HFR_90FPS_MODE	5
+#define  SENSOR_HFR_120FPS_MODE	6
+#define  SENSOR_INVALID_MODE		7
 
 #define SENSOR_QTR_SIZE			0
 #define SENSOR_FULL_SIZE		1
@@ -800,7 +832,113 @@ struct msm_snapshot_pp_status {
 #define CAMERA_EFFECT_EMBOSS		9
 #define CAMERA_EFFECT_SKETCH		10
 #define CAMERA_EFFECT_NEON		11
-#define CAMERA_EFFECT_MAX		12
+#define CAMERA_EFFECT_WASHED		12
+#define CAMERA_EFFECT_VINTAGE_WARM	13
+#define CAMERA_EFFECT_VINTAGE_COLD	14
+#define CAMERA_EFFECT_POINT_COLOR_1	15
+#define CAMERA_EFFECT_POINT_COLOR_2	16
+#define CAMERA_EFFECT_POINT_COLOR_3	17
+#define CAMERA_EFFECT_POINT_COLOR_4	18
+#define CAMERA_EFFECT_MAX		19
+
+#define CAMERA_WHITE_BALANCE_AUTO				1
+#define CAMERA_WHITE_BALANCE_INCANDESCENT		3
+#define CAMERA_WHITE_BALANCE_FLUORESCENT		4
+#define CAMERA_WHITE_BALANCE_DAYLIGHT			5
+#define CAMERA_WHITE_BALANCE_CLOUDY_DAYLIGHT	6
+
+#define CAMERA_FLASH_OFF		0
+#define CAMERA_FLASH_ON		1
+#define CAMERA_FLASH_AUTO		2
+#define CAMERA_FLASH_TORCH	3
+
+#define CAMERA_EV_M4	0
+#define CAMERA_EV_M3	1
+#define CAMERA_EV_M2	2
+#define CAMERA_EV_M1	3
+#define CAMERA_EV_DEFAULT	4
+#define CAMERA_EV_P1		5
+#define CAMERA_EV_P2		6
+#define CAMERA_EV_P3		7
+#define CAMERA_EV_P4		8
+
+#define CAMERA_ISO_MODE_AUTO	0
+#define CAMERA_ISO_MODE_50	1
+#define CAMERA_ISO_MODE_100	2
+#define CAMERA_ISO_MODE_200	3
+#define CAMERA_ISO_MODE_400	4
+#define CAMERA_ISO_MODE_800	5
+
+#define CAMERA_AVERAGE			0
+#define CAMERA_CENTER_WEIGHT	1
+#define CAMERA_SPOT			2
+
+#define CAMERA_SCENE_AUTO		1
+#define CAMERA_SCENE_LANDSCAPE	2
+#define CAMERA_SCENE_BEACH		4
+#define CAMERA_SCENE_SUNSET		5
+#define CAMERA_SCENE_NIGHT		6
+#define CAMERA_SCENE_PORTRAIT	7
+#define CAMERA_SCENE_AGAINST_LIGHT	8
+#define CAMERA_SCENE_SPORT		9
+#define CAMERA_SCENE_CANDLE		12
+#define CAMERA_SCENE_FIRE		13
+#define CAMERA_SCENE_PARTY		14
+#define CAMERA_SCENE_TEXT		19
+#define CAMERA_SCENE_FALL		20
+#define CAMERA_SCENE_DAWN		21
+
+#define CAMERA_AF_MACRO		1
+#define CAMERA_AF_AUTO		2
+
+/*native cmd code*/
+#define EXT_CAM_AF		1
+#define EXT_CAM_FLASH_STATUS	2
+#define EXT_CAM_FLASH_MODE	3
+#define EXT_CAM_EV	4
+#define EXT_CAM_SCENE_MODE	5
+#define EXT_CAM_ISO	6
+#define EXT_CAM_METERING		7
+#define EXT_CAM_WB	8
+#define EXT_CAM_EFFECT	9
+#define EXT_CAM_FOCUS	10
+#define EXT_CAM_PREVIEW_SIZE		11
+#define EXT_CAM_MOVIE_MODE		12
+#define EXT_CAM_DTP_TEST		13
+#define EXT_CAM_SET_AF_STATUS		14
+#define EXT_CAM_GET_AF_STATUS		15
+#define EXT_CAM_GET_AF_RESULT		16
+#define EXT_CAM_SET_TOUCHAF_POS		17
+#define EXT_CAM_SET_AE_AWB		18
+#define EXT_CAM_START_CAPTURE		19
+#define EXT_CAM_QUALITY		20
+#define EXT_CAM_ZOOM		21
+#define EXT_CAM_FD_MODE		22
+#define EXT_CAM_SET_AF_STOP		23
+#define EXT_CAM_SET_ANTI_SHAKE		24
+#define EXT_CAM_SET_WDR			25
+#define EXT_CAM_SET_BEAUTY_SHOT		26
+#define EXT_CAM_EXIF			27
+#define EXT_CAM_SET_JPEG_SIZE		28
+#define EXT_CAM_SET_PREVIEW_SIZE	29
+#define EXT_CAM_SET_AF_MODE		30
+#define EXT_CAM_SET_FPS		31
+#define EXT_CAM_GET_FLASH_STATUS	32
+#define EXT_CAM_SET_HDR	33
+#define EXT_CAM_START_HDR	34
+#define EXT_CAM_START_AE_AWB_LOCK	35
+#define EXT_CAM_SET_VDIS	36
+#define EXT_CAM_VT_MODE		37
+#define EXT_CAM_GET_LUX		38
+#define EXT_CAM_SET_FACE_ZOOM		39
+#define EXT_CAM_SET_RECORD_SIZE		40
+#define EXT_CAM_GET_AE_AWB_LOCK		41
+#define EXT_CAM_UPDATE_FW		42
+#define EXT_CAM_ANTI_BANDING		43
+#define EXT_CAM_SAMSUNG_CAMERA		44
+#define EXT_CAM_SET_FLIP		45
+#define EXT_CAM_SET_LOW_LIGHT_MODE	46
+#define EXT_CAM_SET_LOW_LIGHT_SIZE	47
 
 /* QRD */
 #define CAMERA_EFFECT_BW		10
@@ -878,11 +1016,75 @@ struct msm_snapshot_pp_status {
 #define  CAMERA_WB_TWILIGHT           7
 #define  CAMERA_WB_SHADE              8
 
+#define EXIF_SHUTTERSPEED	1
+#define EXIF_ISO		2
+
 #define CAMERA_EXPOSURE_COMPENSATION_LV0			12
 #define CAMERA_EXPOSURE_COMPENSATION_LV1			6
 #define CAMERA_EXPOSURE_COMPENSATION_LV2			0
 #define CAMERA_EXPOSURE_COMPENSATION_LV3			-6
 #define CAMERA_EXPOSURE_COMPENSATION_LV4			-12
+
+/* only for D2 : start*/
+enum msm_v4l2_AF_command {
+	MSM_V4L2_AF_SET_AUTO_FOCUS = 0,
+	MSM_V4L2_AF_SET_AUTO_FOCUS_MODE,
+	MSM_V4L2_AF_GET_AUTO_FOCUS,
+	MSM_V4L2_AF_GET_AUTO_FOCUS_RESULT,
+	MSM_V4L2_AF_SET_AUTO_FOCUS_DEFAULT_POSITION,
+	MSM_V4L2_AF_CANCEL_AUTO_FOCUS,
+	MSM_V4L2_CAF_FOCUS,
+	MSM_V4L2_AF_COMMAND_MAX
+};
+
+enum msm_v4l2_AF_status {
+	MSM_V4L2_AF_STATUS_IN_PROGRESS = 0,
+	MSM_V4L2_AF_STATUS_SUCCESS,
+	MSM_V4L2_AF_STATUS_FAIL,
+	MSM_V4L2_AF_STATUS_1ST_SUCCESS,
+	MSM_V4L2_AF_STATUS_RESTART,
+	MSM_V4L2_AF_STATUS_MAX
+};
+
+enum msm_v4l2_focusmode {
+	FOCUS_MODE_AUTO = 0,
+	FOCUS_MODE_MACRO,
+	FOCUS_MODE_FACEDETECT,
+	FOCUS_MODE_AUTO_DEFAULT,
+	FOCUS_MODE_MACRO_DEFAULT,
+	FOCUS_MODE_FACEDETECT_DEFAULT,
+	FOCUS_MODE_INFINITY,
+	FOCUS_MODE_FIXED,
+	FOCUS_MODE_CONTINOUS,
+	FOCUS_MODE_CONTINOUS_PICTURE,
+	FOCUS_MODE_CONTINOUS_PICTURE_MACRO,
+	FOCUS_MODE_CONTINOUS_VIDEO,
+	FOCUS_MODE_TOUCH,
+	FOCUS_MODE_MAX,
+	FOCUS_MODE_DEFAULT = (1 << 8),
+};
+
+enum msm_v4l2_face_zoom_mode {
+	FACE_ZOOM_STOP = 0,
+	FACE_ZOOM_START,
+};
+
+enum msm_v4l2_fw_control_mode {
+	CAM_FW_MODE_NONE = 0,
+	CAM_FW_MODE_VERSION,
+	CAM_FW_MODE_UPDATE,
+	CAM_FW_MODE_DUMP,
+	CAM_FW_MODE_MAX,
+};
+
+enum msm_v4l2_anti_banding_mode {
+	ANTI_BANDING_OFF = 0,
+	ANTI_BANDING_50HZ,
+	ANTI_BANDING_60HZ,
+	ANTI_BANDING_AUTO,
+	ANTI_BANDING_MAX,
+};
+/* only for D2 : end*/
 
 enum msm_v4l2_saturation_level {
 	MSM_V4L2_SATURATION_L0,
@@ -986,7 +1188,7 @@ struct sensor_3d_exp_cfg {
 	uint16_t gb_gain;
 	uint16_t gain_adjust;
 };
-struct sensor_3d_cali_data_t{
+struct sensor_3d_cali_data_t {
 	unsigned char left_p_matrix[3][4][8];
 	unsigned char right_p_matrix[3][4][8];
 	unsigned char square_len[8];
@@ -1080,6 +1282,7 @@ struct sensor_cfg_data {
 
 	union {
 		int8_t effect;
+		int8_t wb;
 		uint8_t lens_shading;
 		uint16_t prevl_pf;
 		uint16_t prevp_pl;

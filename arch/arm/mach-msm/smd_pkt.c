@@ -138,8 +138,13 @@ static ssize_t open_timeout_show(struct device *d,
 		if (smd_pkt_devp[i]->devicep == d)
 			break;
 	}
-	return snprintf(buf, PAGE_SIZE, "%d\n",
-			smd_pkt_devp[i]->open_modem_wait);
+	if (i < NUM_SMD_PKT_PORTS) {
+		return snprintf(buf, PAGE_SIZE, "%d\n",
+				smd_pkt_devp[i]->open_modem_wait);
+	} else {
+		pr_err("%s: There is no pkt_dev.\n", __func__);
+		return -ENODEV;
+	}
 }
 
 static DEVICE_ATTR(open_timeout, 0664, open_timeout_show, open_timeout_store);
@@ -838,8 +843,13 @@ static int __init smd_pkt_init(void)
 		smd_pkt_devp[i]->driver.driver.name = smd_ch_name[i];
 		smd_pkt_devp[i]->driver.driver.owner = THIS_MODULE;
 		r = platform_driver_register(&smd_pkt_devp[i]->driver);
-		if (r)
+		if (r) {
+			device_destroy(smd_pkt_classp,
+				       MKDEV(MAJOR(smd_pkt_number), i));
+			cdev_del(&smd_pkt_devp[i]->cdev);
+			kfree(smd_pkt_devp[i]);
 			goto error2;
+	}
 	}
 
 	INIT_DELAYED_WORK(&loopback_work, loopback_probe_worker);

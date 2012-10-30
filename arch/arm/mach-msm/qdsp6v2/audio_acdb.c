@@ -175,6 +175,8 @@ void get_all_vocvol_cal(struct acdb_cal_block *cal_block)
 		atomic_read(&acdb_data.vocvol_cal[0].cal_paddr);
 	cal_block->cal_size =
 		atomic_read(&acdb_data.vocvol_total_cal_size);
+	pr_info("%s: paddr=0x%X, size=%d", __func__,
+		cal_block->cal_paddr, cal_block->cal_size);
 }
 
 void get_anc_cal(struct acdb_cal_block *cal_block)
@@ -556,6 +558,9 @@ void store_vocvol_cal(int32_t len, struct cal_block *cal_blocks)
 	}
 	atomic_set(&acdb_data.vocvol_cal_size, len);
 done:
+	pr_info("%s: paddr=0x%X, offset=0x%X", __func__,
+		(uint32_t)atomic64_read(&acdb_data.paddr),
+		cal_blocks[0].cal_offset);
 	return;
 }
 

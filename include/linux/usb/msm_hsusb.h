@@ -22,6 +22,9 @@
 #include <linux/usb/otg.h>
 #include <linux/wakelock.h>
 #include <linux/pm_qos_params.h>
+#ifdef CONFIG_USB_HOST_NOTIFY
+#include <linux/host_notify.h>
+#endif
 
 /**
  * Supported USB modes
@@ -179,6 +182,13 @@ struct msm_otg_platform_data {
 	bool mhl_enable;
 	bool disable_reset_on_disconnect;
 	u32 swfi_latency;
+#ifdef CONFIG_USB_HOST_NOTIFY
+	unsigned int otg_power_gpio;
+	int otg_power_irq;
+#endif
+	bool smb347s;
+	unsigned int vbus_gpio;
+	int vbus_irq;
 	bool enable_dcd;
 	struct msm_bus_scale_pdata *bus_scale_table;
 };
@@ -243,6 +253,16 @@ struct msm_otg {
 	unsigned mA_port;
 	struct timer_list id_timer;
 	unsigned long caps;
+#ifdef CONFIG_USB_HOST_NOTIFY
+	struct host_notify_dev ndev;
+	struct work_struct notify_work;
+	unsigned notify_state;
+	struct work_struct otg_power_work;
+	struct delayed_work late_power_work;
+	struct timer_list sm_work_timer;
+#endif
+	bool smartdock;
+	bool disable_peripheral;
 	struct msm_xo_voter *xo_handle;
 	uint32_t bus_perf_client;
 	/*

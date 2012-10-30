@@ -72,7 +72,9 @@ extern unsigned int system_rev;
 extern unsigned int system_serial_low;
 extern unsigned int system_serial_high;
 extern unsigned int mem_fclk_21285;
-
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+extern const char *unit_name;
+#endif
 struct pt_regs;
 
 void die(const char *msg, struct pt_regs *regs, int err);

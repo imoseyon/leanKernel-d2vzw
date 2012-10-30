@@ -131,6 +131,9 @@ struct pm8921_charger_platform_data {
 	int				thermal_levels;
 	enum pm8921_chg_cold_thr	cold_thr;
 	enum pm8921_chg_hot_thr		hot_thr;
+#ifdef CONFIG_PM8921_SEC_CHARGER
+	int		(*get_cable_type)(void);
+#endif
 };
 
 enum pm8921_charger_source {

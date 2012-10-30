@@ -838,10 +838,23 @@ static int __init qmi_init(void)
 	qmi_ctxt_init(&qmi_device2, 2);
 
 	ret = misc_register(&qmi_device0.misc);
-	if (ret == 0)
+	if (!ret)
+		goto err_qmi_device0_misc_register;
 		ret = misc_register(&qmi_device1.misc);
-	if (ret == 0)
+	if (!ret)
+		goto err_qmi_device1_misc_register;
 		ret = misc_register(&qmi_device2.misc);
+	if (!ret)
+		goto err_qmi_device2_misc_register;
+	return 0;
+
+err_qmi_device2_misc_register:
+	misc_deregister(&qmi_device1.misc);
+err_qmi_device1_misc_register:
+	misc_deregister(&qmi_device0.misc);
+err_qmi_device0_misc_register:
+	destroy_workqueue(qmi_wq);
+
 	return ret;
 }
 

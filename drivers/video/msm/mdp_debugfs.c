@@ -387,6 +387,10 @@ static ssize_t mdp_stat_read(
 	dlen -= len;
 	len = snprintf(bp, dlen, "dmas: %08lu\n",
 					mdp4_stat.kickoff_dmas);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "mixer_reset: %08lu\n",
+					mdp4_stat.mixer_reset);
 
 	bp += len;
 	dlen -= len;
@@ -434,7 +438,6 @@ static ssize_t mdp_stat_read(
 	dlen -= len;
 	len = snprintf(bp, dlen, "play:  %08lu\t",
 					mdp4_stat.overlay_play[1]);
-
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "commit:  %08lu\n\n",
@@ -487,19 +490,19 @@ static ssize_t mdp_stat_read(
 	len = snprintf(bp, dlen, "err_mixer : %08lu\t", mdp4_stat.err_mixer);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_size  : %08lu\n", mdp4_stat.err_size);
+	len = snprintf(bp, dlen, "err_size : %08lu\n", mdp4_stat.err_size);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_scale : %08lu\t", mdp4_stat.err_scale);
+	len = snprintf(bp, dlen, "err_scale: %08lu\t", mdp4_stat.err_scale);
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "err_format: %08lu\n", mdp4_stat.err_format);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_play  : %08lu\t", mdp4_stat.err_play);
+	len = snprintf(bp, dlen, "err_play:  %08lu\t", mdp4_stat.err_play);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_stage : %08lu\n", mdp4_stat.err_stage);
+	len = snprintf(bp, dlen, "err_stage: %08lu\n", mdp4_stat.err_stage);
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "err_underflow: %08lu\n\n",

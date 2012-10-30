@@ -13,7 +13,7 @@
 #ifndef __PMIC8XXX_PWRKEY_H__
 #define __PMIC8XXX_PWRKEY_H__
 
-#define PM8XXX_PWRKEY_DEV_NAME "pm8xxx-pwrkey"
+#define PM8XXX_PWRKEY_DEV_NAME "sec_powerkey"
 
 /**
  * struct pm8xxx_pwrkey_platform_data - platform data for pwrkey driver
@@ -34,5 +34,5 @@ struct pm8xxx_pwrkey_platform_data  {
 	u32  kpd_trigger_delay_us;
 	u32  wakeup;
 };
-
+extern struct class *sec_class;
 #endif /* __PMIC8XXX_PWRKEY_H__ */

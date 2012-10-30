@@ -22,6 +22,9 @@
 
 #include "smd_private.h"
 
+#include <linux/io.h>
+#include <mach/msm_iomap.h>
+
 #define BUILD_ID_LENGTH 32
 
 enum {
@@ -43,6 +46,7 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_SURF] = "Surf",
 	[HW_PLATFORM_FFA] = "FFA",
 	[HW_PLATFORM_FLUID] = "Fluid",
+	[HW_PLATFORM_LIQUID] = "Liquid",
 	[HW_PLATFORM_SVLTE_FFA] = "SVLTE_FFA",
 	[HW_PLATFORM_SVLTE_SURF] = "SLVTE_SURF",
 	[HW_PLATFORM_MTP] = "MTP",
@@ -487,6 +491,54 @@ socinfo_show_platform_subtype(struct sys_device *dev,
 		hw_platform_subtype[hw_subtype]);
 }
 
+static ssize_t
+socinfo_show_kraitpart(struct sys_device *dev,
+		struct sysdev_attribute *attr,
+		char *buf)
+{
+	uint32_t pte_efuse, pvs;
+	char r;
+
+	pte_efuse = readl((MSM_QFPROM_BASE + 0x00C0));
+	pvs = (pte_efuse >> 10) & 0x7;
+	if (pvs == 0x7)
+		pvs = (pte_efuse >> 13) & 0x7;
+
+	switch (pvs) {
+	case 0x0:
+		r = 's';
+		break;
+	case 0x7:
+		r = 'S';
+		break;
+	case 0x1:
+		r = 'N';
+		break;
+	case 0x3:
+		r = 'F';
+		break;
+	default:
+		r = 's';
+		break;
+	}
+
+	switch (read_cpuid_id()) {
+	case 0x511F04D0:
+	case 0x511F04D1:
+	case 0x510F06F0:
+		pvs = 31;
+		break;
+	case 0x512F04D0:
+		pvs = 32;
+		break;
+	default:
+		pvs = 10;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%2u%c\n",
+		pvs, r);
+}
+
 static struct sysdev_attribute socinfo_v1_files[] = {
 	_SYSDEV_ATTR(id, 0444, socinfo_show_id, NULL),
 	_SYSDEV_ATTR(version, 0444, socinfo_show_version, NULL),
@@ -517,6 +569,11 @@ static struct sysdev_attribute socinfo_v6_files[] = {
 			socinfo_show_platform_subtype, NULL),
 };
 
+static struct sysdev_attribute socinfo_kraitpart_files[] = {
+	_SYSDEV_ATTR(krait_part, 0444,
+			socinfo_show_kraitpart, NULL),
+};
+
 static struct sysdev_class soc_sysdev_class = {
 	.name = "soc",
 };
@@ -542,6 +599,15 @@ static int __init socinfo_create_files(struct sys_device *dev,
 	return 0;
 }
 
+static void __init socinfo_remove_files(struct sys_device *dev,
+					struct sysdev_attribute files[],
+					int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		sysdev_remove_file(dev, &files[i]);
+}
+
 static int __init socinfo_init_sysdev(void)
 {
 	int err;
@@ -555,45 +621,112 @@ static int __init socinfo_init_sysdev(void)
 	if (err) {
 		pr_err("%s: sysdev_class_register fail (%d)\n",
 		       __func__, err);
-		return err;
+		goto ret;
 	}
 	err = sysdev_register(&soc_sys_device);
 	if (err) {
 		pr_err("%s: sysdev_register fail (%d)\n",
 		       __func__, err);
-		return err;
+		goto sys_class;
 	}
-	socinfo_create_files(&soc_sys_device, socinfo_v1_files,
+
+	err = socinfo_create_files(&soc_sys_device, socinfo_kraitpart_files,
+				ARRAY_SIZE(socinfo_kraitpart_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto sys_reg;
+	}
+
+	err = socinfo_create_files(&soc_sys_device, socinfo_v1_files,
 				ARRAY_SIZE(socinfo_v1_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info1;
+	}
+
 	if (socinfo->v1.format < 2)
-		return err;
-	socinfo_create_files(&soc_sys_device, socinfo_v2_files,
+		goto soc_info1;
+
+	err = socinfo_create_files(&soc_sys_device, socinfo_v2_files,
 				ARRAY_SIZE(socinfo_v2_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info2;
+	}
 
 	if (socinfo->v1.format < 3)
-		return err;
+		goto soc_info2;
 
-	socinfo_create_files(&soc_sys_device, socinfo_v3_files,
+	err = socinfo_create_files(&soc_sys_device, socinfo_v3_files,
 				ARRAY_SIZE(socinfo_v3_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info3;
+	}
 
 	if (socinfo->v1.format < 4)
-		return err;
+		goto soc_info3;
 
-	socinfo_create_files(&soc_sys_device, socinfo_v4_files,
+	err = socinfo_create_files(&soc_sys_device, socinfo_v4_files,
 				ARRAY_SIZE(socinfo_v4_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info4;
+	}
 
 	if (socinfo->v1.format < 5)
-		return err;
+		goto soc_info4;
 
-	socinfo_create_files(&soc_sys_device, socinfo_v5_files,
+	err = socinfo_create_files(&soc_sys_device, socinfo_v5_files,
 				ARRAY_SIZE(socinfo_v5_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info5;
+	}
 
 	if (socinfo->v1.format < 6)
-		return err;
+		goto soc_info5;
 
-	return socinfo_create_files(&soc_sys_device, socinfo_v6_files,
+	err = socinfo_create_files(&soc_sys_device, socinfo_v6_files,
 				ARRAY_SIZE(socinfo_v6_files));
+	if (err) {
+		pr_err("%s: socinfo_create_files fail (%d)\n",
+		       __func__, err);
+		goto soc_info6;
+	}
 
+	goto ret;
+
+soc_info6:
+	socinfo_remove_files(&soc_sys_device, socinfo_v5_files,
+				ARRAY_SIZE(socinfo_v1_files));
+soc_info5:
+	socinfo_remove_files(&soc_sys_device, socinfo_v4_files,
+				ARRAY_SIZE(socinfo_v1_files));
+soc_info4:
+	socinfo_remove_files(&soc_sys_device, socinfo_v3_files,
+				ARRAY_SIZE(socinfo_v1_files));
+soc_info3:
+	socinfo_remove_files(&soc_sys_device, socinfo_v2_files,
+				ARRAY_SIZE(socinfo_v1_files));
+soc_info2:
+	socinfo_remove_files(&soc_sys_device, socinfo_v1_files,
+				ARRAY_SIZE(socinfo_v1_files));
+soc_info1:
+	socinfo_remove_files(&soc_sys_device, socinfo_kraitpart_files,
+				ARRAY_SIZE(socinfo_kraitpart_files));
+sys_reg:
+	sysdev_unregister(&soc_sys_device);
+sys_class:
+	sysdev_class_unregister(&soc_sysdev_class);
+ret:
+	return err;
 }
 
 arch_initcall(socinfo_init_sysdev);
@@ -666,7 +799,7 @@ int __init socinfo_init(void)
 		break;
 	case 3:
 		pr_info("%s: v%u, id=%u, ver=%u.%u, "
-			 "raw_id=%u, raw_ver=%u, hw_plat=%u\n",
+			 "raw_id=%u, raw_ver=%u, hw_pla-t=%u\n",
 			__func__, socinfo->v1.format, socinfo->v1.id,
 			SOCINFO_VERSION_MAJOR(socinfo->v1.version),
 			SOCINFO_VERSION_MINOR(socinfo->v1.version),
@@ -675,7 +808,7 @@ int __init socinfo_init(void)
 		break;
 	case 4:
 		pr_info("%s: v%u, id=%u, ver=%u.%u, "
-			 "raw_id=%u, raw_ver=%u, hw_plat=%u, hw_plat_ver=%u\n",
+			 "raw_id=%u, raw_ver=%u, hw_pla-t=%u, hw_pla-t_ver=%u\n",
 			__func__, socinfo->v1.format, socinfo->v1.id,
 			SOCINFO_VERSION_MAJOR(socinfo->v1.version),
 			SOCINFO_VERSION_MINOR(socinfo->v1.version),
@@ -684,7 +817,7 @@ int __init socinfo_init(void)
 		break;
 	case 5:
 		pr_info("%s: v%u, id=%u, ver=%u.%u, "
-			 "raw_id=%u, raw_ver=%u, hw_plat=%u,  hw_plat_ver=%u\n"
+			 "raw_id=%u, raw_ver=%u, hw_pla-t=%u,  hw_pla-t_ver=%u\n"
 			" accessory_chip=%u\n", __func__, socinfo->v1.format,
 			socinfo->v1.id,
 			SOCINFO_VERSION_MAJOR(socinfo->v1.version),
@@ -695,8 +828,8 @@ int __init socinfo_init(void)
 		break;
 	case 6:
 		pr_info("%s: v%u, id=%u, ver=%u.%u, "
-			 "raw_id=%u, raw_ver=%u, hw_plat=%u,  hw_plat_ver=%u\n"
-			" accessory_chip=%u hw_plat_subtype=%u\n", __func__,
+			 "raw_id=%u, raw_ver=%u, hw_pla-t=%u,  hw_pla-t_ver=%u\n"
+			" accessory_chip=%u hw_pla-t_subtype=%u\n", __func__,
 			socinfo->v1.format,
 			socinfo->v1.id,
 			SOCINFO_VERSION_MAJOR(socinfo->v1.version),

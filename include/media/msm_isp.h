@@ -218,6 +218,7 @@ struct msm_isp_cmd {
 #define VPE_CMD_OUTPUT_PLANE_CFG                        9
 #define VPE_CMD_INPUT_PLANE_UPDATE                      10
 #define VPE_CMD_SCALE_CFG_TYPE                          11
+#define VPE_CMD_DIS_OFFSET_CFG                          12
 #define VPE_CMD_ZOOM                                    13
 #define VPE_CMD_MAX                                     14
 
@@ -235,12 +236,13 @@ struct msm_isp_cmd {
 #define MCTL_PP_EVENT_CMD_ACK           1
 
 #define VPE_OPERATION_MODE_CFG_LEN      4
+#define VPE_OPERATION_MODE_CFG_LEN_ZSL      8
 #define VPE_INPUT_PLANE_CFG_LEN         24
 #define VPE_OUTPUT_PLANE_CFG_LEN        20
+#define VPE_OUTPUT_PLANE_CFG_LEN_ZSL        24
 #define VPE_INPUT_PLANE_UPDATE_LEN      12
 #define VPE_SCALER_CONFIG_LEN           260
 #define VPE_DIS_OFFSET_CFG_LEN          12
-
 
 #define CAPTURE_WIDTH          1280
 #define IMEM_Y_SIZE            (CAPTURE_WIDTH*16)
@@ -257,6 +259,10 @@ struct msm_vpe_op_mode_cfg {
 	uint8_t op_mode_cfg[VPE_OPERATION_MODE_CFG_LEN];
 };
 
+struct msm_vpe_op_mode_cfg_zsl {
+	uint8_t op_mode_cfg[VPE_OPERATION_MODE_CFG_LEN_ZSL];
+};
+
 struct msm_vpe_input_plane_cfg {
 	uint8_t input_plane_cfg[VPE_INPUT_PLANE_CFG_LEN];
 };
@@ -265,12 +271,20 @@ struct msm_vpe_output_plane_cfg {
 	uint8_t output_plane_cfg[VPE_OUTPUT_PLANE_CFG_LEN];
 };
 
+struct msm_vpe_output_plane_cfg_zsl {
+	uint8_t output_plane_cfg[VPE_OUTPUT_PLANE_CFG_LEN_ZSL];
+};
+
 struct msm_vpe_input_plane_update_cfg {
 	uint8_t input_plane_update_cfg[VPE_INPUT_PLANE_UPDATE_LEN];
 };
 
 struct msm_vpe_scaler_cfg {
 	uint8_t scaler_cfg[VPE_SCALER_CONFIG_LEN];
+};
+
+struct msm_vpe_dis_offset_cfg {
+	uint8_t dis_offset_cfg[VPE_DIS_OFFSET_CFG_LEN];
 };
 
 struct msm_vpe_flush_frame_buffer {

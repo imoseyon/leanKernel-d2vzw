@@ -4112,7 +4112,6 @@ static int display_common_power(int on)
 		display_regs_initialized = true;
 	}
 
-
 	if (on) {
 		/* reset Toshiba WeGA chip -- toggle reset pin -- gpio_180 */
 		rc = gpio_tlmm_config(wega_reset_gpio, GPIO_CFG_ENABLE);

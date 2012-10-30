@@ -61,8 +61,10 @@ static int __devinit pil_vidc_driver_probe(struct platform_device *pdev)
 	desc->name = "vidc";
 	desc->dev = &pdev->dev;
 	desc->ops = &pil_vidc_ops;
-	if (msm_pil_register(desc))
+	if (msm_pil_register(desc)) {
+		devm_kfree(&pdev->dev, desc);
 		return -EINVAL;
+	}
 	return 0;
 }
 

@@ -1045,9 +1045,9 @@ static void vfe32_sync_timer_start(const uint32_t *tbl)
 	vfe32_ctrl->sync_timer_repeat_count = *tbl++;
 	vfe32_ctrl->sync_timer_number = *tbl++;
 	CDBG("%s timer_state %d, repeat_cnt %d timer number %d\n",
-		 __func__, vfe32_ctrl->sync_timer_state,
-		 vfe32_ctrl->sync_timer_repeat_count,
-		 vfe32_ctrl->sync_timer_number);
+			__func__, vfe32_ctrl->sync_timer_state,
+			vfe32_ctrl->sync_timer_repeat_count,
+			vfe32_ctrl->sync_timer_number);
 
 	if (vfe32_ctrl->sync_timer_state) { /* Start Timer */
 		value = value << vfe32_ctrl->sync_timer_number;
@@ -1061,11 +1061,21 @@ static void vfe32_sync_timer_start(const uint32_t *tbl)
 	/* Sync Timer Line Start */
 	value = *tbl++;
 	msm_io_w(value, vfe32_ctrl->vfebase + V32_SYNC_TIMER_OFF +
-		4 + ((vfe32_ctrl->sync_timer_number) * 12));
+			4 + ((vfe32_ctrl->sync_timer_number) * 12));
 	/* Sync Timer Pixel Start */
 	value = *tbl++;
 	msm_io_w(value, vfe32_ctrl->vfebase + V32_SYNC_TIMER_OFF +
-			 8 + ((vfe32_ctrl->sync_timer_number) * 12));
+			8 + ((vfe32_ctrl->sync_timer_number) * 12));
+	/*
+	 * temp code for capture: assigning hardcode value for
+	 * 'vfe_clk_rate' to remove the error logs 'divide by zero
+	 * in kernel' during image capture. vfe_clk_rate gets set
+	 * inside msm_vfe_subdev_s_crystal_freq() which is not called
+	 * anywhere as of now, and hence vfe_clk_rate contains value
+	 * '0' causing "division by zero" error here
+	 */
+	vfe_clk_rate = 228570000;
+
 	/* Sync Timer Pixel Duration */
 	value = *tbl++;
 	val = vfe_clk_rate / 10000;
@@ -1073,7 +1083,7 @@ static void vfe32_sync_timer_start(const uint32_t *tbl)
 	val = value * 10000 / val;
 	CDBG("%s: Pixel Clk Cycles!!! %d\n", __func__, val);
 	msm_io_w(val, vfe32_ctrl->vfebase + V32_SYNC_TIMER_OFF +
-		12 + ((vfe32_ctrl->sync_timer_number) * 12));
+			12 + ((vfe32_ctrl->sync_timer_number) * 12));
 	/* Timer0 Active High/LOW */
 	value = *tbl++;
 	msm_io_w(value, vfe32_ctrl->vfebase + V32_SYNC_TIMER_POLARITY_OFF);
@@ -1293,6 +1303,8 @@ static int vfe32_proc_general(struct msm_isp_cmd *cmd)
 		rc = vfe32_capture_raw(snapshot_cnt);
 		break;
 	case VFE_CMD_CAPTURE:
+		pr_info("vfe32_proc_general: cmdID = %s\n",
+			vfe32_general_cmd[cmd->id]);
 		if (copy_from_user(&snapshot_cnt, (void __user *)(cmd->value),
 				sizeof(uint32_t))) {
 			rc = -EFAULT;
@@ -2139,6 +2151,9 @@ static int vfe32_proc_general(struct msm_isp_cmd *cmd)
 		pr_info("vfe32_proc_general: cmdID = %s\n",
 			vfe32_general_cmd[cmd->id]);
 		vfe32_stop();
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+		cam_mode = 0;
+#endif
 		break;
 
 	case VFE_CMD_SYNC_TIMER_SETTING:
@@ -2775,22 +2790,22 @@ static void vfe32_process_error_irq(uint32_t errStatus)
 	}
 
 	if (errStatus & VFE32_IMASK_BHIST_OVWR)
-		pr_err("vfe32_irq: stats bhist overwrite\n");
+		printk(KERN_ERR "vfe32_irq: stats bhist overwrite\n");
 
 	if (errStatus & VFE32_IMASK_STATS_CS_OVWR)
-		pr_err("vfe32_irq: stats cs overwrite\n");
+		printk(KERN_ERR "vfe32_irq: stats cs overwrite\n");
 
 	if (errStatus & VFE32_IMASK_STATS_IHIST_OVWR)
-		pr_err("vfe32_irq: stats ihist overwrite\n");
+		printk(KERN_ERR "vfe32_irq: stats ihist overwrite\n");
 
 	if (errStatus & VFE32_IMASK_REALIGN_BUF_Y_OVFL)
-		pr_err("vfe32_irq: realign bug Y overflow\n");
+		printk(KERN_ERR "vfe32_irq: realign bug Y overflow\n");
 
 	if (errStatus & VFE32_IMASK_REALIGN_BUF_CB_OVFL)
-		pr_err("vfe32_irq: realign bug CB overflow\n");
+		printk(KERN_ERR "vfe32_irq: realign bug CB overflow\n");
 
 	if (errStatus & VFE32_IMASK_REALIGN_BUF_CR_OVFL)
-		pr_err("vfe32_irq: realign bug CR overflow\n");
+		printk(KERN_ERR "vfe32_irq: realign bug CR overflow\n");
 
 	if (errStatus & VFE32_IMASK_VIOLATION) {
 		pr_err("vfe32_irq: violation interrupt\n");
@@ -2800,49 +2815,49 @@ static void vfe32_process_error_irq(uint32_t errStatus)
 	}
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_0_BUS_OVFL)
-		pr_err("vfe32_irq: image master 0 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 0 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_1_BUS_OVFL)
-		pr_err("vfe32_irq: image master 1 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 1 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_2_BUS_OVFL)
-		pr_err("vfe32_irq: image master 2 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 2 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_3_BUS_OVFL)
-		pr_err("vfe32_irq: image master 3 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 3 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_4_BUS_OVFL)
-		pr_err("vfe32_irq: image master 4 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 4 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_5_BUS_OVFL)
-		pr_err("vfe32_irq: image master 5 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 5 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_IMG_MAST_6_BUS_OVFL)
-		pr_err("vfe32_irq: image master 6 bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: image master 6 bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_AE_BG_BUS_OVFL)
-		pr_err("vfe32_irq: ae/bg stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: ae/bg stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_AF_BF_BUS_OVFL)
-		pr_err("vfe32_irq: af/bf stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: af/bf stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_AWB_BUS_OVFL)
-		pr_err("vfe32_irq: awb stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: awb stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_RS_BUS_OVFL)
-		pr_err("vfe32_irq: rs stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: rs stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_CS_BUS_OVFL)
-		pr_err("vfe32_irq: cs stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: cs stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_IHIST_BUS_OVFL)
-		pr_err("vfe32_irq: ihist stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: ihist stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_STATS_SKIN_BHIST_BUS_OVFL)
-		pr_err("vfe32_irq: skin/bhist stats bus overflow\n");
+		printk(KERN_ERR "vfe32_irq: skin/bhist stats bus overflow\n");
 
 	if (errStatus & VFE32_IMASK_AXI_ERROR)
-		pr_err("vfe32_irq: axi error\n");
+		printk(KERN_ERR "vfe32_irq: axi error\n");
 }
 
 static void vfe_send_outmsg(struct v4l2_subdev *sd, uint8_t msgid,
@@ -3513,6 +3528,9 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 	struct vfe32_irq_status irq;
 	struct vfe32_isr_queue_cmd *qcmd;
 
+	if (!vfe32_ctrl->vfebase)
+		return IRQ_HANDLED; /* null check */
+
 	CDBG("vfe_parse_irq\n");
 
 	vfe32_read_irq_status(&irq);
@@ -4022,7 +4040,7 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 
 vfe32_no_resource:
 	kfree(vfe32_ctrl);
-	return 0;
+	return rc;
 }
 
 static struct platform_driver vfe32_driver = {

@@ -1466,7 +1466,7 @@ config NR_CPUS
 	int "Maximum number of CPUs (2-32)"
 	range 2 32
 	depends on SMP
-	default "4"
+	default "2"
 
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs (EXPERIMENTAL)"
@@ -1563,7 +1563,7 @@ config AEABI
 config OABI_COMPAT
 	bool "Allow old ABI binaries to run with this kernel (EXPERIMENTAL)"
 	depends on AEABI && EXPERIMENTAL && !THUMB2_KERNEL
-	default y
+	default n
 	help
 	  This option preserves the old syscall interface along with the
 	  new (ARM EABI) one. It also provides a compatibility layer to
@@ -1585,6 +1585,15 @@ config ARCH_SPARSEMEM_ENABLE
 
 config ARCH_SPARSEMEM_DEFAULT
 	def_bool ARCH_SPARSEMEM_ENABLE
+
+config ARCH_SKIP_SECONDARY_CALIBRATE
+	bool "Skip secondary CPU calibration"
+	depends on SMP
+	help
+	  On some architectures, secondary cores shares clock with primiary
+	  core and hence scale together. Hence secondary core lpj calibration
+	  is not necessary and can be skipped to save considerable time.
+	  If unsure, say n.
 
 config ARCH_SELECT_MEMORY_MODEL
 	def_bool ARCH_SPARSEMEM_ENABLE

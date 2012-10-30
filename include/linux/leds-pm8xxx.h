@@ -50,6 +50,29 @@ enum pm8xxx_led_modes {
 	PM8XXX_LED_MODE_DTEST4
 };
 
+enum pm8xxx_led_pats {
+	PM8XXX_LED_PAT1_RED = 0,
+	PM8XXX_LED_PAT1_GREEN,
+	PM8XXX_LED_PAT2_RED,
+	PM8XXX_LED_PAT2_GREEN,
+	PM8XXX_LED_PAT3_RED,
+	PM8XXX_LED_PAT3_GREEN,
+	PM8XXX_LED_PAT3_BLUE,
+	PM8XXX_LED_PAT4_RED,
+	PM8XXX_LED_PAT4_GREEN,
+	PM8XXX_LED_PAT5_RED,
+	PM8XXX_LED_PAT5_GREEN,
+	PM8XXX_LED_PAT5_BLUE,
+	PM8XXX_LED_PAT6_GREEN,
+	PM8XXX_LED_PAT6_BLUE,
+	PM8XXX_LED_PAT7_RED,
+	PM8XXX_LED_PAT7_GREEN,
+	PM8XXX_LED_PAT7_BLUE,
+	PM8XXX_LED_PAT8_RED,
+	PM8XXX_LED_PAT8_GREEN,
+	PM8XXX_LED_PAT8_BLUE,
+	PM8XXX_LED_KB_LED,
+};
 /**
  * pm8xxx_led_config - led configuration parameters
  * @id - LED id
@@ -81,5 +104,9 @@ struct pm8xxx_led_platform_data {
 	struct	led_platform_data	*led_core;
 	struct	pm8xxx_led_config	*configs;
 	u32				num_configs;
+	void (*led_power_on)(int);
 };
+
+extern struct class *sec_class;
+
 #endif /* __LEDS_PM8XXX_H__ */

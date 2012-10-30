@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#if !defined(CONFIG_ARCH_MSM8960) && defined(CONFIG_ARCH_APQ8064)
 #include <asm/mach-types.h>
 #include <linux/i2c.h>
 #include <linux/gpio.h>
@@ -394,5 +394,6 @@ struct msm_camera_board_info apq8064_camera_board_info = {
 	.board_info = apq8064_camera_i2c_boardinfo,
 	.num_i2c_board_info = ARRAY_SIZE(apq8064_camera_i2c_boardinfo),
 };
+#endif
 #endif
 #endif

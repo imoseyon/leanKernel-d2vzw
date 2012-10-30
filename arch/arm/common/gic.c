@@ -899,7 +899,6 @@ void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 bool gic_is_spi_pending(unsigned int irq)
 {
 	struct irq_data *d = irq_get_irq_data(irq);
-	struct gic_chip_data *gic_data = &gic_data[0];
 	u32 mask, val;
 
 	WARN_ON(!irqs_disabled());
@@ -919,7 +918,6 @@ bool gic_is_spi_pending(unsigned int irq)
  * and the irq must be disabled at gic to avoid spurious interrupts */
 void gic_clear_spi_pending(unsigned int irq)
 {
-	struct gic_chip_data *gic_data = &gic_data[0];
 	struct irq_data *d = irq_get_irq_data(irq);
 
 	u32 mask, val;

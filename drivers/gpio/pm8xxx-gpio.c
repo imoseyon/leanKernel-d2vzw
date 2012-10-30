@@ -106,7 +106,7 @@ static int pm_gpio_set(struct pm_gpio_chip *pm_gpio_chip,
 	u8	bank1;
 	unsigned long flags;
 
-	if (gpio >= pm_gpio_chip->gpio_chip.ngpio || pm_gpio_chip == NULL)
+	if (pm_gpio_chip == NULL || gpio >= pm_gpio_chip->gpio_chip.ngpio)
 		return -EINVAL;
 
 	spin_lock_irqsave(&pm_gpio_chip->pm_lock, flags);

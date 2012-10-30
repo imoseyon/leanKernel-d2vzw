@@ -30,6 +30,7 @@
 #include <mach/socinfo.h>
 
 #include "qdss.h"
+#include <mach/sec_debug.h>
 
 #define etm_writel(etm, cpu, val, off)	\
 			__raw_writel((val), etm.base + (SZ_4K * cpu) + off)
@@ -332,6 +333,13 @@ static void __etm_enable(int cpu)
 static int etm_enable(void)
 {
 	int ret, cpu;
+
+	if (!sec_debug_is_enabled()) {
+		dev_err(etm.dev, "ETM tracing is not enabled beacause"
+			"sec_debug is not enabled!\n");
+		ret = -EPERM;
+		goto err;
+	}
 
 	if (etm.enabled) {
 		dev_err(etm.dev, "ETM tracing already enabled\n");

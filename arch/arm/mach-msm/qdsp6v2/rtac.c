@@ -986,6 +986,7 @@ static int __init rtac_init(void)
 	if (rtac_asm_buffer == NULL) {
 		pr_err("%s: Could not allocate payload of size = %d\n",
 			__func__, RTAC_BUF_SIZE);
+		kfree(rtac_adm_buffer);
 		goto nomem;
 	}
 
@@ -1003,6 +1004,8 @@ static int __init rtac_init(void)
 	if (rtac_voice_buffer == NULL) {
 		pr_err("%s: Could not allocate payload of size = %d\n",
 			__func__, RTAC_BUF_SIZE);
+		kfree(rtac_adm_buffer);
+		kfree(rtac_asm_buffer);
 		goto nomem;
 	}
 

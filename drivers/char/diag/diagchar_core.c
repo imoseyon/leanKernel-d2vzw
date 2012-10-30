@@ -699,6 +699,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	if (pkt_type == USER_SPACE_LOG_TYPE) {
 		err = copy_from_user(driver->user_space_data, buf + 4,
 							 payload_size);
+
+#if 0   /*  SAMSUNG Changes for UART DIAG.(problem on QC Release merge) */
 		/* Check masks for On-Device logging */
 		if (driver->mask_check) {
 			if (!mask_request_validate(driver->user_space_data)) {
@@ -706,7 +708,13 @@ static int diagchar_write(struct file *file, const char __user *buf,
 				return -EFAULT;
 			}
 		}
+#endif
 		buf = buf + 4;
+
+		/* To removed "0x7E", when received only "0x7E" */
+		if (0x7e == *(((unsigned char *)buf)))
+			return 0;
+
 #ifdef DIAG_DEBUG
 		pr_debug("diag: user space data %d\n", payload_size);
 		for (i = 0; i < payload_size; i++)
@@ -1069,8 +1077,10 @@ static int __init diagchar_init(void)
 		}
 		driver->cdev = cdev_alloc();
 		error = diagchar_setup_cdev(dev);
-		if (error)
+		if (error) {
+			unregister_chrdev_region(dev, driver->num);
 			goto fail;
+		}
 	} else {
 		printk(KERN_INFO "kzalloc failed\n");
 		goto fail;

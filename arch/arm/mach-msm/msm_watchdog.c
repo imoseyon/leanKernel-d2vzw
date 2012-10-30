@@ -47,6 +47,7 @@ static void __iomem *msm_tmr0_base;
 static unsigned long delay_time;
 static unsigned long bark_time;
 static unsigned long long last_pet;
+static unsigned long long last_emerg_pet;
 
 /*
  * On the kernel command line specify
@@ -77,6 +78,8 @@ module_param_call(runtime_disable, wdog_enable_set, param_get_int,
 static int appsbark;
 module_param(appsbark, int, 0);
 
+static unsigned int regsave_vaddr;
+static unsigned int regsave_paddr;
 /*
  * Use /sys/module/msm_watchdog/parameters/print_all_stacks
  * to control whether stacks of all running
@@ -186,6 +189,15 @@ done:
 	return ret;
 }
 
+void emerg_pet_watchdog(void)
+{
+	if (msm_tmr0_base) {
+		__raw_writel(1, msm_tmr0_base + WDT0_RST);
+		last_emerg_pet = sched_clock();
+	}
+}
+EXPORT_SYMBOL(emerg_pet_watchdog);
+
 unsigned min_slack_ticks = UINT_MAX;
 unsigned long long min_slack_ns = ULLONG_MAX;
 
@@ -266,6 +278,16 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+unsigned int get_wdog_regsave_paddr(void)
+{
+	return __pa(&regsave_paddr);
+}
+
+unsigned int get_last_pet_paddr(void)
+{
+	return __pa(&last_pet);
+}
+
 #define SCM_SET_REGSAVE_CMD 0x2
 
 static void configure_bark_dump(void)
@@ -278,6 +300,12 @@ static void configure_bark_dump(void)
 
 	if (!appsbark) {
 		scm_regsave = (void *)__get_free_page(GFP_KERNEL);
+		printk(KERN_INFO "WDOG handled by TZ:"
+				"dump @0x%08x PA:%08x\n",
+				(unsigned int) scm_regsave,
+				(unsigned int) __pa(scm_regsave));
+		regsave_vaddr = (unsigned int) scm_regsave;
+		regsave_paddr = (unsigned int) __pa(scm_regsave);
 
 		if (scm_regsave) {
 			cmd_buf.addr = __pa(scm_regsave);
@@ -367,6 +395,8 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 		__raw_writel(0xF, MSM_TCSR_BASE + TCSR_WDT_CFG);
 
 	delay_time = msecs_to_jiffies(pdata->pet_time);
+	pr_info("%s: pet_time=%lu bark_time=%lu\n", __func__, pdata->pet_time,
+		pdata->bark_time);
 	schedule_work_on(0, &init_dogwork_struct);
 	return 0;
 }

@@ -314,6 +314,7 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 			break;
 
 	case MSM_CAM_IOCTL_SENSOR_IO_CFG:
+		printk(KERN_DEBUG "MSM_CAM_IOCTL_SENSOR_IO_CFG\n");
 		rc = v4l2_subdev_call(p_mctl->sensor_sdev,
 			core, ioctl, VIDIOC_MSM_SENSOR_CFG, argp);
 			break;
@@ -746,6 +747,9 @@ static int msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 	struct msm_camera_sensor_info *sinfo =
 		(struct msm_camera_sensor_info *) s_ctrl->sensordata;
 	struct msm_camera_device_platform_data *camdev = sinfo->pdata;
+
+	v4l2_subdev_call(p_mctl->sensor_sdev, core, ioctl,
+		VIDIOC_MSM_SENSOR_RELEASE, NULL);
 
 	if (camdev->is_ispif) {
 		v4l2_subdev_call(p_mctl->ispif_sdev, core, ioctl,

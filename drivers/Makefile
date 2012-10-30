@@ -119,9 +119,25 @@ obj-$(CONFIG_BCMA)		+= bcma/
 obj-$(CONFIG_VHOST_NET)		+= vhost/
 obj-$(CONFIG_VLYNQ)		+= vlynq/
 obj-$(CONFIG_STAGING)		+= staging/
+obj-$(CONFIG_ACCESSORY)		+= accessory/
 obj-y				+= platform/
 obj-y				+= ieee802154/
 #common clk code
 obj-y				+= clk/
+obj-$(CONFIG_NEW_SENSORS)	+= sensors/
 
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/
+obj-$(CONFIG_BATTERY_SAMSUNG)	+= battery/
+
+obj-$(CONFIG_VIBETONZ)		+= motor/
+
+obj-$(CONFIG_IRDA_MC96)		+= irda/
+
+obj-$(CONFIG_FELICA)		+= felica/
+
+obj-$(CONFIG_AUTHENTEC_VPNCLIENT_INTERCEPTOR) += interceptor/
+
+ifeq (1, $(shell if [ -d ../../../../../../kernel/drivers/exfat ] ; then echo 1 ; fi))
+obj-y                           += exfat/
+endif
+

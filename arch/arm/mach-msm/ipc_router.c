@@ -2534,7 +2534,15 @@ static int __init msm_ipc_router_init(void)
 	if (!routing_table_inited) {
 		init_routing_table();
 		rt_entry = alloc_routing_table_entry(IPC_ROUTER_NID_LOCAL);
-		add_routing_table_entry(rt_entry);
+		ret = add_routing_table_entry(rt_entry); 
+		if (ret) { 
+			pr_err("%s: add_routing_table_entry failed\n", 
+					__func__); 
+			mutex_unlock(&routing_table_lock); 
+			/* destroy_workqueue */ 
+			destroy_workqueue(msm_ipc_router_workqueue); 
+			return ret; 
+		} 
 		routing_table_inited = 1;
 	}
 	mutex_unlock(&routing_table_lock);

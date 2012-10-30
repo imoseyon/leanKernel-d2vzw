@@ -502,8 +502,10 @@ static struct clk_data mdp_8960_clks[] = {
 	{ .name = "bus_clk" },
 	{ .name = "vsync_clk" },
 	{ .name = "lut_clk" },
+#ifdef CONFIG_FB_MSM_DTV
 	{ .name = "tv_src_clk" },
 	{ .name = "tv_clk" },
+#endif
 	{ 0 }
 };
 

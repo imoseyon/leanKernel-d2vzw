@@ -14,6 +14,8 @@ source "drivers/pnp/Kconfig"
 
 source "drivers/block/Kconfig"
 
+source "drivers/sensors/Kconfig"
+
 # misc before ide - BLK_DEV_SGIIOC4 depends on SGI_IOC4
 
 source "drivers/misc/Kconfig"
@@ -98,6 +100,9 @@ source "drivers/leds/Kconfig"
 
 source "drivers/nfc/Kconfig"
 
+# FELICA
+source "drivers/felica/Kconfig"
+
 source "drivers/switch/Kconfig"
 
 source "drivers/accessibility/Kconfig"
@@ -130,4 +135,13 @@ source "drivers/hwspinlock/Kconfig"
 
 source "drivers/clocksource/Kconfig"
 
+source "drivers/battery/Kconfig"
+
+source "drivers/motor/Kconfig"
+
+source "drivers/irda/Kconfig"
+
+source "drivers/accessory/Kconfig"
+
+source "drivers/interceptor/Kconfig"
 endmenu

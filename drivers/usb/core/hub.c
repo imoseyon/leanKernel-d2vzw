@@ -25,6 +25,11 @@
 #include <linux/mutex.h>
 #include <linux/freezer.h>
 #include <linux/usb/otg.h>
+#ifdef CONFIG_USB_HOST_NOTIFY
+#include <linux/host_notify.h>
+#include <linux/usb/otg.h>
+#include <linux/usb/msm_hsusb.h>
+#endif
 
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
@@ -1774,6 +1779,10 @@ static inline void announce_device(struct usb_device *udev) { }
 #include "otg_whitelist.h"
 #endif
 
+#ifdef	CONFIG_USB_SEC_WHITELIST
+#include "sec_whitelist.h"
+#endif
+
 /**
  * usb_enumerate_device_otg - FIXME (usbcore-internal)
  * @udev: newly addressed device (in ADDRESS state)
@@ -1783,6 +1792,13 @@ static inline void announce_device(struct usb_device *udev) { }
 static int usb_enumerate_device_otg(struct usb_device *udev)
 {
 	int err = 0;
+
+#ifdef CONFIG_USB_SEC_WHITELIST
+	if (!is_seclist(udev, 1)) {
+		err = -ENOTSUPP;
+		goto sec_fail;
+	}
+#endif
 
 #ifdef	CONFIG_USB_OTG
 	/*
@@ -1869,6 +1885,9 @@ out:
 		schedule_delayed_work(&udev->bus->hnp_polling,
 			msecs_to_jiffies(THOST_REQ_POLL));
 	}
+#endif
+#ifdef	CONFIG_USB_SEC_WHITELIST
+sec_fail:
 #endif
 	return err;
 }
@@ -3432,6 +3451,15 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 				spin_lock_irq(&device_state_lock);
 				hdev->children[port1-1] = NULL;
 				spin_unlock_irq(&device_state_lock);
+#ifdef CONFIG_USB_HOST_NOTIFY
+				struct otg_transceiver *otg =
+					otg_get_transceiver();
+				struct msm_otg *motg =
+					container_of(otg, struct msm_otg, otg);
+				host_state_notify(&motg->ndev,
+					NOTIFY_HOST_UNKNOWN);
+				motg->ndev.state = NOTIFY_HOST_NONE;
+#endif
 			}
 		}
 

@@ -317,6 +317,8 @@ static int __init msm_cpufreq_register(void)
 
 #ifdef CONFIG_SMP
 	msm_cpufreq_wq = create_workqueue("msm-cpufreq");
+	if (!msm_cpufreq_wq)
+		return -1;
 #endif
 
 	register_pm_notifier(&msm_cpufreq_pm_notifier);

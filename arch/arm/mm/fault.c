@@ -36,6 +36,8 @@
 
 #include "fault.h"
 
+#include <mach/msm-krait-l2-accessors.h>
+
 /*
  * Fault status register encodings.  We steal bit 31 for our own purposes.
  */
@@ -151,6 +153,18 @@ static void
 __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 		  struct pt_regs *regs)
 {
+	unsigned long l2esr;
+	unsigned long l2esynr0;
+	unsigned long l2esynr1;
+	unsigned long l2ear0;
+	unsigned long l2ear1;
+
+	l2esr = get_l2_indirect_reg(0x0204);
+	l2esynr0 = get_l2_indirect_reg(0x0208);
+	l2esynr1 = get_l2_indirect_reg(0x0209);
+	l2ear0 = get_l2_indirect_reg(0x020c);
+	l2ear1 = get_l2_indirect_reg(0x020d);
+
 	/*
 	 * Are we prepared to handle this kernel fault?
 	 */
@@ -165,6 +179,12 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 		"Unable to handle kernel %s at virtual address %08lx\n",
 		(addr < PAGE_SIZE) ? "NULL pointer dereference" :
 		"paging request", addr);
+
+	pr_alert(">>> l2esr = 0x%lx\n", l2esr);
+	pr_alert(">>> l2esynr0 = 0x%lx\n", l2esynr0);
+	pr_alert(">>> l2esynr1 = 0x%lx\n", l2esynr1);
+	pr_alert(">>> l2ear0 = 0x%lx\n", l2ear0);
+	pr_alert(">>> l2ear1 = 0x%lx\n", l2ear1);
 
 	show_pte(mm, addr);
 	die("Oops", regs, fsr);
@@ -183,12 +203,23 @@ __do_user_fault(struct task_struct *tsk, unsigned long addr,
 {
 	struct siginfo si;
 
-#ifdef CONFIG_DEBUG_USER
+#if 0 /* def CONFIG_DEBUG_USER */
 	if (user_debug & UDBG_SEGV) {
 		printk(KERN_DEBUG "%s: unhandled page fault (%d) at 0x%08lx, code 0x%03x\n",
 		       tsk->comm, sig, addr, fsr);
 		show_pte(tsk->mm, addr);
-		show_regs(regs);
+		/* commented out show_regs :
+		 * bionic libc writes some value to 0xdeadbaad in the
+		 * __libc_android_abort() function to generate a user fault.
+		 * So r0 has 0xdeadbaad. When show_regs() tries to
+		 * print register values it reads values at address starting
+		 * from 0xdeadbaad-0x80 but this virtual address was mapped
+		 * to a device address.
+		 * The device at the time of the user fault was unclocked.
+		 * Thus causing a bus hang.
+		 * To avoid this problem, below line is commented out
+		 */
+		/* show_regs(regs); */
 	}
 #endif
 

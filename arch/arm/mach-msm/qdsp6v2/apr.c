@@ -39,6 +39,8 @@ struct apr_q6 q6;
 struct apr_client client[APR_DEST_MAX][APR_CLIENT_MAX];
 static atomic_t dsp_state;
 static atomic_t modem_state;
+int q6_ssr_8960;
+EXPORT_SYMBOL(q6_ssr_8960);
 
 static wait_queue_head_t  dsp_wait;
 static wait_queue_head_t  modem_wait;
@@ -101,6 +103,14 @@ int apr_send_pkt(void *handle, uint32_t *buf)
 		hdr->dest_domain = APR_DOMAIN_ADSP;
 
 	hdr->dest_svc = svc->id;
+
+#ifdef CONFIG_SEC_DHA_SOL_MAL
+	if (hdr->opcode == 0x0001128A) {
+		pr_debug("Success call%s\n", __func__);
+		hdr->dest_domain = 0x03;
+		hdr->dest_svc = 0x02;
+	}
+#endif /* CONFIG_SEC_DHA_SOL_MAL*/
 
 	w_len = apr_tal_write(clnt->handle, buf, hdr->pkt_size);
 	if (w_len != hdr->pkt_size)
@@ -591,6 +601,7 @@ static int modem_notifier_cb(struct notifier_block *this, unsigned long code,
 		pr_debug("M-Notify: Shutdown started\n");
 		atomic_set(&modem_state, 0);
 		dispatch_event(code, APR_DEST_MODEM);
+		q6_ssr_8960 = 1;
 		break;
 	case SUBSYS_AFTER_SHUTDOWN:
 		pr_debug("M-Notify: Shutdown Completed\n");
@@ -603,6 +614,7 @@ static int modem_notifier_cb(struct notifier_block *this, unsigned long code,
 			atomic_set(&modem_state, 1);
 			wake_up(&modem_wait);
 		}
+		q6_ssr_8960 = 0;
 		pr_debug("M-Notify: Bootup Completed\n");
 		break;
 	default:

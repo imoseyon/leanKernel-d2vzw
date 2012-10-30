@@ -53,6 +53,10 @@ struct mmc_ext_csd {
 	unsigned int		part_time;		/* Units: ms */
 	unsigned int		sa_timeout;		/* Units: 100ns */
 	unsigned int		hs_max_dtr;
+#define MMC_HIGH_26_MAX_DTR    26000000
+#define MMC_HIGH_52_MAX_DTR    52000000
+#define MMC_HIGH_DDR_MAX_DTR   52000000
+#define MMC_HS200_MAX_DTR      200000000
 	unsigned int		sectors;
 	unsigned int		card_type;
 	unsigned int		hc_erase_size;		/* In sectors */
@@ -77,6 +81,8 @@ struct mmc_ext_csd {
 	u8			raw_sec_feature_support;/* 231 */
 	u8			raw_trim_mult;		/* 232 */
 	u8			raw_sectors[4];		/* 212 - 4 bytes */
+	unsigned int            feature_support;
+#define MMC_DISCARD_FEATURE	BIT(0)			/* CMD38 feature */
 };
 
 struct sd_scr {

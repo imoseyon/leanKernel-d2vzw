@@ -22,6 +22,11 @@
 #include <mach/msm_iomap.h>
 #include <asm/cputype.h>
 #include "acpuclock.h"
+#include <linux/ratelimit.h>
+
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+#include <mach/sec_debug.h>
+#endif
 
 #define CESR_DCTPE		BIT(0)
 #define CESR_DCDPE		BIT(1)
@@ -67,7 +72,7 @@
 #ifdef CONFIG_MSM_L2_ERP_PORT_PANIC
 #define ERP_PORT_ERR(a) panic(a)
 #else
-#define ERP_PORT_ERR(a) WARN(1, a)
+#define ERP_PORT_ERR(a) do { } while (0)
 #endif
 
 #ifdef CONFIG_MSM_L2_ERP_1BIT_PANIC
@@ -90,6 +95,14 @@
 
 #define MODULE_NAME "msm_cache_erp"
 
+#define L2_ERROR_RATELIMIT_INTERVAL 10
+#define L2_ERROR_RATELIMIT_BURST 10
+
+static DEFINE_RATELIMIT_STATE(_rs,				\
+				      L2_ERROR_RATELIMIT_INTERVAL,	\
+				      L2_ERROR_RATELIMIT_BURST);
+
+static unsigned int msm_l2_mpdcd_err_cnt;
 #define ERP_LOG_MAGIC_ADDR	0x748
 #define ERP_LOG_MAGIC		0x11C39893
 
@@ -120,6 +133,9 @@ static struct msm_l2_err_stats msm_l2_erp_stats;
 static int l1_erp_irq, l2_erp_irq;
 static struct proc_dir_entry *procfs_entry;
 
+static unsigned int l2_err_msg_mask = (L2ESR_MPDCD | L2ESR_TSESB
+	| L2ESR_TSEDB | L2ESR_DSESB | L2ESR_DSEDB | L2ESR_MSE
+	| L2ESR_MPLDREXNOK);
 #ifdef CONFIG_MSM_L1_ERR_LOG
 static struct proc_dir_entry *procfs_log_entry;
 #endif
@@ -328,8 +344,13 @@ static irqreturn_t msm_l1_erp_irq(int irq, void *dev_id)
 	/* Clear the interrupt bits we processed */
 	write_cesr(cesr);
 
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+	if (print_regs)
+		sec_l1_dcache_check_fail();
+#else
 	if (print_regs)
 		ERP_L1_ERR("L1 cache error detected");
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -352,9 +373,7 @@ static irqreturn_t msm_l2_erp_irq(int irq, void *dev_id)
 	l2ear0 = get_l2_indirect_reg(L2EAR0_IND_ADDR);
 	l2ear1 = get_l2_indirect_reg(L2EAR1_IND_ADDR);
 
-	print_alert = print_access_errors() || (l2esr & L2ESR_ACCESS_ERR_MASK);
-
-	if (print_alert) {
+	if (l2esr & l2_err_msg_mask) {
 		pr_alert("L2 Error detected!\n");
 		pr_alert("\tL2ESR    = 0x%08x\n", l2esr);
 		pr_alert("\tL2ESYNR0 = 0x%08x\n", l2esynr0);
@@ -362,62 +381,71 @@ static irqreturn_t msm_l2_erp_irq(int irq, void *dev_id)
 		pr_alert("\tL2EAR0   = 0x%08x\n", l2ear0);
 		pr_alert("\tL2EAR1   = 0x%08x\n", l2ear1);
 		pr_alert("\tCPU bitmap = 0x%x\n", (l2esr >> L2ESR_CPU_SHIFT) &
-							L2ESR_CPU_MASK);
+						    L2ESR_CPU_MASK);
 	}
 
 	if (l2esr & L2ESR_MPDCD) {
-		if (print_alert)
+		if (l2esr & l2_err_msg_mask)
 			pr_alert("L2 master port decode error\n");
 		port_error++;
 		msm_l2_erp_stats.mpdcd++;
+
+		if (!__ratelimit(&_rs))
+			msm_l2_mpdcd_err_cnt++;
 	}
 
 	if (l2esr & L2ESR_MPSLV) {
-		if (print_alert)
+		if (l2esr & l2_err_msg_mask)
 			pr_alert("L2 master port slave error\n");
 		port_error++;
 		msm_l2_erp_stats.mpslv++;
 	}
 
 	if (l2esr & L2ESR_TSESB) {
-		pr_alert("L2 tag soft error, single-bit\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 tag soft error, single-bit\n");
 		soft_error++;
 		msm_l2_erp_stats.tsesb++;
 	}
 
 	if (l2esr & L2ESR_TSEDB) {
-		pr_alert("L2 tag soft error, double-bit\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 tag soft error, double-bit\n");
 		soft_error++;
 		unrecoverable++;
 		msm_l2_erp_stats.tsedb++;
 	}
 
 	if (l2esr & L2ESR_DSESB) {
-		pr_alert("L2 data soft error, single-bit\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 data soft error, single-bit\n");
 		soft_error++;
 		msm_l2_erp_stats.dsesb++;
 	}
 
 	if (l2esr & L2ESR_DSEDB) {
-		pr_alert("L2 data soft error, double-bit\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 data soft error, double-bit\n");
 		soft_error++;
 		unrecoverable++;
 		msm_l2_erp_stats.dsedb++;
 	}
 
 	if (l2esr & L2ESR_MSE) {
-		pr_alert("L2 modified soft error\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 modified soft error\n");
 		soft_error++;
 		msm_l2_erp_stats.mse++;
 	}
 
 	if (l2esr & L2ESR_MPLDREXNOK) {
-		pr_alert("L2 master port LDREX received Normal OK response\n");
+		if (l2esr & l2_err_msg_mask)
+			pr_alert("L2 master port LDREX received Normal OK response\n");
 		port_error++;
 		msm_l2_erp_stats.mplxrexnok++;
 	}
 
-	if (port_error && print_alert)
+	if (port_error && (l2esr & l2_err_msg_mask))
 		ERP_PORT_ERR("L2 master port error detected");
 
 	if (soft_error && !unrecoverable)

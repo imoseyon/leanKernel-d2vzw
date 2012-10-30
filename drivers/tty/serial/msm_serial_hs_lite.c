@@ -35,6 +35,7 @@
 #include <linux/tty_flip.h>
 #include <linux/serial_core.h>
 #include <linux/serial.h>
+#include <linux/wakelock.h>
 #include <linux/nmi.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
@@ -47,21 +48,38 @@
 #include <mach/msm_serial_hs_lite.h>
 #include <asm/mach-types.h>
 #include "msm_serial_hs_hwreg.h"
+#include <linux/mfd/pm8xxx/pm8921.h>
+
+#define PM8921_GPIO_BASE  NR_GPIO_IRQS
+#define PM8921_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio - 1 + PM8921_GPIO_BASE)
+
+extern int uart_connecting;
+
+/* optional low power wakeup, typically on a GPIO RX irq */
+struct msm_hsl_wakeup {
+	int	irq;	/* < 0 indicates low power wakeup disabled */
+	int rx_gpio;	/*  MSM_RX_GPIO, generally 23 */
+	unsigned char ignore; /* bool */
+	unsigned int wakeup_set;
+	struct wake_lock wake_lock; /* Keep a wake lock */
+};
+
 
 struct msm_hsl_port {
-	struct uart_port	uart;
-	char			name[16];
+	struct uart_port	 uart;
+	char			 name[16];
 	struct clk		*clk;
 	struct clk		*pclk;
 	struct dentry		*loopback_dir;
-	unsigned int		imr;
+	unsigned int		 imr;
 	unsigned int		*uart_csr_code;
 	unsigned int            *gsbi_mapbase;
 	unsigned int            *mapped_gsbi;
-	int			is_uartdm;
-	unsigned int            old_snap_state;
-	unsigned int		ver_id;
-	int			tx_timeout;
+	int			 is_uartdm;
+	unsigned int		 old_snap_state;
+	unsigned int		 ver_id;
+	int			 tx_timeout;
+	struct msm_hsl_wakeup	 wakeup;
 };
 
 #define UARTDM_VERSION_11_13	0
@@ -166,6 +184,35 @@ static int clk_en(struct uart_port *port, int enable)
 err:
 	return ret;
 }
+
+
+/**
+   Function: wake up ISR
+   Purpose: Creates a self expiring wake_lock that will prevent system
+			from suspend.
+ */
+static irqreturn_t msm_hsl_wakeup_isr(int irq, void *dev)
+{
+	unsigned int wakeup = 0;
+	struct msm_hsl_port *msm_hsl_port = (struct msm_hsl_port *)dev;
+	const unsigned long WAKE_LOCK_EXPIRE_TIME = HZ;
+	/* let it expire within 1 sec */
+
+
+	if (msm_hsl_port->wakeup.ignore)
+		msm_hsl_port->wakeup.ignore = 0;
+	else
+		wakeup = 1;
+
+	if (wakeup) {
+		/* let it self expire */
+		wake_lock_timeout(&msm_hsl_port->wakeup.wake_lock,
+					WAKE_LOCK_EXPIRE_TIME*3);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static int msm_hsl_loopback_enable_set(void *data, u64 val)
 {
 	struct msm_hsl_port *msm_hsl_port = data;
@@ -367,6 +414,9 @@ static void handle_rx(struct uart_port *port, unsigned int misr)
 	}
 
 	tty_flip_buffer_push(tty);
+
+	/* ignore pending wakeup irq */
+	msm_hsl_port->wakeup.ignore = 1;
 }
 
 static void handle_tx(struct uart_port *port)
@@ -915,6 +965,13 @@ static void msm_hsl_release_port(struct uart_port *port)
 		iounmap(msm_hsl_port->mapped_gsbi);
 		msm_hsl_port->mapped_gsbi = NULL;
 	}
+
+	/* Free Wake UP IRQ */
+	if (msm_hsl_port->wakeup.irq > 0) {
+		free_irq(msm_hsl_port->wakeup.irq, msm_hsl_port);
+		msm_hsl_port->wakeup.irq = -1;
+	}
+
 }
 
 static int msm_hsl_request_port(struct uart_port *port)
@@ -962,9 +1019,8 @@ static int msm_hsl_request_port(struct uart_port *port)
 		size = gsbi_resource->end - gsbi_resource->start + 1;
 		msm_hsl_port->mapped_gsbi = ioremap(gsbi_resource->start,
 						    size);
-		if (!msm_hsl_port->mapped_gsbi) {
+		if (!msm_hsl_port->mapped_gsbi)
 			return -EBUSY;
-		}
 	}
 
 	return 0;
@@ -1421,6 +1477,32 @@ static int __devinit msm_serial_hsl_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
+	/* Get wakup_irq resource if available */
+	msm_hsl_port->wakeup.irq = -1;
+	uart_resource = platform_get_resource_byname(pdev,
+					IORESOURCE_IO, "wakeup_gpio");
+	if (uart_resource) {
+		printk(KERN_INFO "%s: Found wakeup gpio %d\n",
+				__func__, uart_resource->start);
+		msm_hsl_port->wakeup.wakeup_set = 0;
+		msm_hsl_port->wakeup.rx_gpio = uart_resource->start;
+		msm_hsl_port->wakeup.irq = gpio_to_irq(uart_resource->start);
+
+		/* Create a wake_lock to prevent system from suspend */
+		wake_lock_init(&msm_hsl_port->wakeup.wake_lock,
+			WAKE_LOCK_SUSPEND, "msm_serial_hsl");
+
+		ret = request_irq(msm_hsl_port->wakeup.irq, msm_hsl_wakeup_isr,
+			IRQF_TRIGGER_FALLING, "msm_hsl_wakeup", msm_hsl_port);
+		if (unlikely(ret)) {
+			pr_err("%s: failed to request wakeup_irq\n", __func__);
+			return ret;
+		}
+
+		disable_irq(msm_hsl_port->wakeup.irq);
+
+	}
+
 	device_set_wakeup_capable(&pdev->dev, 1);
 	platform_set_drvdata(pdev, port);
 	pm_runtime_enable(port->dev);
@@ -1465,12 +1547,34 @@ static int __devexit msm_serial_hsl_remove(struct platform_device *pdev)
 	return 0;
 }
 
+
 #ifdef CONFIG_PM
 static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+	struct msm_hsl_port *msm_hsl_port;
+
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
+
 	port = get_port_from_line(pdev->id);
+	msm_hsl_port = UART_TO_MSM(port);
 
 	if (port) {
 
@@ -1478,8 +1582,36 @@ static int msm_serial_hsl_suspend(struct device *dev)
 			msm_hsl_deinit_clock(port);
 
 		uart_suspend_port(&msm_hsl_uart_driver, port);
+
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
+
+#ifndef	CONFIG_USB_SWITCH_FSA9485
+		/*  ESPRESSO Model does not have fsa9485 chip
+		 *  Always true uart_connecting value in Tablet model */
+			uart_connecting = 1;
+#endif
+
+		if (uart_connecting &&
+				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
+			/* Enable wakeup_irq
+			 * wakeup_irq state :
+			 * 1. uart_connecting true : FSA9485 detect it
+			 * 2. UART_RX GPIO is high : h/w behavior
+			 * */
+			if (msm_hsl_port->wakeup.irq > 0) {
+				printk(KERN_ERR "%s enabling wakeup irq\n",
+								__func__);
+				enable_irq_wake(msm_hsl_port->wakeup.irq);
+				enable_irq(msm_hsl_port->wakeup.irq);
+				msm_hsl_port->wakeup.wakeup_set = 1;
+			}
+		} else {
+			/* If RX_GPIO is low, uart is not connected. */
+			msm_hsl_port->wakeup.wakeup_set = 0;
+			uart_connecting = 0;
+		}
+
 	}
 
 	return 0;
@@ -1489,16 +1621,57 @@ static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
+	struct msm_hsl_port *msm_hsl_port;
+
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
+
 	port = get_port_from_line(pdev->id);
+	msm_hsl_port = UART_TO_MSM(port);
 
 	if (port) {
 
 		uart_resume_port(&msm_hsl_uart_driver, port);
+
 		if (device_may_wakeup(dev))
 			disable_irq_wake(port->irq);
 
 		if (is_console(port))
 			msm_hsl_init_clock(port);
+
+#ifndef	CONFIG_USB_SWITCH_FSA9485
+	/*  ESPRESSO Model does not have fsa9485 chip in Tablet model */
+			uart_connecting = 0;
+#endif
+
+		if (uart_connecting || msm_hsl_port->wakeup.wakeup_set) {
+			/* disable wakeup_irq */
+			if (msm_hsl_port->wakeup.irq > 0) {
+				printk(KERN_ERR "%s disbling wakeup irq\n",
+								__func__);
+				if (!msm_hsl_port->wakeup.wakeup_set)
+					return 0;
+
+				disable_irq_wake(msm_hsl_port->wakeup.irq);
+				disable_irq(msm_hsl_port->wakeup.irq);
+			}
+		}
+
 	}
 
 	return 0;
@@ -1530,7 +1703,7 @@ static int msm_hsl_runtime_resume(struct device *dev)
 	return 0;
 }
 
-static struct dev_pm_ops msm_hsl_dev_pm_ops = {
+static const struct dev_pm_ops msm_hsl_dev_pm_ops = {
 	.suspend = msm_serial_hsl_suspend,
 	.resume = msm_serial_hsl_resume,
 	.runtime_suspend = msm_hsl_runtime_suspend,
@@ -1565,7 +1738,6 @@ static int __init msm_serial_hsl_init(void)
 		uart_unregister_driver(&msm_hsl_uart_driver);
 
 	printk(KERN_INFO "msm_serial_hsl: driver initialized\n");
-
 	return ret;
 }
 

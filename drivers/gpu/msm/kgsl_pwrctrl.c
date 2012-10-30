@@ -409,21 +409,30 @@ void kgsl_pwrctrl_axi(struct kgsl_device *device, int state)
 
 void kgsl_pwrctrl_pwrrail(struct kgsl_device *device, int state)
 {
+	int rc = 0;
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 
 	if (state == KGSL_PWRFLAGS_OFF) {
 		if (test_and_clear_bit(KGSL_PWRFLAGS_POWER_ON,
 			&pwr->power_flags)) {
 			trace_kgsl_rail(device, state);
-			if (pwr->gpu_reg)
-				regulator_disable(pwr->gpu_reg);
+			if (pwr->gpu_reg) {
+				rc = regulator_disable(pwr->gpu_reg);
+				if (rc < 0)
+					KGSL_PWR_ERR(device,
+					"regulator_disable failed (%d)\n", rc);
+			}
 		}
 	} else if (state == KGSL_PWRFLAGS_ON) {
 		if (!test_and_set_bit(KGSL_PWRFLAGS_POWER_ON,
 			&pwr->power_flags)) {
 			trace_kgsl_rail(device, state);
-			if (pwr->gpu_reg)
-				regulator_enable(pwr->gpu_reg);
+			if (pwr->gpu_reg) {
+				rc = regulator_enable(pwr->gpu_reg);
+				if (rc < 0)
+					KGSL_PWR_ERR(device,
+					"regulator_enable failed (%d)\n", rc);
+			}
 		}
 	}
 }
@@ -540,6 +549,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		result = -EINVAL;
 		goto done;
 	}
+	pwr->resume_pm_qos = 1;
 
 	register_early_suspend(&device->display_off);
 	return result;
@@ -658,6 +668,7 @@ void kgsl_pre_hwaccess(struct kgsl_device *device)
 	case KGSL_STATE_INIT:
 	case KGSL_STATE_HUNG:
 	case KGSL_STATE_DUMP_AND_RECOVER:
+#if 0 /* delete log printed too many times in gpu hang status */
 		if (test_bit(KGSL_PWRFLAGS_CLK_ON,
 					 &device->pwrctrl.power_flags))
 			break;
@@ -665,6 +676,7 @@ void kgsl_pre_hwaccess(struct kgsl_device *device)
 			KGSL_PWR_ERR(device,
 					"hw access while clocks off from state %d\n",
 					device->state);
+#endif
 		break;
 	default:
 		KGSL_PWR_ERR(device, "hw access while in unknown state %d\n",
@@ -927,4 +939,3 @@ const char *kgsl_pwrstate_to_str(unsigned int state)
 	return "UNKNOWN";
 }
 EXPORT_SYMBOL(kgsl_pwrstate_to_str);
-

@@ -50,6 +50,9 @@ int get_restart_level(void);
 int subsystem_restart(const char *subsys_name);
 int ssr_register_subsystem(struct subsys_data *subsys);
 
+extern int q6_ssr_8960;
+extern int msm8960_ssr_inprogress;
+
 #else
 
 static inline int get_restart_level(void)

@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/reboot.h>
 #include <linux/of.h>
+#include <linux/spinlock.h>
 #ifdef CONFIG_DIAG_OVER_USB
 #include <mach/usbdiag.h>
 #endif
@@ -56,6 +57,7 @@ struct mask_info {
 	int num_items;
 	int index;
 };
+spinlock_t diag_cntl_lock;
 
 #define CREATE_MSG_MASK_TBL_ROW(XX)					\
 do {									\
@@ -798,6 +800,9 @@ void diag_send_msg_mask_update(smd_channel_t *ch, int updated_ssid_first,
 	int first, last, size = -ENOMEM, retry_count = 0, timer;
 	int header_size = sizeof(struct diag_ctrl_msg_mask);
 	uint8_t *ptr = driver->msg_masks;
+	unsigned long flags = 0;
+	int mask_pkt_size, kk;
+	void *temp_buf;
 
 	mutex_lock(&driver->diag_cntl_mutex);
 	while (*(uint32_t *)(ptr + 4)) {

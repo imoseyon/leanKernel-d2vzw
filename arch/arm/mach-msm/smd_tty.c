@@ -555,14 +555,18 @@ static int __init smd_tty_init(void)
 			/*
 			 * use legacy mode for 8660 Standalone (subtype 0)
 			 */
-			legacy_ds |= cpu_is_msm8x60() &&
+			legacy_ds |= cpu_is_msm8960() || cpu_is_msm8x60() &&
 					(socinfo_get_platform_subtype() == 0x0);
 
 			if (!legacy_ds)
 				continue;
 		}
 
-		tty_register_device(smd_tty_driver, idx, 0);
+		ret = tty_register_device(smd_tty_driver, idx, 0);
+		if (IS_ERR(ret)) {
+			pr_err("%s: init failed %d (%d)\n", __func__, idx, ret);
+			goto out;
+		}
 		init_completion(&smd_tty[idx].ch_allocated);
 
 		/* register platform device */
@@ -577,6 +581,7 @@ static int __init smd_tty_init(void)
 		if (ret) {
 			pr_err("%s: init failed %d (%d)\n", __func__, idx, ret);
 			smd_tty[idx].driver.probe = NULL;
+			tty_unregister_device(smd_tty_driver, idx);
 			goto out;
 		}
 		smd_tty[idx].smd = &smd_configs[n];
@@ -586,14 +591,11 @@ static int __init smd_tty_init(void)
 
 out:
 	/* unregister platform devices */
-	for (n = 0; n < ARRAY_SIZE(smd_configs); ++n) {
+	while (--n >= 0) {
 		idx = smd_configs[n].tty_dev_index;
-
-		if (smd_tty[idx].driver.probe) {
 			platform_driver_unregister(&smd_tty[idx].driver);
 			tty_unregister_device(smd_tty_driver, idx);
 		}
-	}
 
 	tty_unregister_driver(smd_tty_driver);
 	put_tty_driver(smd_tty_driver);

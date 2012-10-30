@@ -454,6 +454,24 @@ config LEDS_ASIC3
 	  cannot be used. This driver supports hardware blinking with an on+off
 	  period from 62ms to 125s. Say Y to enable LEDs on the HP iPAQ hx4700.
 
+config LEDS_MAX77693
+	bool "LED support for the MAX77693"
+	depends on LEDS_CLASS
+	depends on MFD_MAX77693
+	default n
+	help
+	  This option enables support for the LEDs on the MAX77693.
+	  This driver provides support for the voltage regulators of the MAX77693.
+	  The MAX77693 is a companion power management IC for the smart phones
+	  The Maxim Max 77693 handles PMIC, MUIC, and the flash LED control.
+
+config LEDS_AAT1290A
+	bool "LED support for the AAT1290A"
+	depends on LEDS_CLASS
+	default n
+	help
+	  This option enables support for the LEDs on the AAT1290A.
+
 config LEDS_TRIGGERS
 	bool "LED Trigger support"
 	depends on LEDS_CLASS
@@ -526,6 +544,20 @@ config LEDS_TRIGGER_SLEEP
 	depends on LEDS_TRIGGERS && HAS_EARLYSUSPEND
 	help
 	  This turns LEDs on when the screen is off but the cpu still running.
+
+config LEDS_MSM_TKEY
+        tristate "LED Support for touchkey LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
+
+config LEDS_MSM_KB
+        tristate "LED Support for keyboard LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
 
 comment "iptables trigger is under Netfilter config (LED target)"
 	depends on LEDS_TRIGGERS

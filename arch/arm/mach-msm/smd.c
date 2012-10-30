@@ -69,6 +69,10 @@
 uint32_t SMSM_NUM_ENTRIES = 8;
 uint32_t SMSM_NUM_HOSTS = 3;
 
+/* Legacy SMSM interrupt notifications */
+#define LEGACY_MODEM_SMSM_MASK (SMSM_RESET | SMSM_INIT | SMSM_SMDINIT \
+			| SMSM_RUN | SMSM_SYSTEM_DOWNLOAD)
+
 enum {
 	MSM_SMD_DEBUG = 1U << 0,
 	MSM_SMSM_DEBUG = 1U << 1,
@@ -106,6 +110,8 @@ struct smsm_state_cb_info {
 struct smsm_state_info {
 	struct list_head callbacks;
 	uint32_t last_value;
+	uint32_t intr_mask_set;
+	uint32_t intr_mask_clear;
 };
 
 #define SMSM_STATE_ADDR(entry)           (smsm_info.state + entry)
@@ -330,7 +336,11 @@ static void notify_other_smsm(uint32_t smsm_entry, uint32_t notify_mask)
 	 * on DEM-based targets.  Grabbing a wakelock in this case will
 	 * abort the power-down sequencing.
 	 */
-	smsm_cb_snapshot(0);
+	if (smsm_info.intr_mask &&
+	    (__raw_readl(SMSM_INTR_MASK_ADDR(smsm_entry, SMSM_APPS))
+				& notify_mask)) {
+		smsm_cb_snapshot(0);
+	}
 }
 
 static inline void notify_modem_smd(void)
@@ -2037,6 +2047,8 @@ static int smsm_cb_init(void)
 	for (n = 0; n < SMSM_NUM_ENTRIES; n++) {
 		state_info = &smsm_states[n];
 		state_info->last_value = __raw_readl(SMSM_STATE_ADDR(n));
+		state_info->intr_mask_set = 0x0;
+		state_info->intr_mask_clear = 0x0;
 		INIT_LIST_HEAD(&state_info->callbacks);
 	}
 	mutex_unlock(&smsm_lock);
@@ -2093,10 +2105,16 @@ static int smsm_init(void)
 						  SMSM_NUM_HOSTS *
 						  sizeof(uint32_t));
 
-		if (smsm_info.intr_mask)
+		if (smsm_info.intr_mask) {
 			for (i = 0; i < SMSM_NUM_ENTRIES; i++)
-				__raw_writel(0xffffffff,
-				       SMSM_INTR_MASK_ADDR(i, SMSM_APPS));
+				__raw_writel(0x0,
+					SMSM_INTR_MASK_ADDR(i, SMSM_APPS));
+
+			/* Configure legacy modem bits */
+			__raw_writel(LEGACY_MODEM_SMSM_MASK,
+				SMSM_INTR_MASK_ADDR(SMSM_MODEM_STATE,
+					SMSM_APPS));
+		}
 	}
 
 	if (!smsm_info.intr_mux)
@@ -2216,6 +2234,9 @@ restore_snapshot_count:
 		}
 		spin_unlock_irqrestore(&smsm_snapshot_count_lock, flags);
 	}
+	++smsm_snapshot_count;
+	spin_unlock_irqrestore(&smsm_snapshot_count_lock, flags);
+	queue_work(smsm_cb_wq, &smsm_cb_work);
 }
 
 static irqreturn_t smsm_irq_handler(int irq, void *data)
@@ -2299,6 +2320,20 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/*
+ * Changes the global interrupt mask.  The set and clear masks are re-applied
+ * every time the global interrupt mask is updated for callback registration
+ * and de-registration.
+ *
+ * The clear mask is applied first, so if a bit is set to 1 in both the clear
+ * mask and the set mask, the result will be that the interrupt is set.
+ *
+ * @smsm_entry  SMSM entry to change
+ * @clear_mask  1 = clear bit, 0 = no-op
+ * @set_mask    1 = set bit, 0 = no-op
+ *
+ * @returns 0 for success, < 0 for error
+ */
 int smsm_change_intr_mask(uint32_t smsm_entry,
 			  uint32_t clear_mask, uint32_t set_mask)
 {
@@ -2317,6 +2352,8 @@ int smsm_change_intr_mask(uint32_t smsm_entry,
 	}
 
 	spin_lock_irqsave(&smem_lock, flags);
+	smsm_states[smsm_entry].intr_mask_clear = clear_mask;
+	smsm_states[smsm_entry].intr_mask_set = set_mask;
 
 	old_mask = __raw_readl(SMSM_INTR_MASK_ADDR(smsm_entry, SMSM_APPS));
 	new_mask = (old_mask & ~clear_mask) | set_mask;
@@ -2491,8 +2528,10 @@ void notify_smsm_cb_clients_worker(struct work_struct *work)
 int smsm_state_cb_register(uint32_t smsm_entry, uint32_t mask,
 		void (*notify)(void *, uint32_t, uint32_t), void *data)
 {
+	struct smsm_state_info *state;
 	struct smsm_state_cb_info *cb_info;
 	struct smsm_state_cb_info *cb_found = 0;
+	uint32_t new_mask = 0;
 	int ret = 0;
 
 	if (smsm_entry >= SMSM_NUM_ENTRIES)
@@ -2506,15 +2545,16 @@ int smsm_state_cb_register(uint32_t smsm_entry, uint32_t mask,
 		goto cleanup;
 	}
 
+	state = &smsm_states[smsm_entry];
 	list_for_each_entry(cb_info,
-			&smsm_states[smsm_entry].callbacks, cb_list) {
-		if ((cb_info->notify == notify) &&
+			&state->callbacks, cb_list) {
+		if (!ret && (cb_info->notify == notify) &&
 				(cb_info->data == data)) {
 			cb_info->mask |= mask;
 			cb_found = cb_info;
 			ret = 1;
-			break;
 		}
+		new_mask |= cb_info->mask;
 	}
 
 	if (!cb_found) {
@@ -2530,7 +2570,24 @@ int smsm_state_cb_register(uint32_t smsm_entry, uint32_t mask,
 		cb_info->data = data;
 		INIT_LIST_HEAD(&cb_info->cb_list);
 		list_add_tail(&cb_info->cb_list,
-			&smsm_states[smsm_entry].callbacks);
+			&state->callbacks);
+		new_mask |= mask;
+	}
+
+	/* update interrupt notification mask */
+	if (smsm_entry == SMSM_MODEM_STATE)
+		new_mask |= LEGACY_MODEM_SMSM_MASK;
+
+	if (smsm_info.intr_mask) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&smem_lock, flags);
+		new_mask = (new_mask & ~state->intr_mask_clear)
+				| state->intr_mask_set;
+		__raw_writel(new_mask,
+				SMSM_INTR_MASK_ADDR(smsm_entry, SMSM_APPS));
+		wmb();
+		spin_unlock_irqrestore(&smem_lock, flags);
 	}
 
 cleanup:
@@ -2558,6 +2615,9 @@ int smsm_state_cb_deregister(uint32_t smsm_entry, uint32_t mask,
 		void (*notify)(void *, uint32_t, uint32_t), void *data)
 {
 	struct smsm_state_cb_info *cb_info;
+	struct smsm_state_cb_info *cb_tmp;
+	struct smsm_state_info *state;
+	uint32_t new_mask = 0;
 	int ret = 0;
 
 	if (smsm_entry >= SMSM_NUM_ENTRIES)
@@ -2571,9 +2631,10 @@ int smsm_state_cb_deregister(uint32_t smsm_entry, uint32_t mask,
 		return -ENODEV;
 	}
 
-	list_for_each_entry(cb_info,
-		&smsm_states[smsm_entry].callbacks, cb_list) {
-		if ((cb_info->notify == notify) &&
+	state = &smsm_states[smsm_entry];
+	list_for_each_entry_safe(cb_info, cb_tmp,
+		&state->callbacks, cb_list) {
+		if (!ret && (cb_info->notify == notify) &&
 			(cb_info->data == data)) {
 			cb_info->mask &= ~mask;
 			ret = 1;
@@ -2582,9 +2643,26 @@ int smsm_state_cb_deregister(uint32_t smsm_entry, uint32_t mask,
 				list_del(&cb_info->cb_list);
 				kfree(cb_info);
 				ret = 2;
+				continue;
 			}
-			break;
 		}
+		new_mask |= cb_info->mask;
+	}
+
+	/* update interrupt notification mask */
+	if (smsm_entry == SMSM_MODEM_STATE)
+		new_mask |= LEGACY_MODEM_SMSM_MASK;
+
+	if (smsm_info.intr_mask) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&smem_lock, flags);
+		new_mask = (new_mask & ~state->intr_mask_clear)
+				| state->intr_mask_set;
+		__raw_writel(new_mask,
+				SMSM_INTR_MASK_ADDR(smsm_entry, SMSM_APPS));
+		wmb();
+		spin_unlock_irqrestore(&smem_lock, flags);
 	}
 
 	mutex_unlock(&smsm_lock);

@@ -45,6 +45,26 @@ extern struct regulator_init_data msm_saw_regulator_pdata_s5;
 extern struct regulator_init_data msm_saw_regulator_pdata_s6;
 
 extern struct rpm_regulator_platform_data msm_rpm_regulator_pdata __devinitdata;
+#if defined(CONFIG_TOUCHSCREEN_MMS144) || \
+	defined(CONFIG_TOUCHSCREEN_MMS136) || \
+	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)
+extern void __init mms_tsp_input_init(void);
+#endif
+
+#if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
+				|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO10_ATT) \
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
+extern void __init usb_switch_init(void);
+#endif
+
+#if defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_M2_VZW) || \
+defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SPR) || \
+defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM) || \
+defined(CONFIG_MACH_K2_KDI)
+extern void __init msm8960_cam_init(void);
+#endif
 
 #if defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)
 enum {
@@ -71,8 +91,20 @@ enum {
 
 #endif
 
+extern int samsung_cmc624_on(int enable);
+extern int samsung_has_cmc624(void);
+extern int gpio_rev(unsigned int);
+extern void msm_otg_set_vbus_state(int);
+extern void msm_otg_set_charging_state(bool enable);
+extern void msm_otg_set_id_state(bool enable);
+extern void msm_otg_set_smartdock_state(bool enable);
+#ifdef CONFIG_CAMERON_HEALTH
+extern bool is_cameron_health_connected;
+extern void msm_otg_set_cameronhealth_state(bool enable);
+#endif
 extern struct sx150x_platform_data msm8960_sx150x_data[];
 extern struct msm_camera_board_info msm8960_camera_board_info;
+extern unsigned char hdmi_is_primary;
 
 void msm8960_init_cam(void);
 void msm8960_init_fb(void);
@@ -84,12 +116,22 @@ void msm8960_allocate_fb_region(void);
 void msm8960_set_display_params(char *prim_panel, char *ext_panel);
 void msm8960_pm8921_gpio_mpp_init(void);
 void msm8960_mdp_writeback(struct memtype_reserve *reserve_table);
+int msm8960_get_cable_type(void);
+void msm8960_init_battery(void);
+int msm8960_get_cable_status(void);
+extern int poweroff_charging;
+
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+int brcm_wlan_init(void);
+int brcm_wifi_status_register(
+	void (*callback)(int card_present, void *dev_id), void *dev_id);
+#endif
 uint32_t msm_rpm_get_swfi_latency(void);
 #define PLATFORM_IS_CHARM25() \
 	(machine_is_msm8960_cdp() && \
 		(socinfo_get_platform_subtype() == 1) \
 	)
-
+#define MSM_8960_GSBI8_QUP_I2C_BUS_ID 8
 #define MSM_8960_GSBI4_QUP_I2C_BUS_ID 4
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
 #define MSM_8960_GSBI10_QUP_I2C_BUS_ID 10

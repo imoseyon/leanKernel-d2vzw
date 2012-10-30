@@ -948,8 +948,11 @@ int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 		substream->dma_buffer.private_data = NULL;
 
 		ret = snd_pcm_lib_malloc_pages(substream, PAGE_SIZE);
-		if (ret < 0)
+		if (ret < 0) {
+			pr_err("%s page allocation failed err = %d\n",
+				__func__, ret);
 			goto platform_err;
+		}
 	}
 out:
 	mutex_unlock(&rtd->pcm_mutex);
@@ -3788,6 +3791,7 @@ int snd_soc_register_card(struct snd_soc_card *card)
 	card->instantiated = 0;
 	mutex_init(&card->mutex);
 	mutex_init(&card->dapm_mutex);
+	mutex_init(&card->dapm_power_mutex);
 	mutex_init(&card->dsp_mutex);
 	spin_lock_init(&card->dsp_spinlock);
 

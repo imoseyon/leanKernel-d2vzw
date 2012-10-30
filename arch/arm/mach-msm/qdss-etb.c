@@ -77,6 +77,8 @@ struct etb_ctx {
 };
 
 static struct etb_ctx etb;
+static unsigned int etbbuf_paddr;
+static unsigned int etbbuf_size;
 
 static void __etb_enable(void)
 {
@@ -107,7 +109,7 @@ void etb_enable(void)
 	mutex_unlock(&etb.mutex);
 }
 
-static void __etb_disable(void)
+void __etb_disable(void)
 {
 	int count;
 	uint32_t ffcr;
@@ -268,6 +270,24 @@ static struct miscdevice etb_misc = {
 	.fops =		&etb_fops,
 };
 
+static int __init etb_buf_setup(char *str)
+{
+	unsigned size = memparse(str, &str);
+
+	pr_emerg("%s: str=%s\n", __func__, str);
+
+	if (size && (size == roundup_pow_of_two(size)) && (*str == '@')) {
+		etbbuf_paddr = (unsigned int)memparse(++str, NULL);
+		etbbuf_size = size;
+	}
+
+	pr_emerg("%s: secdbg_paddr = 0x%x\n", __func__, etbbuf_paddr);
+	pr_emerg("%s: secdbg_size = 0x%x\n", __func__, etbbuf_size);
+
+	return 1;
+}
+__setup("etb_buf=", etb_buf_setup);
+
 #define ETB_ATTR(name)						\
 static struct kobj_attribute name##_attr =				\
 		__ATTR(name, S_IRUGO | S_IWUSR, name##_show, name##_store)
@@ -349,7 +369,19 @@ static int __devinit etb_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_misc;
 
-	etb.buf = kzalloc(ETB_SIZE_WORDS * BYTES_PER_WORD, GFP_KERNEL);
+	/* Free up the 16 KB of kernel Space as there is already
+	 * predefined buffer in LK why not reuse the same space
+	 * if Lk did not reserve than we can
+	 */
+
+	if (etbbuf_paddr == 0) {
+		etb.buf = kzalloc(ETB_SIZE_WORDS * BYTES_PER_WORD, GFP_KERNEL);
+		pr_info("%s: etb buffer not provided. Using kmalloc..\n",
+			__func__);
+	} else {
+		etb.buf = ioremap_nocache(etbbuf_paddr, etbbuf_size);
+	}
+
 	if (!etb.buf) {
 		ret = -ENOMEM;
 		goto err_alloc;

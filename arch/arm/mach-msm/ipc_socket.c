@@ -158,7 +158,7 @@ static int msm_ipc_router_extract_msg(struct msghdr *m,
 
 	temp = skb_peek(msg_head);
 	hdr = (struct rr_header *)(temp->data);
-	if (addr || (hdr->src_port_id != IPC_ROUTER_ADDRESS)) {
+	if (addr || ((hdr->src_port_id != IPC_ROUTER_ADDRESS) && addr)) {
 		addr->family = AF_MSM_IPC;
 		addr->address.addrtype = MSM_IPC_ADDR_ID;
 		addr->address.addr.port_addr.node_id = hdr->src_node_id;

@@ -52,13 +52,28 @@ extern struct platform_device *msm_device_uart_gsbi9;
 extern struct platform_device msm_device_uart_dm6;
 
 extern struct platform_device msm8960_device_uart_gsbi2;
+#ifdef CONFIG_FELICA
+extern struct platform_device msm8960_device_uart_gsbi4;
+#endif /* CONFIG_FELICA */
 extern struct platform_device msm8960_device_uart_gsbi5;
 extern struct platform_device msm8960_device_ssbi_pmic;
+extern struct platform_device msm8960_device_qup_i2c_gsbi1;
 extern struct platform_device msm8960_device_qup_i2c_gsbi3;
 extern struct platform_device msm8960_device_qup_i2c_gsbi4;
+extern struct platform_device msm8960_device_qup_i2c_gsbi7;
+extern struct platform_device msm8960_device_qup_i2c_gsbi8;
 extern struct platform_device msm8960_device_qup_i2c_gsbi10;
 extern struct platform_device msm8960_device_qup_i2c_gsbi12;
+#ifndef CONFIG_S5C73M3 
 extern struct platform_device msm8960_device_qup_spi_gsbi1;
+#endif
+#ifdef CONFIG_S5C73M3 
+extern struct platform_device msm8960_device_qup_spi_gsbi11;
+#endif
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || \
+		defined(CONFIG_ISDBT_NMI)
+extern struct platform_device msm8960_device_qup_spi_gsbi8;
+#endif
 extern struct platform_device msm8960_gemini_device;
 extern struct platform_device msm8960_device_csiphy0;
 extern struct platform_device msm8960_device_csiphy1;
@@ -162,6 +177,8 @@ extern struct platform_device msm_device_vidc_720p;
 extern struct platform_device msm_pcm;
 extern struct platform_device msm_multi_ch_pcm;
 extern struct platform_device msm_pcm_routing;
+extern struct platform_device msm_i2s_cpudai0;
+extern struct platform_device msm_i2s_cpudai1;
 extern struct platform_device msm_cpudai0;
 extern struct platform_device msm_cpudai1;
 extern struct platform_device msm_cpudai_hdmi_rx;

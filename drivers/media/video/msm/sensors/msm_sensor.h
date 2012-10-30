@@ -32,6 +32,7 @@
 
 #define MSM_SENSOR_MCLK_8HZ 8000000
 #define MSM_SENSOR_MCLK_16HZ 16000000
+#define MSM_SENSOR_MCLK_19HZ 19200000
 #define MSM_SENSOR_MCLK_24HZ 24000000
 
 enum msm_sensor_reg_update {
@@ -243,5 +244,8 @@ struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);
 
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, void __user *)
+
+#define VIDIOC_MSM_SENSOR_RELEASE \
+	_IO('V', BASE_VIDIOC_PRIVATE + 11)
 
 #endif

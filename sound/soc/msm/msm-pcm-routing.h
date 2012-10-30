@@ -39,6 +39,11 @@
  * non-multimedia front-ends.
  */
 
+/* For multimedia front-ends, asm session is allocated dynamically.
+ * Hence, asm session/multimedia front-end mapping has to be maintained.
+ * Due to this reason, additional multimedia front-end must be placed before
+ * non-multimedia front-ends.
+ */
 enum {
 	MSM_FRONTEND_DAI_MULTIMEDIA1 = 0,
 	MSM_FRONTEND_DAI_MULTIMEDIA2,

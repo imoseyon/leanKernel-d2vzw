@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -481,6 +481,8 @@ static void mdp_dma2_update_sub(struct msm_fb_data_type *mfd)
 void mdp_dma2_update(struct msm_fb_data_type *mfd)
 #endif
 {
+	if (!mfd)
+		return;
 	down(&mfd->dma->mutex);
 	if ((mfd) && (!mfd->dma->busy) && (mfd->panel_power_on)) {
 		down(&mfd->sem);
@@ -506,6 +508,23 @@ void mdp_dma2_update(struct msm_fb_data_type *mfd)
 		}
 	}
 	up(&mfd->dma->mutex);
+}
+
+void mdp_dma_vsync_ctrl(int enable)
+{
+	if (vsync_cntrl.vsync_irq_enabled == enable)
+		return;
+
+	vsync_cntrl.vsync_irq_enabled = enable;
+
+	if (enable) {
+		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+		MDP_OUTP(MDP_BASE + 0x021c, 0x10); /* read pointer */
+		mdp3_vsync_irq_enable(MDP_PRIM_RDPTR, MDP_VSYNC_TERM);
+	} else {
+		mdp3_vsync_irq_disable(MDP_PRIM_RDPTR, MDP_VSYNC_TERM);
+		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+	}
 }
 
 void mdp_lcd_update_workqueue_handler(struct work_struct *work)

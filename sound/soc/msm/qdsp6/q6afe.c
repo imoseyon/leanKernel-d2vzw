@@ -304,7 +304,7 @@ int afe_q6_interface_prepare(void)
 {
 	int ret = 0;
 
-	pr_debug("%s:", __func__);
+	pr_info("%s:", __func__);
 
 	if (this_afe.apr == NULL) {
 		this_afe.apr = apr_register("ADSP", "AFE", afe_callback,
@@ -371,7 +371,7 @@ done:
 
 void afe_send_cal(u16 port_id)
 {
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 
 	if (afe_get_port_type(port_id) == MSM_AFE_PORT_TYPE_TX)
 		afe_send_cal_block(TX_CAL, port_id);
@@ -1445,7 +1445,7 @@ int afe_port_stop_nowait(int port_id)
 		ret = -EINVAL;
 		goto fail_cmd;
 	}
-	pr_debug("%s: port_id=%d\n", __func__, port_id);
+	pr_info("%s: port_id=%d\n", __func__, port_id);
 	port_id = afe_convert_virtual_to_portid(port_id);
 
 	stop.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
@@ -1483,7 +1483,7 @@ int afe_close(int port_id)
 		ret = -EINVAL;
 		goto fail_cmd;
 	}
-	pr_debug("%s: port_id=%d\n", __func__, port_id);
+	pr_info("%s: port_id=%d\n", __func__, port_id);
 	port_id = afe_convert_virtual_to_portid(port_id);
 
 	stop.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
@@ -1533,11 +1533,18 @@ static int __init afe_init(void)
 	S_IFREG | S_IWUGO, NULL, (void *) "afe_loopback",
 	&afe_debug_fops);
 
+	if (IS_ERR(debugfs_afelb))
+		return PTR_ERR(debugfs_afelb);
+
 	debugfs_afelb_gain = debugfs_create_file("afe_loopback_gain",
 	S_IFREG | S_IWUGO, NULL, (void *) "afe_loopback_gain",
 	&afe_debug_fops);
 
 
+	if (IS_ERR(debugfs_afelb_gain)) {
+		debugfs_remove(debugfs_afelb);
+		return PTR_ERR(debugfs_afelb_gain);
+	}
 #endif
 	return 0;
 }

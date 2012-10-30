@@ -138,16 +138,19 @@ static int max17042_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = max17042_read_reg(chip->client,
-				MAX17042_VCELL) * 83; /* 1000 / 12 = 83 */
+		val->intval = 4000;
+			/* max17042_read_reg(chip->client,
+			MAX17042_VCELL) * 83; */ /* 1000 / 12 = 83 */
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
-		val->intval = max17042_read_reg(chip->client,
-				MAX17042_AvgVCELL) * 83;
+		val->intval = 4000;
+			/* max17042_read_reg(chip->client,
+			MAX17042_AvgVCELL) * 83; */
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = max17042_read_reg(chip->client,
-				MAX17042_SOC) / 256;
+		val->intval = 70;
+			/* max17042_read_reg(chip->client,
+			MAX17042_SOC) / 256; */
 		break;
 	default:
 		return -EINVAL;
@@ -162,6 +165,8 @@ static int __devinit max17042_probe(struct i2c_client *client,
 	struct max17042_chip *chip;
 	int ret;
 
+	pr_info("max17042_probe loading\n");
+
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
 
@@ -174,7 +179,7 @@ static int __devinit max17042_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
-	chip->battery.name		= "max17042_battery";
+	chip->battery.name		= "fuelgauge";
 	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY;
 	chip->battery.get_property	= max17042_get_property;
 	chip->battery.properties	= max17042_battery_props;
@@ -194,6 +199,7 @@ static int __devinit max17042_probe(struct i2c_client *client,
 		max17042_write_reg(client, MAX17042_LearnCFG, 0x0007);
 	}
 
+	pr_info("max17042_probe loaded\n");
 	return 0;
 }
 

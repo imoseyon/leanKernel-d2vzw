@@ -423,6 +423,19 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 		/* Do not allow un-secure heap if secure is specified */
 		if (secure_allocation && (heap->type != ION_HEAP_TYPE_CP))
 			continue;
+
+		if (heap->id == ION_CP_MM_HEAP_ID) {
+			if (client->task == NULL)
+				printk(KERN_WARNING "MM ION alloc request from %s (%d)\n",
+					client->name, client->pid);
+			else {
+				char task_comm[TASK_COMM_LEN];
+				get_task_comm(task_comm, client->task);
+				printk(KERN_WARNING "MM ION alloc request from %s (%d)\n",
+					task_comm, client->pid);
+			}
+		}
+
 		buffer = ion_buffer_create(heap, dev, len, align, flags);
 		if (!IS_ERR_OR_NULL(buffer))
 			break;

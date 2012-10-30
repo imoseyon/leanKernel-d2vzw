@@ -96,6 +96,7 @@ static const struct tlmm_field_cfg tlmm_hdrv_cfgs[] = {
 };
 
 static const struct tlmm_field_cfg tlmm_pull_cfgs[] = {
+	{SDC4_HDRV_PULL_CTL, 14}, /* TLMM_PULL_SDC4_CLK  */
 	{SDC4_HDRV_PULL_CTL, 11}, /* TLMM_PULL_SDC4_CMD  */
 	{SDC4_HDRV_PULL_CTL, 9},  /* TLMM_PULL_SDC4_DATA */
 	{SDC3_HDRV_PULL_CTL, 14}, /* TLMM_PULL_SDC3_CLK  */
@@ -546,7 +547,7 @@ void msm_gpio_show_resume_irq(void)
 		if (intstat) {
 			irq = msm_gpio_to_irq(&msm_gpio.gpio_chip, i);
 			pr_warning("%s: %d triggered\n",
-				__func__, irq);
+				__func__, irq-288);
 		}
 	}
 	spin_unlock_irqrestore(&tlmm_lock, irq_flags);

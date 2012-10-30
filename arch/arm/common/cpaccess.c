@@ -320,21 +320,29 @@ static int __init init_cpaccess_sysfs(void)
 {
 	int error = sysdev_class_register(&cpaccess_sysclass);
 
-	if (!error)
+	if (!error) {
 		error = sysdev_register(&device_cpaccess);
-	else
+	} else {
 		pr_err("Error initializing cpaccess interface\n");
+		return error;
+	}
 
 	if (!error)
 		error = sysdev_create_file(&device_cpaccess,
 		 &attr_cp_rw);
 	else {
 		pr_err("Error initializing cpaccess interface\n");
+		sysdev_class_unregister(&cpaccess_sysclass);
+		return error;
+	}
+
+	if (!error) {
+		sema_init(&cp_sem, 1);
+	} else {
+		pr_err("Error create cpaccess file interface\n");
 		sysdev_unregister(&device_cpaccess);
 		sysdev_class_unregister(&cpaccess_sysclass);
 	}
-
-	sema_init(&cp_sem, 1);
 
 	return error;
 }

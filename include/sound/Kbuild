@@ -7,3 +7,6 @@ header-y += hdspm.h
 header-y += sb16_csp.h
 header-y += sfnt_info.h
 header-y += tlv.h
+header-y += a2220.h
+header-y += snd_compress_params.h
+header-y += compress_offload.h

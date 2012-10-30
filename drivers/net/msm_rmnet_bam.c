@@ -706,7 +706,13 @@ static int bam_rmnet_probe(struct platform_device *pdev)
 			break;
 	}
 
-	p = netdev_priv(netdevs[i]);
+	if (i < RMNET_DEVICE_COUNT) {
+		p = netdev_priv(netdevs[i]);
+	} else {
+		pr_err("[%s] There's no matching device name.\n", __func__);
+		return -ENODEV;
+	}
+
 	if (p->in_reset) {
 		p->in_reset = 0;
 		msm_bam_dmux_open(p->ch_id, netdevs[i], bam_notify);
@@ -729,7 +735,13 @@ static int bam_rmnet_remove(struct platform_device *pdev)
 			break;
 	}
 
-	p = netdev_priv(netdevs[i]);
+	if (i < RMNET_DEVICE_COUNT) {
+		p = netdev_priv(netdevs[i]);
+	} else {
+		pr_err("[%s] There's no matching device name.\n", __func__);
+		return -ENODEV;
+	}
+
 	p->in_reset = 1;
 	if (p->waiting_for_ul_skb != NULL) {
 		dev_kfree_skb_any(p->waiting_for_ul_skb);

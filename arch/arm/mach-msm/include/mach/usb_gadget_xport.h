@@ -25,6 +25,17 @@ enum transport_type {
 	USB_GADGET_XPORT_NONE,
 };
 
+#define GSERIAL_NO_PORTS 2
+struct usb_gadget_fserial_platform_data {
+	enum transport_type	transport[GSERIAL_NO_PORTS];
+	unsigned		no_ports;
+};
+
+struct usb_gadget_facm_pdata {
+	enum transport_type	transport[GSERIAL_NO_PORTS];
+	unsigned		no_ports;
+};
+
 #define XPORT_STR_LEN	10
 
 static char *xport_to_str(enum transport_type t)

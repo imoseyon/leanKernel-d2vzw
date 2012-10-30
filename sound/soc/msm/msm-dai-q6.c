@@ -41,6 +41,8 @@ struct msm_dai_q6_dai_data {
 static struct clk *pcm_clk;
 static DEFINE_MUTEX(aux_pcm_mutex);
 static int aux_pcm_count;
+static int aux_tx;
+static int aux_rx;
 static struct msm_dai_auxpcm_pdata *auxpcm_plat_data;
 
 static u8 num_of_bits_set(u8 sd_line_mask)
@@ -442,6 +444,22 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 	int rc = 0;
 
 	mutex_lock(&aux_pcm_mutex);
+	pr_debug("%s: dai->id = %d", __func__, dai->id);
+
+	if (dai->id == PCM_RX)
+		aux_rx--;
+	else if (dai->id == PCM_TX)
+		aux_tx--;
+
+	if (aux_rx < 0) {
+		aux_rx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return;
+	} else if (aux_tx < 0) {
+		aux_tx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return;
+	}
 
 	if (aux_pcm_count == 0) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 0. Just"
@@ -470,6 +488,7 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 			dai->id, aux_pcm_count);
 
 	clk_disable(pcm_clk);
+	msm8960_aux_pcm_free_gpios();
 	rc = afe_close(PCM_RX); /* can block */
 	if (IS_ERR_VALUE(rc))
 		dev_err(dai->dev, "fail to close PCM_RX  AFE port\n");
@@ -492,7 +511,7 @@ static void msm_dai_q6_shutdown(struct snd_pcm_substream *substream,
 		case VOICE_PLAYBACK_TX:
 		case VOICE_RECORD_TX:
 		case VOICE_RECORD_RX:
-			pr_debug("%s, stop pseudo port:%d\n",
+			pr_info("%s, stop pseudo port:%d\n",
 						__func__,  dai->id);
 			rc = afe_stop_pseudo_port(dai->id);
 			break;
@@ -519,6 +538,11 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 
 	mutex_lock(&aux_pcm_mutex);
 
+	if (dai->id == PCM_RX)
+		aux_rx++;
+	else if (dai->id == PCM_TX)
+		aux_tx++;
+
 	if (aux_pcm_count == 2) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 2. Just"
 			" return.\n", __func__, dai->id);
@@ -533,6 +557,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	}
 
 	aux_pcm_count++;
+	dev_dbg(dai->dev, "%s aux_pcm_count %d\n", __func__, aux_pcm_count);
 	if (aux_pcm_count == 2)  {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count = %d after "
 			" increment\n", __func__, dai->id, aux_pcm_count);
@@ -558,7 +583,11 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	 * not get updated with new setting if the below clock
 	 * assert/deasset and afe_open sequence is not followed.
 	 */
-
+	rc = msm8960_aux_pcm_get_gpios();
+	if (rc < 0) {
+		pr_err("%s: Aux PCM GPIO request failed\n", __func__);
+		return -EINVAL;
+	}
 	clk_reset(pcm_clk, CLK_RESET_ASSERT);
 
 	afe_open(PCM_RX, &dai_data->port_config, dai_data->rate);
@@ -633,7 +662,7 @@ static int msm_dai_q6_trigger(struct snd_pcm_substream *substream, int cmd,
 	 * native q6 AFE driver propagates AFE response in order to handle
 	 * port start/stop command error properly if error does arise.
 	 */
-	pr_debug("%s:port:%d  cmd:%d dai_data->status_mask = %ld",
+	pr_info("%s:port:%d  cmd:%d dai_data->status_mask = %ld",
 		__func__, dai->id, cmd, *dai_data->status_mask);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -684,6 +713,7 @@ static int msm_dai_q6_dai_auxpcm_probe(struct snd_soc_dai *dai)
 {
 	struct msm_dai_q6_dai_data *dai_data;
 	int rc = 0;
+	struct clk *aux_pcm_clk;
 
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata =
 			(struct msm_dai_auxpcm_pdata *) dai->dev->platform_data;
@@ -738,6 +768,21 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 	dai_data = dev_get_drvdata(dai->dev);
 
 	mutex_lock(&aux_pcm_mutex);
+
+	if (dai->id == PCM_RX)
+		aux_rx--;
+	else if (dai->id == PCM_TX)
+		aux_tx--;
+
+	if (aux_rx < 0) {
+		aux_rx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return 0;
+	} else if (aux_tx < 0) {
+		aux_tx = 0;
+		mutex_unlock(&aux_pcm_mutex);
+		return 0;
+	}
 
 	if (aux_pcm_count == 0) {
 		dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count is 0. clean"

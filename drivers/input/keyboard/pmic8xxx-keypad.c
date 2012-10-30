@@ -553,7 +553,7 @@ static int __devinit pmic8xxx_kp_probe(struct platform_device *pdev)
 		.pull		= PM_GPIO_PULL_UP_31P5,
 		.vin_sel	= PM_GPIO_VIN_S4,
 		.out_strength	= PM_GPIO_STRENGTH_NO,
-		.function	= PM_GPIO_FUNC_NORMAL,
+		.function       = PM_GPIO_FUNC_1,
 		.inv_int_pol	= 1,
 	};
 

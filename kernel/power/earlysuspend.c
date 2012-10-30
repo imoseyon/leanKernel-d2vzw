@@ -27,7 +27,7 @@ enum {
 	DEBUG_SUSPEND = 1U << 2,
 	DEBUG_VERBOSE = 1U << 3,
 };
-static int debug_mask = DEBUG_USER_STATE;
+static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
@@ -84,6 +84,8 @@ static void early_suspend(struct work_struct *work)
 		abort = 1;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_debug("early_suspend: begin\n");
 	if (abort) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_info("early_suspend: abort, state %d\n", state);
@@ -95,14 +97,15 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
 		if (pos->suspend != NULL) {
-			if (debug_mask & DEBUG_VERBOSE)
-				pr_info("early_suspend: calling %pf\n", pos->suspend);
+			pr_debug("early_suspend: calling %pf\n", pos->suspend);
 			pos->suspend(pos);
 		}
 	}
 	mutex_unlock(&early_suspend_lock);
 
 	suspend_sys_sync_queue();
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_debug("early_suspend: done\n");
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -115,6 +118,8 @@ static void late_resume(struct work_struct *work)
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_debug("late_resume: begin\n");
 
 	mutex_lock(&early_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
@@ -133,8 +138,7 @@ static void late_resume(struct work_struct *work)
 		pr_info("late_resume: call handlers\n");
 	list_for_each_entry_reverse(pos, &early_suspend_handlers, link) {
 		if (pos->resume != NULL) {
-			if (debug_mask & DEBUG_VERBOSE)
-				pr_info("late_resume: calling %pf\n", pos->resume);
+			pr_debug("late_resume: calling %pf\n", pos->resume);
 
 			pos->resume(pos);
 		}

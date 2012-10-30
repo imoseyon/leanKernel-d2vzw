@@ -116,6 +116,9 @@ enum {
 };
 
 #define MAX8952_NUM_DVS_MODE	4
+#define MAX8952_DCDC_VMIN	 770000		/* uV */
+#define MAX8952_DCDC_STEP	  10000		/* uV */
+#define MAX8952_DCDC_VMAX	1400000		/* uV */
 
 struct max8952_platform_data {
 	int gpio_vid0;

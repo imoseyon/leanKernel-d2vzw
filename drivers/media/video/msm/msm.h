@@ -529,6 +529,10 @@ int msm_mctl_buf_return_buf(struct msm_cam_media_controller *pmctl,
 int msm_mctl_pp_mctl_divert_done(struct msm_cam_media_controller *p_mctl,
 					void __user *arg);
 void msm_release_ion_client(struct kref *ref);
+
+extern void sensor_native_control(void __user *arg);
+extern void sensor_native_control_front(void __user *arg);
+
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */

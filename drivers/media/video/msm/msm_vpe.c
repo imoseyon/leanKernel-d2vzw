@@ -457,6 +457,8 @@ DECLARE_TASKLET(vpe_tasklet, vpe_do_tasklet, 0);
 
 static irqreturn_t vpe_parse_irq(int irq_num, void *data)
 {
+	if (!vpe_ctrl->vpebase)
+		return IRQ_HANDLED; /* null check */
 	vpe_ctrl->irq_status = msm_io_r_mb(vpe_ctrl->vpebase +
 							VPE_INTR_STATUS_OFFSET);
 	msm_io_w_mb(vpe_ctrl->irq_status, vpe_ctrl->vpebase +
@@ -739,7 +741,7 @@ static int __devinit vpe_probe(struct platform_device *pdev)
 
 vpe_no_resource:
 	kfree(vpe_ctrl);
-	return 0;
+	return rc;
 }
 
 struct platform_driver vpe_driver = {

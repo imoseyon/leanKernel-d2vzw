@@ -1545,12 +1545,14 @@ EXPORT_SYMBOL_GPL(slim_alloc_ch);
  */
 int slim_dealloc_ch(struct slim_device *sb, u16 chanh)
 {
+	struct slim_ich *slc = NULL;
 	struct slim_controller *ctrl = sb->ctrl;
 	u8 chan = (u8)(chanh & 0xFF);
-	struct slim_ich *slc = &ctrl->chans[chan];
 	if (!ctrl)
 		return -EINVAL;
-
+	slc = &ctrl->chans[chan];
+	if (!slc)
+		return -EINVAL;
 	mutex_lock(&ctrl->m_ctrl);
 	if (slc->state >= SLIM_CH_PENDING_ACTIVE) {
 		dev_err(&ctrl->dev, "Channel:%d should be removed first", chan);

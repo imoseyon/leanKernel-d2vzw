@@ -23,6 +23,13 @@
 #include <linux/init.h>
 #include <linux/nmi.h>
 #include <linux/dmi.h>
+#include <mach/sec_debug.h>
+
+/*  FIX ME
+  * No Better way
+  */
+#include <mach/../../qdss.h>
+
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
@@ -71,12 +78,18 @@ NORET_TYPE void panic(const char * fmt, ...)
 	int state = 0;
 
 	/*
+	 * Disable the Trace AS SOON AS POSSIBLE So we can preserve the
+	 * Faulty Instructions for Analysis
+	 */
+	 __etb_disable();
+
+	/*
 	 * It's possible to come here directly from a panic-assertion and
 	 * not have preempt disabled. Some functions called from here want
 	 * preempt to be disabled. No point enabling it later though...
 	 */
 	preempt_disable();
-
+	secdbg_sched_msg("!!panic!!");
 	console_verbose();
 	bust_spinlocks(1);
 	va_start(args, fmt);
@@ -85,6 +98,11 @@ NORET_TYPE void panic(const char * fmt, ...)
 	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	dump_stack();
+#endif
+
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+	sec_debug_save_panic_info(buf,
+		(unsigned int)__builtin_return_address(0));
 #endif
 
 	/*

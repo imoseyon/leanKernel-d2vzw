@@ -51,6 +51,9 @@
 #include "timer.h"
 #include "qdss.h"
 #include "pm-boot.h"
+#if CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 /******************************************************************************
  * Debug Definitions
@@ -81,6 +84,7 @@ module_param_named(
 
 static struct msm_pm_platform_data *msm_pm_modes;
 static int rpm_cpu0_wakeup_irq;
+static int spc_attempts;
 
 void __init msm_pm_set_platform_data(
 	struct msm_pm_platform_data *data, int count)
@@ -180,7 +184,7 @@ static ssize_t msm_pm_mode_attr_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	int ret = -EINVAL;
-	int i;
+	int i, j;
 
 	for (i = 0; i < MSM_PM_SLEEP_MODE_NR; i++) {
 		struct kernel_param kp;
@@ -202,10 +206,19 @@ static ssize_t msm_pm_mode_attr_store(struct kobject *kobj,
 			ret = param_set_byte(buf, &kp);
 		} else if (!strcmp(attr->attr.name,
 			msm_pm_mode_attr_labels[MSM_PM_MODE_ATTR_IDLE])) {
-			kp.arg = &mode->idle_enabled;
-			ret = param_set_byte(buf, &kp);
+			j = MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE;
+			if (!strcmp(kobj->name, msm_pm_sleep_mode_labels[j])) {
+				if (buf[0] == '1') {
+					spc_attempts++;
+					pr_err("%s: spc is blocked (%d) from [%s]\n",
+						__func__, spc_attempts,
+						current->comm);
+				}
+			} else {
+				kp.arg = &mode->idle_enabled;
+				ret = param_set_byte(buf, &kp);
+			}
 		}
-
 		break;
 	}
 
@@ -624,6 +637,7 @@ EXPORT_SYMBOL(msm_pm_set_max_sleep_time);
  *****************************************************************************/
 
 static struct msm_rpmrs_limits *msm_pm_idle_rs_limits;
+static int debug_power_collaspe_status[2] = {0};
 
 static void msm_pm_swfi(void)
 {
@@ -676,8 +690,16 @@ static bool msm_pm_spm_power_collapse(
 	vfp_flush_context();
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+	debug_power_collaspe_status[smp_processor_id()] =
+					(from_idle<<8)|(notify_rpm<<4)|1;
+	secdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
 	collapsed = msm_pm_l2x0_power_collapse();
-
+	secdbg_sched_msg("-pc(%d)", collapsed);
+	debug_power_collaspe_status[smp_processor_id()] = 0;
+#else
+	collapsed = msm_pm_l2x0_power_collapse();
+#endif
 	msm_pm_boot_config_after_pc(cpu);
 
 	if (collapsed) {
@@ -1087,7 +1109,7 @@ static int msm_pm_enter(suspend_state_t state)
 		rs_limits = msm_rpmrs_lowest_limits(false,
 				MSM_PM_SLEEP_MODE_POWER_COLLAPSE, -1, -1);
 
-		if ((MSM_PM_DEBUG_SUSPEND_LIMITS & msm_pm_debug_mask) &&
+		if ((MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask) &&
 				rs_limits)
 			pr_info("%s: limit %p: pxo %d, l2_cache %d, "
 				"vdd_mem %d, vdd_dig %d\n",
@@ -1193,14 +1215,14 @@ static int __init msm_pm_init(void)
 	if (ret) {
 		pr_err("%s: failed to request irq %u: %d\n",
 			__func__, rpm_cpu0_wakeup_irq, ret);
-		return ret;
+		goto err_request_irq;
 	}
 
 	ret = irq_set_irq_wake(rpm_cpu0_wakeup_irq, 1);
 	if (ret) {
 		pr_err("%s: failed to set wakeup irq %u: %d\n",
 			__func__, rpm_cpu0_wakeup_irq, ret);
-		return ret;
+		goto err_irq_wake;
 	}
 
 #ifdef CONFIG_MSM_IDLE_STATS
@@ -1247,6 +1269,12 @@ static int __init msm_pm_init(void)
 	msm_cpuidle_init();
 
 	return 0;
+
+err_irq_wake:
+	free_irq(rpm_cpu0_wakeup_irq, msm_pm_rpm_wakeup_interrupt);
+err_request_irq:
+	pgd_free(&init_mm, pc_pgd);
+	return ret;
 }
 
 late_initcall(msm_pm_init);

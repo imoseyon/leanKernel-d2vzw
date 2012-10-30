@@ -267,6 +267,10 @@ static int voltage_from_req(struct vreg *vreg)
 
 	if (vreg->part->uV.mask)
 		uV = GET_PART(vreg, uV);
+	else if (vreg->part->mV.mask)
+		uV = MILLI_TO_MICRO(GET_PART(vreg, mV));
+	else if (vreg->part->enable_state.mask)
+		uV = GET_PART(vreg, enable_state);
 	else
 		uV = MILLI_TO_MICRO(GET_PART(vreg, mV));
 
@@ -277,6 +281,10 @@ static void voltage_to_req(int uV, struct vreg *vreg)
 {
 	if (vreg->part->uV.mask)
 		SET_PART(vreg, uV, uV);
+	else if (vreg->part->mV.mask)
+		SET_PART(vreg, mV, MICRO_TO_MILLI(uV));
+	else if (vreg->part->enable_state.mask)
+		SET_PART(vreg, enable_state, uV);
 	else
 		SET_PART(vreg, mV, MICRO_TO_MILLI(uV));
 }
@@ -379,6 +387,14 @@ static int vreg_set_noirq(struct vreg *vreg, enum rpm_vreg_voter voter,
 		if (vreg->part->uV.mask) {
 			s_val[vreg->part->uV.word] = 0 << vreg->part->uV.shift;
 			s_mask[vreg->part->uV.word] = vreg->part->uV.mask;
+		} else if (vreg->part->mV.mask) {
+			s_val[vreg->part->mV.word] = 0 << vreg->part->mV.shift;
+			s_mask[vreg->part->mV.word] = vreg->part->mV.mask;
+		} else if (vreg->part->enable_state.mask) {
+			s_val[vreg->part->enable_state.word]
+				= 0 << vreg->part->enable_state.shift;
+			s_mask[vreg->part->enable_state.word]
+				= vreg->part->enable_state.mask;
 		} else {
 			s_val[vreg->part->mV.word] = 0 << vreg->part->mV.shift;
 			s_mask[vreg->part->mV.word] = vreg->part->mV.mask;
@@ -420,6 +436,10 @@ static int vreg_set_noirq(struct vreg *vreg, enum rpm_vreg_voter voter,
  *
  * Consumers can vote to disable a regulator with this function by passing
  * min_uV = 0 and max_uV = 0.
+ *
+ * Voltage switch type regulators may be controlled via rpm_vreg_set_voltage
+ * as well.  For this type of regulator, max_uV > 0 is treated as an enable
+ * request and max_uV == 0 is treated as a disable request.
  */
 int rpm_vreg_set_voltage(int vreg_id, enum rpm_vreg_voter voter, int min_uV,
 			 int max_uV, int sleep_also)
@@ -449,7 +469,6 @@ int rpm_vreg_set_voltage(int vreg_id, enum rpm_vreg_voter voter, int min_uV,
 	}
 
 	vreg = &config->vregs[vreg_id];
-	range = &vreg->set_points->range[0];
 
 	if (!vreg->pdata.sleep_selectable) {
 		vreg_err(vreg, "regulator is not marked sleep selectable\n");
@@ -457,7 +476,8 @@ int rpm_vreg_set_voltage(int vreg_id, enum rpm_vreg_voter voter, int min_uV,
 	}
 
 	/* Allow min_uV == max_uV == 0 to represent a disable request. */
-	if (min_uV != 0 || max_uV != 0) {
+	if ((min_uV != 0 || max_uV != 0)
+	    && (vreg->part->uV.mask || vreg->part->mV.mask)) {
 		/*
 		 * Check if request voltage is outside of allowed range. The
 		 * regulator core has already checked that constraint range
@@ -476,6 +496,7 @@ int rpm_vreg_set_voltage(int vreg_id, enum rpm_vreg_voter voter, int min_uV,
 			return -EINVAL;
 		}
 
+		range = &vreg->set_points->range[0];
 		/* Find the range which uV is inside of. */
 		for (i = vreg->set_points->count - 1; i > 0; i--) {
 			if (uV > vreg->set_points->range[i - 1].max_uV) {
@@ -503,6 +524,20 @@ int rpm_vreg_set_voltage(int vreg_id, enum rpm_vreg_voter voter, int min_uV,
 	if (vreg->part->uV.mask) {
 		val[vreg->part->uV.word] = uV << vreg->part->uV.shift;
 		mask[vreg->part->uV.word] = vreg->part->uV.mask;
+	} else if (vreg->part->mV.mask) {
+		val[vreg->part->mV.word]
+			= MICRO_TO_MILLI(uV) << vreg->part->mV.shift;
+		mask[vreg->part->mV.word] = vreg->part->mV.mask;
+	} else if (vreg->part->enable_state.mask) {
+		/*
+		 * Translate max_uV > 0 into an enable request for regulator
+		 * types which to not support voltage setting, e.g. voltage
+		 * switches.
+		 */
+		val[vreg->part->enable_state.word]
+		    = (max_uV > 0 ? 1 : 0) << vreg->part->enable_state.shift;
+		mask[vreg->part->enable_state.word]
+		    = vreg->part->enable_state.mask;
 	} else {
 		val[vreg->part->mV.word]
 			= MICRO_TO_MILLI(uV) << vreg->part->mV.shift;
@@ -1265,9 +1300,6 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 
 	mutex_unlock(&vreg->pc_lock);
 
-	if (rc)
-		goto bail;
-
 	rdev = regulator_register(rdesc, dev, &(pdata->init_data), vreg);
 	if (IS_ERR(rdev)) {
 		rc = PTR_ERR(rdev);
@@ -1365,6 +1397,10 @@ static int __devinit rpm_vreg_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, platform_data);
+
+#if defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_APEXQ)
+	rpm_vreg_set_frequency(RPM_VREG_ID_PM8921_S2, RPM_VREG_FREQ_2p40);
+#endif
 
 	return rc;
 

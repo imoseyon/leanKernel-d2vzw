@@ -147,9 +147,10 @@ sysfs_show_va_range(struct kobject *kobj,
 
 	pt = _get_pt_from_kobj(kobj);
 
-	if (pt)
+	if (pt) {
 		ret += snprintf(buf, PAGE_SIZE, "0x%x\n",
-			CONFIG_MSM_KGSL_PAGE_TABLE_SIZE);
+			kgsl_mmu_get_ptsize());
+	}
 
 	kgsl_put_pagetable(pt);
 	return ret;
@@ -267,6 +268,22 @@ err:
 	return ret;
 }
 
+unsigned int kgsl_mmu_get_ptsize(void)
+{
+	/*
+	 * For IOMMU, we could do up to 4G virtual range if we wanted to, but
+	 * it makes more sense to return a smaller range and leave the rest of
+	 * the virtual range for future improvements
+	 */
+
+	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
+		return CONFIG_MSM_KGSL_PAGE_TABLE_SIZE;
+	else if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_type)
+		return SZ_2G;
+	else
+		return 0;
+}
+
 unsigned int kgsl_mmu_get_current_ptbase(struct kgsl_device *device)
 {
 	struct kgsl_mmu *mmu = &device->mmu;
@@ -297,7 +314,8 @@ kgsl_mmu_get_ptname_from_ptbase(unsigned int pt_base)
 EXPORT_SYMBOL(kgsl_mmu_get_ptname_from_ptbase);
 
 void kgsl_mmu_setstate(struct kgsl_device *device,
-			struct kgsl_pagetable *pagetable)
+			struct kgsl_pagetable *pagetable,
+			unsigned int context_id)
 {
 	struct kgsl_mmu *mmu = &device->mmu;
 
@@ -305,7 +323,7 @@ void kgsl_mmu_setstate(struct kgsl_device *device,
 		return;
 	else
 		mmu->mmu_ops->mmu_setstate(device,
-					pagetable);
+					pagetable, context_id);
 }
 EXPORT_SYMBOL(kgsl_mmu_setstate);
 
@@ -341,18 +359,36 @@ int kgsl_mmu_start(struct kgsl_device *device)
 }
 EXPORT_SYMBOL(kgsl_mmu_start);
 
+static void mh_axi_error(struct kgsl_device *device, const char* type)
+{
+
+	unsigned int reg, gpu_err, phys_err, pt_base;
+
+	kgsl_regread(device, MH_MMU_PT_BASE, &pt_base);
+	kgsl_regread(device, MH_AXI_ERROR, &reg);
+	/*
+	 * Read gpu virtual and physical addresses that
+	 * caused the error from the debug data.
+	 */
+	kgsl_regwrite(device, MH_DEBUG_CTRL, 44);
+	kgsl_regread(device, MH_DEBUG_DATA, &gpu_err);
+	kgsl_regwrite(device, MH_DEBUG_CTRL, 45);
+	kgsl_regread(device, MH_DEBUG_DATA, &phys_err);
+	KGSL_MEM_CRIT(device,
+			"axi %s error: %08x pt %08x gpu %08x phys %08x\n",
+			type, reg, pt_base, gpu_err, phys_err);
+}
+
 void kgsl_mh_intrcallback(struct kgsl_device *device)
 {
 	unsigned int status = 0;
-	unsigned int reg;
 
 	kgsl_regread(device, MH_INTERRUPT_STATUS, &status);
-	kgsl_regread(device, MH_AXI_ERROR, &reg);
 
 	if (status & MH_INTERRUPT_MASK__AXI_READ_ERROR)
-		KGSL_MEM_CRIT(device, "axi read error interrupt: %08x\n", reg);
+		mh_axi_error(device, "read");
 	if (status & MH_INTERRUPT_MASK__AXI_WRITE_ERROR)
-		KGSL_MEM_CRIT(device, "axi write error interrupt: %08x\n", reg);
+		mh_axi_error(device, "write");
 	if (status & MH_INTERRUPT_MASK__MMU_PAGE_FAULT)
 		device->mmu.mmu_ops->mmu_pagefault(device);
 
@@ -391,6 +427,7 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 	int status = 0;
 	struct kgsl_pagetable *pagetable = NULL;
 	unsigned long flags;
+	unsigned int ptsize;
 
 	pagetable = kzalloc(sizeof(struct kgsl_pagetable), GFP_KERNEL);
 	if (pagetable == NULL) {
@@ -402,9 +439,11 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 	kref_init(&pagetable->refcount);
 
 	spin_lock_init(&pagetable->lock);
+
+	ptsize = kgsl_mmu_get_ptsize();
+
 	pagetable->name = name;
-	pagetable->max_entries = KGSL_PAGETABLE_ENTRIES(
-					CONFIG_MSM_KGSL_PAGE_TABLE_SIZE);
+	pagetable->max_entries = KGSL_PAGETABLE_ENTRIES(ptsize);
 
 	pagetable->pool = gen_pool_create(PAGE_SHIFT, -1);
 	if (pagetable->pool == NULL) {
@@ -413,7 +452,7 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 	}
 
 	if (gen_pool_add(pagetable->pool, KGSL_PAGETABLE_BASE,
-				CONFIG_MSM_KGSL_PAGE_TABLE_SIZE, -1)) {
+				ptsize, -1)) {
 		KGSL_CORE_ERR("gen_pool_add failed\n");
 		goto err_pool;
 	}
@@ -477,13 +516,14 @@ void kgsl_mmu_putpagetable(struct kgsl_pagetable *pagetable)
 }
 EXPORT_SYMBOL(kgsl_mmu_putpagetable);
 
-void kgsl_setstate(struct kgsl_device *device, uint32_t flags)
+void kgsl_setstate(struct kgsl_device *device, unsigned int context_id,
+			uint32_t flags)
 {
 	struct kgsl_mmu *mmu = &device->mmu;
 	if (KGSL_MMU_TYPE_NONE == kgsl_mmu_type)
 		return;
 	else if (device->ftbl->setstate)
-		device->ftbl->setstate(device, flags);
+		device->ftbl->setstate(device, context_id, flags);
 	else if (mmu->mmu_ops->mmu_device_setstate)
 		mmu->mmu_ops->mmu_device_setstate(device, flags);
 }
@@ -676,10 +716,10 @@ void kgsl_mmu_ptpool_destroy(void *ptpool)
 }
 EXPORT_SYMBOL(kgsl_mmu_ptpool_destroy);
 
-void *kgsl_mmu_ptpool_init(int ptsize, int entries)
+void *kgsl_mmu_ptpool_init(int entries)
 {
 	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
-		return kgsl_gpummu_ptpool_init(ptsize, entries);
+		return kgsl_gpummu_ptpool_init(entries);
 	else
 		return (void *)(-1);
 }

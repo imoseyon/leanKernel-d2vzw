@@ -25,7 +25,9 @@
 #include <linux/clkdev.h>
 #include <linux/of_platform.h>
 #include <linux/msm_ssbi.h>
+#ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
+#endif
 
 struct msm_camera_io_ext {
 	uint32_t mdcphy;
@@ -66,7 +68,9 @@ struct msm_camera_device_platform_data {
 	uint8_t is_csid;
 	uint8_t is_ispif;
 	uint8_t is_vpe;
+#ifdef CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *cam_bus_scale_table;
+#endif
 };
 enum msm_camera_csi_data_format {
 	CSI_8BIT,
@@ -177,6 +181,37 @@ enum camera_vreg_type {
 	REG_VS,
 };
 
+struct msm_camera_sensor_platform_info {
+	int mount_angle;
+	int sensor_reset_enable;
+	int sensor_reset;
+	int sensor_stby;
+	int vt_sensor_reset;
+	int vt_sensor_stby;
+	int flash_en;
+	int flash_set;
+	int mclk;
+	int sensor_pwd;
+	int vcm_pwd;
+	int vcm_enable;
+	int privacy_light;
+	void *privacy_light_info;
+	struct camera_vreg_t *cam_vreg;
+	int num_vreg;
+	int32_t (*ext_power_ctrl) (int enable);
+#if defined(CONFIG_S5C73M3) && defined(CONFIG_S5K6A3YX) /* D2 */
+	void(*sensor_power_on) (int, int);
+#else
+	void(*sensor_power_on) (int);
+	struct msm_camera_gpio_conf *gpio_conf;
+#endif
+	void(*sensor_power_off) (int);
+	void(*sensor_isp_reset) (void);
+	void(*sensor_get_fw) (u8 *isp_fw, u8 *phone_fw);
+	void(*sensor_set_isp_core) (int);
+	bool(*sensor_is_vdd_core_set) (void);
+};
+
 struct camera_vreg_t {
 	char *reg_name;
 	enum camera_vreg_type type;
@@ -191,6 +226,14 @@ struct msm_gpio_set_tbl {
 	uint32_t delay;
 };
 
+#if defined(CONFIG_S5C73M3) && defined(CONFIG_S5K6A3YX) /* D2 */
+struct msm_camera_gpio_conf {
+	void *cam_gpiomux_conf_tbl;
+	uint8_t cam_gpiomux_conf_tbl_size;
+	uint16_t *cam_gpio_tbl;
+	uint8_t cam_gpio_tbl_size;
+};
+#else
 struct msm_camera_gpio_conf {
 	void *cam_gpiomux_conf_tbl;
 	uint8_t cam_gpiomux_conf_tbl_size;
@@ -201,15 +244,7 @@ struct msm_camera_gpio_conf {
 	struct msm_gpio_set_tbl *cam_gpio_set_tbl;
 	uint8_t cam_gpio_set_tbl_size;
 };
-
-struct msm_camera_sensor_platform_info {
-	int mount_angle;
-	int sensor_reset;
-	struct camera_vreg_t *cam_vreg;
-	int num_vreg;
-	int32_t (*ext_power_ctrl) (int enable);
-	struct msm_camera_gpio_conf *gpio_conf;
-};
+#endif
 
 struct msm_actuator_info {
 	struct i2c_board_info const *board_info;
@@ -236,6 +271,9 @@ struct msm_camera_sensor_info {
 	struct msm_camera_csi_params csi_params;
 	struct msm_camera_sensor_strobe_flash_data *strobe_flash_data;
 	char *eeprom_data;
+#if defined(CONFIG_S5C73M3) && defined(CONFIG_S5K6A3YX) /* D2 */
+	struct msm_camera_gpio_conf *gpio_conf;
+#endif
 	enum msm_camera_type camera_type;
 	struct msm_actuator_info *actuator_info;
 };
@@ -371,10 +409,15 @@ struct mddi_platform_data {
 struct mipi_dsi_platform_data {
 	int vsync_gpio;
 	int (*dsi_power_save)(int on);
+#ifdef CONFIG_FB_MSM_MIPI_PANEL_POWERON_LP11
+	int (*dsi_client_power_save)(int on);
+#endif /* CONFIG_FB_MSM_MIPI_PANEL_POWERON_LP11 */
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
 	char (*splash_is_enabled)(void);
 	int target_type;
+	void (*lcd_rst_up)(void);
+	void (*lcd_rst_down)(void);
 };
 
 enum mipi_dsi_3d_ctrl {
@@ -416,8 +459,11 @@ struct msm_hdmi_platform_data {
 	int (*enable_5v)(int on);
 	int (*core_power)(int on, int show);
 	int (*cec_power)(int on);
+	int (*panel_power)(int on);
+	int (*gpio_config)(int on);
 	int (*init_irq)(void);
 	bool (*check_hdcp_hw_support)(void);
+	int (*hdmi_enable)(void);
 };
 
 struct msm_i2c_platform_data {
@@ -457,6 +503,15 @@ struct isp1763_platform_data {
 	int (*setup_gpio)(int enable);
 };
 #endif
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
+struct sec_esd_platform_data {
+	int esd_gpio_irq;
+#if defined(CONFIG_SAMSUNG_CMC624)
+	int esd_gpio_cmc_irq;
+#endif
+};
+#endif
+
 /* common init routines for use by arch/arm/mach-msm/board-*.c */
 
 #ifdef CONFIG_OF_DEVICE
@@ -503,6 +558,5 @@ void msm_snddev_tx_route_config(void);
 void msm_snddev_tx_route_deconfig(void);
 
 extern unsigned int msm_shared_ram_phys; /* defined in arch/arm/mach-msm/io.c */
-
 
 #endif

@@ -72,6 +72,8 @@ struct q6v4_data {
 	struct regulator *pll_supply;
 	bool vreg_enabled;
 	struct msm_xo_voter *xo;
+	struct msm_xo_voter *xo1;
+	struct msm_xo_voter *xo2;
 	struct delayed_work work;
 };
 
@@ -95,6 +97,12 @@ static void pil_q6v4_make_proxy_votes(struct device *dev)
 	int ret;
 
 	msm_xo_mode_vote(drv->xo, MSM_XO_MODE_ON);
+
+	if (drv->xo1)
+		msm_xo_mode_vote(drv->xo1, MSM_XO_MODE_ON);
+	if (drv->xo2)
+		msm_xo_mode_vote(drv->xo2, MSM_XO_MODE_ON);
+
 	if (drv->pll_supply) {
 		ret = regulator_enable(drv->pll_supply);
 		if (ret)
@@ -109,6 +117,11 @@ static void pil_q6v4_remove_proxy_votes(struct work_struct *work)
 	if (drv->pll_supply)
 		regulator_disable(drv->pll_supply);
 	msm_xo_mode_vote(drv->xo, MSM_XO_MODE_OFF);
+	if (drv->xo1)
+		msm_xo_mode_vote(drv->xo1, MSM_XO_MODE_OFF);
+	if (drv->xo2)
+		msm_xo_mode_vote(drv->xo2, MSM_XO_MODE_OFF);
+
 }
 
 static void pil_q6v4_remove_proxy_votes_now(struct device *dev)
@@ -392,20 +405,26 @@ static int __devinit pil_q6v4_driver_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, drv);
 
 	drv->base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-	if (!drv->base)
-		return -ENOMEM;
+	if (!drv->base) {
+		ret = -ENOMEM;
+		goto devm_err;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (res) {
 		drv->modem_base = devm_ioremap(&pdev->dev, res->start,
 				resource_size(res));
-		if (!drv->modem_base)
-			return -ENOMEM;
+		if (!drv->modem_base) {
+			ret = -ENOMEM;
+			goto devm_remap_err1;
+		}
 	}
 
 	desc = devm_kzalloc(&pdev->dev, sizeof(*desc), GFP_KERNEL);
-	if (!desc)
-		return -ENOMEM;
+	if (!desc) {
+		ret = -ENOMEM;
+		goto devm_remap_err2;
+	}
 
 	drv->pll_supply = regulator_get(&pdev->dev, "pll_vdd");
 	if (IS_ERR(drv->pll_supply)) {
@@ -447,12 +466,27 @@ static int __devinit pil_q6v4_driver_probe(struct platform_device *pdev)
 		ret = PTR_ERR(drv->xo);
 		goto err_xo;
 	}
+
+	if (pdata->xo1_id)
+		drv->xo1 = msm_xo_get(pdata->xo1_id, pdata->name);
+	if (IS_ERR(drv->xo1)) {
+		ret = PTR_ERR(drv->xo1);
+		goto err_xo;
+	}
+
+	if (pdata->xo2_id)
+		drv->xo2 = msm_xo_get(pdata->xo2_id, pdata->name);
+	if (IS_ERR(drv->xo2)) {
+		ret = PTR_ERR(drv->xo2);
+		goto err_xo;
+	}
 	INIT_DELAYED_WORK(&drv->work, pil_q6v4_remove_proxy_votes);
 
 	ret = msm_pil_register(desc);
 	if (ret)
 		goto err_pil;
 	return 0;
+
 err_pil:
 	cancel_delayed_work_sync(&drv->work);
 	msm_xo_put(drv->xo);
@@ -460,6 +494,13 @@ err_xo:
 	regulator_put(drv->vreg);
 err:
 	regulator_put(drv->pll_supply);
+	devm_kfree(&pdev->dev, desc);
+devm_remap_err2:
+	devm_iounmap(&pdev->dev, drv->modem_base);
+devm_remap_err1:
+	devm_iounmap(&pdev->dev, drv->base);
+devm_err:
+	devm_kfree(&pdev->dev, drv);
 	return ret;
 }
 

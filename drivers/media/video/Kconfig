@@ -1055,6 +1055,7 @@ config MSM_CAMERA_DEBUG
 
 
 source "drivers/media/video/msm/Kconfig"
+source "drivers/media/video/msm_zsl/Kconfig"
 
 endif # VIDEO_CAPTURE_DRIVERS
 

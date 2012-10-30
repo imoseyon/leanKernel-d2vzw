@@ -116,7 +116,7 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 		priv->governor == TZ_GOVERNOR_ONDEMAND &&
 		device->pwrctrl.restore_slumber == 0)
 		kgsl_pwrctrl_pwrlevel_change(device,
-					     device->pwrctrl.thermal_pwrlevel);
+					     KGSL_PWRLEVEL_NOMINAL);
 }
 
 static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)

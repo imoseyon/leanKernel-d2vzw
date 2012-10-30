@@ -31,11 +31,42 @@ config MT9D112
 	default y
 	---help---
 	  MICRON 2M YUV Sensor
-config IMX074
-	bool "Sensor IMX074 (BAYER 13.5M)"
-	depends on MSM_CAMERA
+config ISX012
+	bool "Sensor ISX012 (5M)"
+	default n
 	---help---
-	SONY 13.5 MP Bayer Sensor
+	SONY 5 MP CMOS Sensor
+config S5K4ECGX
+	bool "Sensor S5K4ECGX (5M)"
+	default n
+	---help---
+	LSI 5 MP CMOS Sensor
+config S5K5CCGX
+	bool "Sensor S5K5CCGX (3M)"
+	default n
+	---help---
+	LSI 3 MP CMOS Sensor
+config S5K8AAY
+	bool "Sensor S5K8AAY (1.3M)"
+	default n
+	---help---
+	LSI 1.3 MP CMOS Sensor
+config DB8131M
+	bool "Sensor DB8131M (1.3M)"
+	default n
+	---help---
+	DB 1.3 MP CMOS Sensor
+config SR030PC50
+	bool "Sensor SR030PC50 (VGA)"
+	default n
+	---help---
+	SILICON VGA CMOS Sensor
+#config S5K6AA
+#	bool "Sensor S5K6AA (1.3M)"
+#	default y
+#	---help---
+#	LSI 1.3 MP CMOS Sensor
+
 config OV5640
 	bool "Sensor OV5640 (YUV 5M)"
 	depends on MSM_CAMERA && !MSM_CAMERA_V4L2
@@ -172,10 +203,6 @@ config IMX072
 	  It is a Bayer 5MP sensor with auto focus and it supports
 	  two mipi lanes, required for msm7x2xA platform.
 	  Say Y here if this is msm7x2xA variant platform.
-
-config OV2720
-	bool "Sensor ov2720 (Omnivision 2MP)"
-	depends on MSM_CAMERA
 
 config VB6801
 	bool "Sensor vb6801"

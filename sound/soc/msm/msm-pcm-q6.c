@@ -633,8 +633,8 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 			runtime->hw.period_bytes_min,
 			runtime->hw.periods_max);
 	if (ret < 0) {
-		pr_err("Audio Start: Buffer Allocation failed \
-					rc = %d\n", ret);
+		pr_err("%s Audio Start: Buffer Allocation failed %d\n",
+			__func__, ret);
 		return -ENOMEM;
 	}
 	buf = prtd->audio_client->port[dir].buf;
@@ -646,8 +646,10 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	dma_buf->area = buf[0].data;
 	dma_buf->addr =  buf[0].phys;
 	dma_buf->bytes = runtime->hw.buffer_bytes_max;
-	if (!dma_buf->area)
+	if (!dma_buf->area) {
+		pr_err("%s DMA buf area avail failed\n", __func__);
 		return -ENOMEM;
+	}
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	return 0;

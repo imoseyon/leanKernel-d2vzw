@@ -27,6 +27,10 @@
 #include <mach/msm_subsystem_map.h>
 #include <linux/ion.h>
 
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+extern int cam_mode;
+#endif
+
 #define CONFIG_MSM_CAMERA_DEBUG
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -46,7 +50,7 @@
 #define max_control_command_size 512
 #define CROP_LEN 36
 
-enum vfe_mode_of_operation{
+enum vfe_mode_of_operation {
 	VFE_MODE_OF_OPERATION_CONTINUOUS,
 	VFE_MODE_OF_OPERATION_SNAPSHOT,
 	VFE_MODE_OF_OPERATION_VIDEO,
@@ -244,7 +248,7 @@ struct msm_vfe_stats_msg {
 	uint32_t frame_id;
 };
 
-struct video_crop_t{
+struct video_crop_t {
 	uint32_t  in1_w;
 	uint32_t  out1_w;
 	uint32_t  in1_h;
@@ -655,6 +659,9 @@ int  msm_camio_clk_config(uint32_t freq);
 void msm_camio_clk_rate_set(int rate);
 int msm_camio_vfe_clk_rate_set(int rate);
 void msm_camio_clk_rate_set_2(struct clk *clk, int rate);
+#if defined(CONFIG_S5C73M3)
+void msm_camio_clk_set_min_rate(struct clk *clk, int rate);
+#endif
 void msm_camio_clk_axi_rate_set(int rate);
 void msm_disable_io_gpio_clk(struct platform_device *);
 
@@ -675,13 +682,26 @@ int msm_camio_csi_config(struct msm_camera_csi_params *csi_params);
 int msm_camio_csiphy_config(struct msm_camera_csiphy_params *csiphy_params);
 int msm_camio_csid_config(struct msm_camera_csid_params *csid_params);
 void msm_io_read_interrupt(void);
+#if defined(CONFIG_S5C73M3)
+void vfe32_process_ispif_sof_irq(int rdi);
+#endif
 int add_axi_qos(void);
 int update_axi_qos(uint32_t freq);
 void release_axi_qos(void);
+
+/* test: Qualcomm */
+#if defined(CONFIG_S5C73M3)
+void msm_io_setBits(void __iomem *addr, int offset, int bitmask);
+#endif
+
 void msm_io_w(u32 data, void __iomem *addr);
 void msm_io_w_mb(u32 data, void __iomem *addr);
 u32 msm_io_r(void __iomem *addr);
 u32 msm_io_r_mb(void __iomem *addr);
+#if defined(CONFIG_S5C73M3)
+void msm_io_dump1(void __iomem *addr, int size);
+#endif
+
 void msm_io_dump(void __iomem *addr, int size);
 void msm_io_memcpy(void __iomem *dest_addr, void __iomem *src_addr, u32 len);
 void msm_camio_set_perf_lvl(enum msm_bus_perf_setting);

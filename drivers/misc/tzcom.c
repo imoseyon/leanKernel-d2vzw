@@ -36,6 +36,9 @@
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include "tzcomi.h"
+#include <mach/msm_bus.h>
+#include <mach/msm_bus_board.h>
+#include <linux/clk.h>
 
 #define TZCOM_DEV "tzcom"
 
@@ -1090,6 +1093,7 @@ static struct msm_bus_scale_pdata tzcom_bus_pdata = {
 	.num_usecases = ARRAY_SIZE(tzcom_bw_table),
 	.name = "tzcom",
 };
+
 static const struct file_operations tzcom_fops = {
 		.owner = THIS_MODULE,
 		.unlocked_ioctl = tzcom_ioctl,

@@ -2425,8 +2425,12 @@ int regulator_bulk_enable(int num_consumers,
 
 err:
 	pr_err("Failed to enable %s: %d\n", consumers[i].supply, ret);
-	for (--i; i >= 0; --i)
-		regulator_disable(consumers[i].consumer);
+	for (--i; i >= 0; --i) {
+		ret = regulator_disable(consumers[i].consumer);
+		if (ret != 0)
+			pr_err("Failed to disable %s: %d\n",
+				consumers[i].supply, ret);
+	}
 
 	return ret;
 }
@@ -2496,8 +2500,12 @@ int regulator_bulk_disable(int num_consumers,
 
 err:
 	pr_err("Failed to disable %s: %d\n", consumers[i].supply, ret);
-	for (--i; i >= 0; --i)
-		regulator_enable(consumers[i].consumer);
+	for (--i; i >= 0; --i) {
+		ret = regulator_enable(consumers[i].consumer);
+		if (ret != 0)
+			pr_err("Failed to enable %s: %d\n",
+				consumers[i].supply, ret);
+	}
 
 	return ret;
 }

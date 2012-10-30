@@ -1313,9 +1313,9 @@ qup_i2c_probe(struct platform_device *pdev)
 
 err_request_irq_failed:
 	qup_i2c_free_gpios(dev);
+err_request_gpio_failed:
 	if (dev->gsbi)
 		iounmap(dev->gsbi);
-err_request_gpio_failed:
 err_gsbi_failed:
 	iounmap(dev->base);
 err_ioremap_failed:

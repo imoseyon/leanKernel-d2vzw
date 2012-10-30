@@ -80,11 +80,13 @@ static int max8952_list_voltage(struct regulator_dev *rdev,
 		unsigned int selector)
 {
 	struct max8952_data *max8952 = rdev_get_drvdata(rdev);
+	int ret;
 
 	if (rdev_get_id(rdev) != 0)
 		return -EINVAL;
 
-	return max8952_voltage(max8952, selector);
+	ret = MAX8952_DCDC_VMIN + selector * MAX8952_DCDC_STEP;
+	return ret;
 }
 
 static int max8952_is_enabled(struct regulator_dev *rdev)
@@ -132,6 +134,41 @@ static int max8952_get_voltage(struct regulator_dev *rdev)
 	return max8952_voltage(max8952, vid);
 }
 
+/*lmh_add, New set_voltage func. for camera ISP core power setting*/
+static int _max8952_set_voltage(struct regulator_dev *rdev,
+			       int min_uV, int max_uV, unsigned *selector)
+{
+	struct max8952_data *max8952 = rdev_get_drvdata(rdev);
+
+	int set_val, uV = min_uV;
+	int lim_min_uV, lim_max_uV;
+
+	lim_min_uV = max8952->pdata->reg_data.constraints.min_uV;
+	lim_max_uV = max8952->pdata->reg_data.constraints.max_uV;
+
+
+	if (uV < lim_min_uV && max_uV >= lim_min_uV)
+		uV = lim_min_uV;
+
+	if (uV < lim_min_uV || uV > lim_max_uV) {
+		pr_err("request v=[%d, %d] is outside possible v=[%d, %d]\n",
+			 min_uV, max_uV, lim_min_uV, lim_max_uV);
+		return -EINVAL;
+	}
+
+	set_val = (uV-MAX8952_DCDC_VMIN) / MAX8952_DCDC_STEP;
+	*selector = set_val & 0x3f;
+
+	max8952_write_reg(max8952, MAX8952_REG_MODE3,
+				(max8952_read_reg(max8952,
+				 MAX8952_REG_MODE3) & 0xC0) | (*selector));
+
+	pr_info("%s voltage is enabled to %d mV by selector value [%d]\n",
+		max8952->pdata->reg_data.constraints.name, uV/1000, *selector);
+	return 0;
+}
+/*end lmh_add, New set_voltage func. for camera ISP core power setting*/
+
 static int max8952_set_voltage(struct regulator_dev *rdev,
 			       int min_uV, int max_uV, unsigned *selector)
 {
@@ -171,14 +208,14 @@ static struct regulator_ops max8952_ops = {
 	.enable			= max8952_enable,
 	.disable		= max8952_disable,
 	.get_voltage		= max8952_get_voltage,
-	.set_voltage		= max8952_set_voltage,
+	.set_voltage		= _max8952_set_voltage,
 	.set_suspend_disable	= max8952_disable,
 };
 
 static struct regulator_desc regulator = {
 	.name		= "MAX8952_VOUT",
 	.id		= 0,
-	.n_voltages	= MAX8952_NUM_DVS_MODE,
+	.n_voltages	= 1 << 6,
 	.ops		= &max8952_ops,
 	.type		= REGULATOR_VOLTAGE,
 	.owner		= THIS_MODULE,
@@ -210,7 +247,7 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 	max8952->pdata = pdata;
 	mutex_init(&max8952->mutex);
 
-	max8952->rdev = regulator_register(&regulator, max8952->dev,
+	max8952->rdev = regulator_register(&regulator, &client->dev,
 			&pdata->reg_data, max8952);
 
 	if (IS_ERR(max8952->rdev)) {
@@ -223,32 +260,14 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 	max8952->vid0 = (pdata->default_mode % 2) == 1;
 	max8952->vid1 = ((pdata->default_mode >> 1) % 2) == 1;
 
-	if (gpio_is_valid(pdata->gpio_en)) {
-		if (!gpio_request(pdata->gpio_en, "MAX8952 EN"))
-			gpio_direction_output(pdata->gpio_en, max8952->en);
-		else
-			err = 1;
-	} else
-		err = 2;
-
-	if (err) {
-		dev_info(max8952->dev, "EN gpio invalid: assume that EN"
-				"is always High\n");
-		max8952->en = 1;
-		pdata->gpio_en = -1; /* Mark invalid */
-	}
-
-	err = 0;
-
 	if (gpio_is_valid(pdata->gpio_vid0) &&
-			gpio_is_valid(pdata->gpio_vid1)) {
-		if (!gpio_request(pdata->gpio_vid0, "MAX8952 VID0"))
+		gpio_is_valid(pdata->gpio_vid1)) {
+		if (!gpio_request(pdata->gpio_vid0, "MAX8952_VID0"))
 			gpio_direction_output(pdata->gpio_vid0,
-					(pdata->default_mode) % 2);
+				(pdata->default_mode) % 2);
 		else
 			err = 1;
-
-		if (!gpio_request(pdata->gpio_vid1, "MAX8952 VID1"))
+		if (!gpio_request(pdata->gpio_vid1, "MAX8952_VID1"))
 			gpio_direction_output(pdata->gpio_vid1,
 				(pdata->default_mode >> 1) % 2);
 		else {
@@ -256,8 +275,9 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 				gpio_free(pdata->gpio_vid0);
 			err = 2;
 		}
+	}
 
-	} else
+	else
 		err = 3;
 
 	if (err) {
@@ -268,10 +288,8 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 		/* Mark invalid */
 		pdata->gpio_vid0 = -1;
 		pdata->gpio_vid1 = -1;
-
 		/* Disable Pulldown of EN only */
 		max8952_write_reg(max8952, MAX8952_REG_CONTROL, 0x60);
-
 		dev_err(max8952->dev, "DVS modes disabled because VID0 and VID1"
 				" do not have proper controls.\n");
 	} else {
@@ -286,22 +304,24 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 		max8952_write_reg(max8952, MAX8952_REG_CONTROL, 0x0);
 	}
 
-	max8952_write_reg(max8952, MAX8952_REG_MODE0,
-			(max8952_read_reg(max8952,
-					  MAX8952_REG_MODE0) & 0xC0) |
-			(pdata->dvs_mode[0] & 0x3F));
-	max8952_write_reg(max8952, MAX8952_REG_MODE1,
-			(max8952_read_reg(max8952,
-					  MAX8952_REG_MODE1) & 0xC0) |
-			(pdata->dvs_mode[1] & 0x3F));
-	max8952_write_reg(max8952, MAX8952_REG_MODE2,
-			(max8952_read_reg(max8952,
-					  MAX8952_REG_MODE2) & 0xC0) |
-			(pdata->dvs_mode[2] & 0x3F));
-	max8952_write_reg(max8952, MAX8952_REG_MODE3,
-			(max8952_read_reg(max8952,
-					  MAX8952_REG_MODE3) & 0xC0) |
-			(pdata->dvs_mode[3] & 0x3F));
+	if (pdata->dvs_mode) {
+		max8952_write_reg(max8952, MAX8952_REG_MODE0,
+				(max8952_read_reg(max8952,
+						  MAX8952_REG_MODE0) & 0xC0) |
+				(pdata->dvs_mode[0] & 0x3F));
+		max8952_write_reg(max8952, MAX8952_REG_MODE1,
+				(max8952_read_reg(max8952,
+						  MAX8952_REG_MODE1) & 0xC0) |
+				(pdata->dvs_mode[1] & 0x3F));
+		max8952_write_reg(max8952, MAX8952_REG_MODE2,
+				(max8952_read_reg(max8952,
+						  MAX8952_REG_MODE2) & 0xC0) |
+				(pdata->dvs_mode[2] & 0x3F));
+		max8952_write_reg(max8952, MAX8952_REG_MODE3,
+				(max8952_read_reg(max8952,
+						  MAX8952_REG_MODE3) & 0xC0) |
+				(pdata->dvs_mode[3] & 0x3F));
+	}
 
 	max8952_write_reg(max8952, MAX8952_REG_SYNC,
 			(max8952_read_reg(max8952, MAX8952_REG_SYNC) & 0x3F) |
@@ -311,7 +331,6 @@ static int __devinit max8952_pmic_probe(struct i2c_client *client,
 			((pdata->ramp_speed & 0x7) << 5));
 
 	i2c_set_clientdata(client, max8952);
-
 	return 0;
 
 err_reg:
@@ -329,7 +348,6 @@ static int __devexit max8952_pmic_remove(struct i2c_client *client)
 
 	gpio_free(pdata->gpio_vid0);
 	gpio_free(pdata->gpio_vid1);
-	gpio_free(pdata->gpio_en);
 
 	kfree(max8952);
 	return 0;
@@ -352,6 +370,7 @@ static struct i2c_driver max8952_pmic_driver = {
 
 static int __init max8952_pmic_init(void)
 {
+	pr_info("MAX8952 loading!!\n");
 	return i2c_add_driver(&max8952_pmic_driver);
 }
 subsys_initcall(max8952_pmic_init);

@@ -1,0 +1,8 @@
+config FELICA
+	bool "FeliCa driver"
+	default n
+
+config FELICA_DIAG
+	bool "FeliCa driver"
+	default n
+

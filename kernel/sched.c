@@ -76,6 +76,9 @@
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
 #include <asm/mutex.h>
+#if CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 #include "sched_cpupri.h"
 #include "workqueue_sched.h"
@@ -4283,6 +4286,9 @@ need_resched:
 		 */
 		cpu = smp_processor_id();
 		rq = cpu_rq(cpu);
+#if CONFIG_SEC_DEBUG
+		sec_debug_task_sched_log(cpu, rq->curr);
+#endif
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 
@@ -4412,6 +4418,7 @@ asmlinkage void __sched preempt_schedule_irq(void)
 
 	do {
 		add_preempt_count(PREEMPT_ACTIVE);
+		secdbg_sched_msg(">prmptsched_irq");
 		local_irq_enable();
 		__schedule();
 		local_irq_disable();
@@ -6492,7 +6499,7 @@ static int __cpuinit sched_cpu_active(struct notifier_block *nfb,
 				      unsigned long action, void *hcpu)
 {
 	switch (action & ~CPU_TASKS_FROZEN) {
-	case CPU_ONLINE:
+	case CPU_STARTING:
 	case CPU_DOWN_FAILED:
 		set_cpu_active((long)hcpu, true);
 		return NOTIFY_OK;
@@ -8007,6 +8014,13 @@ void __init sched_init(void)
 {
 	int i, j;
 	unsigned long alloc_size = 0, ptr;
+
+#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_FAIR_GROUP_SCHED
+	sec_gaf_supply_rqinfo(offsetof(struct rq, curr),
+					offsetof(struct cfs_rq, rq));
+#endif
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);

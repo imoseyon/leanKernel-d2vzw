@@ -952,7 +952,7 @@ static const uint8 *hdmi_edid_find_block(const uint8 *in_buf, uint8 type,
 {
 	/* the start of data block collection, start of Video Data Block */
 	uint32 offset = 4;
-
+	uint16 start_DTD = 0;
 	*len = 0;
 
 	/*edid buffer 1, byte 2 being 4 means no non-DTD/Data block collection
@@ -963,7 +963,12 @@ static const uint8 *hdmi_edid_find_block(const uint8 *in_buf, uint8 type,
 		DEV_WARN("EDID: no DTD or non-DTD data present\n");
 		return NULL;
 	}
+	start_DTD = in_buf[2];
 	while (offset < 0x80) {
+		/* some block_data is optional in CEA EDID*/
+		if (start_DTD <= offset)
+			break;
+
 		uint8 block_len = in_buf[offset] & 0x1F;
 		if ((in_buf[offset] >> 5) == type) {
 			*len = block_len;
@@ -1042,12 +1047,14 @@ static void hdmi_edid_extract_latency_fields(const uint8 *in_buf)
 static void hdmi_edid_extract_speaker_allocation_data(const uint8 *in_buf)
 {
 	uint8 len;
+	uint16 speaker_allocation = 0;
 	const uint8 *sad = hdmi_edid_find_block(in_buf, 4, &len);
 
 	if (sad == NULL)
 		return;
 
 	external_common_state->speaker_allocation_block = sad[1];
+	speaker_allocation |= (sad[1] & 0x7F);
 	DEV_DBG("EDID: speaker allocation data SP byte = %08x %s%s%s%s%s%s%s\n",
 		sad[1],
 		(sad[1] & BIT(0)) ? "FL/FR," : "",
@@ -1057,11 +1064,14 @@ static void hdmi_edid_extract_speaker_allocation_data(const uint8 *in_buf)
 		(sad[1] & BIT(4)) ? "RC," : "",
 		(sad[1] & BIT(5)) ? "FLC/FRC," : "",
 		(sad[1] & BIT(6)) ? "RLC/RRC," : "");
+
+	external_common_state->audio_speaker_data |= (speaker_allocation << 8);
 }
 
 static void hdmi_edid_extract_audio_data_blocks(const uint8 *in_buf)
 {
 	uint8 len;
+	uint16 audio_ch = 0;
 	const uint8 *sad = hdmi_edid_find_block(in_buf, 1, &len);
 	uint32 *adb = external_common_state->audio_data_blocks;
 
@@ -1073,12 +1083,14 @@ static void hdmi_edid_extract_audio_data_blocks(const uint8 *in_buf)
 		DEV_DBG("EDID: Audio Data Block=<ch=%d, format=%d "
 			"sampling=0x%02x bit-depth=0x%02x>\n",
 			(sad[1] & 0x7)+1, sad[1] >> 3, sad[2], sad[3]);
+		audio_ch |= (1 << (sad[1] & 0x7));
 		*adb++ = (uint32)sad[1] + ((uint32)sad[2] << 8)
 			+ ((uint32)sad[2] << 16);
 		++external_common_state->audio_data_block_cnt;
 		len -= 3;
 		sad += 3;
 	}
+	external_common_state->audio_speaker_data |= audio_ch;
 }
 
 
@@ -1335,7 +1347,7 @@ static int hdmi_common_read_edid_block(int block, uint8 *edid_buf)
 			__func__, (uint8)edid_buf[0x7F], (uint8)check_sum);
 #ifdef DEBUG
 		for (ndx = 0; ndx < 0x100; ndx += 16)
-			DEV_DBG("EDID[%02x-%02x] %02x %02x %02x %02x  "
+			DEV_INFO("EDID[%02x-%02x] %02x %02x %02x %02x  "
 				"%02x %02x %02x %02x    %02x %02x %02x %02x  "
 				"%02x %02x %02x %02x\n", ndx, ndx+15,
 				b[ndx+0], b[ndx+1], b[ndx+2], b[ndx+3],
@@ -1380,6 +1392,8 @@ int hdmi_common_read_edid(void)
 	/* EDID_BLOCK_SIZE[0x80] Each page size in the EDID ROM */
 	uint8 edid_buf[0x80 * 4];
 
+	/* Default 2ch-audio */
+	external_common_state->audio_speaker_data = 2;
 	external_common_state->present_3d = 0;
 	memset(&external_common_state->disp_mode_list, 0,
 		sizeof(external_common_state->disp_mode_list));
@@ -1523,7 +1537,14 @@ bool hdmi_common_get_video_format_from_drv_data(struct msm_fb_data_type *mfd)
 				: HDMI_VFRMT_1440x576i50_16_9;
 			break;
 		case 1920:
+#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
+		defined(CONFIG_VIDEO_MHL_TAB_V2)
+			format = (mfd->var_yres == 540)
+				? HDMI_VFRMT_1920x1080i60_16_9
+				: HDMI_VFRMT_1920x1080p30_16_9;
+#else
 			format = HDMI_VFRMT_1920x1080p60_16_9;
+#endif
 			break;
 		}
 	}

@@ -44,7 +44,7 @@ static int enable_riva_ssr;
 static void riva_smsm_cb_fn(struct work_struct *work)
 {
 	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": SMSM reset request received from Riva");
+		panic(MODULE_NAME ": SMSM reset request received from riva");
 	else
 		subsystem_restart("riva");
 }
@@ -52,6 +52,12 @@ static void riva_smsm_cb_fn(struct work_struct *work)
 static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 					uint32_t new_state)
 {
+	if (msm8960_ssr_inprogress) {
+		pr_err("%s: Ignoring smsm reset req, ssr in progress\n",
+						MODULE_NAME);
+		return;
+	}
+
 	riva_crash = true;
 	pr_err("%s: smsm state changed to smsm reset\n", MODULE_NAME);
 
@@ -69,7 +75,7 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 static void riva_fatal_fn(struct work_struct *work)
 {
 	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": Watchdog bite received from Riva");
+		panic(MODULE_NAME ": Watchdog bite received from riva");
 	else
 		subsystem_restart("riva");
 }
@@ -80,6 +86,12 @@ static irqreturn_t riva_wdog_bite_irq_hdlr(int irq, void *dev_id)
 
 	if (ss_restart_inprogress) {
 		pr_err("%s: Ignoring riva bite irq, restart in progress\n",
+						MODULE_NAME);
+		return IRQ_HANDLED;
+	}
+
+	if (msm8960_ssr_inprogress) {
+		pr_err("%s: Ignoring riva bite irq, ssr in progress\n",
 						MODULE_NAME);
 		return IRQ_HANDLED;
 	}
@@ -213,24 +225,31 @@ static int __init riva_ssr_module_init(void)
 	if (ret < 0) {
 		pr_err("%s: Unable to register for Riva bite interrupt"
 				" (%d)\n", MODULE_NAME, ret);
-		goto out;
+		goto out1;
 	}
 	ret = riva_restart_init();
 	if (ret < 0) {
 		pr_err("%s: Unable to register with ssr. (%d)\n",
 				MODULE_NAME, ret);
-		goto out;
+		goto out2;
 	}
 	riva_ramdump_dev = create_ramdump_device("riva");
 	if (!riva_ramdump_dev) {
 		pr_err("%s: Unable to create ramdump device.\n",
 				MODULE_NAME);
 		ret = -ENOMEM;
-		goto out;
+		goto out2;
 	}
 	INIT_DELAYED_WORK(&cancel_vote_work, riva_post_bootup);
 
 	pr_info("%s: module initialized\n", MODULE_NAME);
+
+	return ret;
+out2:
+	free_irq(RIVA_APSS_WDOG_BITE_RESET_RDY_IRQ, NULL);
+out1:
+	smsm_state_cb_deregister(SMSM_WCNSS_STATE, SMSM_RESET,
+					smsm_state_cb_hdlr, 0);
 out:
 	return ret;
 }

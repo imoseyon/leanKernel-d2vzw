@@ -21,6 +21,9 @@
 #include <asm/cacheflush.h>
 
 #include <mach/scm.h>
+#if CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 #define SCM_ENOMEM		-5
 #define SCM_EOPNOTSUPP		-4

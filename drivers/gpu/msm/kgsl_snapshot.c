@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -283,7 +283,7 @@ static void kgsl_snapshot_put_object(struct kgsl_device *device,
 {
 	list_del(&obj->node);
 
-	obj->entry->flags &= ~KGSL_MEM_ENTRY_FROZEN;
+	obj->entry->memdesc.priv &= ~KGSL_MEMDESC_FROZEN;
 	kgsl_mem_entry_put(obj->entry);
 
 	kfree(obj);
@@ -416,10 +416,10 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	 * 0 so it doesn't get counted twice
 	 */
 
-	if (entry->flags & KGSL_MEM_ENTRY_FROZEN)
+	if (entry->memdesc.priv & KGSL_MEMDESC_FROZEN)
 		return 0;
 
-	entry->flags |= KGSL_MEM_ENTRY_FROZEN;
+	entry->memdesc.priv |= KGSL_MEMDESC_FROZEN;
 
 	return entry->memdesc.size;
 }

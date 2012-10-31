@@ -1112,7 +1112,6 @@ static int msm8960_i2s_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		!(machine_is_JASPER() && system_rev >= BOARD_REV04) &&
 		!(machine_is_COMANCHE() && system_rev >= BOARD_REV02) &&
 		!(machine_is_GOGH() && system_rev >= BOARD_REV03) &&
-		!(machine_is_INFINITE() && system_rev >= BOARD_REV03) &&
 		!(machine_is_EXPRESS() && system_rev >= BOARD_REV02)) {
 		/* using mbhc driver for earjack */
 			tabla_hs_detect(codec, &mbhc_cfg);
@@ -1156,16 +1155,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	if ((machine_is_M2_SKT() && system_rev >= BOARD_REV01)) {
 		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
 			ARRAY_SIZE(common_audio_map_rev00));
-	} else if (machine_is_STRETTO()) {
-		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
-			ARRAY_SIZE(common_audio_map_rev00));
-	} else if (machine_is_SUPERIORLTE_SKT()) {
-		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
-			ARRAY_SIZE(common_audio_map_rev00));
 	} else if (machine_is_M2_DCM()) {
-		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
-			ARRAY_SIZE(common_audio_map_rev00));
-	} else if (machine_is_K2_KDI()) {
 		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
 			ARRAY_SIZE(common_audio_map_rev00));
 	} else {
@@ -1216,10 +1206,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	if (((machine_is_M2_SKT() && system_rev < BOARD_REV08) ||
 		(machine_is_M2_DCM() && system_rev < BOARD_REV03) ||
-		(machine_is_K2_KDI() && system_rev < BOARD_REV03)) ||
-		(!machine_is_M2_SKT() && !machine_is_M2_DCM() &&
-		!machine_is_STRETTO() && !machine_is_K2_KDI() &&
-		!machine_is_SUPERIORLTE_SKT())) {
+		(!machine_is_M2_SKT() && !machine_is_M2_DCM()))) {
 		/* using mbhc driver for earjack */
 		if (GPIO_DETECT_USED) {
 			mbhc_cfg.gpio = PM8921_GPIO_PM_TO_SYS(JACK_DETECT_GPIO);

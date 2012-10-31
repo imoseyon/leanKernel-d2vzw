@@ -31,6 +31,7 @@
 #include <linux/syscore_ops.h>
 
 #include <trace/events/power.h>
+#include <linux/semaphore.h>
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low

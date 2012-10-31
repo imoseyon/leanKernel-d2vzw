@@ -233,10 +233,7 @@ static void set_mdp_clocks_for_wuxga(void);
 
 static int msm_fb_detect_panel(const char *name)
 {
-	if (machine_is_msm8960_liquid() || machine_is_ESPRESSO_VZW()
-		|| machine_is_ESPRESSO_ATT() || machine_is_ESPRESSO10_VZW()
-		|| machine_is_ESPRESSO_SPR() || machine_is_ESPRESSO10_ATT()
-		|| machine_is_ESPRESSO10_SPR()) {
+	if (machine_is_msm8960_liquid()) {
 		if (!strncmp(name, MIPI_VIDEO_CHIMEI_WXGA_PANEL_NAME,
 				strnlen(MIPI_VIDEO_CHIMEI_WXGA_PANEL_NAME,
 					PANEL_NAME_MAX_LEN)))
@@ -1943,13 +1940,7 @@ void __init msm8960_init_fb(void)
 #endif
 	}
 
-	if (machine_is_msm8960_liquid() \
-			|| machine_is_ESPRESSO_VZW()
-			|| machine_is_ESPRESSO_SPR()
-			|| machine_is_ESPRESSO_ATT()
-			|| machine_is_ESPRESSO10_SPR()
-			|| machine_is_ESPRESSO10_VZW()
-			|| machine_is_ESPRESSO10_ATT())
+	if (machine_is_msm8960_liquid())
 		platform_device_register(&mipi_dsi2lvds_bridge_device);
 	else
 		platform_device_register(&mipi_dsi_samsung_oled_panel_device);

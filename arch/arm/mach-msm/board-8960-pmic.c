@@ -1003,9 +1003,6 @@ static void msm8921_sec_charger_init(void)
 	} else if (machine_is_M2_DCM() && system_rev >= 0x00) {
 		pm8921_chg_pdata.batt_id_min = 860000;
 		pm8921_chg_pdata.batt_id_max = 960000;
-	} else if (machine_is_K2_KDI() && system_rev >= 0x00) {
-		pm8921_chg_pdata.batt_id_min = 860000;
-		pm8921_chg_pdata.batt_id_max = 960000;
 	} else if (machine_is_jaguar() && system_rev >= 0x04) {
 		pm8921_chg_pdata.batt_id_min = 860000;
 		pm8921_chg_pdata.batt_id_max = 960000;
@@ -1025,7 +1022,6 @@ static void msm8921_sec_charger_init(void)
 		(machine_is_M2_VZW() && system_rev >= 0x06) ||
 		(machine_is_jaguar() && system_rev >= 0x0A) ||
 		(machine_is_M2_DCM() && system_rev >= 0x00) ||
-		(machine_is_K2_KDI() && system_rev >= 0x00) ||
 		machine_is_JASPER())
 		pm8921_chg_pdata.max_voltage = 4350;
 }

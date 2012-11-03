@@ -81,7 +81,7 @@
 /* PTE EFUSE register. */
 #define QFPROM_PTE_EFUSE_ADDR	(MSM_QFPROM_BASE + 0x00C0)
 
-#define FREQ_TABLE_SIZE    34
+#define FREQ_TABLE_SIZE    30
 
 enum scalables {
 	CPU0 = 0,
@@ -749,10 +749,10 @@ static struct acpu_level acpu_freq_tbl_8960_kraitv2_nom[] = {
 	{ 0, {  1404000, HFPLL, 1, 0, 0x34 }, L2(19), 1187500 },
 	{ 1, {  1458000, HFPLL, 1, 0, 0x36 }, L2(19), 1187500 },
 	{ 1, {  1512000, HFPLL, 1, 0, 0x38 }, L2(19), 1200000 },
-	{ 1, {  1674000, HFPLL, 1, 0, 0x3A }, L2(19), 1200000 },
-	{ 1, {  1728000, HFPLL, 1, 0, 0x3C }, L2(19), 1200000 },
-	{ 1, {  1809000, HFPLL, 1, 0, 0x3E }, L2(19), 1250000 },
-	{ 1, {  1900000, HFPLL, 1, 0, 0x40 }, L2(19), 1300000 },
+	{ 1, {  1620000, HFPLL, 1, 0, 0x3C }, L2(19), 1200000 },
+	{ 1, {  1740000, HFPLL, 1, 0, 0x40 }, L2(19), 1250000 },
+//	{ 1, {  1809000, HFPLL, 1, 0, 0x3E }, L2(19), 1250000 },
+//	{ 1, {  1900000, HFPLL, 1, 0, 0x40 }, L2(19), 1300000 },
 	{ 0, { 0 } }
 };
 

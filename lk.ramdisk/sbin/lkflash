@@ -67,6 +67,7 @@ echo
 if [ "$MD5" == "$SUM" ]; then
   echo "Download finished. Checksum verified. Flashing kernel..."
   cd /sdcard/lk
+  $BB cp -f kernel.zip ../lk_backup_$VER.zip
   $BB unzip -q kernel.zip
   $BB mount -o rw,remount /system /system
   $BB cp -af system/* /system/

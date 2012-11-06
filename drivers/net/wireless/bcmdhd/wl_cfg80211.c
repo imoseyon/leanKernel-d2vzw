@@ -8353,6 +8353,8 @@ static s32 wl_notifier_change_state(struct wl_priv *wl, struct net_info *_net_in
 								WL_ERR(("error"
 									" (%d)\n", err));
 								break;
+						} else {
+							wl_cfg80211_update_power_mode(iter->ndev);
 						}
 					}
 					if (connected_cnt  > 1) {
@@ -8420,6 +8422,8 @@ static s32 wl_notifier_change_state(struct wl_priv *wl, struct net_info *_net_in
 								WL_ERR(("error"
 									" (%d)\n", err));
 							break;
+						} else {
+							wl_cfg80211_update_power_mode(iter->ndev);
 						}
 					}
 				}

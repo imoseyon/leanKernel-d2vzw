@@ -1095,6 +1095,15 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.be_hw_params_fixup = msm8960_btsco_be_hw_params_fixup,
 	},
 	{
+		.name = "MSM8960 LowLatency",
+		.stream_name = "MultiMedia5",
+		.cpu_dai_name	= "MultiMedia5",
+		.platform_name  = "msm-lowlatency-pcm-dsp",
+		.dynamic = 1,
+		.dsp_link = &fe_media,
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA5,
+	},
+	{
 		.name = LPASS_BE_INT_FM_RX,
 		.stream_name = "Internal FM Playback",
 		.cpu_dai_name = "msm-dai-q6.12292",

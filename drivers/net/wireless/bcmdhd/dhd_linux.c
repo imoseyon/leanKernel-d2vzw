@@ -2054,7 +2054,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #ifdef CUSTOMER_HW4
 				tout_ctrl = DHD_PNO_TIMEOUT_MS;
 #else
-				tout_ctrl *= 2;
+				tout_ctrl = 7 * DHD_PACKET_TIMEOUT_MS;
 #endif
 			}
 #endif /* PNO_SUPPORT */

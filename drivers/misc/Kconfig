@@ -62,8 +62,8 @@ config AD525X_DPOT_SPI
 	  module will be called ad525x_dpot-spi.
 
 config ANDROID_PMEM
-	bool "Android pmem allocator"
-	default y
+        bool "Android pmem allocator"
+        default y
 
 config ATMEL_PWM
 	tristate "Atmel AT32/AT91 PWM support"
@@ -504,7 +504,7 @@ config BMP085
 	  module will be called bmp085.
 
 config PCH_PHUB
-	tristate "Intel EG20T PCH / OKI SEMICONDUCTOR IOH(ML7213/ML7223) PHUB"
+	tristate "Intel EG20T PCH/LAPIS Semicon IOH(ML7213/ML7223/ML7831) PHUB"
 	depends on PCI
 	help
 	  This driver is for PCH(Platform controller Hub) PHUB(Packet Hub) of
@@ -512,12 +512,13 @@ config PCH_PHUB
 	  processor. The Topcliff has MAC address and Option ROM data in SROM.
 	  This driver can access MAC address and Option ROM data in SROM.
 
-	  This driver also can be used for OKI SEMICONDUCTOR IOH(Input/
-	  Output Hub), ML7213 and ML7223.
-	  ML7213 IOH is for IVI(In-Vehicle Infotainment) use and ML7223 IOH is
-	  for MP(Media Phone) use.
-	  ML7213/ML7223 is companion chip for Intel Atom E6xx series.
-	  ML7213/ML7223 is completely compatible for Intel EG20T PCH.
+	  This driver also can be used for LAPIS Semiconductor's IOH,
+	  ML7213/ML7223/ML7831.
+	  ML7213 which is for IVI(In-Vehicle Infotainment) use.
+	  ML7223 IOH is for MP(Media Phone) use.
+	  ML7831 IOH is for general purpose use.
+	  ML7213/ML7223/ML7831 is companion chip for Intel Atom E6xx series.
+	  ML7213/ML7223/ML7831 is completely compatible for Intel EG20T PCH.
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called pch_phub.
@@ -680,11 +681,6 @@ config USB_SWITCH_FSA9485
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
 
-config MPU_ENABLE
-	bool "mpu gyro sensor"
-	depends on I2C
-	default n
-
 config MPU_411_ENABLE
 	bool "mpu gyro sensor MPL 4.1.1"
 	depends on I2C
@@ -755,6 +751,21 @@ config SAMSUNG_JACK
 	help
 	  This is 3.5 PI JACK driver for Samsung devices.
 
+config SAMSUNG_JACK_GNDLDET
+	bool "GND plus L Detection for Earjack"
+	depends on INPUT
+	default n
+	help
+	  This is gnd plus l detection for earjack.
+	  The gnd gpio is added for the detection of earjack.
+	  This is added to decide the earjack properly
+	  in case of the insertion of water.
+
+config OPTICAL_BH1721
+	tristate "Rohm bh1721 Optical Sensor"
+	default n
+	depends on I2C
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -762,7 +773,6 @@ source "drivers/misc/iwmc3200top/Kconfig"
 source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
-source "drivers/misc/mpu3050/Kconfig"
 source "drivers/misc/inv_mpu/Kconfig"
 source "drivers/misc/yas532/Kconfig"
 endif # MISC_DEVICES

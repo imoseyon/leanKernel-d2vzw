@@ -37,14 +37,13 @@ static char test_key2[3] = {
  */
 static char panel_cond_set1[] = {
 	0xF8, 0x01,
-	0x2D, 0x2D, 0x08, 0x08, 0x61,
-	0xB7, 0x6F, 0x9A, 0x1D, 0x3B,
-	0x10, 0x00, 0x00
+	0x2C, 0x2C, 0x07, 0x07, 0x5F,
+	0xB3, 0x6D, 0x97, 0x1D, 0x3A,
+	0x0F, 0x00, 0x00
 };
-
 static char display_cond_set1[] = {
 	0xF2,
-	0x02, 0x03, 0x1C, 0x10, 0x10,
+	0x02, 0x9, 0x69, 0x14, 0x10,
 };
 #if defined(CONFIG_MACH_COMANCHE)
 static char display_cond_set2[] = {
@@ -351,6 +350,13 @@ static struct dsi_cmd_desc samsung_display_on_cmds[] = {
 		sizeof(sleep_out), sleep_out},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(prepare_mtp_read1), prepare_mtp_read1},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(prepare_mtp_read2), prepare_mtp_read2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(contention_error_remove), contention_error_remove},
+
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(panel_cond_set1), panel_cond_set1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(display_cond_set1), display_cond_set1},
@@ -382,7 +388,7 @@ static struct dsi_cmd_desc samsung_display_on_cmds[] = {
 		sizeof(display_on), display_on},
 };
 static struct dsi_cmd_desc samsung_panel_ready_to_off_cmds[] = {
-	{DTYPE_GEN_WRITE, 1, 0, 0, 0,
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(display_off), display_off},
 };
 
@@ -392,7 +398,7 @@ static struct dsi_cmd_desc samsung_panel_on_cmds[] = {
 };
 
 static struct dsi_cmd_desc samsung_panel_off_cmds[] = {
-	{DTYPE_GEN_WRITE, 1, 0, 0, 0,
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
 		sizeof(sleep_in), sleep_in},
 };
 
@@ -413,6 +419,8 @@ static struct dsi_cmd_desc samsung_mtp_read_cmds[] = {
 		sizeof(prepare_mtp_read1), prepare_mtp_read1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(prepare_mtp_read2), prepare_mtp_read2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
+		sizeof(sleep_out), sleep_out},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(contention_error_remove), contention_error_remove},
 };
@@ -501,7 +509,11 @@ static struct dsi_cmd_desc samsung_panel_elvss_update_cmds[] = {
 #define LCD_ELVSS_DELTA_200CD (0x07)
 #define LCD_ELVSS_DELTA_160CD (0x09)
 #define LCD_ELVSS_DELTA_100CD (0x0D)
+#if defined(CONFIG_MACH_COMANCHE)
+#define LCD_ELVSS_RESULT_LIMIT	(0x1F)
+#else
 #define LCD_ELVSS_RESULT_LIMIT	(0x29)
+#endif
 static int GET_ELVSS_ID[] = {
 	LCD_ELVSS_DELTA_100CD,/* 0 = 30_dimming,*/
 	LCD_ELVSS_DELTA_100CD,/* 1 = 40*/
@@ -568,10 +580,10 @@ static int get_candela_index(int bl_level)
 	 * But in this driver, brightness is only supported from 0 to 24 */
 
 	switch (bl_level) {
-	case 0 ... 29:
+	case 0 ... 39:
 		backlightlevel = GAMMA_30CD; /* 0*/
 		break;
-	case 30 ... 49:
+	case 40 ... 49:
 		backlightlevel = GAMMA_40CD; /* 1 */
 		break;
 	case 50 ... 59:
@@ -620,7 +632,14 @@ static int get_candela_index(int bl_level)
 		backlightlevel = GAMMA_190CD; /* 16 */
 		break;
 	case 200 ... 209:
+#if defined(CONFIG_MACH_APEXQ)
+		if (poweroff_charging)
+			backlightlevel = GAMMA_210CD; /* 17 */
+		else
+			backlightlevel = GAMMA_200CD; /* 17 */
+#else
 		backlightlevel = GAMMA_200CD; /* 17 */
+#endif
 		break;
 	case 210 ... 219:
 		backlightlevel = GAMMA_210CD; /* 18 */
@@ -677,13 +696,19 @@ static int set_elvss_level(int bl_level)
 	cd = get_candela_index(bl_level);
 	id3 = mipi_pd.manufacture_id & 0xFF;
 
-	if (id2 != 0xA4)
-		calc_elvss = GET_DEFAULT_ELVSS_ID[cd];
-	else
+	if ((id2 == 0xA4) || (id2 == 0xB4))
 		calc_elvss = id3 + GET_ELVSS_ID[cd];
+	else
+		calc_elvss = GET_DEFAULT_ELVSS_ID[cd];
 
 	pr_debug("%s: ID2=%x, ID3=%x, calc_elvss = %x\n", __func__, id2, id3,
 		calc_elvss);
+
+	/*
+	*	COMANCHE DC-DC : STOD13CM
+	*	AEGIS2 DC-DC : STOD13AS
+	*	APEXQ DC-DC : STOD13AS
+	*/
 	if (calc_elvss > LCD_ELVSS_RESULT_LIMIT)
 		calc_elvss = LCD_ELVSS_RESULT_LIMIT;
 
@@ -697,7 +722,6 @@ static int set_elvss_level(int bl_level)
 
 	return 0;
 }
-
 
 void reset_gamma_level(void)
 {
@@ -775,11 +799,11 @@ static int is_acl_para_change(int bl_level)
 }
 
 static struct dsi_cmd_desc combined_ctrl[] = {
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 5,
 	 sizeof(GAMMA_SmartDimming_COND_SET),
 	 GAMMA_SmartDimming_COND_SET}
 	,
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 5,
 	 sizeof(gamma_set_update), gamma_set_update}
 	,
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
@@ -913,6 +937,7 @@ struct mipi_panel_data mipi_pd = {
 	.combined_ctrl = {combined_ctrl, ARRAY_SIZE(combined_ctrl)},
 	.prepare_brightness_control_cmd_array =
 		prepare_brightness_control_cmd_array,
+	.gamma_initial = gamma_set_cmd1,
 };
 
 static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
@@ -1025,8 +1050,8 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 	 * include dummy(pad) data of 200 clk in addition to
 	 * width and porch/sync width values
 	 */
-	pinfo.mipi.xres_pad = 0;
-	pinfo.mipi.yres_pad = 2;
+	pinfo.lcdc.xres_pad = 0;
+	pinfo.lcdc.yres_pad = 2;
 
 	pinfo.type = MIPI_VIDEO_PANEL;
 	pinfo.pdest = DISPLAY_1;
@@ -1038,9 +1063,9 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 #endif
 	pinfo.lcdc.h_back_porch  = 16;	/* 64 */
 	pinfo.lcdc.h_front_porch = 16;	/* 64 */
-	pinfo.lcdc.h_pulse_width = 110;	/* 10 */
-	pinfo.lcdc.v_back_porch  = 1;	/* 4 */
-	pinfo.lcdc.v_front_porch = 28;	/* 4 */
+	pinfo.lcdc.h_pulse_width =  4;
+	pinfo.lcdc.v_back_porch  = 7;	/* 4 */
+	pinfo.lcdc.v_front_porch =  105;
 	pinfo.lcdc.v_pulse_width = 2;	/* 2 */
 	pinfo.lcdc.border_clr = 0;	/* blk */
 	pinfo.lcdc.underflow_clr = 0xff;/* blue */
@@ -1049,7 +1074,7 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;
 
-	pinfo.clk_rate = 350000000;
+	pinfo.clk_rate = 343500000;
 	pinfo.mipi.mode = DSI_VIDEO_MODE;
 
 	pinfo.mipi.pulse_mode_hsa_he = TRUE;
@@ -1071,12 +1096,9 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 	pinfo.mipi.stream = 0; /* dma_p */
 	pinfo.mipi.mdp_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL)
-	pinfo.mipi.frame_rate = 56;
-#else
 	pinfo.mipi.frame_rate = 60;
-#endif
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 1;
 
 
 	ret = mipi_samsung_device_register(&pinfo, MIPI_DSI_PRIM,

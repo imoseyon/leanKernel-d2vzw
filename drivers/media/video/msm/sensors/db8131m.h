@@ -51,7 +51,7 @@ fmt "\n", __func__, __LINE__, ##arg); } \
 #define cam_err(fmt, arg...)
 #endif
 
-#define DB8131M_DELAY		0xDD00
+#define DB8131M_DELAY		0xE700
 
 /* preview size idx*/
 #define PREVIEW_SIZE_VGA   0     /* 640x480*/

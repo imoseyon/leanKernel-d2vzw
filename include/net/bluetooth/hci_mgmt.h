@@ -179,7 +179,10 @@ enum {
 #define ACF_TRANS	0x0003;
 
 /* Retransmission Effort */
+#define RE_NO_RETRANS		0x00;
+#define RE_POWER_CONSUMP	0x01;
 #define RE_LINK_QUALITY		0x02;
+#define RE_DONT_CARE		0xFF;
 
 /* ACL flags */
 #define ACL_START_NO_FLUSH	0x00

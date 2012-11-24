@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * sshdebug.h
@@ -25,7 +25,7 @@ extern unsigned int ssh_debug_level;
 
 #define SSH_FATAL(_fmt...) panic(_fmt)
 
-#define SSH_NOTREACHED							   \
+#define SSH_NOTREACHED         						   \
   panic("%s:%d: Unreachable code reached!", __FILE__, __LINE__)
 
 #define SSH_DEBUG(level, varcall)					   \
@@ -92,12 +92,21 @@ ssh_debug_hexdump(const unsigned char *buf, const size_t len)
 
 #define SSH_DEBUG(level, varcall)
 
-#define SSH_ASSERT(cond)
 #define SSH_VERIFY(cond)                                                   \
   do {                                                                     \
     if (!(cond))                                                           \
       panic("%s:%d: Verify failed: %s\n", __FILE__, __LINE__, "#cond");    \
   } while (0)
+
+#ifdef __COVERITY__
+#define SSH_ASSERT(cond)                                                   \
+  do {                                                                     \
+    if (!(cond))                                                           \
+      panic("%s:%d: Assertion failed: %s\n", __FILE__, __LINE__, "#cond"); \
+  } while (0)
+#else /* __COVERITY__ */
+#define SSH_ASSERT(cond)
+#endif /* __COVERITY__ */
 
 #define SSH_PRECOND(cond) SSH_ASSERT(cond)
 

@@ -224,6 +224,7 @@ static long timerirq_ioctl(struct file *file,
 		break;
 	case TIMERIRQ_START:
 		data->period = arg;
+		pr_info("TIMERIRQ_START : period=%d", data->period);
 		retval = start_timerirq(data);
 		break;
 	case TIMERIRQ_STOP:
@@ -268,6 +269,7 @@ static int __init timerirq_init(void)
 	res = misc_register(data);
 	if (res < 0) {
 		dev_err(data->this_device, "misc_register returned %d\n", res);
+		kfree(data);
 		return res;
 	}
 

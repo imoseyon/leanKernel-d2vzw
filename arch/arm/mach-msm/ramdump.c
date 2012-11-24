@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/poll.h>
 #include <linux/uaccess.h>
+#include <linux/printk.h>
 
 #include <asm-generic/poll.h>
 
@@ -116,7 +117,7 @@ static int ramdump_read(struct file *filep, char __user *buf, size_t count,
 
 	/* EOF check */
 	if (data_left == 0) {
-		pr_debug("Ramdump(%s): Ramdump complete. %lld bytes read.",
+		pr_info("Ramdump(%s): Ramdump complete. %lld bytes read.",
 			rd_dev->name, *pos);
 		rd_dev->ramdump_status = 0;
 		ret = 0;
@@ -125,8 +126,21 @@ static int ramdump_read(struct file *filep, char __user *buf, size_t count,
 
 	copy_size = min(count, (size_t)MAX_IOREMAP_SIZE);
 	copy_size = min((unsigned long)copy_size, data_left);
+#ifdef CONFIG_SEC_SSR_DUMP
+	/* When ramdump device is Kernel, avoid the ioremap once again.
+	 * Assign the addres which was already returned by ioremap function
+	 * in printk.c file
+	 */
+	if (!strcmp((const char *)rd_dev->name, "ramdump_kernel_log")) {
+		pr_info("Ramdump(%s): In ramdump_read and device_mem = 0x%x\n",
+		rd_dev->name, ramdump_kernel_log_addr);
+		device_mem = ramdump_kernel_log_addr;
+	} else {
+#endif
 	device_mem = ioremap_nocache(addr, copy_size);
-
+#ifdef CONFIG_SEC_SSR_DUMP
+	}
+#endif
 	if (device_mem == NULL) {
 		pr_err("Ramdump(%s): Unable to ioremap: addr %lx, size %x\n",
 			rd_dev->name, addr, copy_size);
@@ -193,8 +207,7 @@ void *create_ramdump_device(const char *dev_name)
 	rd_dev = kzalloc(sizeof(struct ramdump_device), GFP_KERNEL);
 
 	if (!rd_dev) {
-		pr_err("%s: Couldn't alloc space for ramdump device!",
-			__func__);
+		pr_err("%s: Couldn't allocate for ramdump device!", __func__);
 		return NULL;
 	}
 

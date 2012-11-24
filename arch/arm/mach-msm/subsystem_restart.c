@@ -398,11 +398,17 @@ static int subsystem_restart_thread(void *data)
 	 */
 	mutex_unlock(shutdown_lock);
 
+#ifdef CONFIG_SEC_DEBUG
+	/* Print the modem crash details to klog */
+	print_modem_dump_info();
+#endif
+
 	/* Collect ram dumps for all subsystems in order here */
 	for (i = 0; i < restart_list_count; i++) {
 		if (!restart_list[i])
 			continue;
 
+		pr_info("%s: enable_ramdumps[%d]", __func__, enable_ramdumps);
 		if (restart_list[i]->ramdump)
 			if (restart_list[i]->ramdump(enable_ramdumps,
 							subsys) < 0)
@@ -467,6 +473,9 @@ int subsystem_restart(const char *subsys_name)
 	else
 		restart_level = RESET_SOC;
 #endif
+
+	if (strcmp(subsys_name, "riva") == 0)
+		restart_level = RESET_SUBSYS_INDEPENDENT;
 
 	pr_info("Restart sequence requested for %s, restart_level = %d.\n",
 		subsys_name, restart_level);
@@ -636,13 +645,20 @@ static int __init subsys_restart_init(void)
 
 #ifdef CONFIG_SEC_DEBUG
 #ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
-	if (!sec_debug_is_enabled_for_ssr())
+	if (!sec_debug_is_enabled_for_ssr()) {
 #else
-	if (!sec_debug_is_enabled())
+	if (!sec_debug_is_enabled()) {
 #endif
+
+#ifdef CONFIG_SEC_SSR_DUMP
+		/* Collect RAM dumps whenever SSR is enabled */
+		enable_ramdumps = 1;
+#endif
+		pr_info("%s: enable_ramdumps[%d]", __func__, enable_ramdumps);
 		restart_level = RESET_SUBSYS_INDEPENDENT;
-	else
+	} else {
 		restart_level = RESET_SOC;
+	}
 #else
 	restart_level = RESET_SOC;
 #endif

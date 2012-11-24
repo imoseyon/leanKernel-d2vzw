@@ -346,12 +346,19 @@ static void gpio_keys_report_event(struct gpio_button_data *bdata)
 				!!state);
 				button_pressed = 1;
 			} else {
-				if (button_pressed == 0)
-					input_event(input, type, button->code,
-					 1);
-				input_event(input, type, button->code, 0);
-				button_pressed = 0;
-			}
+					if (button_pressed == 0) {
+						button_pressed = 1;
+						/*send home key press event to
+						input subsytem if release event
+						detected before press event */
+						input_event(input, type,
+						button->code, 1);
+					}
+					/*send home key release event to input
+					subsystem */
+					input_event(input, type,
+					button->code, 0);
+					}
 		} else {
 			input_event(input, type, button->code, !!state);
 			if (button->code == KEY_HOMEPAGE)
@@ -480,9 +487,13 @@ static ssize_t  sysfs_key_onoff_show(struct device *dev,
 	struct gpio_keys_drvdata *ddata = dev_get_drvdata(dev);
 	struct gpio_button_data *button;
 	int index ;
-	int state;
+	int state = 0;
 	for (index = 0; index < ddata->n_buttons; index++) {
 		button = &ddata->data[index];
+#if defined(CONFIG_MACH_AEGIS2) || defined(CONFIG_MACH_APEXQ)
+		if (button->button->code == SW_LID)
+			continue;
+#endif
 		state = (gpio_get_value_cansleep(button->button->gpio) ? 1 : 0)\
 			 ^ button->button->active_low;
 		if (state == 1)
@@ -679,7 +690,7 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	#if defined(CONFIG_MACH_AEGIS2) || defined(CONFIG_MACH_APEXQ)
 		dev_set_drvdata(sec_qwerty_flip, ddata);
 	#endif
-	device_init_wakeup(&pdev->dev, wakeup);
+	device_init_wakeup(&pdev->dev, 1);
 
 	return 0;
 
@@ -734,7 +745,6 @@ static int gpio_keys_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	int i;
-
 	if (device_may_wakeup(&pdev->dev)) {
 		for (i = 0; i < pdata->nbuttons; i++) {
 			struct gpio_keys_button *button = &pdata->buttons[i];
@@ -744,19 +754,16 @@ static int gpio_keys_suspend(struct device *dev)
 			}
 		}
 	}
-
 	return 0;
 }
 
 static int gpio_keys_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct gpio_keys_drvdata *ddata = platform_get_drvdata(pdev);
 	struct gpio_keys_platform_data *pdata = pdev->dev.platform_data;
 	int i;
 
 	for (i = 0; i < pdata->nbuttons; i++) {
-
 		struct gpio_keys_button *button = &pdata->buttons[i];
 		if (button->wakeup && device_may_wakeup(&pdev->dev)) {
 			int irq = gpio_to_irq(button->gpio);

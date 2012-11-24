@@ -1767,20 +1767,18 @@ bool samsung_has_cmc624(void)
 		return false;
 	else
 		return true;
-#elif defined(CONFIG_MACH_ACCELERATE)
-		return false;
 #elif defined(CONFIG_MACH_M2_SKT)
 	if (system_rev >= 10)
 		return false;
 	else
 		return true;
-#elif defined(CONFIG_MACH_M2_DCM)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
 	if (system_rev >= 5)
 		return false;
 	else
 		return true;
 #else
-	return true;
+	return false;
 #endif
 }
 EXPORT_SYMBOL(samsung_has_cmc624);

@@ -43,6 +43,7 @@ struct battery_data_t {
 	u8 RCOMP_charging;
 	int temp_cohot;
 	int temp_cocold;
+	bool is_using_model_data;
 	u8 *type_str;
 };
 

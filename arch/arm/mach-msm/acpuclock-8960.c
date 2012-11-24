@@ -36,7 +36,7 @@
 #include <mach/rpm-regulator.h>
 
 #include "acpuclock.h"
-#ifdef CONFIG_SEC_DEBUG_DCVS_LOG
+#if defined(CONFIG_SEC_DEBUG_DCVS_LOG) || defined(CONFIG_SEC_L1_DCACHE_PANIC_CHK)
 #include <mach/sec_debug.h>
 #endif
 
@@ -77,7 +77,8 @@
 #define SECCLKAGD		BIT(4)
 
 /* PTE EFUSE register. */
-#define QFPROM_PTE_EFUSE_ADDR	(MSM_QFPROM_BASE + 0x00C0)
+#define QFPROM_PTE_ROW0_MSB	(MSM_QFPROM_BASE + 0x00BC)
+#define QFPROM_PTE_ROW1_LSB	(MSM_QFPROM_BASE + 0x00C0)
 
 enum scalables {
 	CPU0 = 0,
@@ -560,6 +561,34 @@ static struct acpu_level acpu_freq_tbl_8960_kraitv2_fast[] = {
 	{ 0, { 0 } }
 };
 
+static struct acpu_level acpu_freq_tbl_8960_kraitv2_f3[] = {
+	{ 0, { STBY_KHZ, QSB,   0, 0, 0x00 }, L2(0),   850000 },
+	{ 1, {   384000, PLL_8, 0, 2, 0x00 }, L2(1),   850000 },
+	{ 0, {   432000, HFPLL, 2, 0, 0x20 }, L2(7),   875000 },
+	{ 1, {   486000, HFPLL, 2, 0, 0x24 }, L2(7),   875000 },
+	{ 0, {   540000, HFPLL, 2, 0, 0x28 }, L2(7),   900000 },
+	{ 1, {   594000, HFPLL, 1, 0, 0x16 }, L2(7),   900000 },
+	{ 0, {   648000, HFPLL, 1, 0, 0x18 }, L2(7),   925000 },
+	{ 1, {   702000, HFPLL, 1, 0, 0x1A }, L2(7),   925000 },
+	{ 0, {   756000, HFPLL, 1, 0, 0x1C }, L2(7),   975000 },
+	{ 1, {   810000, HFPLL, 1, 0, 0x1E }, L2(7),   975000 },
+	{ 0, {   864000, HFPLL, 1, 0, 0x20 }, L2(7),  1000000 },
+	{ 1, {   918000, HFPLL, 1, 0, 0x22 }, L2(7),  1000000 },
+	{ 0, {   972000, HFPLL, 1, 0, 0x24 }, L2(7),  1012500 },
+	{ 1, {  1026000, HFPLL, 1, 0, 0x26 }, L2(7),  1012500 },
+	{ 0, {  1080000, HFPLL, 1, 0, 0x28 }, L2(16), 1050000 },
+	{ 1, {  1134000, HFPLL, 1, 0, 0x2A }, L2(16), 1050000 },
+	{ 0, {  1188000, HFPLL, 1, 0, 0x2C }, L2(16), 1075000 },
+#if 0
+	{ 1, {  1242000, HFPLL, 1, 0, 0x2E }, L2(16), 1075000 },
+	{ 0, {  1296000, HFPLL, 1, 0, 0x30 }, L2(16), 1100000 },
+	{ 1, {  1350000, HFPLL, 1, 0, 0x32 }, L2(16), 1100000 },
+	{ 0, {  1404000, HFPLL, 1, 0, 0x34 }, L2(16), 1112500 },
+	{ 1, {  1458000, HFPLL, 1, 0, 0x36 }, L2(16), 1112500 },
+	{ 1, {  1512000, HFPLL, 1, 0, 0x38 }, L2(16), 1125000 },
+#endif
+	{ 0, { 0 } }
+};
 #elif defined(CONFIG_MSM_DCVS_FOR_MSM8260A)
 
 static struct l2_level l2_freq_tbl_8960_kraitv2[] = {
@@ -666,6 +695,32 @@ static struct acpu_level acpu_freq_tbl_8960_kraitv2_fast[] = {
 	{ 0, { 0 } }
 };
 
+static struct acpu_level acpu_freq_tbl_8960_kraitv2_f3[] = {
+	{ 0, { STBY_KHZ, QSB,   0, 0, 0x00 }, L2(0),   850000 },
+	{ 1, {   384000, PLL_8, 0, 2, 0x00 }, L2(1),   850000 },
+	{ 0, {   432000, HFPLL, 2, 0, 0x20 }, L2(7),   875000 },
+	{ 1, {   486000, HFPLL, 2, 0, 0x24 }, L2(7),   875000 },
+	{ 0, {   540000, HFPLL, 2, 0, 0x28 }, L2(7),   900000 },
+	{ 1, {   594000, HFPLL, 1, 0, 0x16 }, L2(7),   900000 },
+	{ 0, {   648000, HFPLL, 1, 0, 0x18 }, L2(7),   925000 },
+	{ 1, {   702000, HFPLL, 1, 0, 0x1A }, L2(7),   925000 },
+	{ 0, {   756000, HFPLL, 1, 0, 0x1C }, L2(7),   975000 },
+	{ 1, {   810000, HFPLL, 1, 0, 0x1E }, L2(7),   975000 },
+	{ 0, {   864000, HFPLL, 1, 0, 0x20 }, L2(7),  1000000 },
+	{ 1, {   918000, HFPLL, 1, 0, 0x22 }, L2(7),  1000000 },
+	{ 0, {   972000, HFPLL, 1, 0, 0x24 }, L2(7),  1012500 },
+	{ 1, {  1026000, HFPLL, 1, 0, 0x26 }, L2(7),  1012500 },
+	{ 0, {  1080000, HFPLL, 1, 0, 0x28 }, L2(16), 1050000 },
+	{ 1, {  1134000, HFPLL, 1, 0, 0x2A }, L2(16), 1050000 },
+	{ 0, {  1188000, HFPLL, 1, 0, 0x2C }, L2(16), 1075000 },
+	{ 1, {  1242000, HFPLL, 1, 0, 0x2E }, L2(16), 1075000 },
+	{ 0, {  1296000, HFPLL, 1, 0, 0x30 }, L2(16), 1100000 },
+	{ 1, {  1350000, HFPLL, 1, 0, 0x32 }, L2(16), 1100000 },
+	{ 0, {  1404000, HFPLL, 1, 0, 0x34 }, L2(16), 1112500 },
+	{ 1, {  1458000, HFPLL, 1, 0, 0x36 }, L2(16), 1112500 },
+	{ 1, {  1512000, HFPLL, 1, 0, 0x38 }, L2(16), 1125000 },
+	{ 0, { 0 } }
+};
 #else
 
 static struct l2_level l2_freq_tbl_8960_kraitv2[] = {
@@ -769,6 +824,33 @@ static struct acpu_level acpu_freq_tbl_8960_kraitv2_fast[] = {
 	{ 0, {  1404000, HFPLL, 1, 0, 0x34 }, L2(16), 1137500 },
 	{ 1, {  1458000, HFPLL, 1, 0, 0x36 }, L2(16), 1137500 },
 	{ 1, {  1512000, HFPLL, 1, 0, 0x38 }, L2(16), 1150000 },
+	{ 0, { 0 } }
+};
+
+static struct acpu_level acpu_freq_tbl_8960_kraitv2_f3[] = {
+	{ 0, { STBY_KHZ, QSB,   0, 0, 0x00 }, L2(0),   850000 },
+	{ 1, {   384000, PLL_8, 0, 2, 0x00 }, L2(1),   850000 },
+	{ 0, {   432000, HFPLL, 2, 0, 0x20 }, L2(7),   875000 },
+	{ 1, {   486000, HFPLL, 2, 0, 0x24 }, L2(7),   875000 },
+	{ 0, {   540000, HFPLL, 2, 0, 0x28 }, L2(7),   900000 },
+	{ 1, {   594000, HFPLL, 1, 0, 0x16 }, L2(7),   900000 },
+	{ 0, {   648000, HFPLL, 1, 0, 0x18 }, L2(7),   925000 },
+	{ 1, {   702000, HFPLL, 1, 0, 0x1A }, L2(7),   925000 },
+	{ 0, {   756000, HFPLL, 1, 0, 0x1C }, L2(7),   975000 },
+	{ 1, {   810000, HFPLL, 1, 0, 0x1E }, L2(7),   975000 },
+	{ 0, {   864000, HFPLL, 1, 0, 0x20 }, L2(7),  1000000 },
+	{ 1, {   918000, HFPLL, 1, 0, 0x22 }, L2(7),  1000000 },
+	{ 0, {   972000, HFPLL, 1, 0, 0x24 }, L2(7),  1012500 },
+	{ 1, {  1026000, HFPLL, 1, 0, 0x26 }, L2(7),  1012500 },
+	{ 0, {  1080000, HFPLL, 1, 0, 0x28 }, L2(16), 1050000 },
+	{ 1, {  1134000, HFPLL, 1, 0, 0x2A }, L2(16), 1050000 },
+	{ 0, {  1188000, HFPLL, 1, 0, 0x2C }, L2(16), 1075000 },
+	{ 1, {  1242000, HFPLL, 1, 0, 0x2E }, L2(16), 1075000 },
+	{ 0, {  1296000, HFPLL, 1, 0, 0x30 }, L2(16), 1100000 },
+	{ 1, {  1350000, HFPLL, 1, 0, 0x32 }, L2(16), 1100000 },
+	{ 0, {  1404000, HFPLL, 1, 0, 0x34 }, L2(16), 1112500 },
+	{ 1, {  1458000, HFPLL, 1, 0, 0x36 }, L2(16), 1112500 },
+	{ 1, {  1512000, HFPLL, 1, 0, 0x38 }, L2(16), 1125000 },
 	{ 0, { 0 } }
 };
 
@@ -1262,18 +1344,15 @@ static unsigned int calculate_vdd_dig(struct acpu_level *tgt)
 	return max(tgt->l2_level->vdd_dig, pll_vdd_dig);
 }
 
+#define BOOST_UV 25000
+
+static unsigned boost_uv;
+static bool enable_boost;
+module_param_named(boost, enable_boost, bool, S_IRUGO | S_IWUSR);
+
 static unsigned int calculate_vdd_core(struct acpu_level *tgt)
 {
-	unsigned int pll_vdd_core;
-
-	if (tgt->speed.src != HFPLL)
-		pll_vdd_core = 0;
-	else if (tgt->speed.pll_l_val > HFPLL_LOW_VDD_PLL_L_MAX)
-		pll_vdd_core = HFPLL_NOMINAL_VDD;
-	else
-		pll_vdd_core = HFPLL_LOW_VDD;
-
-	return max(tgt->vdd_core, pll_vdd_core);
+	return tgt->vdd_core + (enable_boost ? boost_uv : 0);
 }
 
 /* Set the CPU's clock rate and adjust the L2 rate, if appropriate. */
@@ -1579,16 +1658,38 @@ static void kraitv2_apply_vmin(struct acpu_level *tbl)
 			tbl->vdd_core = 1150000;
 }
 
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+uint32_t global_sec_pvs_value;
+static int __init sec_pvs_setup(char *str)
+{
+	uint32_t sec_pvs_value = memparse(str, &str);
+
+	global_sec_pvs_value = sec_pvs_value;
+	pr_info("%s: global_sec_pvs_value=%x\n",
+			__func__, global_sec_pvs_value);
+
+	return 1;
+}
+
+__setup("sec_pvs=", sec_pvs_setup);
+
+static void boost_vdd_core(struct acpu_level *tbl)
+{
+	for (; tbl->speed.khz != 0; tbl++)
+		tbl->vdd_core += 25000;
+}
+#endif
+
 static struct acpu_level * __init select_freq_plan(void)
 {
 	struct acpu_level *l, *max_acpu_level = NULL;
 
 	/* Select frequency tables. */
 	if (cpu_is_msm8960()) {
-		uint32_t pte_efuse, pvs;
+		uint32_t pte_efuse, pvs, fmax, pvs_leakage;
 		struct acpu_level *v1, *v2;
 
-		pte_efuse = readl_relaxed(QFPROM_PTE_EFUSE_ADDR);
+		pte_efuse = readl_relaxed(QFPROM_PTE_ROW1_LSB);
 		pvs = (pte_efuse >> 10) & 0x7;
 		if (pvs == 0x7)
 			pvs = (pte_efuse >> 13) & 0x7;
@@ -1596,30 +1697,72 @@ static struct acpu_level * __init select_freq_plan(void)
 		/*  This code is temporary */
 		global_pvs = pvs;
 
-		switch (pvs) {
-		case 0x0:
-		case 0x7:
-			pr_alert("ACPU PVS: Slow\n");
-			v1 = acpu_freq_tbl_8960_kraitv1_slow;
-			v2 = acpu_freq_tbl_8960_kraitv2_slow;
-			break;
-		case 0x1:
-			pr_alert("ACPU PVS: Nominal\n");
-			v1 = acpu_freq_tbl_8960_kraitv1_nom_fast;
-			v2 = acpu_freq_tbl_8960_kraitv2_nom;
-			break;
-		case 0x3:
-			pr_alert("ACPU PVS: Fast\n");
-			v1 = acpu_freq_tbl_8960_kraitv1_nom_fast;
-			v2 = acpu_freq_tbl_8960_kraitv2_fast;
-			break;
-		default:
-			pr_err("ACPU PVS: Unknown. Defaulting to slow.\n");
-			v1 = acpu_freq_tbl_8960_kraitv1_slow;
-			v2 = acpu_freq_tbl_8960_kraitv2_slow;
-			break;
-		}
+		pte_efuse = readl_relaxed(QFPROM_PTE_ROW0_MSB);
+		fmax = (pte_efuse >> 20) & 0x3;
+		pvs_leakage = (pte_efuse >> 16) & 0x3;
 
+		pr_alert("ACPU PVS:[%d],FMAX[%d]\n", pvs, fmax);
+		switch (pvs) {
+			case 0x0:
+			case 0x7:
+				pr_alert("ACPU PVS: Slow(L%d)\n",
+					pvs_leakage);
+				v1 = acpu_freq_tbl_8960_kraitv1_slow;
+				v2 = acpu_freq_tbl_8960_kraitv2_slow;
+				break;
+			case 0x1:
+				pr_alert("ACPU PVS: Nominal(L%d)\n",
+					pvs_leakage);
+				v1 = acpu_freq_tbl_8960_kraitv1_nom_fast;
+				v2 = acpu_freq_tbl_8960_kraitv2_nom;
+				break;
+			case 0x3:
+				switch (fmax) {
+					case 0x1:
+						pr_alert("ACPU PVS: Fast1(L%d)\n",
+							pvs_leakage);
+						v1 = acpu_freq_tbl_8960_kraitv1_slow;
+						v2 = acpu_freq_tbl_8960_kraitv2_fast;
+						break;
+					case 0x2:
+						pr_alert("ACPU PVS: Fast2(L%d)\n",
+							pvs_leakage);
+						v1 = acpu_freq_tbl_8960_kraitv1_slow;
+						v2 = acpu_freq_tbl_8960_kraitv2_fast;
+						break;
+					case 0x3:
+						pr_alert("ACPU PVS: Fast3(L%d)\n",
+							pvs_leakage);
+						v1 = acpu_freq_tbl_8960_kraitv1_slow;
+							v2 = acpu_freq_tbl_8960_kraitv2_f3;
+						break;
+					default:
+						pr_info("ACPU PVS: Fast\n");
+						v1 = acpu_freq_tbl_8960_kraitv1_nom_fast;
+						v2 = acpu_freq_tbl_8960_kraitv2_fast;
+						break;
+				}
+				break;
+			default:
+				pr_warn("ACPU PVS: Unknown. Defaulting to slow.\n");
+				v1 = acpu_freq_tbl_8960_kraitv1_slow;
+				v2 = acpu_freq_tbl_8960_kraitv2_slow;
+				break;
+		}
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+#if defined(CONFIG_MSM_DCVS_FOR_MSM8260A)
+		if (((pvs == 0x3) && (global_sec_pvs_value == 0xfafa))
+				|| ((pvs == 0x1) && (fmax != 0x1)
+					&& (global_sec_pvs_value == 0xfafa))) {
+#else
+		if (((pvs == 0x3) && (global_sec_pvs_value == 0xfafa))
+				|| ((pvs == 0x1)
+					&& (global_sec_pvs_value == 0xfafa))) {
+#endif
+			pr_alert("ACPU PVS: pvs[%d]:fmax[%d]-r\n", pvs, fmax);
+			boost_vdd_core(v2);
+		}
+#endif
 		scalable = scalable_8960;
 		if (cpu_is_krait_v1()) {
 			acpu_freq_tbl = v1;

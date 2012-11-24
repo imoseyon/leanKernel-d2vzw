@@ -87,6 +87,7 @@
 #define DEV_T1_CHARGER_MASK	(DEV_DEDICATED_CHG | DEV_CAR_KIT)
 
 /* Device Type 2 */
+#define DEV_AUDIO_DOCK		(1 << 8)
 #define DEV_SMARTDOCK	(1 << 7)
 #define DEV_AV			(1 << 6)
 #define DEV_TTY			(1 << 5)
@@ -135,8 +136,9 @@
 #define	ADC_CARDOCK		0x1d
 #define	ADC_OPEN		0x1f
 
-int uart_connecting = 0;
+int uart_connecting;
 EXPORT_SYMBOL(uart_connecting);
+
 int detached_status;
 EXPORT_SYMBOL(detached_status);
 
@@ -154,6 +156,7 @@ struct fsa9485_usbsw {
 	struct delayed_work	init_work;
 	struct mutex		mutex;
 	int				adc;
+	int				deskdock;
 };
 
 enum {
@@ -610,8 +613,8 @@ EXPORT_SYMBOL(fsa9485_manual_switching);
 
 static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 {
-	int device_type, ret, adc;
-	unsigned char val1, val2;
+	int device_type, ret;
+	unsigned int val1, val2, adc;
 	struct fsa9485_platform_data *pdata = usbsw->pdata;
 	struct i2c_client *client = usbsw->client;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
@@ -626,44 +629,22 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 	val2 = device_type >> 8;
 	adc = i2c_smbus_read_byte_data(client, FSA9485_REG_ADC);
 
-	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x\n", val1, val2);
-
 	if (usbsw->dock_attached)
 		pdata->dock_cb(FSA9485_DETACHED_DOCK);
 
 	if (adc == 0x10)
 		val2 = DEV_SMARTDOCK;
+	else if (adc == 0x12)
+		val2 = DEV_AUDIO_DOCK;
+
+	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x adc : 0x%x\n", val1, val2, adc);
 
 	/* Attached */
 	if (val1 || val2) {
 		/* USB */
 		if (val1 & DEV_USB || val2 & DEV_T2_USB_MASK) {
-			dev_info(&client->dev, "usb connect path\n");
+			dev_info(&client->dev, "usb connect\n");
 
-			ret = i2c_smbus_write_byte_data(client,
-					FSA9485_REG_MANSW1, SW_AUDIO);
-			if (ret < 0)
-				dev_err(&client->dev,
-						"%s: err %d\n", __func__, ret);
-			ret = i2c_smbus_read_byte_data(client,
-					FSA9485_REG_CTRL);
-			if (ret < 0)
-				dev_err(&client->dev,
-						"%s: err %d\n", __func__, ret);
-			ret = i2c_smbus_write_byte_data(client,
-					FSA9485_REG_CTRL, ret & ~CON_MANUAL_SW);
-
-			msleep(10);
-
-			ret = i2c_smbus_write_byte_data(client,
-					FSA9485_REG_MANSW1, SW_AUTO);
-			if (ret < 0)
-				dev_err(&client->dev,
-						"%s: err %d\n", __func__, ret);
-
-			ret = i2c_smbus_write_byte_data(client,
-					FSA9485_REG_CTRL, 0x1E);
-			
 			if (pdata->usb_cb)
 				pdata->usb_cb(FSA9485_ATTACHED);
 			if (usbsw->mansw) {
@@ -732,9 +713,10 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				pdata->jig_cb(FSA9485_ATTACHED);
 		/* Desk Dock */
 		} else if (val2 & DEV_AV) {
-			if ((adc & 0x1F) == 0x1A) {
+			if ((adc & 0x1F) == ADC_DESKDOCK) {
 				pr_info("FSA Deskdock Attach\n");
 				FSA9485_CheckAndHookAudioDock(1);
+				usbsw->deskdock = 1;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 				isDeskdockconnected = 1;
 #endif
@@ -756,7 +738,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				}
 				EnableFSA9480Interrupts();
 #else
-				FSA9485_CheckAndHookAudioDock(1);
+				pr_info("FSA mhl attach, but not support MHL feature!\n");
 #endif
 			}
 		/* Car Dock */
@@ -809,6 +791,29 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 			mhl_onoff_ex(1);
 #endif
+		} else if (val2 & DEV_AUDIO_DOCK) {
+			usbsw->adc = adc;
+			dev_info(&client->dev, "audio dock connect\n");
+
+			usbsw->mansw = SW_DHOST;
+			ret = i2c_smbus_write_byte_data(client,
+					FSA9485_REG_MANSW1, SW_DHOST);
+			if (ret < 0)
+				dev_err(&client->dev,
+						"%s: err %d\n", __func__, ret);
+			ret = i2c_smbus_read_byte_data(client,
+					FSA9485_REG_CTRL);
+			if (ret < 0)
+				dev_err(&client->dev,
+						"%s: err %d\n", __func__, ret);
+			ret = i2c_smbus_write_byte_data(client,
+					FSA9485_REG_CTRL, ret & ~CON_MANUAL_SW);
+			if (ret < 0)
+				dev_err(&client->dev,
+						"%s: err %d\n", __func__, ret);
+
+			if (pdata->smartdock_cb)
+				pdata->audio_dock_cb(FSA9485_ATTACHED);
 		}
 	/* Detached */
 	} else {
@@ -856,7 +861,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #endif
 			isDeskdockconnected = 0;
 #else
-			FSA9485_CheckAndHookAudioDock(0);
+			if (usbsw->deskdock) {
+				FSA9485_CheckAndHookAudioDock(0);
+				usbsw->deskdock = 0;
+			} else {
+				pr_info("FSA detach mhl cable, but not support MHL feature\n");
+			}
 #endif
 		/* Car Dock */
 		} else if (usbsw->dev2 & DEV_JIG_UART_ON) {
@@ -896,6 +906,24 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 			mhl_onoff_ex(false);
 #endif
+		} else if (usbsw->adc == 0x12) {
+			dev_info(&client->dev, "audio dock disconnect\n");
+
+			ret = i2c_smbus_read_byte_data(client,
+						FSA9485_REG_CTRL);
+				if (ret < 0)
+					dev_err(&client->dev,
+						"%s: err %d\n", __func__, ret);
+				ret = i2c_smbus_write_byte_data(client,
+						FSA9485_REG_CTRL,
+						ret | CON_MANUAL_SW);
+				if (ret < 0)
+					dev_err(&client->dev,
+						"%s: err %d\n", __func__, ret);
+
+			if (pdata->smartdock_cb)
+				pdata->audio_dock_cb(FSA9485_DETACHED);
+			usbsw->adc = 0;
 		}
 
 	}
@@ -1174,6 +1202,9 @@ static int __devinit fsa9485_probe(struct i2c_client *client,
 	if (ret) {
 		dev_err(&client->dev,
 			"input_register_device %s: err %d\n", __func__, ret);
+		input_free_device(input);
+		kfree(usbsw);
+		return ret;
 	}
 
 	usbsw->client = client;
@@ -1191,6 +1222,8 @@ static int __devinit fsa9485_probe(struct i2c_client *client,
 		usbsw->pdata->cfg_gpio();
 
 	fsa9485_reg_init(usbsw);
+
+	uart_connecting = 0;
 
 	ret = sysfs_create_group(&client->dev.kobj, &fsa9485_group);
 	if (ret) {
@@ -1254,6 +1287,7 @@ fail2:
 	if (client->irq)
 		free_irq(client->irq, usbsw);
 fail1:
+	input_unregister_device(input);
 	mutex_destroy(&usbsw->mutex);
 	i2c_set_clientdata(client, NULL);
 	kfree(usbsw);

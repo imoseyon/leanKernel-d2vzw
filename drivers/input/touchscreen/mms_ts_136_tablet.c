@@ -42,11 +42,17 @@
 #include <linux/slab.h>
 #include <mach/gpio.h>
 #include <linux/uaccess.h>
-
+#include <linux/cpufreq.h>
 #include <linux/platform_data/mms_ts.h>
+#include <linux/gpio.h>
+
 
 #include <asm/unaligned.h>
 #include "mms_ts_fw.h"
+#include "../../../arch/arm/mach-msm/board-8960.h"
+
+
+
 
 #define MAX_FINGERS		10
 #define MAX_WIDTH		30
@@ -76,6 +82,12 @@ enum {
 /* each address addresses 4-byte words */
 #define ISP_MAX_FW_SIZE		(0x1F00 * 4)
 #define ISP_IC_INFO_ADDR	0x1F00
+
+#ifdef CONFIG_SEC_DVFS
+#define TOUCH_BOOSTER			1
+#define TOUCH_BOOSTER_OFF_TIME	100
+#define TOUCH_BOOSTER_CHG_TIME	200
+#endif
 
 #ifdef SEC_TSP_FW_UPDATE
 
@@ -152,6 +164,13 @@ struct mms_ts_info {
 
 	char				*fw_name;
 	struct early_suspend		early_suspend;
+	int				touch_is_pressed;
+#if TOUCH_BOOSTER
+	struct delayed_work work_dvfs_off;
+	struct delayed_work	work_dvfs_chg;
+	bool	dvfs_lock_status;
+	struct mutex dvfs_lock;
+#endif
 
 	/* protects the enabled flag */
 	struct mutex			lock;
@@ -181,8 +200,15 @@ struct mms_ts_info {
 	unsigned int inspection[NODE_NUM];/* CM_DELTA */
 	unsigned int intensity[NODE_NUM];
 	bool ft_flag;
+	bool if_con_sense_flag;
 #endif /* SEC_TSP_FACTORY_TEST */
 };
+
+static int get_if_con_sense_state(void)
+{
+	return (gpio_get_value_cansleep(
+		PM8921_GPIO_PM_TO_SYS(28))) ^ 1;
+}
 
 struct mms_fw_image {
 	__le32 hdr_len;
@@ -252,6 +278,76 @@ struct tsp_cmd tsp_cmds[] = {
 	{TSP_CMD("not_support_cmd", not_support_cmd),},
 };
 #endif
+
+#if TOUCH_BOOSTER
+static void change_dvfs_lock(struct work_struct *work)
+{
+	struct mms_ts_info *info = container_of(work,
+				struct mms_ts_info, work_dvfs_chg.work);
+	int ret;
+
+	mutex_lock(&info->dvfs_lock);
+	ret = cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
+	mutex_unlock(&info->dvfs_lock);
+
+	if (ret < 0)
+		pr_err("%s: 1booster stop failed(%d)\n",
+					__func__, __LINE__);
+	else
+		pr_info("[TSP] %s\n", __func__);
+}
+
+static void set_dvfs_off(struct work_struct *work)
+{
+	struct mms_ts_info *info = container_of(work,
+				struct mms_ts_info, work_dvfs_off.work);
+	int ret;
+	mutex_lock(&info->dvfs_lock);
+	cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
+	cpufreq_set_limit(TOUCH_BOOSTER_SECOND_STOP, 0);
+	info->dvfs_lock_status = false;
+	mutex_unlock(&info->dvfs_lock);
+
+	pr_info("[TSP] DVFS Off!\n");
+}
+
+static void set_dvfs_lock(struct mms_ts_info *info, uint32_t on)
+{
+	int ret = 0, ret2 = 0;
+
+	mutex_lock(&info->dvfs_lock);
+	if (on == 0) {
+		if (info->dvfs_lock_status) {
+			cancel_delayed_work(&info->work_dvfs_chg);
+			schedule_delayed_work(&info->work_dvfs_off,
+				msecs_to_jiffies(TOUCH_BOOSTER_OFF_TIME));
+		}
+	} else if (on == 1) {
+		cancel_delayed_work(&info->work_dvfs_off);
+		if (!info->dvfs_lock_status) {
+			ret = cpufreq_set_limit(TOUCH_BOOSTER_SECOND_START, 0);
+			ret2 = cpufreq_set_limit(TOUCH_BOOSTER_FIRST_START, 0);
+			if (ret < 0 || ret2 < 0)
+				pr_err("%s: cpu lock failed(%d, %d)\n",
+							__func__, ret, ret2);
+
+			schedule_delayed_work(&info->work_dvfs_chg,
+				msecs_to_jiffies(TOUCH_BOOSTER_CHG_TIME));
+			info->dvfs_lock_status = true;
+			pr_info("[TSP] DVFS On!\n");
+		}
+	} else if (on == 2) {
+		cancel_delayed_work(&info->work_dvfs_off);
+		cancel_delayed_work(&info->work_dvfs_chg);
+		schedule_work(&info->work_dvfs_off.work);
+	}
+	mutex_unlock(&info->dvfs_lock);
+}
+#endif
+
+
+
+
 static void set_cmd_result(struct mms_ts_info *info, char *buff, int len);
 static inline void mms_pwr_on_reset(struct mms_ts_info *info);
 
@@ -266,19 +362,25 @@ static void reset_mms_ts(struct mms_ts_info *info)
 	dev_notice(&client->dev, "%s++\n", __func__);
 	disable_irq_nosync(info->irq);
 	info->enabled = false;
+	info->touch_is_pressed = 0;
 
 	for (i = 0; i < MAX_FINGERS; i++) {
 #ifdef SEC_TSP_DEBUG
-		if (info->finger_state[i] == 1) {
-			info->finger_state[i] = 0;
+		if (info->finger_state[i] == 1)
 			dev_notice(&client->dev, "finger %d up(force)\n", i);
-		}
+
+		info->finger_state[i] = 0;
 #endif
 		input_mt_slot(info->input_dev, i);
 		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
 					   false);
 	}
 	input_sync(info->input_dev);
+
+#if TOUCH_BOOSTER
+	set_dvfs_lock(info, 2);
+	pr_info("[TSP] dvfs_lock free.\n ");
+#endif
 
 	mms_pwr_on_reset(info);
 	enable_irq(info->irq);
@@ -312,10 +414,25 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 
 	sz = i2c_smbus_read_byte_data(client, MMS_INPUT_EVENT_PKT_SZ);
 	if (sz < 0) {
-		dev_err(&client->dev, "%s bytes=%d, mms reset\n", __func__, sz);
-		goto err_i2c_fail;
+		dev_err(&client->dev, "%s bytes=%d\n", __func__, sz);
+		for (i = 0; i < 50; i++) {
+			sz = i2c_smbus_read_byte_data(client,
+						MMS_INPUT_EVENT_PKT_SZ);
+			if (sz > 0)
+				break;
+		}
+
+		if (i == 50) {
+			dev_dbg(&client->dev, "i2c failed... reset!!\n");
+			goto err_i2c_fail;
+		}
 	}
-	BUG_ON(sz > MAX_FINGERS*FINGER_EVENT_SZ);
+
+	if (sz > MAX_FINGERS*FINGER_EVENT_SZ) {
+		dev_err(&client->dev, "[TSP] abnormal data inputed.\n");
+		goto out;
+	}
+
 	if (sz == 0)
 		goto out;
 
@@ -325,18 +442,24 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		dev_err(&client->dev,
 			"failed to read %d bytes of touch data (%d), mms reset\n",
 			sz, ret);
-		goto err_i2c_fail;
+		goto out;
 	}
 
 #if defined(VERBOSE_DEBUG)
 	print_hex_dump(KERN_DEBUG, "mms_ts raw: ",
-		DUMP_PREFIX_OFFSET, 32, 1, buf, sz, false);
+			DUMP_PREFIX_OFFSET, 32, 1, buf, sz, false);
 
 #endif
 
 	if (buf[0] == 0xF) {
-		dev_dbg(&client->dev, "Burst / ESD detected, mms reset\n");
-		goto err_i2c_fail;
+		dev_dbg(&client->dev, "Burst / ESD detected\n");
+		if (info->if_con_sense_flag) {
+			printk(KERN_ERR "PBA state, no reset!!");
+			return IRQ_HANDLED;
+		} else {
+			printk(KERN_ERR "ESD detected, reset!!");
+			goto err_i2c_fail;
+		}
 	}
 
 	for (i = 0; i < sz; i += FINGER_EVENT_SZ) {
@@ -344,13 +467,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		int id = (tmp[0] & 0xf) - 1;
 		int x = tmp[2] | ((tmp[1] & 0xf) << 8);
 		int y = tmp[3] | (((tmp[1] >> 4) & 0xf) << 8);
-
-		if (x < 0 || x > info->max_x || y < 0 || y > info->max_y ||
-			id < 0 || id >= MAX_FINGERS) {
-			dev_dbg(&client->detected,
-				"is not normal coordinate, mms reset\n");
-			goto err_not_normal;
-		}
 
 		if (info->invert_x) {
 			x = info->max_x - x;
@@ -363,14 +479,15 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 				y = 0;
 		}
 
-		if ((tmp[0] & 0x80) == 0) {
-#if defined(SEC_TSP_DEBUG)
+		if (id >= MAX_FINGERS) {
 			dev_dbg(&client->dev,
-				"finger id[%d]: x=%d y=%d w=%d p=%d\n"
-				, id, x, y, tmp[4], tmp[5]);
-#else
-			dev_notice(&client->dev, "finger %d up\n", id);
-#endif
+			"is not normal coordinate, mms reset [%d]\n", id);
+			goto err_not_normal;
+		}
+
+		if ((tmp[0] & 0x80) == 0) {
+			dev_dbg(&client->dev, "finger [%d] up\n", id);
+
 			input_mt_slot(info->input_dev, id);
 			input_mt_report_slot_state(info->input_dev,
 				MT_TOOL_FINGER, false);
@@ -392,22 +509,27 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			ABS_MT_POSITION_X, x);
 		input_report_abs(info->input_dev,
 			ABS_MT_POSITION_Y, y);
-#if defined(SEC_TSP_DEBUG)
+
 		if (info->finger_state[id] == 0) {
 			info->finger_state[id] = 1;
 			dev_dbg(&client->dev,
-				"finger id[%d]:x=%d y=%d w=%d p=%d\n"
-				, id, x, y, tmp[4], tmp[5]);
+				"finger %d down\n", id);
 		}
-#else
-		if (info->finger_state[id] == 0) {
-			info->finger_state[id] = 1;
-			dev_notice(&client->dev, "finger %d down\n"
-			, id);
-		}
-#endif
+
 	}
 	input_sync(info->input_dev);
+
+	info->touch_is_pressed = 0;
+
+	for (i = 0; i < MAX_FINGERS; i++) {
+		if (info->finger_state[i] == 1)
+			info->touch_is_pressed++;
+	}
+
+#if TOUCH_BOOSTER
+	set_dvfs_lock(info, !!info->touch_is_pressed);
+#endif
+
 
 out:
 	return IRQ_HANDLED;
@@ -924,6 +1046,7 @@ static int mms_ts_disable(struct mms_ts_info *info, int sleepcmd)
 		usleep_range(10000, 12000);
 	}
 	info->enabled = false;
+	info->touch_is_pressed = 0;
 out:
 	mutex_unlock(&info->lock);
 	return 0;
@@ -1324,11 +1447,13 @@ static void fw_update(void *device_data)
 		set_fs(KERNEL_DS);
 
 		fp = filp_open(MMS_TS, O_RDONLY, S_IRUSR);
-		if (!fp) {
+
+		if (IS_ERR(fp)) {
 			dev_err(&client->dev,
-				"fail to open fw in ums (%s)\n", MMS_TS);
+				"file %s open error:%d\n", MMS_TS, (s32)fp);
 			goto err_open;
 		}
+
 		fsize = fp->f_path.dentry->d_inode->i_size;
 
 		buff = kzalloc((size_t)fsize, GFP_KERNEL);
@@ -1481,6 +1606,7 @@ static void module_off_master(void *device_data)
 	if (info->enabled) {
 		disable_irq(info->irq);
 		info->enabled = false;
+		info->touch_is_pressed = 0;
 	}
 	mutex_unlock(&info->lock);
 
@@ -2106,6 +2232,7 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 	info->input_dev = input_dev;
 	info->pdata = client->dev.platform_data;
 	info->irq = -1;
+	info->touch_is_pressed = 0;
 	mutex_init(&info->lock);
 	if (info->pdata) {
 		info->max_x = info->pdata->max_x;
@@ -2146,6 +2273,13 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 		goto err_reg_input_dev;
 	}
 
+#if TOUCH_BOOSTER
+	mutex_init(&info->dvfs_lock);
+	INIT_DELAYED_WORK(&info->work_dvfs_off, set_dvfs_off);
+	INIT_DELAYED_WORK(&info->work_dvfs_chg, change_dvfs_lock);
+	info->dvfs_lock_status = false;
+#endif
+
 	i2c_set_clientdata(client, info);
 
 	ret = mms_ts_fw_load(info);
@@ -2180,6 +2314,13 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 			       &sec_touch_factory_attr_group);
 	if (ret)
 		dev_err(&client->dev, "Failed to create sysfs group\n");
+	if (get_if_con_sense_state()) {
+		info->if_con_sense_flag = true;
+		printk(KERN_ERR "if_con_sense_flag = true");
+	} else {
+		info->if_con_sense_flag = false;
+		printk(KERN_ERR "if_con_sense_flag = false");
+	}
 #endif
 
 	return 0;
@@ -2226,6 +2367,7 @@ static int mms_ts_suspend(struct device *dev)
 		goto out;
 
 	mms_ts_disable(info, 0);
+	info->touch_is_pressed = 0;
 	for (i = 0; i < MAX_FINGERS; i++) {
 
 #ifdef SEC_TSP_DEBUG
@@ -2247,6 +2389,11 @@ static int mms_ts_suspend(struct device *dev)
 					   false);
 	}
 	input_sync(info->input_dev);
+
+#if TOUCH_BOOSTER
+	set_dvfs_lock(info, 2);
+	pr_info("[TSP] dvfs_lock free.\n");
+#endif
 
 	info->pdata->vdd_on(0);
 

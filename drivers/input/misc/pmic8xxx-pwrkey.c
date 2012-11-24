@@ -109,6 +109,8 @@ static ssize_t  sysfs_powerkey_onoff_show(struct device *dev,
 		printk(KERN_INFO "powerkey is released\n");
 		return snprintf(buf, 5, "%d\n", pwrkey->powerkey_state);
 	}
+
+	return 0;
 }
 
 static DEVICE_ATTR(sec_powerkey_pressed, 0664 , sysfs_powerkey_onoff_show,

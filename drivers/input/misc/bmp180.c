@@ -547,43 +547,28 @@ static ssize_t eeprom_check_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct bmp180_data *barom = dev_get_drvdata(dev);
-	int val = -1;
+	int val = 1;
 
-	if (barom->bmp180_eeprom_vals.AC1 == 0 ||
-		barom->bmp180_eeprom_vals.AC1 == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC1 != 0 &&
+		barom->bmp180_eeprom_vals.AC1 != 0xFFFF)
 		goto done;
-	if (barom->bmp180_eeprom_vals.AC2 == 0 ||
-		barom->bmp180_eeprom_vals.AC2 == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC2 != 0 &&
+		barom->bmp180_eeprom_vals.AC2 != 0xFFFF)
 		goto done;
-	if (barom->bmp180_eeprom_vals.AC3 == 0 ||
-		barom->bmp180_eeprom_vals.AC3 == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC3 != 0 &&
+		barom->bmp180_eeprom_vals.AC3 != 0xFFFF)
 		goto done;
-	if (barom->bmp180_eeprom_vals.AC4 == 0 ||
-		barom->bmp180_eeprom_vals.AC4 == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC4 != 0 &&
+		barom->bmp180_eeprom_vals.AC4 != 0xFFFF)
 		goto done;
-	if (barom->bmp180_eeprom_vals.AC5 == 0 ||
-		barom->bmp180_eeprom_vals.AC5 == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC5 != 0 &&
+		barom->bmp180_eeprom_vals.AC5 != 0xFFFF)
 		goto done;
-	if (barom->bmp180_eeprom_vals.AC6 == 0 ||
-		barom->bmp180_eeprom_vals.AC6 == 0xFFFF)
-		goto done;
-	if (barom->bmp180_eeprom_vals.B1 == 0 ||
-		barom->bmp180_eeprom_vals.B1 == 0xFFFF)
-		goto done;
-	if (barom->bmp180_eeprom_vals.B2 == 0 ||
-		barom->bmp180_eeprom_vals.B2 == 0xFFFF)
-		goto done;
-	if (barom->bmp180_eeprom_vals.MB == 0 ||
-		barom->bmp180_eeprom_vals.MB == 0xFFFF)
-		goto done;
-	if (barom->bmp180_eeprom_vals.MC == 0 ||
-		barom->bmp180_eeprom_vals.MC == 0xFFFF)
-		goto done;
-	if (barom->bmp180_eeprom_vals.MC == 0 ||
-		barom->bmp180_eeprom_vals.MD == 0xFFFF)
+	if (barom->bmp180_eeprom_vals.AC6 != 0 &&
+		barom->bmp180_eeprom_vals.AC6 != 0xFFFF)
 		goto done;
 
-	val = 1;
+	val = -1;
 
 done:
 	return snprintf(buf, PAGE_SIZE, "%d", val);

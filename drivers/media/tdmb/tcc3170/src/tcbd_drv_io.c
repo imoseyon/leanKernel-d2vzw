@@ -80,7 +80,7 @@ s32 tcbd_reg_read(
 		return -TCERR_IO_NOT_INITIALIZED;
 
 	if (_device == NULL || _data == NULL)
-		return TCERR_INVALID_ARG;
+		return -TCERR_INVALID_ARG;
 
 	tcpal_lock(&tcbd_io_funcs.sem);
 	tcbd_io_funcs.chip_addr = _device->chip_addr;

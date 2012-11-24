@@ -34,11 +34,27 @@ uint32 hdmi_inp(uint32 offset);
 #define HDMI_INP(offset)		inpdw(MSM_HDMI_BASE+(offset))
 #endif
 
+
+/*
+ * Ref. HDMI 1.4a
+ * Supplement-1 CEC Section 6, 7
+ */
+struct hdmi_msm_cec_msg {
+	uint8 sender_id;
+	uint8 recvr_id;
+	uint8 opcode;
+	uint8 operand[15];
+	uint8 frame_size;
+	uint8 retransmit;
+};
+
 #define QFPROM_BASE		((uint32)hdmi_msm_state->qfprom_io)
+#define HDMI_BASE		((uint32)hdmi_msm_state->hdmi_io)
 
 struct hdmi_msm_state_type {
 	boolean panel_power_on;
 	boolean hpd_initialized;
+	boolean hpd_state_in_isr;
 #ifdef CONFIG_SUSPEND
 	boolean pm_suspended;
 #endif
@@ -97,9 +113,10 @@ struct hdmi_msm_state_type {
 	void __iomem *hdmi_io;
 
 	struct external_common_state_type common;
-#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
-	boolean mhl_hpd_state;
 	boolean hpd_on_offline;
+#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
+		defined(CONFIG_VIDEO_MHL_TAB_V2)
+	boolean mhl_hpd_state;
 #endif
 	struct switch_dev	hdmi_audio_switch;
 	struct switch_dev	hdmi_audio_ch;

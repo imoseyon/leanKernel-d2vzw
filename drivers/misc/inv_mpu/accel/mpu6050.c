@@ -167,6 +167,7 @@ int mpu6050_set_odr(void *mlsl_handle,
 	    && (mldl_cfg_ref &&
 	    !(mldl_cfg_ref->inv_mpu_cfg->requested_sensors &
 		    INV_DMP_PROCESSOR))) {
+		MPL_LOGI("mpu6050_set_odr:%d\n", total_divider);
 		result = inv_serial_single_write(mlsl_handle, pdata->address,
 					MPUREG_SMPLRT_DIV,
 					(unsigned char)total_divider);

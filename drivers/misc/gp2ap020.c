@@ -71,6 +71,7 @@ struct gp2a_data {
 	int proximity_enabled;
 	int light_enabled;
 	u8 lightsensor_mode;		/* 0 = low, 1 = high */
+	bool light_data_first;
 	int prox_data;
 	int irq;
 	int average[PROX_READ_NUM];	/*for proximity adc average */
@@ -359,8 +360,9 @@ light_enable_store(struct device *dev, struct device_attribute *attr,
 		lightsensor_onoff(0, data);
 	}
 	if (!data->light_enabled && value) {
+		data->light_data_first = true;
 		lightsensor_onoff(1, data);
-		schedule_delayed_work(&data->light_work, 0);
+		schedule_delayed_work(&data->light_work, 300);
 	}
 
 	data->light_enabled = value;
@@ -839,7 +841,6 @@ static int lightsensor_get_adcvalue(struct gp2a_data *data)
 	unsigned int adc_max = 0;
 	unsigned int adc_min = 0;
 	int value = 0;
-	static bool cur_state = true;
 	static int adc_value_buf[ADC_BUFFER_NUM] = { 0 };
 
 	value = lightsensor_get_adc(data);
@@ -849,10 +850,10 @@ static int lightsensor_get_adcvalue(struct gp2a_data *data)
 	adc_index = (adc_index_count++) % ADC_BUFFER_NUM;
 
 	/*ADC buffer initialize (light sensor off ---> light sensor on) */
-	if (cur_state) {
+	if (data->light_data_first) {
 		for (j = 0; j < ADC_BUFFER_NUM; j++)
 			adc_value_buf[j] = value;
-		cur_state = false;
+		data->light_data_first = false;
 	} else {
 		adc_value_buf[adc_index] = value;
 	}
@@ -1144,12 +1145,12 @@ err_light_device_create:
 	device_destroy(sensors_class, 0);
 err_proximity_device_create:
 	gpio_free(pdata->p_out);
+err_setup_irq:
 err_no_device:
 	wake_lock_destroy(&gp2a->prx_wake_lock);
 	mutex_destroy(&gp2a->light_mutex);
 	mutex_destroy(&gp2a->data_mutex);
-err_setup_irq:
-	sysfs_remove_group(&gp2a->proximity_input_dev->dev.kobj,
+	sysfs_remove_group(&gp2a->light_input_dev->dev.kobj,
 			   &lightsensor_attribute_group);
 err_sysfs_create_group_light:
 	sysfs_remove_group(&gp2a->proximity_input_dev->dev.kobj,

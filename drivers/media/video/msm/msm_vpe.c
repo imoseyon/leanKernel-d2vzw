@@ -741,7 +741,7 @@ static int __devinit vpe_probe(struct platform_device *pdev)
 
 vpe_no_resource:
 	kfree(vpe_ctrl);
-	return 0;
+	return rc;
 }
 
 struct platform_driver vpe_driver = {

@@ -433,8 +433,17 @@ int vfp_flush_context(void)
 		/* disable, just in case */
 		fmxr(FPEXC, fmrx(FPEXC) & ~FPEXC_EN);
 		saved = 1;
+	} else if (vfp_current_hw_state[ti->cpu]) {
+#ifndef CONFIG_SMP
+		fmxr(FPEXC, fpexc | FPEXC_EN);
+		vfp_save_state(vfp_current_hw_state[ti->cpu], fpexc);
+		fmxr(FPEXC, fpexc);
+#endif
 	}
 	vfp_current_hw_state[cpu] = NULL;
+
+	/* clear any information we had about last context state */
+	vfp_current_hw_state[ti->cpu] = NULL;
 
 	local_irq_restore(flags);
 
@@ -563,6 +572,17 @@ static int __init vfp_init(void)
 {
 	unsigned int vfpsid;
 	unsigned int cpu_arch = cpu_architecture();
+	struct cpumask cpus_curr, cpus;
+
+	sched_getaffinity(current->pid, &cpus_curr);
+	cpumask_clear(&cpus);
+	cpumask_set_cpu(smp_processor_id(), &cpus);
+
+	if (sched_setaffinity(current->pid, &cpus))
+		pr_err("%s: set CPU affinity failed.\n", __func__);
+	else
+		pr_err("%s : affinity set to CPU %d\n"\
+			, __func__, smp_processor_id());
 
 	if (cpu_arch >= CPU_ARCH_ARMv6)
 		vfp_enable(NULL);
@@ -635,6 +655,12 @@ static int __init vfp_init(void)
 				elf_hwcap |= HWCAP_VFPv4;
 		}
 	}
+
+	if (sched_setaffinity(current->pid, &cpus_curr))
+		pr_err("%s: Restore CPU affinity failed !!\n", __func__);
+	else
+		pr_err("%s : affinity restored to %x\n" \
+			, __func__, *((int *)(cpus_curr.bits)));
 	return 0;
 }
 

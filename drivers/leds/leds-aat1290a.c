@@ -178,7 +178,7 @@ int aat1290a_flash_power(int onoff)
 			LED_ERROR("aat1290a_setGpio failed!\n");
 			return -EIO;
 		}
-		aat1290a_setPower(1, TORCH_BRIGHTNESS_50);
+		aat1290a_setPower(1, TORCH_BRIGHTNESS_100);
 	}
 
 	return 0;

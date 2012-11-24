@@ -48,6 +48,10 @@
 #include <mach/msm_serial_hs_lite.h>
 #include <asm/mach-types.h>
 #include "msm_serial_hs_hwreg.h"
+#include <linux/mfd/pm8xxx/pm8921.h>
+
+#define PM8921_GPIO_BASE  NR_GPIO_IRQS
+#define PM8921_GPIO_PM_TO_SYS(pm_gpio) (pm_gpio - 1 + PM8921_GPIO_BASE)
 
 extern int uart_connecting;
 
@@ -191,8 +195,6 @@ static irqreturn_t msm_hsl_wakeup_isr(int irq, void *dev)
 {
 	unsigned int wakeup = 0;
 	struct msm_hsl_port *msm_hsl_port = (struct msm_hsl_port *)dev;
-	struct uart_port *uport = &msm_hsl_port->uart;
-	unsigned long flags;
 	const unsigned long WAKE_LOCK_EXPIRE_TIME = HZ;
 	/* let it expire within 1 sec */
 
@@ -1545,12 +1547,31 @@ static int __devexit msm_serial_hsl_remove(struct platform_device *pdev)
 	return 0;
 }
 
+
 #ifdef CONFIG_PM
 static int msm_serial_hsl_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct uart_port *port;
 	struct msm_hsl_port *msm_hsl_port;
+
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
 
 	port = get_port_from_line(pdev->id);
 	msm_hsl_port = UART_TO_MSM(port);
@@ -1565,10 +1586,11 @@ static int msm_serial_hsl_suspend(struct device *dev)
 		if (device_may_wakeup(dev))
 			enable_irq_wake(port->irq);
 
+#ifndef	CONFIG_USB_SWITCH_FSA9485
 		/*  ESPRESSO Model does not have fsa9485 chip
 		 *  Always true uart_connecting value in Tablet model */
-		if (machine_is_ESPRESSO_VZW())
 			uart_connecting = 1;
+#endif
 
 		if (uart_connecting &&
 				gpio_get_value(msm_hsl_port->wakeup.rx_gpio)) {
@@ -1601,6 +1623,24 @@ static int msm_serial_hsl_resume(struct device *dev)
 	struct uart_port *port;
 	struct msm_hsl_port *msm_hsl_port;
 
+	int rc;
+	struct pm_gpio uart_rxd_msm_gpio_config = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.pull           = PM_GPIO_PULL_NO,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_PAIRED,
+		.inv_int_pol    = 0,
+		.vin_sel        = 4,
+	};
+
+	rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(34),
+				 &uart_rxd_msm_gpio_config);
+	if (rc) {
+		pr_err("%s: pm8921 gpio %d config failed(%d)\n",
+			__func__, PM8921_GPIO_PM_TO_SYS(34), rc);
+		return rc;
+	}
+
 	port = get_port_from_line(pdev->id);
 	msm_hsl_port = UART_TO_MSM(port);
 
@@ -1614,9 +1654,10 @@ static int msm_serial_hsl_resume(struct device *dev)
 		if (is_console(port))
 			msm_hsl_init_clock(port);
 
-		if (machine_is_ESPRESSO_VZW())
+#ifndef	CONFIG_USB_SWITCH_FSA9485
+	/*  ESPRESSO Model does not have fsa9485 chip in Tablet model */
 			uart_connecting = 0;
-
+#endif
 
 		if (uart_connecting || msm_hsl_port->wakeup.wakeup_set) {
 			/* disable wakeup_irq */
@@ -1697,7 +1738,6 @@ static int __init msm_serial_hsl_init(void)
 		uart_unregister_driver(&msm_hsl_uart_driver);
 
 	printk(KERN_INFO "msm_serial_hsl: driver initialized\n");
-
 	return ret;
 }
 

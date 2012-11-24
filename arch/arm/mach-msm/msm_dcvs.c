@@ -725,21 +725,21 @@ static int __init msm_dcvs_late_init(void)
 		pr_err("%s: cannot find kobject for module %s\n",
 				__func__, KBUILD_MODNAME);
 		ret = -ENOENT;
-		goto err2;
+		goto err;
 	}
 
 	cores_kobj = kobject_create_and_add("cores", module_kobj);
 	if (!cores_kobj) {
 		__err("Cannot create %s kobject\n", "cores");
 		ret = -ENOMEM;
-		goto err2;
+		goto err;
 	}
 
 	debugfs_base = debugfs_create_dir("msm_dcvs", NULL);
 	if (!debugfs_base) {
 		__err("Cannot create debugfs base %s\n", "msm_dcvs");
 		ret = -ENOENT;
-		goto err1;
+		goto err;
 	}
 
 	if (!debugfs_create_u32("debug_mask", S_IRUGO | S_IWUSR,
@@ -749,14 +749,13 @@ static int __init msm_dcvs_late_init(void)
 		goto err;
 	}
 
-	return ret;
-
 err:
-	debugfs_remove(debugfs_base);
-err1:
-	kobject_del(cores_kobj);
-	cores_kobj = NULL;
-err2:
+	if (ret) {
+		kobject_del(cores_kobj);
+		cores_kobj = NULL;
+		debugfs_remove(debugfs_base);
+	}
+
 	return ret;
 }
 late_initcall(msm_dcvs_late_init);

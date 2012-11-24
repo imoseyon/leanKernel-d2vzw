@@ -50,6 +50,7 @@ static int sr030pc50_write_regs_from_sd(char *name);
 static int sr030pc50_i2c_write_multi(unsigned short addr, unsigned int w_data);
 #endif
 static int sr030pc50_sensor_config(void __user *argp);
+static void sr030pc50_set_ev(int ev);
 DEFINE_MUTEX(sr030pc50_mut);
 
 #define SR030PC50_WRT_LIST(A)	\
@@ -63,7 +64,12 @@ struct sr030pc50_work {
 	struct work_struct work;
 };
 
+struct sr030pc50_exif_data {
+	unsigned short shutterspeed;
+};
+
 static struct  i2c_client *sr030pc50_client;
+static struct sr030pc50_exif_data *sr030pc50_exif;
 static struct msm_sensor_ctrl_t sr030pc50_s_ctrl;
 static struct device sr030pc50_dev;
 
@@ -491,6 +497,43 @@ static struct device_attribute sr030pc50_cameraflash_attr = {
 };
 #endif
 
+static int sr030pc50_exif_shutter_speed(void)
+{
+	int err = 0;
+	u8 read_value1 = 0;
+	u8 read_value2 = 0;
+	u8 read_value3 = 0;
+
+	sr030pc50_i2c_write_16bit(0x0320);
+	sr030pc50_i2c_read(0x80, &read_value1);
+	sr030pc50_i2c_read(0x81, &read_value2);
+	sr030pc50_i2c_read(0x82, &read_value3);
+	sr030pc50_exif->shutterspeed = 12000000 / ((read_value1 << 19)
+		+ (read_value2 << 11) + (read_value3 << 3));
+
+	CAM_DEBUG("Exposure time = %d\n", sr030pc50_exif->shutterspeed);
+	return err;
+}
+
+
+static int sr030pc50_get_exif(int exif_cmd, unsigned short value2)
+{
+	unsigned short val = 0;
+
+	switch (exif_cmd) {
+	case EXIF_SHUTTERSPEED:
+		val = sr030pc50_exif->shutterspeed;
+		break;
+
+	case EXIF_ISO:
+		break;
+
+	default:
+		break;
+	}
+
+	return val;
+}
 
 void sr030pc50_set_preview_size(int32_t index)
 {
@@ -523,6 +566,7 @@ void sr030pc50_set_preview(void)
 		/*SR030PC50_WRT_LIST(sr030pc50_preview);*/
 		/*sr030pc50_ctrl->op_mode = CAMERA_MODE_PREVIEW;*/
 	}
+	sr030pc50_set_ev(sr030pc50_ctrl->settings.brightness);
 }
 
 void sr030pc50_set_capture(void)
@@ -530,6 +574,7 @@ void sr030pc50_set_capture(void)
 	CAM_DEBUG("");
 	sr030pc50_ctrl->op_mode = CAMERA_MODE_CAPTURE;
 	/*SR030PC50_WRT_LIST(sr030pc50_capture);*/
+	sr030pc50_exif_shutter_speed();
 }
 
 static int32_t sr030pc50_sensor_setting(int update_type, int rt)
@@ -934,6 +979,8 @@ static void sr030pc50_set_ev(int ev)
 			__func__, __LINE__);
 		break;
 	}
+
+	sr030pc50_ctrl->settings.brightness = ev;
 }
 
 void sensor_native_control_front(void __user *arg)
@@ -955,6 +1002,12 @@ void sensor_native_control_front(void __user *arg)
 		CAM_DEBUG("MOVIE mode : %d", ctrl_info.value_1);
 		sr030pc50_ctrl->cam_mode = ctrl_info.value_1;
 		break;
+
+	case EXT_CAM_EXIF:
+		ctrl_info.value_1 = sr030pc50_get_exif(ctrl_info.address,
+			ctrl_info.value_2);
+		break;
+
 /*
 
 	case EXT_CAM_EFFECT:
@@ -1143,6 +1196,14 @@ static int sr030pc50_i2c_probe(struct i2c_client *client,
 	if (!sr030pc50_ctrl) {
 		CAM_DEBUG("sr030pc50_ctrl alloc failed!\n");
 		return -ENOMEM;
+	}
+
+	sr030pc50_exif = kzalloc(sizeof(struct sr030pc50_exif_data),
+		GFP_KERNEL);
+	if (!sr030pc50_exif) {
+		cam_err("Cannot allocate memory fo EXIF structure!");
+		kfree(sr030pc50_exif);
+		rc = -ENOMEM;
 	}
 
 	snprintf(s_ctrl->sensor_v4l2_subdev.name,

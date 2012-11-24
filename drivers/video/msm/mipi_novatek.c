@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,7 +15,7 @@
 #ifdef CONFIG_SPI_QUP
 #include <linux/spi/spi.h>
 #endif
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
 #endif
@@ -27,7 +27,7 @@
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
 #include "mdp4_video_enhance.h"
 #endif
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 static struct delayed_work  det_work;
 static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd);
 static void blenable_work_func(struct work_struct *work);
@@ -92,6 +92,10 @@ static uint32 mipi_novatek_disp_manufacture_id(struct msm_fb_data_type *mfd)
 	id |= *((unsigned char *)rp->data);
 
 	pr_info("%s: manufacture_id=%x\n", __func__, id);
+	if (id == 0x00) {
+		pr_info("Lcd is not connected\n");
+		is_lcd_connected = 0;
+	}
 	return id;
 }
 
@@ -107,7 +111,7 @@ static int mipi_novatek_disp_send_cmd(struct msm_fb_data_type *mfd,
 
 	switch (cmd) {
 	case PANEL_READY_TO_ON:
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 		if (msd.mpd->manufacture_id != JASPER_MANUFACTURE_ID) {
 			cmd_desc = msd.mpd->ready_to_on_boe.cmd;
 			cmd_size = msd.mpd->ready_to_on_boe.size;
@@ -150,16 +154,13 @@ static int mipi_novatek_disp_send_cmd(struct msm_fb_data_type *mfd,
 		goto unknown_command;
 
 	if (lock) {
-		/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
 		mipi_dsi_mdp_busy_wait(mfd);
 
-		mipi_dsi_cmds_tx(mfd, &msd.novatek_tx_buf, cmd_desc, cmd_size);
+		mipi_dsi_cmds_tx(&msd.novatek_tx_buf, cmd_desc, cmd_size);
 
 		mutex_unlock(&mfd->dma->ov_mutex);
 	} else {
-		mipi_dsi_cmds_tx(mfd, &msd.novatek_tx_buf, cmd_desc, cmd_size);
+		mipi_dsi_cmds_tx(&msd.novatek_tx_buf, cmd_desc, cmd_size);
 	}
 
 	return 0;
@@ -442,7 +443,7 @@ static uint32 mipi_novatek_manufacture_id(struct msm_fb_data_type *mfd)
 	cmd = &novatek_manufacture_id_cmd;
 	mipi_dsi_cmds_rx(mfd, tp, rp, cmd, 3);
 	lp = (uint32 *)rp->data;
-	pr_info("%s: manufacture_id=%x", __func__, *lp);
+	pr_info("%s: manufacture_id=%x\n", __func__, *lp);
 	return *lp;
 }
 
@@ -523,14 +524,14 @@ static int mipi_novatek_lcd_on(struct platform_device *pdev)
 	mipi  = &mfd->panel_info.mipi;
 
 	if (mipi->mode == DSI_VIDEO_MODE) {
-		mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_video_on_cmds,
-			ARRAY_SIZE(novatek_video_on_cmds));
+		mipi_dsi_cmds_tx(&novatek_tx_buf, novatek_video_on_cmds,
+				ARRAY_SIZE(novatek_video_on_cmds));
 	} else {
-		mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_cmd_on_cmds,
-			ARRAY_SIZE(novatek_cmd_on_cmds));
+		mipi_dsi_cmds_tx(&novatek_tx_buf, novatek_cmd_on_cmds,
+				ARRAY_SIZE(novatek_cmd_on_cmds));
 
-		mipi_dsi_cmd_bta_sw_trigger(); /* clean up ack_err_status */
-
+		/* clean up ack_err_status */
+		mipi_dsi_cmd_bta_sw_trigger();
 		mipi_novatek_manufacture_id(mfd);
 	}
 
@@ -548,13 +549,31 @@ static int mipi_novatek_lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_display_off_cmds,
+	mipi_dsi_cmds_tx(&novatek_tx_buf, novatek_display_off_cmds,
 			ARRAY_SIZE(novatek_display_off_cmds));
 
 	return 0;
 }
+#if 0 /*test function*/
+static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
+static struct dsi_cmd_desc backlight_cmd = {
+	DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1};
 
+struct dcs_cmd_req cmdreq;
 
+static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
+{
+	led_pwm1[1] = (unsigned char)mfd->bl_level;
+
+	cmdreq.cmds = &backlight_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = 0;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+}
+#else
 
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
@@ -565,23 +584,10 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 	if (bl_level_old == mfd->bl_level)
 		return;
 
-	mutex_lock(&mfd->dma->ov_mutex);
-	if (mdp4_overlay_dsi_state_get() <= ST_DSI_SUSPEND) {
-		mutex_unlock(&mfd->dma->ov_mutex);
-		return;
-	}
-	/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
-	mdp4_dsi_cmd_dma_busy_wait(mfd);
-	mdp4_dsi_blt_dmap_busy_wait(mfd);
-	mipi_dsi_mdp_busy_wait(mfd);
-
-	led_pwm1[1] = (unsigned char)(mfd->bl_level);
-	mipi_dsi_cmds_tx(mfd, &novatek_tx_buf, novatek_cmd_backlight_cmds,
-			ARRAY_SIZE(novatek_cmd_backlight_cmds));
+	mdp4_backlight_put_level(0, mfd->bl_level);
 	bl_level_old = mfd->bl_level;
-	mutex_unlock(&mfd->dma->ov_mutex);
-	return;
 }
+#endif
 
 static int mipi_dsi_3d_barrier_sysfs_register(struct device *dev);
 static int barrier_mode;
@@ -592,6 +598,7 @@ static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
 	struct mipi_panel_info *mipi;
 	struct platform_device *current_pdev;
 	static struct mipi_dsi_phy_ctrl *phy_settings;
+	static char dlane_swap;
 
 	if (pdev->id == 0) {
 		mipi_novatek_pdata = pdev->dev.platform_data;
@@ -599,6 +606,11 @@ static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
 		if (mipi_novatek_pdata
 			&& mipi_novatek_pdata->phy_ctrl_settings) {
 			phy_settings = (mipi_novatek_pdata->phy_ctrl_settings);
+		}
+
+		if (mipi_novatek_pdata
+			&& mipi_novatek_pdata->dlane_swap) {
+			dlane_swap = (mipi_novatek_pdata->dlane_swap);
 		}
 
 		if (mipi_novatek_pdata
@@ -630,6 +642,9 @@ static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
 
 		if (phy_settings != NULL)
 			mipi->dsi_phy_db = phy_settings;
+
+		if (dlane_swap)
+			mipi->dlane_swap = dlane_swap;
 	}
 
 	return 0;
@@ -780,7 +795,6 @@ static int mipi_novatek_disp_on(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 	struct mipi_panel_info *mipi;
 	static int first_power_on;
-	int id_count = 0;
 
 	mfd = platform_get_drvdata(pdev);
 	if (unlikely(!mfd))
@@ -789,22 +803,15 @@ static int mipi_novatek_disp_on(struct platform_device *pdev)
 		return -EINVAL;
 
 	mipi = &mfd->panel_info.mipi;
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 	if (first_power_on == 0) {
-		do {
-			msd.mpd->manufacture_id =
+		msd.mpd->manufacture_id =
 				mipi_novatek_disp_manufacture_id(mfd);
-			id_count++;
-		} while (id_count < 3 && !msd.mpd->manufacture_id);
-		if (id_count >= 3 && !msd.mpd->manufacture_id) {
-			pr_info("Lcd is not connected\n");
-			is_lcd_connected = 0;
-		}
 		first_power_on++;
 	}
 #endif
 	mipi_novatek_disp_send_cmd(mfd, PANEL_READY_TO_ON, false);
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 	INIT_DELAYED_WORK(&det_work, blenable_work_func);
 	schedule_delayed_work(&det_work, msecs_to_jiffies(100));
 #endif
@@ -817,6 +824,7 @@ static int mipi_novatek_disp_on(struct platform_device *pdev)
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	set_esd_enable();
 #endif
+	mfd->resume_state = MIPI_RESUME_STATE;
 	pr_info("%s:Display on completed\n", __func__);
 return 0;
 }
@@ -824,7 +832,18 @@ return 0;
 static int mipi_novatek_disp_off(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-
+/*+ to avoid former last screen when wake up the lcd, set fb to 0 when off+*/
+	struct fb_info *info;
+	unsigned short *bits;
+	pr_info("%s : Draw Black screen.\n", __func__);
+	info = registered_fb[0];
+	bits = (unsigned short *)(info->screen_base);
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+	memset(bits, 0x00, 800*480*4*3); /*info->var.xres*info->var.yres*/
+#else
+	memset(bits, 0x00, 800*480*4*2);
+#endif
+/*- to avoid former last screen when wake up the lcd, set fb to 0 when off-*/
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	set_esd_disable();
 #endif
@@ -856,6 +875,7 @@ static void mipi_novatek_disp_early_suspend(struct early_suspend *h)
 	}
 
 	mipi_novatek_disp_send_cmd(mfd, PANEL_EARLY_OFF, true);
+	mfd->resume_state = MIPI_SUSPEND_STATE;
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	set_esd_disable();
 #endif
@@ -892,28 +912,28 @@ static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd)
 	static int bl_level_old;
 	pr_info("%s Back light level:%d\n", __func__, mfd->bl_level);
 
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) \
+	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT)
+	mfd->backlight_ctrl_ongoing = TRUE;
+#else
+	mfd->backlight_ctrl_ongoing = FALSE;
+#endif
+
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	if (msd.esd_refresh == true) {
 		pr_debug("ESD Refresh on going cannot set backlight\n");
-		return ;
+		goto end;
 	}
 #endif
 	mipi  = &mfd->panel_info.mipi;
 	if (bl_level_old == mfd->bl_level)
-		return;
+		goto end;
 
+	if (!msd.mpd->set_brightness_level ||  !mfd->panel_power_on ||\
+		mfd->resume_state == MIPI_SUSPEND_STATE)
+		goto end;
 	mutex_lock(&mfd->dma->ov_mutex);
-#if !defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT) && \
-	!defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
-
-	if (mdp4_overlay_dsi_state_get() <= ST_DSI_SUSPEND) {
-		mutex_unlock(&mfd->dma->ov_mutex);
-		return;
-	}
-#endif
-	/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
-	mdp4_dsi_cmd_dma_busy_wait(mfd);
-	mdp4_dsi_blt_dmap_busy_wait(mfd);
+	
 	mipi_dsi_mdp_busy_wait(mfd);
 
 #ifdef CONFIG_FB_MSM_BACKLIGHT_AAT1402IUQ
@@ -927,13 +947,18 @@ static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd)
 	led_pwm1[1] = (unsigned char)
 		(msd.mpd->set_brightness_level(mfd->bl_level));
 #endif
-	mipi_dsi_cmds_tx(mfd, &msd.novatek_tx_buf, novatek_cmd_backlight_cmds,
+	mipi_dsi_cmds_tx(&msd.novatek_tx_buf, novatek_cmd_backlight_cmds,
 			ARRAY_SIZE(novatek_cmd_backlight_cmds));
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
+end:
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) \
+	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT)
+	mfd->backlight_ctrl_ongoing = FALSE;
+#endif
 	return;
 }
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 static void blenable_work_func(struct work_struct *work)
 {
 	struct msm_fb_data_type *mfd;

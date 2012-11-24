@@ -39,6 +39,11 @@
 
 #define SEC_BATTERY_PMIC_NAME ""
 
+#ifdef CONFIG_CAMERON_HEALTH
+bool is_cameron_health_connected;
+EXPORT_SYMBOL(is_cameron_health_connected);
+#endif
+
 static int msm_otg_pmic_gpio_config(int gpio, int direction,
 			int pullup, char *gpio_id, int req_sel)
 {
@@ -130,6 +135,10 @@ static int sec_bat_adc_ic_read(unsigned int channel)
 		data = stmpe811_adc_get_value(
 			SMTPE811_CHANNEL_ADC_CHECK_1);
 		data = data * max_voltage / 4096;
+#ifdef CONFIG_CAMERON_HEALTH
+		if (is_cameron_health_connected)
+			data = max_voltage;
+#endif
 		break;
 	case SEC_BAT_ADC_CHANNEL_FULL_CHECK:
 		data = stmpe811_adc_get_value(
@@ -183,11 +192,16 @@ static bool sec_chg_gpio_init(void)
 	return true;
 }
 
-static bool sec_bat_is_lpm(void) {return false; }
+static bool sec_bat_is_lpm(void) {return (bool)poweroff_charging; }
 
 static void sec_bat_initial_check(void)
 {
 	union power_supply_propval value;
+
+	/* check cable by sec_bat_get_cable_type()
+	 * for initial check
+	 */
+	value.intval = -1;
 
 	if (!gpio_get_value_cansleep(
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_TA_nCONNECTED)))
@@ -211,6 +225,14 @@ static bool sec_bat_check_jig_status(void)
 static void sec_bat_switch_to_check(void)
 {
 	pr_debug("%s\n", __func__);
+
+#ifdef CONFIG_CAMERON_HEALTH
+	if (is_cameron_health_connected) {
+		pr_info("%s Cameron Health Activated,"
+			"No need to switch to ADC\n", __func__);
+		return;
+	}
+#endif
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_USB_SEL, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
@@ -296,6 +318,36 @@ static bool sec_bat_get_temperature_callback(
 
 static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 
+#ifdef CONFIG_CAMERON_HEALTH
+/* ADC region should be exclusive */
+static sec_bat_adc_region_t cable_adc_value_table[] = {
+	{0,	0},
+	{0,	0},
+	{1000,	1350},
+	{0,	0},
+	{0,	0},
+	{0,	0},
+	{0,	0},
+	{2500,	3500},
+	{0,	0},
+	{0,	0},
+	{0,	0},
+};
+
+static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{1500,	1500,	200,	0},
+	{1500,	500,	200,	0},
+	{1500,	500,	200,	0},
+	{1500,	500,	200,	0},
+	{1500,	500,	200,	0},
+	{1500,	1500,	200,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+};
+#else
 /* ADC region should be exclusive */
 static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
@@ -324,6 +376,7 @@ static sec_charging_current_t charging_current_table[] = {
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 };
+#endif
 
 static int polling_time_table[] = {
 	10,	/* BASIC */
@@ -353,7 +406,7 @@ static struct battery_data_t espresso_battery_data[] = {
 			{60000, 200,	51000},
 			{100000, 0,	0},	/* dummy for top limit */
 		},
-		.type_str = "SDI",
+		.type_str = "SDI 4000mAh",
 	}
 };
 
@@ -428,7 +481,12 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.cable_check_type =
 		SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE |
 		SEC_BATTERY_CABLE_CHECK_INT,
+#ifdef CONFIG_CAMERON_HEALTH
+	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC |
+		SEC_BATTERY_CABLE_SOURCE_EXTERNAL,
+#else
 	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC,
+#endif
 
 	.event_check = true,
 	.event_waiting_time = 600,
@@ -451,28 +509,29 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.thermal_source = SEC_BATTERY_THERMAL_SOURCE_FG,
 
 	.temp_check_type = SEC_BATTERY_TEMP_CHECK_TEMP,
-	.temp_check_count = 3,
+	.temp_check_count = 2,
 	.temp_high_threshold_event = 638,
-	.temp_high_recovery_event = 428,
+	.temp_high_recovery_event = 441,
 	.temp_low_threshold_event = -20,
 	.temp_low_recovery_event = 6,
 	.temp_high_threshold_normal = 533,
-	.temp_high_recovery_normal = 428,
+	.temp_high_recovery_normal = 441,
 	.temp_low_threshold_normal = -20,
 	.temp_low_recovery_normal = 6,
 	.temp_high_threshold_lpm = 533,
-	.temp_high_recovery_lpm = 428,
-	.temp_low_threshold_lpm = -20,
-	.temp_low_recovery_lpm = 6,
+	.temp_high_recovery_lpm = 455,
+	.temp_low_threshold_lpm = -19,
+	.temp_low_recovery_lpm = -3,
 
 	.full_check_type = SEC_BATTERY_FULLCHARGED_ADC,
-	.full_check_count = 2,
+	.full_check_count = 4,
 	.full_check_adc_1st = 26500,
 	.full_check_adc_2nd = 25800,
 	.chg_gpio_full_check =
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_STAT),
 	.chg_polarity_full_check = 1,
 	.full_condition_type =
+		SEC_BATTERY_FULL_CONDITION_NOTIMEFULL |
 		SEC_BATTERY_FULL_CONDITION_SOC |
 		SEC_BATTERY_FULL_CONDITION_VCELL,
 	.full_condition_soc = 99,
@@ -487,8 +546,9 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.charging_reset_time = 10 * 60,
 
 	/* Fuel Gauge */
-	.fg_irq = 0,
-	.fg_irq_attr = IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+	.fg_irq = MSM_GPIO_TO_INT(GPIO_FUEL_INT),
+	.fg_irq_attr =
+		IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 	.fuel_alert_soc = 1,
 	.repeated_fuelalert = false,
 	.capacity_calculation_type =
@@ -550,8 +610,8 @@ void __init msm8960_init_battery(void)
 	if (system_rev >= BOARD_REV04) {
 		sec_battery_pdata.adc_type[SEC_BAT_ADC_CHANNEL_FULL_CHECK] =
 			SEC_BATTERY_ADC_TYPE_IC;
-		sec_battery_pdata.full_check_adc_1st = 160;
-		sec_battery_pdata.full_check_adc_2nd = 150;
+		sec_battery_pdata.full_check_adc_1st = 144;
+		sec_battery_pdata.full_check_adc_2nd = 144;
 	}
 
 	platform_add_devices(

@@ -18,6 +18,6 @@
 
 extern struct class *sec_class;
 
-extern u16 stmpe811_adc_get_value(u8 channel);
+extern s32 stmpe811_adc_get_value(u8 channel);
 extern int current_cable_type;
 #endif

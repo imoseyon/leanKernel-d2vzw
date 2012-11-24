@@ -42,6 +42,17 @@ enum sec_battery_voltage_mode {
 	SEC_BATTEY_VOLTAGE_OCV,
 };
 
+enum sec_battery_capacity_mode {
+	/* designed capacity */
+	SEC_BATTEY_CAPACITY_DESIGNED = 0,
+	/* absolute capacity by fuel gauge */
+	SEC_BATTEY_CAPACITY_ABSOLUTE,
+	/* temperary capacity in the time */
+	SEC_BATTEY_CAPACITY_TEMPERARY,
+	/* current capacity now */
+	SEC_BATTEY_CAPACITY_CURRENT,
+};
+
 /* ADC type */
 #define SEC_BATTERY_ADC_TYPE_NUM	3
 
@@ -125,7 +136,7 @@ enum sec_battery_full_charged {
 /* full check condition type (can be used overlapped) */
 #define sec_battery_full_condition_t unsigned int
 /* SEC_BATTERY_FULL_CONDITION_NOTIMEFULL
-  * no full-charged by absolute-timer
+  * full-charged by absolute-timer only in high voltage
   */
 #define SEC_BATTERY_FULL_CONDITION_NOTIMEFULL	1
 /* SEC_BATTERY_FULL_CONDITION_SOC
@@ -221,7 +232,7 @@ enum sec_battery_temp_check {
 #define sec_battery_cable_check_t unsigned int
 /* SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE
   * for USB cable in tablet model,
-  * status is stick to discharging,
+  * status is stuck into discharging,
   * but internal charging logic is working
   */
 #define SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE		1
@@ -238,17 +249,20 @@ enum sec_battery_temp_check {
   */
 #define SEC_BATTERY_CABLE_CHECK_POLLING			8
 
-/* check cable source */
-enum sec_battery_cable_source {
-	/* already given by external argument */
-	SEC_BATTERY_CABLE_SOURCE_EXTERNAL,
-	/* by callback (MUIC, USB switch) */
-	SEC_BATTERY_CABLE_SOURCE_CALLBACK,
-	/* by ADC */
-	SEC_BATTERY_CABLE_SOURCE_ADC,
-};
-#define sec_battery_cable_source_t \
-	enum sec_battery_cable_source
+/* check cable source (can be used overlapped) */
+#define sec_battery_cable_source_t unsigned int
+/* SEC_BATTERY_CABLE_SOURCE_EXTERNAL
+ * already given by external argument
+ */
+#define	SEC_BATTERY_CABLE_SOURCE_EXTERNAL	1
+/* SEC_BATTERY_CABLE_SOURCE_CALLBACK
+ * by callback (MUIC, USB switch)
+ */
+#define	SEC_BATTERY_CABLE_SOURCE_CALLBACK	2
+/* SEC_BATTERY_CABLE_SOURCE_ADC
+ * by ADC
+ */
+#define	SEC_BATTERY_CABLE_SOURCE_ADC		4
 
 /* capacity calculation type (can be used overlapped) */
 #define sec_fuelgauge_capacity_type_t unsigned int
@@ -265,11 +279,24 @@ enum sec_battery_cable_source {
   * rescale capacity by scaling, need min and max value for scaling
   */
 #define SEC_FUELGAUGE_CAPACITY_TYPE_SCALE	1
+/* SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE
+  * change only maximum capacity dynamically
+  * to keep time for every SOC unit
+  */
+#define SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE	2
 /* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC
   * change capacity value by only -1 or +1
   * no sudden change of capacity
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	2
+#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	4
+
+/* charger function settings (can be used overlapped) */
+#define sec_charger_functions_t unsigned int
+/* SEC_CHARGER_NO_GRADUAL_CHARGING_CURRENT
+ * disable gradual charging current setting
+ * SUMMIT:AICL, MAXIM:regulation loop
+ */
+#define SEC_CHARGER_NO_GRADUAL_CHARGING_CURRENT		1
 
 /**
  * struct sec_bat_adc_table_data - adc to temperature table for sec battery
@@ -439,6 +466,7 @@ struct sec_battery_platform_data {
 	 * only for scaling
 	 */
 	unsigned int capacity_max;
+	unsigned int capacity_max_margin;
 	unsigned int capacity_min;
 
 	/* charger */
@@ -456,6 +484,7 @@ struct sec_battery_platform_data {
 	unsigned long chg_irq_attr;
 	/* float voltage (mV) */
 	int chg_float_voltage;
+	sec_charger_functions_t chg_functions_setting;
 
 	/* ADC setting */
 	unsigned int adc_check_count;

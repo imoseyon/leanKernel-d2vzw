@@ -43,6 +43,8 @@ static enum power_supply_property sec_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_AVG,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_ENERGY_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_AMBIENT,
@@ -67,6 +69,7 @@ struct sec_fuelgauge_info {
 	struct wake_lock fuel_alert_wake_lock;
 
 	unsigned int capacity_old;	/* only for atomic calculation */
+	unsigned int capacity_max;	/* only for dynamic calculation */
 
 	bool initial_update_of_soc;
 	struct mutex fg_lock;
@@ -107,7 +110,7 @@ ssize_t sec_fg_store_attrs(struct device *dev,
 
 #define SEC_FG_ATTR(_name)				\
 {							\
-	.attr = {.name = #_name, .mode = 0666},	\
+	.attr = {.name = #_name, .mode = 0664},	\
 	.show = sec_fg_show_attrs,			\
 	.store = sec_fg_store_attrs,			\
 }

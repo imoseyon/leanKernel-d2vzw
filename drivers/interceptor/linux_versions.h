@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * linux_versions.h
@@ -27,10 +27,10 @@
 #define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
 #endif /* KERNEL_VERSION */
 
-/* 2.6.38 is the highest version currently supported */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,1,0)
-#error "Kernel versions after 3.1.0 are not supported"
-#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,1,0) */
+/* 3.1.10 is the highest version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10)
+#error "Kernel versions after 3.1.10 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10) */
 
 /* 2.4 is not supported */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -57,7 +57,7 @@
 #define LINUX_HAS_ETH_HDR 1
 #endif /* >= 2.6.9 */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12) 
 #define LINUX_HAS_DST_MTU 1
 #define LINUX_HAS_DEV_GET_FLAGS 1
 #endif /* >= 2.6.12 */
@@ -97,7 +97,7 @@
 #endif /* >= 2.6.20 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
-#define LINUX_HAS_NETDEVICE_ACCESSORS 1
+#define LINUX_HAS_NETDEVICE_ACCESSORS 1 
 #define LINUX_HAS_SKB_DATA_ACCESSORS 1
 #define LINUX_HAS_SKB_CSUM_START 1
 #endif /* >= 2.6.22 */
@@ -174,13 +174,16 @@
 #endif /* >= 2.6.38 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
-#define LINUX_DST_ALLOC_HAS_MANY_ARGS 1
+#define LINUX_DST_ALLOC_HAS_MANY_ARGS 1 
 #endif /* >= 3.0.0 */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0)
-#undef LINUX_INODE_OPERATION_PERMISSION_HAS_UINT
-#define LINUX_HAS_NET_DEVICE_OPS 1
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,29)
 #define LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS 1
+#endif /* >= 3.1.0 */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0)
+#undef LINUX_INODE_OPERATION_PERMISSION_HAS_UINT 
+#define LINUX_HAS_NET_DEVICE_OPS 1
 #undef LINUX_HAS_HH_CACHE
 #endif /* >= 3.1.0 */
 

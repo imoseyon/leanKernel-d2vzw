@@ -220,7 +220,6 @@ static struct gpiomux_setting mdp_vsync_active_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static struct gpiomux_setting hdmi_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -230,7 +229,7 @@ static struct gpiomux_setting hdmi_suspend_cfg = {
 static struct gpiomux_setting hdmi_active_1_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct gpiomux_setting hdmi_active_2_cfg = {
@@ -252,7 +251,6 @@ static struct gpiomux_setting hdmi_active_4_cfg = {
 	.pull = GPIOMUX_PULL_UP,
 	.dir = GPIOMUX_OUT_HIGH,
 };
-#endif
 
 #ifdef CONFIG_USB_SWITCH_FSA9485
 static struct gpiomux_setting fsa9485_suspend_cfg = {
@@ -463,7 +461,7 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
@@ -773,7 +771,6 @@ static struct msm_gpiomux_config msm8960_mdp_vsync_configs[] __initdata = {
 	}
 };
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static struct msm_gpiomux_config msm8960_hdmi_configs[] __initdata = {
 	{
 		.gpio = 99,
@@ -796,29 +793,7 @@ static struct msm_gpiomux_config msm8960_hdmi_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
 		},
 	},
-	{
-		.gpio = 102,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_2_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
-		},
-	},
-	{
-		.gpio = 15,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_3_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
-		},
-	},
-	{
-		.gpio = 66,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_4_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
-		},
-	},
 };
-#endif
 
 #ifdef CONFIG_I2C
 
@@ -910,10 +885,8 @@ int __init msm8960_init_gpiomux(void)
 				ARRAY_SIZE(msm8960_hsic_configs));
 #endif
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	msm_gpiomux_install(msm8960_hdmi_configs,
 			ARRAY_SIZE(msm8960_hdmi_configs));
-#endif
 
 	msm_gpiomux_install(msm8960_mdp_vsync_configs,
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));

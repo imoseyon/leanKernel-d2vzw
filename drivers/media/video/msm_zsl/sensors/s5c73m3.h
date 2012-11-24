@@ -517,6 +517,10 @@ enum s5c73m3_fw_path {
 #define S5C73M3_AE_AUTO_BRAKET_EV15	0x0180
 #define S5C73M3_AE_AUTO_BRAKET_EV20	0x8200
 
+#define S5C73M3_LLS_MODE                0x0C2C
+#define S5C73M3_LLS_MODE_ON             0x0001
+#define S5C73M3_LLS_MODE_OFF            0x0000
+
 #define S5C73M3_SENSOR_STREAMING	0x090A
 #define S5C73M3_SENSOR_STREAMING_OFF	0x0000
 #define S5C73M3_SENSOR_STREAMING_ON	0x0001
@@ -581,6 +585,19 @@ static u32 S5C73M3_YUV_PREVIEW[] = {
 };
 
 static u32 S5C73M3_HDR[] = {
+	0x00500009,
+	0x00545000,
+	0x0F140900, /* MiPi 0xetting */
+	0x0F140403, /* Lane:4 , DataRate:3(640Mbp0x) */
+	0x0F140902, /* Change Out interface */
+	0x0F140014, /* Image Out Mode :D(interleave)0x14VC */
+	0x0F140B10,
+	0x0F14801D, /* (1:640x480 JPEG  D:3264 2448 YUV) */
+	0x00545080,
+	0x0F140003,
+};
+
+static u32 S5C73M3_LLS[] = {
 	0x00500009,
 	0x00545000,
 	0x0F140900, /* MiPi 0xetting */

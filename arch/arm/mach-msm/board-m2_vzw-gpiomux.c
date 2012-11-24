@@ -47,7 +47,7 @@ static struct gpiomux_setting spi_suspended_config2 = {
 static struct gpiomux_setting gsbi3_suspended_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting gsbi1 = {
@@ -579,7 +579,11 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
+#if defined(_d2usc_)
+	.drv = GPIOMUX_DRV_2MA,
+#else
 	.drv = GPIOMUX_DRV_8MA,
+#endif
 	.pull = GPIOMUX_PULL_NONE,
 };
 
@@ -977,13 +981,13 @@ static struct msm_gpiomux_config msm8960_mhl_configs[] __initdata = {
 static struct gpiomux_setting sec_ts_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting sec_ts_int_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {

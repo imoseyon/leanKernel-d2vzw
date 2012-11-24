@@ -984,4 +984,11 @@ struct vfe_cmd_stats_ack {
 struct vfe_cmd_stats_buf {
 	uint32_t statsBuf[VFE_STATS_BUFFER_COUNT];
 };
+
+static unsigned long pre_frame_sec = 0;
+static unsigned long pre_frame_msec = 0;
+static unsigned int no_free_buffer_count = 0;
+static bool no_free_buffer_flag = 0;
+#define TV_MSEC(x) x / 1000000
+
 #endif /* __MSM_VFE32_H__ */

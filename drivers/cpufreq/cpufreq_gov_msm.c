@@ -142,6 +142,10 @@ static int __devinit msm_gov_probe(struct platform_device *pdev)
 	struct msm_dcvs_core_info *core = NULL;
 
 	core = pdev->dev.platform_data;
+	if (!core) {
+		pr_err("missing platform data\n");
+		return -EINVAL;
+	}
 
 	for_each_possible_cpu(cpu) {
 		mutex_init(&per_cpu(gov_mutex, cpu));

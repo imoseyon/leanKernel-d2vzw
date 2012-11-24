@@ -209,9 +209,9 @@ static int al3201_enable(struct al3201_data *data)
 		pr_err("%s: Failed to write byte (POWER_UP)\n", __func__);
 		return err;
 	}
-
-	hrtimer_start(&data->timer, data->light_poll_delay, HRTIMER_MODE_REL);
-
+	hrtimer_start(&data->timer,
+		ns_to_ktime(ktime_to_ns(data->light_poll_delay)+100000000),
+		HRTIMER_MODE_REL);
 	return err;
 }
 

@@ -22,6 +22,7 @@
 #include <media/v4l2-subdev.h>
 #include <mach/gpio.h>
 #include <mach/camera.h>
+#include <mach/express-gpio.h>
 
 #include <asm/mach-types.h>
 #include <mach/vreg.h>
@@ -31,12 +32,16 @@
 #include "isx012.h"
 #ifdef CONFIG_MACH_JAGUAR
 #include "isx012_regs.h"
-#elif defined(CONFIG_MACH_COMANCHE) || defined(CONFIG_MACH_EXPRESS)
+#elif defined(CONFIG_MACH_COMANCHE)
 #include "isx012_regs_comanche.h"
 #elif defined(CONFIG_MACH_AEGIS2)
 #include "isx012_regs_aegis2.h"
 #elif defined(CONFIG_MACH_APEXQ)
 #include "isx012_regs_apexq.h"
+#elif defined(CONFIG_MACH_EXPRESS)
+#include "isx012_regs_express.h"
+#elif defined(CONFIG_MACH_STRETTO)
+#include "isx012_regs_stretto.h"
 #else
 #include "isx012_regs_v2.h"
 #endif
@@ -62,16 +67,22 @@ int gAE_OFSETVAL = AE_OFSETVAL, gAE_MAXDIFF = AE_MAXDIFF;
 #define ISX012_BURST_WRITE_LIST(A)	\
 	isx012_i2c_write_list(A, (sizeof(A) / sizeof(A[0])), #A)
 #else
+#if defined(CONFIG_MACH_STRETTO)
+#define ISX012_BURST_WRITE_LIST(A)	\
+	isx012_i2c_write_list(A, (sizeof(A) / sizeof(A[0])), #A)
+#else
 #define ISX012_BURST_WRITE_LIST(A)	\
 	isx012_i2c_burst_write_list(A, (sizeof(A) / sizeof(A[0])), #A)
 #endif
+#endif
 
 static bool g_bCameraRunning;
+static bool g_bPreFlash;
 
 #define ISX012_WRITE_LIST(A)	\
 	isx012_i2c_write_list(A, (sizeof(A) / sizeof(A[0])), #A)
 
-#ifdef CONFIG_MACH_JAGUAR
+#if defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_STRETTO)
 #define FLASH_PULSE_CNT 2
 #else
 #define FLASH_PULSE_CNT 4
@@ -91,8 +102,7 @@ struct isx012_work {
 
 struct isx012_exif_data {
 	unsigned short iso;
-	unsigned short shutterspeed_low;
-	unsigned short shutterspeed_high;
+	unsigned short shutterspeed;
 };
 
 static struct i2c_client *isx012_client;
@@ -172,7 +182,7 @@ static int isx012_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 
 	err = i2c_transfer(isx012_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -181,7 +191,7 @@ static int isx012_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 
 	err = i2c_transfer(isx012_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -210,8 +220,7 @@ static int isx012_i2c_read(unsigned short subaddr, unsigned short *data)
 	int err = 0;
 
 	if (!isx012_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
@@ -220,7 +229,7 @@ static int isx012_i2c_read(unsigned short subaddr, unsigned short *data)
 
 	err = i2c_transfer(isx012_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -228,7 +237,7 @@ static int isx012_i2c_read(unsigned short subaddr, unsigned short *data)
 
 	err = i2c_transfer(isx012_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -260,8 +269,7 @@ static int isx012_i2c_write_multi(unsigned short addr,
 	int err = 0;
 
 	if (!isx012_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
@@ -286,7 +294,7 @@ static int isx012_i2c_write_multi(unsigned short addr,
 	}
 
 	if (err != 1) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -308,14 +316,13 @@ static int isx012_i2c_burst_write_list(struct isx012_short_t regs[], int size,
 	CAM_DEBUG(" %s", name);
 
 	if (!isx012_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
 	while (i < size) {
 		if (regs[i].subaddr == 0xFFFF) {
-			cam_info("delay %d ms", regs[i].value);
+			CAM_DEBUG(" delay %dms", regs[i].value);
 			msleep(regs[i].value);
 		} else {
 			if (0 == iTxDataIndex) {
@@ -367,7 +374,7 @@ static int isx012_i2c_burst_write_list(struct isx012_short_t regs[], int size,
 	}
 
 	if (err != 1) {
-		pr_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d", err);
 		return -EIO;
 	}
 
@@ -386,14 +393,13 @@ static int isx012_i2c_write_list(struct isx012_short_t regs[], int size,
 	CAM_DEBUG(" %s", name);
 
 	if (!isx012_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
 	for (i = 0; i < size; i++) {
 		if (regs[i].subaddr == 0xFFFF) {
-			cam_info("delay %d ms", regs[i].value);
+			CAM_DEBUG("delay %dms", regs[i].value);
 			msleep(regs[i].value);
 		} else {
 			err = isx012_i2c_write_multi(regs[i].subaddr,
@@ -401,7 +407,7 @@ static int isx012_i2c_write_list(struct isx012_short_t regs[], int size,
 						     regs[i].len);
 
 			if (unlikely(err < 0)) {
-				cam_err("%s: register set failed\n", __func__);
+				cam_err("%s: register set failed", __func__);
 				return -EIO;
 			}
 		}
@@ -421,22 +427,22 @@ void isx012_regs_table_init(void)
 	int ret;
 	mm_segment_t fs = get_fs();
 
-	CAM_DEBUG("%s %d", __func__, __LINE__);
+	CAM_DEBUG(" E");
 
 	set_fs(get_ds());
 
 	filp = filp_open("/mnt/sdcard/isx012_regs.h", O_RDONLY, 0);
 
 	if (IS_ERR_OR_NULL(filp)) {
-		CAM_DEBUG("file open error");
+		cam_err(" file open error");
 		return PTR_ERR(filp);
 	}
 
 	l = filp->f_path.dentry->d_inode->i_size;
-	CAM_DEBUG("l = %ld", l);
+	CAM_DEBUG(" l = %ld", l);
 	dp = vmalloc(l);
 	if (dp == NULL) {
-		CAM_DEBUG("Out of Memory");
+		cam_err(" Out of Memory");
 		filp_close(filp, current->files);
 	}
 
@@ -445,7 +451,7 @@ void isx012_regs_table_init(void)
 	ret = vfs_read(filp, (char __user *)dp, l, &pos);
 
 	if (ret != l) {
-		CAM_DEBUG("Failed to read file ret = %d", ret);
+		cam_err(" Failed to read file ret = %d", ret);
 		vfree(dp);
 		filp_close(filp, current->files);
 		return -EINVAL;
@@ -461,18 +467,20 @@ void isx012_regs_table_init(void)
 
 	*((isx012_regs_table + isx012_regs_table_size) - 1) = '\0';
 
-	CAM_DEBUG("isx012_reg_table_init");
+	CAM_DEBUG(" X");
 	return 0;
 }
 
 void isx012_regs_table_exit(void)
 {
-	CAM_DEBUG("%s %d", __func__, __LINE__);
+	CAM_DEBUG(" E");
 
 	if (isx012_regs_table) {
 		vfree(isx012_regs_table);
 		isx012_regs_table = NULL;
 	}
+
+	CAM_DEBUG(" X");
 }
 
 static int isx012_define_table()
@@ -490,7 +498,7 @@ static int isx012_define_table()
 	*(token_buf + 4) = '\0';
 	memset(gtable_buf, 9999, TABLE_MAX_NUM);
 
-	printk(KERN_DEBUG "isx012_define_table start!\n");
+	CAM_DEBUG(" E");
 
 	start = strstr(isx012_regs_table, "aeoffset_table");
 	end = strstr(start, "};");
@@ -500,7 +508,7 @@ static int isx012_define_table()
 	while (1) {
 		reg = strstr(start, "	");
 		if ((reg == NULL) || (reg > end)) {
-			printk(KERN_DEBUG "isx012_define_table read end!\n");
+			CAM_DEBUG(" end!");
 			break;
 		}
 
@@ -547,11 +555,12 @@ static int isx012_define_table()
 #if FOR_DEBUG	/*Only debug*/
 	index_2 = 0;
 	while (index_2 < TABLE_MAX_NUM) {
-		printk(KERN_DEBUG "[%d]%d ", index_2, gtable_buf[index_2]);
+		CAM_DEBUG(" [%d]%d ", index_2, gtable_buf[index_2]);
 		index_2++;
 	}
 #endif
-	printk(KERN_DEBUG "isx012_define_table end!\n");
+
+	CAM_DEBUG(" X");
 
 	return 0;
 }
@@ -565,7 +574,7 @@ static int isx012_define_read(char *name, int len_size)
 	*(reg_7 + 6) = '\0';
 	*(reg_5 + 4) = '\0';
 
-	printk(KERN_DEBUG "isx012_define_read start!\n");
+	CAM_DEBUG(" E");
 
 	start = strstr(isx012_regs_table, name);
 	end = strstr(start, "tuning");
@@ -587,14 +596,14 @@ static int isx012_define_read(char *name, int len_size)
 			kstrtoul(reg_5, 10, &define_value);
 		}
 	}
-	printk(KERN_DEBUG "isx012_define_read end (0x%x)!\n", define_value);
+	CAM_DEBUG(" X (0x%x)!", define_value);
 
 	return define_value;
 }
 
 void isx012_AEgain_offset_tuning(void)
 {
-	CAM_DEBUG(" E ");
+	CAM_DEBUG(" E");
 
 	gAE_OFSETVAL = isx012_define_read("AE_OFSETVAL", 4);
 	gAE_MAXDIFF = isx012_define_read("AE_MAXDIFF", 4);
@@ -616,8 +625,8 @@ static int isx012_write_regs_from_sd(char *name)
 	*(data_buf2 + 6) = '\0';
 	*(len_buf + 4) = '\0';
 
-	CAM_DEBUG("isx012_regs_table_write start!");
-	CAM_DEBUG("E string = %s", name);
+	CAM_DEBUG(" isx012_regs_table_write start!");
+	CAM_DEBUG(" E string = %s", name);
 
 	start = strstr(isx012_regs_table, name);
 	end = strstr(start, "};");
@@ -651,7 +660,7 @@ static int isx012_write_regs_from_sd(char *name)
 					start = (reg + 24);
 			}
 			size = NULL;
-			CAM_DEBUG("delay 0x%04x, value 0x%04x, , len 0x%02x",
+			CAM_DEBUG(" delay 0x%04x, value 0x%04x, , len 0x%02x",
 				  addr, value, len);
 			if (addr == 0xFFFF)
 				msleep(value);
@@ -660,7 +669,7 @@ static int isx012_write_regs_from_sd(char *name)
 		}
 	}
 
-	CAM_DEBUG("isx005_regs_table_write end!");
+	CAM_DEBUG(" isx005_regs_table_write end!");
 
 	return 0;
 }
@@ -679,7 +688,11 @@ void isx012_set_init_mode(void)
 	isx012_ctrl->op_mode = CAMERA_MODE_INIT;
 	isx012_ctrl->af_mode = SHUTTER_AF_MODE;
 	isx012_ctrl->vtcall_mode = 0;
+#ifdef CONFIG_MACH_JAGUAR
 	isx012_ctrl->samsungapp = 0;
+#else
+	isx012_ctrl->samsungapp = 1; /* temp : SamsungApp 0, etc 1 */
+#endif
 
 	/* Lcd ON after AE, AWB operation */
 	isx012_i2c_write_multi(0x0282, 0x21, 0x01);
@@ -704,23 +717,24 @@ static int isx012_exif_shutter_speed(void)
 {
 	int err = 0;
 
-	unsigned int shutter_speed = 0;
+	unsigned short shutter_speed_l = 0;
+	unsigned short shutter_speed_h = 0;
 	unsigned char l_data[2] = {0, 0}, h_data[2] = {0, 0};
 
 	 /*SHT_TIME_OUT_L */
 	err = isx012_i2c_read_multi(0x019C, (unsigned long *)l_data);
 	if (err < 0)
-		pr_err("%s: i2c read returned error, %d\n", __func__, err);
+		cam_err(" i2c read returned error, %d", err);
 	/* SHT_TIME_OUT_H */
 	err = isx012_i2c_read(0x019E, (unsigned short *)h_data);
 	if (err < 0)
-		pr_err("%s: i2c read returned error, %d\n", __func__, err);
+		cam_err(" i2c read returned error, %d", err);
 
-	shutter_speed = (h_data[1] << 24 | h_data[0] << 16
-			| l_data[1] << 8 | l_data[0]);
+	shutter_speed_l = (l_data[1] << 8 | l_data[0]);
+	shutter_speed_h = (h_data[1] << 8 | h_data[0]);
 
-	isx012_exif->shutterspeed_low = (l_data[1] << 8 | l_data[0]);
-	isx012_exif->shutterspeed_high = (h_data[1] << 8 | h_data[0]);
+	isx012_exif->shutterspeed = ((100000000 /
+		(shutter_speed_l + (shutter_speed_h << 16)))+50)/100;
 
 	return err;
 }
@@ -736,7 +750,7 @@ static int isx012_exif_iso(void)
 					1250, 1600};
 	err = isx012_i2c_read(0x019A, r_data);  /* ISOSENE_OUT */
 	if (err < 0)
-		pr_err("%s: i2c read returned error, %d\n", __func__, err);
+		cam_err(" i2c read returned error, %d", err);
 	exif_iso = r_data[0];
 
 	isx012_exif->iso = iso_table[exif_iso-1];
@@ -745,24 +759,16 @@ static int isx012_exif_iso(void)
 
 static int isx012_get_exif(int exif_cmd, unsigned short value2)
 {
-	unsigned short val_1, val_2;
 	unsigned short val = 0;
 
 	switch (exif_cmd) {
 	case EXIF_SHUTTERSPEED:
-		val_1 = isx012_exif->shutterspeed_low;
-		val_2 = isx012_exif->shutterspeed_high;
-		if (value2 == 1)	/* shutter speed high */
-			val = val_2;
-		else			/* shutter speed low */
-			val = val_1;
-
-		CAM_DEBUG("exif shutter speed : %d, %d", val_2, val_1);
+		/* shutter speed low */
+		val = isx012_exif->shutterspeed;
 		break;
 
 	case EXIF_ISO:
 		val = isx012_exif->iso;
-		CAM_DEBUG("exif iso value read : %d", val);
 		break;
 
 	default:
@@ -779,17 +785,17 @@ void isx012_get_LuxValue(void)
 
 	err = isx012_i2c_read(0x01A5, &read_val);
 	if (err < 0)
-		pr_err("%s: i2c read returned error, %d\n", __func__, err);
+		cam_err(" i2c read returned error, %d", err);
 
 	isx012_ctrl->lux = 0x00FF & read_val;
-	CAM_DEBUG("Lux = %d", isx012_ctrl->lux);
+	CAM_DEBUG(" Lux = %d", isx012_ctrl->lux);
 }
 
 void isx012_get_LowLightCondition_Normal(void)
 {
 	switch (isx012_ctrl->settings.brightness) {
 	case CAMERA_EV_M4:
-		CAM_DEBUG("EV_M4");
+		CAM_DEBUG(" EV_M4");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_M4)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -797,7 +803,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_M3:
-		CAM_DEBUG("EV_M3");
+		CAM_DEBUG(" EV_M3");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_M3)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -805,7 +811,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_M2:
-		CAM_DEBUG("EV_M2");
+		CAM_DEBUG(" EV_M2");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_M2)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -813,7 +819,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_M1:
-		CAM_DEBUG("EV_M1");
+		CAM_DEBUG(" EV_M1");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_M1)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -821,7 +827,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_P1:
-		CAM_DEBUG("EV_P1");
+		CAM_DEBUG(" EV_P1");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_P1)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -829,7 +835,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_P2:
-		CAM_DEBUG("EV_P2");
+		CAM_DEBUG(" EV_P2");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_P2)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -837,7 +843,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_P3:
-		CAM_DEBUG("EV_P3");
+		CAM_DEBUG(" EV_P3");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_P3)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -845,7 +851,7 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	case CAMERA_EV_P4:
-		CAM_DEBUG("EV_P4");
+		CAM_DEBUG(" EV_P4");
 		if (isx012_ctrl->lux >= LOWLIGHT_EV_P4)
 			isx012_ctrl->lowLight = 1;
 		else
@@ -853,8 +859,12 @@ void isx012_get_LowLightCondition_Normal(void)
 		break;
 
 	default:
-		CAM_DEBUG("default");
+		CAM_DEBUG(" default");
+#if defined(CONFIG_MACH_AEGIS2) || defined(CONFIG_MACH_EXPRESS)
+		if (isx012_ctrl->lux >= LOWLIGHT_DEFAULT2)
+#else
 		if (isx012_ctrl->lux >= LOWLIGHT_DEFAULT)
+#endif
 			isx012_ctrl->lowLight = 1;
 		else
 			isx012_ctrl->lowLight = 0;
@@ -890,15 +900,13 @@ static int isx012_get_LowLightCondition(void)
 		/*SHT_TIME_OUT_L */
 		err = isx012_i2c_read_multi(0x019C, (unsigned long *)l_data);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		ldata_temp = (l_data[1] << 8 | l_data[0]);
 
 		/*SHT_TIME_OUT_H */
 		err = isx012_i2c_read(0x019E, (unsigned short *)h_data);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		hdata_temp = (h_data[1] << 8 | h_data[0]);
 
 		isx012_ctrl->lux = (h_data[1] << 24 | h_data[0] << 16 |
@@ -932,7 +940,7 @@ static int isx012_get_LowLightCondition(void)
 		}
 	}
 
-	CAM_DEBUG("lowLight:%d", isx012_ctrl->lowLight);
+	CAM_DEBUG(" lowLight:%d", isx012_ctrl->lowLight);
 
 	return err;
 }
@@ -973,7 +981,7 @@ void isx012_mode_transtion_CM(void)
 	int status = 0;
 	int cm_state = 0;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	for (count = 0; count < 200; count++) {
 		isx012_i2c_read(0x000E, (unsigned short *)&status);
@@ -996,7 +1004,7 @@ void isx012_mode_transtion_CM(void)
 			break;
 		usleep(10*1000);
 	}
-	CAM_DEBUG("X");
+	CAM_DEBUG(" X");
 }
 
 void isx012_wait_for_VINT(void)
@@ -1005,7 +1013,7 @@ void isx012_wait_for_VINT(void)
 	int status = 0;
 	int vint_state = 0;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	for (count = 0; count < 100; count++) {
 		isx012_i2c_read(0x000E, (unsigned short *)&status);
@@ -1029,7 +1037,7 @@ void isx012_wait_for_VINT(void)
 
 		usleep(1000);
 	}
-	CAM_DEBUG("X");
+	CAM_DEBUG(" X");
 }
 
 
@@ -1039,20 +1047,18 @@ void isx012_Sensor_Calibration(void)
 	int status = 0;
 	int temp = 0;
 
-	CAM_DEBUG(" E ");
+	CAM_DEBUG(" E");
 
 	/* Read OTP1 */
 	err = isx012_i2c_read(0x004F, (unsigned short *)&status);
 	if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+		cam_err(" i2c read returned error, %d", err);
 
 	if ((status & 0x1) == 0x1) {
 		/* Read ShadingTable */
 		err = isx012_i2c_read(0x005C, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		temp = (status & 0x03C0) >> 6;
 
 		/* Write Shading Table */
@@ -1073,48 +1079,42 @@ void isx012_Sensor_Calibration(void)
 		/* Write NorR */
 		err = isx012_i2c_read(0x0054, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		temp = status & 0x3FFF;
 		isx012_i2c_write_multi(0x6804, temp, 0x02);
 
 		/* Write NorB */
 		err = isx012_i2c_read(0x0056, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		temp = status & 0x3FFF;
 		isx012_i2c_write_multi(0x6806, temp, 0x02);
 
 		/* Write PreR */
 		err = isx012_i2c_read(0x005A, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		temp = (status & 0x0FFC) >> 2;
 		isx012_i2c_write_multi(0x6808, temp, 0x02);
 
 		/* Write PreB */
 		err = isx012_i2c_read(0x005B, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 		temp = (status & 0x3FF0) >> 4;
 		isx012_i2c_write_multi(0x680A, temp, 0x02);
 	} else {
 		/* Read OTP0 */
 		err = isx012_i2c_read(0x0040, (unsigned short *)&status);
 		if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+			cam_err(" i2c read returned error, %d", err);
 
 		if ((status & 0x1) == 0x1) {
 			/* Read ShadingTable */
 			err = isx012_i2c_read(0x004D,
 					(unsigned short *)&status);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 			temp = (status & 0x03C0) >> 6;
 
 			/* Write Shading Table */
@@ -1136,20 +1136,17 @@ void isx012_Sensor_Calibration(void)
 			err = isx012_i2c_read(0x0045,
 					(unsigned short *)&status);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 			temp = status & 0x3FFF;
 			err = isx012_i2c_write_multi(0x6804, temp, 0x02);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 
 			/* Write NorB */
 			err = isx012_i2c_read(0x0047,
 					(unsigned short *)&status);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 			temp = status & 0x3FFF;
 			isx012_i2c_write_multi(0x6806, temp, 0x02);
 
@@ -1157,8 +1154,7 @@ void isx012_Sensor_Calibration(void)
 			err = isx012_i2c_read(0x004B,
 					(unsigned short *)&status);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 			temp = (status & 0x0FFC) >> 2;
 			isx012_i2c_write_multi(0x6808, temp, 0x02);
 
@@ -1166,15 +1162,14 @@ void isx012_Sensor_Calibration(void)
 			err = isx012_i2c_read(0x004C,
 					(unsigned short *)&status);
 			if (err < 0)
-				pr_err("%s: i2c read returned error, %d\n",
-						__func__, err);
+				cam_err(" i2c read returned error, %d", err);
 			temp = (status & 0x3FF0) >> 4;
 			isx012_i2c_write_multi(0x680A, temp, 0x02);
 		} else
 		ISX012_BURST_WRITE_LIST(isx012_Shading_Nocal);
 	}
 
-CAM_DEBUG(" X ");
+	CAM_DEBUG(" X");
 
 }
 
@@ -1187,16 +1182,15 @@ static int isx012_get_af_result(void)
 	err = isx012_i2c_read(0x8B8B,
 			(unsigned short *)&status);
 	if (err < 0)
-			pr_err("%s: i2c read returned error, %d\n",
-					__func__, err);
+		cam_err(" i2c read returned error, %d", err);
 	if ((status & 0x1) == 0x1) {
-		cam_info(" AF success");
+		CAM_DEBUG(" AF success");
 		ret = 1;
 	} else if ((status & 0x1) == 0x0) {
-		cam_info(" AF fail");
+		CAM_DEBUG(" AF fail");
 		ret = 2;
 	} else {
-		cam_info(" AF move");
+		CAM_DEBUG(" AF move");
 		ret = 0;
 	}
 
@@ -1209,7 +1203,7 @@ static int calculate_AEgain_offset(uint16_t ae_auto,
 	int err = -EINVAL;
 	int16_t aediff, aeoffset;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	/*AE_Gain_Offset = Target - ERRSCL_NOW*/
 	aediff = (ae_now + ersc_now) - (ae_auto + ersc_auto);
@@ -1242,9 +1236,6 @@ static int calculate_AEgain_offset(uint16_t ae_auto,
 			aeoffset = -aeoffset_table[aediff / 10];
 	}
 #endif
-	/* pr_info("[For tuning] aeoffset(%d) | aediff(%d) = (ae_now(%d)
-			+ ersc_now(%d)) - (ae_auto(%d) + ersc_auto(%d))\n",
-	     aeoffset, aediff, ae_now, ersc_now, ae_auto, ersc_auto); */
 
 	/*SetAE Gain offset*/
 	err = isx012_i2c_write_multi(CAP_GAINOFFSET, aeoffset, 2);
@@ -1258,6 +1249,8 @@ static int isx012_get_af_status(void)
 	int16_t ersc_data[1] = { 0 };
 	int16_t aescl_data[1] = { 0 };
 	int16_t ae_scl = 0;
+
+	CAM_DEBUG(" E");
 
 	if (isx012_ctrl->af_status == 1) {
 		isx012_i2c_write_multi(0x0012, 0x10, 0x01);
@@ -1275,7 +1268,7 @@ static int isx012_get_af_status(void)
 			ae_scl = aescl_data[0];
 		}
 
-		cam_info("Single AF off");
+		CAM_DEBUG(" Single AF off");
 		if (isx012_ctrl->af_mode == SHUTTER_AF_MODE)
 			ISX012_WRITE_LIST(isx012_AF_SAF_OFF);
 		else
@@ -1289,11 +1282,7 @@ static int isx012_get_af_status(void)
 			&& (isx012_ctrl->lowLight))
 		    || (isx012_ctrl->flash_mode == CAMERA_FLASH_ON)) {
 			ae_scl = ae_scl - 4802;
-
-			/* pr_info("[For tuning] original ae_scl(%d) - 4129
-				=> ae_scl(%d)\n", ae_scl + 4129, ae_scl); */
 			isx012_i2c_write_multi(0x5E02, ae_scl, 0x02);
-
 			calculate_AEgain_offset(g_ae_auto, g_ae_now,
 					    g_ersc_auto, g_ersc_now);
 			isx012_set_flash(FLASH_OFF);
@@ -1301,6 +1290,7 @@ static int isx012_get_af_status(void)
 	}
 
 	CAM_DEBUG(" X %d", isx012_ctrl->af_status);
+
 	return isx012_ctrl->af_status;
 }
 
@@ -1310,6 +1300,8 @@ static int isx012_get_camcorder_af_status(void)
 	int16_t ersc_data[1] = { 0 };
 	int16_t aescl_data[1] = { 0 };
 	int16_t ae_scl = 0;
+
+	CAM_DEBUG(" E");
 
 	if (isx012_ctrl->af_status == 1) {
 		isx012_i2c_write_multi(0x0012, 0x10, 0x01);
@@ -1327,7 +1319,7 @@ static int isx012_get_camcorder_af_status(void)
 			ae_scl = aescl_data[0];
 		}
 
-		cam_info("Single AF off");
+		CAM_DEBUG(" Single AF off");
 		ISX012_WRITE_LIST(isx012_AF_TouchSAF_OFF);
 
 		/*wait 1V time (66ms)*/
@@ -1336,17 +1328,14 @@ static int isx012_get_camcorder_af_status(void)
 		/*AE SCL*/
 		if (isx012_ctrl->flash_mode == CAMERA_FLASH_ON) {
 			ae_scl = ae_scl - 4802;
-
-			/* pr_info("[For tuning] original ae_scl(%d) - 4129
-				=> ae_scl(%d)\n", ae_scl + 4129, ae_scl); */
 			isx012_i2c_write_multi(0x5E02, ae_scl, 0x02);
-
 			calculate_AEgain_offset(g_ae_auto, g_ae_now,
 						g_ersc_auto, g_ersc_now);
 		}
 	}
 
 	CAM_DEBUG(" X %d", isx012_ctrl->af_status);
+
 	return isx012_ctrl->af_status;
 }
 
@@ -1373,28 +1362,92 @@ static int isx012_get_sensor_af_status(void)
 static int isx012_get_flash_status(void)
 {
 	int flash_status = 0;
+
 	if (((isx012_ctrl->flash_mode == CAMERA_FLASH_AUTO)
 		&& (isx012_ctrl->lowLight))
 		|| (isx012_ctrl->flash_mode == CAMERA_FLASH_ON)) {
 		flash_status = 1;
 	}
+
 	CAM_DEBUG(" %d", flash_status);
+
 	return flash_status;
 }
 
 static void isx012_set_flash(int mode)
 {
 	int i = 0;
+
 	CAM_DEBUG(" %d", mode);
 
 	if (torchonoff > 0) {
-		cam_info("[TorchOnOFF = %d] Do not control flash!",
+		CAM_DEBUG(" [TorchOnOFF = %d] Do not control flash!",
 			torchonoff);
 		return;
 	}
-
+#if defined(CONFIG_MACH_EXPRESS)
 	if (mode == MOVIE_FLASH) {
-		cam_info("MOVIE FLASH ON");
+		CAM_DEBUG(" MOVIE FLASH ON");
+		if (system_rev >= BOARD_REV05) {
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_set, 0);
+		} else {
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_en, 0);
+		}
+		if (system_rev >= BOARD_REV05) {
+			for (i = 1; i > 0; i--) {
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_en, 0);
+				udelay(1);
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_en, 1);
+				udelay(1);
+			}
+		} else {
+			for (i = FLASH_PULSE_CNT; i > 0; i--) {
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_set, 1);
+				udelay(1);
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_set, 0);
+				udelay(1);
+			}
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_set, 1);
+			usleep(2 * 1000);
+		}
+	} else if (mode == CAPTURE_FLASH) {
+		if (system_rev >= BOARD_REV05) {
+			CAM_DEBUG(" CAPTURE FLASH ON EXPRESS REV 05");
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_set, 0);
+			for (i = 11 ; i > 0; i--) {
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_en, 0);
+				udelay(1);
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_en, 1);
+				udelay(1);
+			}
+			usleep(2 * 1000);
+		} else {
+			CAM_DEBUG(" CAPTURE FLASH ON ");
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_en, 1);
+			gpio_set_value_cansleep(isx012_ctrl->sensordata->
+				sensor_platform_info->flash_set, 0);
+		}
+	}
+#else
+	if (mode == MOVIE_FLASH) {
+		CAM_DEBUG(" MOVIE FLASH ON");
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_en, 0);
 
@@ -1412,13 +1465,15 @@ static void isx012_set_flash(int mode)
 					sensor_platform_info->flash_set, 1);
 		usleep(2 * 1000);
 	} else if (mode == CAPTURE_FLASH) {
-		cam_info("CAPTURE FLASH ON");
+		CAM_DEBUG(" CAPTURE FLASH ON");
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_en, 1);
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_set, 0);
-	} else {
-		cam_info("FLASH OFF");
+	}
+#endif
+	else {
+		CAM_DEBUG(" FLASH OFF");
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_en, 0);
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
@@ -1483,6 +1538,11 @@ static void isx012_set_af_mode(int mode)
 		break;
 
 	default:
+		cam_err(" set default AF auto.", mode);
+		ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
+		if (isx012_ctrl->settings.focus_status != IN_AUTO_MODE)
+			ISX012_WRITE_LIST(isx012_AF_ReStart);
+		isx012_ctrl->settings.focus_status = IN_AUTO_MODE;
 		break;
 	}
 
@@ -1494,12 +1554,12 @@ static int isx012_set_af_stop(int af_check)
 	CAM_DEBUG(" %d", af_check);
 
 	if (af_check == 1) {
-		if (isx012_ctrl->settings.focus_mode == CAMERA_AF_AUTO) {
-			CAM_DEBUG(" AF cancel : macro_OFF ");
-			ISX012_WRITE_LIST(isx012_AF_Cancel_Macro_OFF);
-		} else {
+		if (isx012_ctrl->settings.focus_mode == CAMERA_AF_MACRO) {
 			CAM_DEBUG(" AF cancel : macro_ON ");
 			ISX012_WRITE_LIST(isx012_AF_Cancel_Macro_ON);
+		} else {
+			CAM_DEBUG(" AF cancel : macro_OFF ");
+			ISX012_WRITE_LIST(isx012_AF_Cancel_Macro_OFF);
 		}
 	}
 
@@ -1509,7 +1569,7 @@ static int isx012_set_af_stop(int af_check)
 		ISX012_BURST_WRITE_LIST(isx012_Flash_OFF);
 
 		if (isx012_ctrl->awb_mode == CAMERA_WHITE_BALANCE_AUTO) {
-			CAM_DEBUG("AWB mode : AUTO");
+			CAM_DEBUG(" AWB mode : AUTO");
 			isx012_i2c_write_multi(0x0282, 0x20, 0x01);
 		}
 		isx012_i2c_write_multi(0x8800, 0x01, 0x01);
@@ -1535,7 +1595,7 @@ static int isx012_set_camcorder_af_stop(int af_check)
 		ISX012_BURST_WRITE_LIST(isx012_Flash_OFF);
 
 		if (isx012_ctrl->awb_mode == CAMERA_WHITE_BALANCE_AUTO) {
-			CAM_DEBUG("AWB mode : AUTO");
+			CAM_DEBUG(" AWB mode : AUTO");
 			isx012_i2c_write_multi(0x0282, 0x20, 0x01);
 		}
 		isx012_i2c_write_multi(0x8800, 0x01, 0x01);
@@ -1577,7 +1637,7 @@ void isx012_set_preview(void)
 {
 	if ((isx012_ctrl->settings.scenemode == CAMERA_SCENE_NIGHT)
 		&& (isx012_ctrl->lowLight)) {
-		cam_info("Lowlux_Nightshot - 500ms delay");
+		CAM_DEBUG(" Lowlux_Nightshot - 500ms delay");
 		ISX012_WRITE_LIST(isx012_Lowlux_Night_Reset);
 		msleep(500);
 	}
@@ -1587,12 +1647,12 @@ void isx012_set_preview(void)
 
 	/*start preview*/
 	if (isx012_ctrl->cam_mode == MOVIE_MODE) {
-		cam_info(" ** Camcorder Mode");
+		CAM_DEBUG(" ** Camcorder Mode");
 		ISX012_BURST_WRITE_LIST(isx012_Camcorder_Mode_ON);
 		ISX012_WRITE_LIST(isx012_Preview_Mode);
 		isx012_ctrl->op_mode = CAMERA_MODE_RECORDING;
 	} else {
-		cam_info(" ** Preview Mode");
+		CAM_DEBUG(" ** Preview Mode");
 		ISX012_WRITE_LIST(isx012_Preview_Mode);
 		isx012_ctrl->op_mode = CAMERA_MODE_PREVIEW;
 	}
@@ -1600,32 +1660,70 @@ void isx012_set_preview(void)
 	isx012_mode_transtion_CM();
 
 	if (isx012_ctrl->settings.scenemode == CAMERA_SCENE_FIRE) {
-		cam_info("firework - 1000ms delay");
+		CAM_DEBUG(" firework - 1000ms delay");
 		msleep(1000);
 	}
 }
 
 void isx012_set_capture(void)
 {
-	CAM_DEBUG("E");
+	bool bCaptureFlash = 0;
+	int timeout_cnt = 0;
+	short unsigned int r_data[1] = { 0 };
+
+	CAM_DEBUG(" E");
 
 	ISX012_WRITE_LIST(isx012_Capture_SizeSetting);
 
 	if (((isx012_ctrl->flash_mode == CAMERA_FLASH_AUTO)
 		&& (isx012_ctrl->lowLight))
-		|| (isx012_ctrl->flash_mode == CAMERA_FLASH_ON)) {
-		if (isx012_ctrl->af_mode == TOUCH_AF_MODE) {
-			cam_info("[for tuning] touchaf :%d",
-				isx012_ctrl->af_mode);
-			isx012_i2c_write_multi(0x0294, 0x02, 0x01);
-			isx012_i2c_write_multi(0x0297, 0x02, 0x01);
-			isx012_i2c_write_multi(0x029A, 0x02, 0x01);
-			isx012_i2c_write_multi(0x029E, 0x02, 0x01);
+		|| (isx012_ctrl->flash_mode == CAMERA_FLASH_ON))
+		bCaptureFlash = 1;
+	else
+		bCaptureFlash = 0;
 
-			/*wait 1V time (66ms)*/
-			msleep(66);
+	if (g_bPreFlash != bCaptureFlash) {
+		CAM_DEBUG(" preFlash and Full Flash mode are not same. "
+					"Fast AE, AWB");
+		if (bCaptureFlash)
+			isx012_set_flash(CAPTURE_FLASH);
+
+		isx012_i2c_write_multi(0x0181, 0x01, 0x01);
+		isx012_i2c_write_multi(0x00B2, 0x03, 0x01);
+		isx012_i2c_write_multi(0x00B3, 0x03, 0x01);
+		isx012_i2c_write_multi(0x0081, 0x01, 0x01);
+
+		do {
+			isx012_i2c_read(0x0080, r_data);
+			if (r_data[0] == 0x1)
+				break;
+			mdelay(1);
+		} while (timeout_cnt++ < ISX012_DELAY_RETRIES);
+
+		timeout_cnt = 0;
+		do {
+			isx012_i2c_read(0x01B0, r_data);
+			if (r_data[0] == 0x0)
+				break;
+			mdelay(1);
+		} while (timeout_cnt++ < ISX012_DELAY_RETRIES);
+	} else {
+		if (((isx012_ctrl->flash_mode == CAMERA_FLASH_AUTO)
+			&& (isx012_ctrl->lowLight))
+			|| (isx012_ctrl->flash_mode == CAMERA_FLASH_ON)) {
+			if (isx012_ctrl->af_mode == TOUCH_AF_MODE) {
+				CAM_DEBUG(" [for tuning] touchaf :%d",
+					isx012_ctrl->af_mode);
+				isx012_i2c_write_multi(0x0294, 0x02, 0x01);
+				isx012_i2c_write_multi(0x0297, 0x02, 0x01);
+				isx012_i2c_write_multi(0x029A, 0x02, 0x01);
+				isx012_i2c_write_multi(0x029E, 0x02, 0x01);
+
+				/*wait 1V time (66ms)*/
+				msleep(66);
+			}
+			isx012_set_flash(CAPTURE_FLASH);
 		}
-		isx012_set_flash(CAPTURE_FLASH);
 	}
 
 	if ((isx012_ctrl->settings.scenemode == CAMERA_SCENE_NIGHT)
@@ -1644,8 +1742,12 @@ void isx012_set_capture(void)
 		short unsigned int r_data[1] = { 0 };
 		int timeout_cnt = 0;
 
-		/*wait 1V time (210ms)*/
+	/*wait 1V time (210ms)*/
+#if defined(CONFIG_MACH_AEGIS2)
+		msleep(260);
+#else
 		msleep(210);
+#endif
 
 		do {
 			isx012_i2c_read(0x8A24, r_data);
@@ -1669,7 +1771,7 @@ void isx012_set_capture(void)
 	isx012_ctrl->af_mode = SHUTTER_AF_MODE;
 	isx012_ctrl->op_mode = CAMERA_MODE_CAPTURE;
 
-	CAM_DEBUG("X");
+	CAM_DEBUG(" X");
 }
 
 #if defined(CONFIG_ISX012) && defined(CONFIG_S5K8AAY) /* JAGUAR */
@@ -1690,7 +1792,7 @@ static int32_t isx012_sensor_setting(int update_type, int rt)
 				{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
 			};
 
-			CAM_DEBUG("UPDATE_PERIODIC");
+			CAM_DEBUG(" UPDATE_PERIODIC");
 
 			v4l2_subdev_notify(isx012_ctrl->sensor_dev,
 					   NOTIFY_ISPIF_STREAM,
@@ -1738,7 +1840,7 @@ static int32_t isx012_sensor_setting(int update_type, int rt)
 	struct msm_camera_csid_params isx012_csid_params;
 	struct msm_camera_csiphy_params isx012_csiphy_params;
 
-	CAM_DEBUG(" E ");
+	CAM_DEBUG(" E");
 
 	switch (update_type) {
 	case REG_INIT:
@@ -1751,7 +1853,7 @@ static int32_t isx012_sensor_setting(int update_type, int rt)
 				{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
 			};
 
-			CAM_DEBUG("UPDATE_PERIODIC");
+			CAM_DEBUG(" UPDATE_PERIODIC");
 
 			v4l2_subdev_notify(isx012_ctrl->sensor_dev,
 					   NOTIFY_ISPIF_STREAM,
@@ -1885,12 +1987,12 @@ static int isx012_set_whitebalance(int wb)
 static void isx012_check_dataline(int val)
 {
 	if (val) {
-		cam_info("DTP ON");
+		CAM_DEBUG(" DTP ON");
 		ISX012_WRITE_LIST(isx012_DTP_Init);
 		isx012_ctrl->dtpTest = 1;
 
 	} else {
-		cam_info("DTP OFF");
+		CAM_DEBUG(" DTP OFF");
 		ISX012_WRITE_LIST(isx012_DTP_Stop);
 		isx012_ctrl->dtpTest = 0;
 	}
@@ -1899,11 +2001,11 @@ static void isx012_check_dataline(int val)
 static void isx012_set_ae_awb(int lock)
 {
 	if (lock) {
-		cam_info("AE_AWB LOCK");
+		CAM_DEBUG(" AE_AWB LOCK");
 		ISX012_WRITE_LIST(isx012_ae_awb_lock);
 
 	} else {
-		cam_info("AE_AWB UNLOCK");
+		CAM_DEBUG(" AE_AWB UNLOCK");
 		ISX012_WRITE_LIST(isx012_ae_awb_unlock);
 	}
 }
@@ -2022,12 +2124,12 @@ static void isx012_set_scene_mode(int mode)
 
 	if (isx012_ctrl->settings.focus_mode == CAMERA_SCENE_TEXT
 		&& mode != CAMERA_SCENE_TEXT) {
-		cam_info("isx012_AF_Macro_OFF");
+		CAM_DEBUG(" isx012_AF_Macro_OFF");
 		ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
 		ISX012_WRITE_LIST(isx012_AF_ReStart);
 	} else if (isx012_ctrl->settings.focus_mode != CAMERA_SCENE_TEXT
 		&& mode == CAMERA_SCENE_TEXT) {
-		cam_info("isx012_AF_Macro_ON");
+		CAM_DEBUG(" isx012_AF_Macro_ON");
 		ISX012_WRITE_LIST(isx012_AF_Macro_ON);
 		ISX012_WRITE_LIST(isx012_AF_ReStart);
 	}
@@ -2102,13 +2204,22 @@ static void isx012_set_af_status(int status)
 	uint16_t ae_data[1] = { 0 };
 	int16_t ersc_data[1] = { 0 };
 
+	g_bPreFlash = 0;
+
 	if (status) {		/* start AF */
-		cam_info(" START AF (mode = %s)",
+		CAM_DEBUG(" START AF (mode = %s)",
 			  (isx012_ctrl->af_mode == SHUTTER_AF_MODE) ?
 			  "shutter" : "touch");
 
 		if (isx012_ctrl->af_mode == SHUTTER_AF_MODE)
 			ISX012_BURST_WRITE_LIST(isx012_AF_Window_Reset);
+
+#if !(defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_STRETTO))
+		if (isx012_ctrl->settings.focus_mode == CAMERA_AF_MACRO)
+			ISX012_WRITE_LIST(isx012_AF_Init_Macro_ON);
+		else
+			ISX012_WRITE_LIST(isx012_AF_Init_Macro_OFF);
+#endif
 
 		isx012_get_LowLightCondition();
 
@@ -2131,7 +2242,7 @@ static void isx012_set_af_status(int status)
 
 			if (isx012_ctrl->awb_mode ==
 					CAMERA_WHITE_BALANCE_AUTO) {
-				cam_info("AWB mode : AUTO");
+				CAM_DEBUG(" AWB mode : AUTO");
 				isx012_i2c_write_multi(0x0282, 0x00, 0x01);
 			}
 
@@ -2145,6 +2256,7 @@ static void isx012_set_af_status(int status)
 			msleep(40);
 
 			isx012_set_flash(MOVIE_FLASH);
+			g_bPreFlash = 1;
 
 			do {
 				isx012_i2c_read(0x0080, r_data);
@@ -2161,7 +2273,7 @@ static void isx012_set_af_status(int status)
 				mdelay(1);
 			} while (timeout_cnt++ < ISX012_DELAY_RETRIES);
 		} else {
-#ifdef CONFIG_MACH_JAGUAR
+#if defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_STRETTO)
 			if (isx012_ctrl->samsungapp == 0) {
 				ISX012_WRITE_LIST(
 					isx012_Camcorder_Halfrelease_Mode);
@@ -2182,16 +2294,21 @@ static void isx012_set_af_status(int status)
 					&& (isx012_ctrl->lowLight)) {
 				ISX012_WRITE_LIST(
 				isx012_Lowlux_night_Halfrelease_Mode);
-			} else {
-				ISX012_WRITE_LIST(
+			} else {/* temp : SamsungApp 0, etc 1 */
+				if (isx012_ctrl->samsungapp == 0) {
+					ISX012_WRITE_LIST(
 						isx012_Halfrelease_Mode);
+				} else {
+					ISX012_WRITE_LIST(
+						isx012_Barcode_SAF);
+				}
 			}
 #endif
 			/*wait 1V time (40ms)*/
 			msleep(40);
 		}
 	} else {		/* stop AF */
-		CAM_DEBUG("stop AF");
+		CAM_DEBUG(" stop AF");
 		isx012_set_af_stop(1);
 	}
 }
@@ -2221,7 +2338,7 @@ static void isx012_set_camcorder_af_status(int status)
 
 			if (isx012_ctrl->awb_mode ==
 					CAMERA_WHITE_BALANCE_AUTO) {
-				cam_info("AWB mode : AUTO");
+				CAM_DEBUG(" AWB mode : AUTO");
 				isx012_i2c_write_multi(0x0282, 0x00, 0x01);
 			}
 
@@ -2249,7 +2366,7 @@ static void isx012_set_camcorder_af_status(int status)
 				mdelay(1);
 			} while (timeout_cnt++ < ISX012_DELAY_RETRIES);
 		} else {
-#ifdef CONFIG_MACH_JAGUAR
+#if defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_STRETTO)
 			ISX012_WRITE_LIST(
 				isx012_Camcorder_Halfrelease_Mode);
 #else
@@ -2260,7 +2377,7 @@ static void isx012_set_camcorder_af_status(int status)
 			msleep(40);
 		}
 	} else {		/* stop AF */
-		CAM_DEBUG("stop AF");
+		CAM_DEBUG(" stop AF");
 		isx012_set_camcorder_af_stop(1);
 	}
 }
@@ -2323,7 +2440,12 @@ static int isx012_set_touchaf_pos(int x, int y)
 }
 
 static struct msm_cam_clk_info cam_clk_info[] = {
+#if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_COMANCHE)\
+	|| defined(CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_AEGIS2)
+	{"cam_clk", MSM_SENSOR_MCLK_19HZ},
+#else
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
+#endif
 };
 
 #if defined(CONFIG_ISX012) && defined(CONFIG_S5K8AAY) /* JAGUAR */
@@ -2332,7 +2454,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	int rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_init();
@@ -2340,12 +2462,13 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
-		pr_err("%s: request gpio failed\n", __func__);
+		cam_err("%s: request gpio failed", __func__);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 0);
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
+
 	/*Power on the LDOs */
 	data->sensor_platform_info->sensor_power_on(0);
 
@@ -2357,7 +2480,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
 
 	if (rc < 0)
-		pr_err("%s: clk enable failed\n", __func__);
+		cam_err(" clk enable failed");
 
 	usleep(50);
 
@@ -2391,7 +2514,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/*Active*/
 	isx012_mode_transtion_CM();
 
-	cam_info("MIPI write");
+	CAM_DEBUG(" MIPI write");
 	rc = isx012_i2c_write_multi(0x5008, 0x00, 0x01);
 	if (rc < 0) {
 		cam_err("I2C ERROR: rc = %d", rc);
@@ -2404,7 +2527,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	isx012_set_init_mode();
 
-	CAM_DEBUG("X");
+	CAM_DEBUG(" X");
 
 	return rc;
 }
@@ -2417,7 +2540,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	unsigned short test_read;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG(" E ");
+	CAM_DEBUG(" E");
 
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_init();
@@ -2426,23 +2549,23 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
-		pr_err("%s: request gpio failed\n", __func__);
+		cam_err(" request gpio failed");
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
-	CAM_DEBUG("[isx012] check VT reset : %d", temp);
+	CAM_DEBUG(" check VT reset : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_ISP_INIT : %d", temp);
+	CAM_DEBUG(" CAM_5M_ISP_INIT : %d", temp);
 
 	/*Power on the LDOs */
 	data->sensor_platform_info->sensor_power_on(0);
@@ -2450,7 +2573,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/*standy VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 1);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 
 	/*Set Main clock */
 	gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 1,
@@ -2463,30 +2586,30 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
 	if (rc < 0)
-		pr_err("%s: clk enable failed\n", __func__);
+		cam_err(" clk enable failed");
 
 	usleep(15);
 
 	/*reset VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
-	CAM_DEBUG("[isx012] check VT reset : %d", temp);
+	CAM_DEBUG(" check VT reset : %d", temp);
 	usleep(100);
 
 	/*off standy VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 	usleep(125 * 1000);
 
 	/*reset Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 	usleep(6 * 1000);
 
 	/* sensor validation test */
-	CAM_DEBUG("Main Camera Sensor Validation Test");
+	CAM_DEBUG(" Main Camera Sensor Validation Test");
 	rc = isx012_i2c_read(0x000E, (unsigned short *)&test_read);
 	if (rc < 0) {
 		pr_info(" Error in Main Camera Sensor Validation Test");
@@ -2494,24 +2617,24 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 
 	/*I2C */
-	CAM_DEBUG("[isx012] Mode Trandition 1");
+	CAM_DEBUG(" Mode Trandition 1");
 
 	isx012_mode_transtion_OM();
 
 	/*usleep(10*1000);
 	   ISX012_WRITE_LIST(isx012_Pll_Setting_3);
-	   CAM_DEBUG("[isx012] Mode Trandition 2"); */
+	   CAM_DEBUG(" Mode Trandition 2"); */
 
 
 	ISX012_WRITE_LIST(isx012_Pll_Setting_4);
-	CAM_DEBUG("[isx012] Mode Trandition 2");
+	CAM_DEBUG(" Mode Trandition 2");
 
 	usleep(200); /* 0.2ms */
 
 	/*standby Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_ISP_INIT : %d", temp);
+	CAM_DEBUG(" CAM_5M_ISP_INIT : %d", temp);
 	usleep(12*1000);
 
 	isx012_mode_transtion_OM();
@@ -2519,7 +2642,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/*Active*/
 	isx012_mode_transtion_CM();
 
-	CAM_DEBUG("[isx012] MIPI write");
+	CAM_DEBUG(" MIPI write");
 
 	isx012_i2c_write_multi(0x5008, 0x00, 0x01);
 	isx012_Sensor_Calibration();
@@ -2527,7 +2650,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	isx012_set_init_mode();
 
-	CAM_DEBUG("X");
+	CAM_DEBUG(" X");
 
 	return rc;
 }
@@ -2539,7 +2662,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	unsigned short test_read;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG(" E ");
+	CAM_DEBUG(" E");
 
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_init();
@@ -2548,23 +2671,23 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
-		pr_err("%s: request gpio failed\n", __func__);
+		cam_err(" request gpio failed");
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
-	CAM_DEBUG("[isx012] check VT reset : %d", temp);
+	CAM_DEBUG(" check VT reset : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_ISP_INIT : %d", temp);
+	CAM_DEBUG(" CAM_5M_ISP_INIT : %d", temp);
 
 	/*Power on the LDOs */
 	data->sensor_platform_info->sensor_power_on(0);
@@ -2581,29 +2704,30 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
 	if (rc < 0)
-		pr_err("%s: clk enable failed\n", __func__);
+		cam_err(" clk enable failed");
 
 	usleep(1000);/* > 1clk */
 
 	/*reset Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 	usleep(6 * 1000);
 
 	isx012_mode_transtion_OM();
 
 	/*PreSleep*/
 	ISX012_BURST_WRITE_LIST(isx012_Pll_Setting_4);
-	mdelay(1);
+	usleep(200);
+
 	isx012_mode_transtion_OM();
-	mdelay(1); /* > 0.2ms */
+	usleep(300);
 
 	/*Sleep*/
 	/*standby Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_STBY : %d", temp);
+	CAM_DEBUG(" CAM_5M_STBY : %d", temp);
 	mdelay(13);
 
 	isx012_mode_transtion_OM();
@@ -2611,22 +2735,95 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/*Active*/
 	isx012_mode_transtion_CM();
 
-	CAM_DEBUG("[isx012] MIPI write");
+	CAM_DEBUG(" MIPI write");
 	rc = isx012_i2c_write_multi(0x5008, 0x00, 0x01);
 	if (rc < 0) {  /* sensor validation check */
-		CAM_DEBUG("[isx012] I2C ERROR: rc = %d", rc);
+		cam_err(" I2C ERROR: rc = %d", rc);
 		return rc;
 	}
 
-	CAM_DEBUG("[isx012] Calibration");
+	CAM_DEBUG(" Calibration");
 	isx012_Sensor_Calibration();
 
-	CAM_DEBUG("[isx012] Init register");
+	CAM_DEBUG(" Init register");
 	ISX012_BURST_WRITE_LIST(isx012_Init_Reg);
 
 	isx012_set_init_mode();
 
-	CAM_DEBUG(" X ");
+	CAM_DEBUG(" X");
+
+	return rc;
+}
+#elif defined(CONFIG_ISX012) && defined(CONFIG_S5K6A3YX) /* stretto */
+static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int rc = 0;
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+
+	CAM_DEBUG(" E");
+
+#ifdef CONFIG_LOAD_FILE
+	isx012_regs_table_init();
+#endif
+
+	rc = msm_camera_request_gpio_table(data, 1);
+	if (rc < 0)
+		cam_err("%s: request gpio failed", __func__);
+
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
+
+	/*Power on the LDOs */
+	data->sensor_platform_info->sensor_power_on(0);
+
+	/*Set Main Clock*/
+	if (s_ctrl->clk_rate != 0)
+		cam_clk_info->clk_rate = s_ctrl->clk_rate;
+
+	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
+
+	if (rc < 0)
+		cam_err(" clk enable failed");
+
+	usleep(50);
+
+	/*reset Main cam */
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
+	mdelay(8);
+
+	isx012_mode_transtion_OM();
+
+	/*PreSleep*/
+	ISX012_BURST_WRITE_LIST(isx012_Pll_Setting_4);
+	usleep(2*1000);
+
+	isx012_mode_transtion_OM();
+
+	/*Sleep*/
+	/*standby Main cam */
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 1);
+	mdelay(13);
+
+	isx012_mode_transtion_OM();
+
+	/*Active*/
+	isx012_mode_transtion_CM();
+
+	CAM_DEBUG(" MIPI write");
+	rc = isx012_i2c_write_multi(0x5008, 0x00, 0x01);
+	if (rc < 0) {
+		cam_err("I2C ERROR: rc = %d", rc);
+		return rc;
+	}
+
+	isx012_Sensor_Calibration();
+
+	ISX012_BURST_WRITE_LIST(isx012_Init_Reg);
+
+	isx012_set_init_mode();
+
+	CAM_DEBUG(" X");
 
 	return rc;
 }
@@ -2676,7 +2873,7 @@ void sensor_native_control(void __user *arg)
 		break;
 
 	case EXT_CAM_MOVIE_MODE:
-		cam_info("MOVIE mode : %d", ctrl_info.value_1);
+		CAM_DEBUG(" MOVIE mode : %d", ctrl_info.value_1);
 		isx012_ctrl->cam_mode = ctrl_info.value_1;
 		break;
 
@@ -2746,14 +2943,18 @@ void sensor_native_control(void __user *arg)
 			ctrl_info.value_2);
 		break;
 
+	case EXT_CAM_VT_MODE:
+		CAM_DEBUG(" VT mode : %d", ctrl_info.value_1);
+		isx012_ctrl->vtcall_mode = ctrl_info.value_1;
+		break;
+
 	case EXT_CAM_SET_FPS:
 		isx012_set_frame_rate(ctrl_info.value_1);
 		break;
 
 	case EXT_CAM_SAMSUNG_CAMERA:
+		CAM_DEBUG(" SAMSUNG camera : %d", ctrl_info.value_1);
 		isx012_ctrl->samsungapp = ctrl_info.value_1;
-		CAM_DEBUG("[isx012] samsungapp setting %d",
-			isx012_ctrl->samsungapp);
 		break;
 
 	default:
@@ -2812,7 +3013,7 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	int rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	isx012_set_flash(FLASH_OFF);
 
@@ -2844,12 +3045,15 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	/*power off the LDOs */
 	data->sensor_platform_info->sensor_power_off(0);
 
-	msm_camera_request_gpio_table(data, 0);
+	rc = msm_camera_request_gpio_table(data, 0);
+	if (rc < 0)
+		cam_err(" request gpio failed");
 
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_exit();
 #endif
-	CAM_DEBUG("X");
+
+	CAM_DEBUG(" X");
 
 	return rc;
 }
@@ -2860,7 +3064,7 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	int temp = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("[isx012] %s/%d", __func__, __LINE__);
+	CAM_DEBUG(" E");
 
 	isx012_set_flash(FLASH_OFF);
 
@@ -2870,18 +3074,18 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	/*standy VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 
 	/*standby Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_ISP_INIT : %d", temp);
+	CAM_DEBUG(" CAM_5M_ISP_INIT : %d", temp);
 	usleep(100 * 1000);
 
 	/*reset Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 
 	/*CAM_MCLK0*/
 	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
@@ -2894,7 +3098,7 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	/*reset VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
-	CAM_DEBUG("[isx012] check VT reset : %d", temp);
+	CAM_DEBUG(" check VT reset : %d", temp);
 	usleep(50);
 
 	/*power off the LDOs */
@@ -2905,6 +3109,9 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_exit();
 #endif
+
+	CAM_DEBUG(" X");
+
 	return rc;
 }
 #elif defined(CONFIG_ISX012) && defined(CONFIG_DB8131M) /* Gogh *//* AEGIS2 */
@@ -2914,7 +3121,7 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	int temp = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("[isx012] %s/%d", __func__, __LINE__);
+	CAM_DEBUG(" E");
 
 	isx012_set_flash(FLASH_OFF);
 
@@ -2925,23 +3132,23 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	/*standy VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
-	CAM_DEBUG("[isx012] check VT standby : %d", temp);
+	CAM_DEBUG(" check VT standby : %d", temp);
 
 	/*reset VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
-	CAM_DEBUG("[isx012] check VT reset : %d", temp);
+	CAM_DEBUG(" check VT reset : %d", temp);
 
 	/*standby Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_stby);
-	CAM_DEBUG("[isx012] CAM_5M_ISP_INIT : %d", temp);
+	CAM_DEBUG(" CAM_5M_ISP_INIT : %d", temp);
 	mdelay(110); /* > 100ms */
 
 	/*reset Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
-	CAM_DEBUG("[isx012] CAM_5M_RST : %d", temp);
+	CAM_DEBUG(" CAM_5M_RST : %d", temp);
 	usleep(1000);
 
 	/*CAM_MCLK0*/
@@ -2965,12 +3172,58 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 #ifdef CONFIG_LOAD_FILE
 	isx012_regs_table_exit();
 #endif
+
+	CAM_DEBUG(" X");
+
+	return rc;
+}
+#elif defined(CONFIG_ISX012) && defined(CONFIG_S5K6A3YX) /* stretto */
+static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int rc = 0;
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+
+	CAM_DEBUG(" E");
+
+	isx012_set_flash(FLASH_OFF);
+
+	/*Soft landing */
+	ISX012_WRITE_LIST(isx012_Sensor_Off_VCM);
+
+	/*standby Main cam */
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_stby, 0);
+	usleep(100 * 1000);
+
+	/*reset Main cam */
+	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 0);
+
+	/*CAM_MCLK0*/
+	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 0);
+
+	gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 0,
+		GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+		GPIO_CFG_ENABLE);
+
+	/*power off the LDOs */
+	data->sensor_platform_info->sensor_power_off(0);
+
+	rc = msm_camera_request_gpio_table(data, 0);
+	if (rc < 0)
+		cam_err(" request gpio failed");
+
+#ifdef CONFIG_LOAD_FILE
+	isx012_regs_table_exit();
+#endif
+
+	CAM_DEBUG(" X");
+
 	return rc;
 }
 #else
 static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	printk(KERN_DEBUG "isx012_sensor_power_down");
+	CAM_DEBUG("");
 }
 #endif
 
@@ -2987,7 +3240,8 @@ struct v4l2_subdev_info isx012_subdev_info[] = {
 static int isx012_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 			   enum v4l2_mbus_pixelcode *code)
 {
-	CAM_DEBUG("Index is %d", index);
+	CAM_DEBUG(" Index is %d", index);
+
 	if ((unsigned int)index >= ARRAY_SIZE(isx012_subdev_info))
 		return -EINVAL;
 
@@ -3017,7 +3271,7 @@ static int isx012_i2c_probe(struct i2c_client *client,
 	int rc = 0;
 	struct msm_sensor_ctrl_t *s_ctrl;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		rc = -ENOTSUPP;
@@ -3034,13 +3288,14 @@ static int isx012_i2c_probe(struct i2c_client *client,
 	} else {
 		cam_err("s_ctrl->sensor_i2c_client is NULL");
 		rc = -EFAULT;
-		return rc;
+		goto probe_failure;
 	}
 
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
-		cam_err("%s: NULL sensor data\n", __func__);
-		return -EFAULT;
+		cam_err("%s: NULL sensor data", __func__);
+		rc = -EFAULT;
+		goto probe_failure;
 	}
 
 	isx012_client = client;
@@ -3049,13 +3304,16 @@ static int isx012_i2c_probe(struct i2c_client *client,
 	isx012_ctrl = kzalloc(sizeof(struct isx012_ctrl), GFP_KERNEL);
 	if (!isx012_ctrl) {
 		cam_err("isx012_ctrl alloc failed!");
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto probe_failure;
 	}
 
 	isx012_exif = kzalloc(sizeof(struct isx012_exif_data), GFP_KERNEL);
 	if (!isx012_exif) {
 		cam_err("Cannot allocate memory fo EXIF structure!");
-		return -ENOMEM;
+		kfree(isx012_ctrl);
+		rc = -ENOMEM;
+		goto probe_failure;
 	}
 
 	memset(isx012_ctrl, 0, sizeof(isx012_ctrl));
@@ -3069,13 +3327,20 @@ static int isx012_i2c_probe(struct i2c_client *client,
 	isx012_ctrl->sensor_dev = &s_ctrl->sensor_v4l2_subdev;
 	isx012_ctrl->sensordata = client->dev.platform_data;
 
-	msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
-
-	CAM_DEBUG("X");
+	rc = msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	if (rc < 0) {
+		cam_err(" msm_sensor_register failed!");
+		kfree(isx012_exif);
+		kfree(isx012_ctrl);
+		goto probe_failure;
+	}
+	CAM_DEBUG(" success!");
+	CAM_DEBUG(" X");
 	return 0;
 
 probe_failure:
 	CAM_DEBUG(" failed!");
+	CAM_DEBUG(" X");
 	return rc;
 }
 
@@ -3122,7 +3387,12 @@ static struct msm_sensor_ctrl_t isx012_s_ctrl = {
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(isx012_subdev_info),
 	.sensor_v4l2_subdev_ops = &isx012_subdev_ops,
 	.func_tbl = &isx012_func_tbl,
+#if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_COMANCHE)\
+	|| defined(CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_AEGIS2)
+	.clk_rate = MSM_SENSOR_MCLK_19HZ,
+#else
 	.clk_rate = MSM_SENSOR_MCLK_24HZ,
+#endif
 };
 
 module_init(isx012_init);

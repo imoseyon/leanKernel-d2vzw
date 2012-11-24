@@ -80,6 +80,9 @@
 #ifdef CONFIG_INPUT_YAS_SENSORS
 #include <linux/yas.h>
 #endif
+#ifdef CONFIG_YAS_ACC_MULTI_SUPPORT
+#include <linux/yas_accel.h>
+#endif
 #if defined(CONFIG_OPTICAL_TAOS_TRITON)
 #include <linux/i2c/taos.h>
 #endif
@@ -118,6 +121,7 @@
 #endif
 #ifdef CONFIG_TOUCHSCREEN_MXT224
 #include <linux/i2c/mxt224e.h>
+#include <linux/i2c/mxt224s.h>
 #endif
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH
 #include <linux/i2c/cypress_touchkey.h>
@@ -129,6 +133,7 @@
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
 #include <mach/scm.h>
+#include <mach/iommu_domains.h>
 
 #include <linux/fmem.h>
 
@@ -169,8 +174,9 @@ static struct platform_device msm_fm_platform_init = {
 #include <mach/sec_debug.h>
 #endif
 unsigned int gpio_table[][GPIO_REV_MAX] = {
-	/* GPIO_INDEX			Rev	{#00}, */
-	/* MDP_VSYNC	*/		{  0 },
+	/* GPIO_INDEX	Rev	{#00,#01,#02,#03}, */
+	/* MDP_VSYNC	*/		{  0, 0, 0, 0 },
+       /*PS_INT */		{ 42, 42, 42, 6 },
 };
 
 
@@ -179,7 +185,10 @@ int gpio_rev(unsigned int index)
 	if (system_rev >= GPIO_REV_MAX)
 		return -EINVAL;
 
-	return gpio_table[index][BOARD_REV00];
+	if (system_rev < BOARD_REV03)
+		return gpio_table[index][system_rev];
+	else
+		return gpio_table[index][BOARD_REV03];
 }
 
 #if defined(CONFIG_TOUCHSCREEN_MXT224)
@@ -285,7 +294,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 };
 
 
-#define MSM_PMEM_ADSP_SIZE         0x7800000 /* 120 Mbytes */
+#define MSM_PMEM_ADSP_SIZE         0x4E00000 /* 78 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
 #define MSM_LIQUID_PMEM_SIZE 0x4000000 /* 64 Mbytes */
@@ -293,20 +302,28 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_PMEM_KERNEL_EBI1_SIZE  0x280000 /* 2.5MB */
-#define MSM_ION_SF_SIZE		0x2200000 /* 34MB */
-#define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
-#define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
-#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
-#define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
-#define MSM_ION_HEAP_NUM	8
+#ifdef CONFIG_MSM_IOMMU
+#define MSM_ION_MM_SIZE            0x3800000
+#define MSM_ION_SF_SIZE            0x0
+#define MSM_ION_QSECOM_SIZE     0x100000 /* (1MB) */
+#define MSM_ION_HEAP_NUM        7
+#else
+#define MSM_ION_MM_SIZE         MSM_PMEM_ADSP_SIZE
+#define MSM_ION_SF_SIZE         0x2200000 /* 34MB */
+#define MSM_ION_QSECOM_SIZE     0x100000 /* (1MB) */
+#define MSM_ION_HEAP_NUM        8
+#endif
+#define MSM_ION_MM_FW_SIZE      0x200000 /* (2MB) */
+#define MSM_ION_MFC_SIZE        SZ_8K
+#define MSM_ION_AUDIO_SIZE      MSM_PMEM_AUDIO_SIZE
+
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
 
 #define MSM8960_FIXED_AREA_START 0xb0000000
 #define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		0x280000
+#define MSM_MM_FW_SIZE		0x200000
 #define MSM8960_FW_START	(MSM8960_FIXED_AREA_START - MSM_MM_FW_SIZE)
 
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
@@ -471,7 +488,7 @@ static void __init size_pmem_devices(void)
 	if (!pmem_param_set) {
 		if (machine_is_msm8960_liquid())
 			pmem_size = MSM_LIQUID_PMEM_SIZE;
-		if (hdmi_is_primary)
+		if (msm8960_hdmi_as_primary_selected())
 			pmem_size = MSM_HDMI_PRIM_PMEM_SIZE;
 	}
 
@@ -509,10 +526,12 @@ static int msm8960_paddr_to_memtype(unsigned int paddr)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 static struct ion_cp_heap_pdata cp_mm_ion_pdata = {
 	.permission_type = IPT_TYPE_MM_CARVEOUT,
-	.align = PAGE_SIZE,
+	.align = SZ_64K,
 	.reusable = FMEM_ENABLED,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_MIDDLE,
+	.iommu_map_all = 1,
+	.iommu_2x_map_domain = VIDEO_DOMAIN,
 };
 
 static struct ion_cp_heap_pdata cp_mfc_ion_pdata = {
@@ -581,6 +600,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &cp_mfc_ion_pdata,
 		},
+#ifndef CONFIG_MSM_IOMMU
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -589,6 +609,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &co_ion_pdata,
 		},
+#endif
 		{
 			.id	= ION_IOMMU_HEAP_ID,
 			.type	= ION_HEAP_TYPE_IOMMU,
@@ -635,21 +656,22 @@ static void __init adjust_mem_for_liquid(void)
 		if (machine_is_msm8960_liquid())
 			msm_ion_sf_size = MSM_LIQUID_ION_SF_SIZE;
 
-		if (hdmi_is_primary)
+		if (msm8960_hdmi_as_primary_selected())
 			msm_ion_sf_size = MSM_HDMI_PRIM_ION_SF_SIZE;
 
-		if (machine_is_msm8960_liquid() || hdmi_is_primary) {
-		for (i = 0; i < ion_pdata.nr; i++) {
+		if (machine_is_msm8960_liquid() ||
+			msm8960_hdmi_as_primary_selected()) {
+			for (i = 0; i < ion_pdata.nr; i++) {
 				if (ion_pdata.heaps[i].id == ION_SF_HEAP_ID) {
 					ion_pdata.heaps[i].size =
-					msm_ion_sf_size;
+						msm_ion_sf_size;
 					pr_debug("msm_ion_sf_size 0x%x\n",
-						msm_ion_sf_size);
-				break;
+							msm_ion_sf_size);
+					break;
+				}
 			}
 		}
 	}
-}
 }
 
 static void __init reserve_mem_for_ion(enum ion_memory_types mem_type,
@@ -701,6 +723,7 @@ static void __init reserve_ion_memory(void)
 	fmem_pdata.size = 0;
 	fmem_pdata.reserved_size_low = 0;
 	fmem_pdata.reserved_size_high = 0;
+	fmem_pdata.align = PAGE_SIZE;
 	fixed_low_size = 0;
 	fixed_middle_size = 0;
 	fixed_high_size = 0;
@@ -726,7 +749,11 @@ static void __init reserve_ion_memory(void)
 	}
 
 	for (i = 0; i < ion_pdata.nr; ++i) {
-		const struct ion_platform_heap *heap = &(ion_pdata.heaps[i]);
+		struct ion_platform_heap *heap =
+						&(ion_pdata.heaps[i]);
+		int align = SZ_4K;
+		int iommu_map_all = 0;
+		int adjacent_mem_id = INVALID_HEAP_ID;
 
 		if (heap->extra_data) {
 			int fixed_position = NOT_FIXED;
@@ -738,16 +765,34 @@ static void __init reserve_ion_memory(void)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_cp_heap_pdata *)
 					heap->extra_data)->fixed_position;
+				align = ((struct ion_cp_heap_pdata *)
+						heap->extra_data)->align;
+				iommu_map_all =
+					((struct ion_cp_heap_pdata *)
+					heap->extra_data)->iommu_map_all;
 				break;
 			case ION_HEAP_TYPE_CARVEOUT:
 				mem_is_fmem = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->mem_is_fmem;
 				fixed_position = ((struct ion_co_heap_pdata *)
 					heap->extra_data)->fixed_position;
+				adjacent_mem_id = ((struct ion_co_heap_pdata *)
+					heap->extra_data)->adjacent_mem_id;
 				break;
 			default:
 				break;
 			}
+
+			if (iommu_map_all) {
+				if (heap->size & (SZ_64K-1)) {
+					heap->size = ALIGN(heap->size, SZ_64K);
+					pr_info("Heap %s not aligned to 64K. Adjusting size to %x\n",
+						heap->name, heap->size);
+				}
+			}
+
+			if (mem_is_fmem && adjacent_mem_id != INVALID_HEAP_ID)
+				fmem_pdata.align = align;
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
@@ -963,7 +1008,7 @@ static void __init msm8960_reserve(void)
 		pr_info("fmem start %lx (fixed) size %lx\n",
 			fmem_pdata.phys, fmem_pdata.size);
 #else
-	fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size);
+		fmem_pdata.phys = reserve_memory_for_fmem(fmem_pdata.size, fmem_pdata.align);
 #endif
 	}
 }
@@ -980,71 +1025,110 @@ static void __init msm8960_allocate_memory_regions(void)
 }
 
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH
+
 static void cypress_power_onoff(int onoff)
 {
 	int ret;
 	static struct regulator *reg_l17;
-
 	static struct regulator *reg_lvs6;
-	if (!reg_lvs6) {
-		reg_lvs6 = regulator_get(NULL, "8921_lvs6");
-		if (IS_ERR(reg_lvs6)) {
-			pr_err("could not get 8921_lvs6, ret = %ld\n",
-				PTR_ERR(reg_lvs6));
-			return;
-		}
-	}
+	static struct regulator *reg_l29;
 
-	if (onoff) {
-		ret = regulator_enable(reg_lvs6);
-		if (ret) {
-			pr_err("enable lvs6 failed, ret=%d\n", ret);
-			return;
+	if (system_rev < BOARD_REV06) {
+		if (!reg_lvs6) {
+			reg_lvs6 = regulator_get(NULL, "8921_lvs6");
+			if (IS_ERR(reg_lvs6)) {
+				pr_err("could not get 8921_lvs6, ret = %ld\n",
+					PTR_ERR(reg_lvs6));
+				return;
+			}
 		}
-		msleep(40);
-		pr_info("cypress_1.8V on is finished.\n");
+
+		if (onoff) {
+			ret = regulator_enable(reg_lvs6);
+			if (ret) {
+				pr_err("enable lvs6 failed, ret=%d\n", ret);
+				return;
+			}
+			msleep(40);
+			pr_info("cypress_1.8V on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_lvs6);
+			if (ret) {
+				pr_err("disable lvs6 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_1.8V off is finished.\n");
+		}
+
+		if (!reg_l17) {
+			reg_l17 = regulator_get(NULL, "8921_l17");
+			if (IS_ERR(reg_l17)) {
+				pr_err("could not get 8921_l17, ret = %ld\n",
+					PTR_ERR(reg_l17));
+				return;
+			}
+
+			ret = regulator_set_voltage(reg_l17, 3300000, 3300000);
+			if (ret) {
+				pr_err("%s: unable to set ldo17 voltage to 3.3V\n",
+					__func__);
+				return;
+			}
+		}
+
+		if (onoff) {
+			ret = regulator_enable(reg_l17);
+			if (ret) {
+				pr_err("enable l17 failed, ret=%d\n", ret);
+				return;
+			}
+			msleep(40);
+			pr_info("cypress_power_on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_l17);
+			if (ret) {
+				pr_err("disable l17 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_power_off is finished.\n");
+		}
+
 	} else {
-		ret = regulator_disable(reg_lvs6);
-		if (ret) {
-			pr_err("disable lvs6 failed, ret=%d\n", ret);
-			return;
+		if (!reg_l29) {
+			reg_l29 = regulator_get(NULL, "8921_l29");
+			if (IS_ERR(reg_l29)) {
+				pr_err("could not get 8921_l29, ret = %ld\n",
+					PTR_ERR(reg_l29));
+				return;
+			}
+
+			ret = regulator_set_voltage(reg_l29, 1800000, 1800000);
+			if (ret) {
+				pr_err("%s: unable to set ldo17 voltage to 1.8V\n",
+					__func__);
+				return;
+			}
 		}
-		pr_info("cypress_1.8V off is finished.\n");
+
+		if (onoff) {
+			ret = regulator_enable(reg_l29);
+			if (ret) {
+				pr_err("enable l29 failed, ret=%d\n", ret);
+				return;
+			}
+			msleep(40);
+			gpio_direction_output(GPIO_TKEY_LED, 1);
+			pr_info("cypress_power_on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_l29);
+			if (ret) {
+				pr_err("disable l29 failed, ret=%d\n", ret);
+				return;
+			}
+			gpio_direction_output(GPIO_TKEY_LED, 0);
+			pr_info("cypress_power_off is finished.\n");
+		}
 	}
-
-	if (!reg_l17) {
-		reg_l17 = regulator_get(NULL, "8921_l17");
-		if (IS_ERR(reg_l17)) {
-			pr_err("could not get 8921_l17, ret = %ld\n",
-				PTR_ERR(reg_l17));
-			return;
-		}
-
-		ret = regulator_set_voltage(reg_l17, 3300000, 3300000);
-		if (ret) {
-			pr_err("%s: unable to set ldo17 voltage to 3.3V\n",
-				__func__);
-			return;
-		}
-	}
-
-	if (onoff) {
-		ret = regulator_enable(reg_l17);
-		if (ret) {
-			pr_err("enable l17 failed, ret=%d\n", ret);
-			return;
-		}
-		msleep(40);
-		pr_info("cypress_power_on is finished.\n");
-	} else {
-		ret = regulator_disable(reg_l17);
-		if (ret) {
-			pr_err("disable l17 failed, ret=%d\n", ret);
-			return;
-		}
-		pr_info("cypress_power_off is finished.\n");
-	}
-
 }
 
 static u8 touchkey_keycode[] = {KEY_MENU, KEY_BACK};
@@ -1088,6 +1172,14 @@ static void cypress_rev_check(void)
 		touchkey_i2c_devices_info[0].irq = \
 					MSM_GPIO_TO_INT(GPIO_TOUCH_KEY_INT_02);
 	}
+}
+
+static void cypress_init(void)
+{
+	gpio_tlmm_config(GPIO_CFG(GPIO_TOUCHKEY_SDA, 0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+	gpio_tlmm_config(GPIO_CFG(GPIO_TOUCHKEY_SCL, 0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 }
 
 
@@ -1330,6 +1422,54 @@ static void fsa9485_dock_cb(int attached)
 	}
 }
 
+static void fsa9485_usb_cdp_cb(bool attached)
+{
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
+
+	pr_info("fsa9485_usb_cdp_cb attached %d\n", attached);
+
+	set_cable_status =
+		attached ? CABLE_TYPE_CDP : CABLE_TYPE_NONE;
+
+	if (system_rev >= BOARD_REV00) {
+		if (attached) {
+			pr_info("%s set vbus state\n", __func__);
+			msm_otg_set_vbus_state(attached);
+		}
+	}
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return;
+	}
+
+	switch (set_cable_status) {
+	case CABLE_TYPE_CDP:
+		value.intval = POWER_SUPPLY_TYPE_USB_CDP;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("invalid status:%d\n", attached);
+		return;
+	}
+
+	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		&value);
+	if (ret) {
+		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
+			__func__, ret);
+	}
+}
+
 static int fsa9485_dock_init(void)
 {
 	int ret;
@@ -1382,12 +1522,14 @@ static struct platform_device fsa_i2c_gpio_device = {
 };
 
 static struct fsa9485_platform_data fsa9485_pdata = {
+	.otg_cb = fsa9485_otg_cb,
 	.usb_cb = fsa9485_usb_cb,
 	.charger_cb = fsa9485_charger_cb,
 	.uart_cb = fsa9485_uart_cb,
 	.jig_cb = fsa9485_jig_cb,
 	.dock_cb = fsa9485_dock_cb,
 	.dock_init = fsa9485_dock_init,
+	.usb_cdp_cb = fsa9485_usb_cdp_cb,
 };
 
 static struct i2c_board_info micro_usb_i2c_devices_info[] __initdata = {
@@ -1423,7 +1565,11 @@ static void msm8960_mhl_gpio_init(void)
 		pr_err("mhl_rst gpio_request is failed\n");
 		return;
 	}
-
+	ret = gpio_request(GPIO_MHL_WAKE_UP, "mhl_wakeup");
+	if (ret < 0) {
+		pr_err("mhl_en gpio_request is failed\n");
+		return;
+	}
 }
 
 static void mhl_gpio_config(void)
@@ -1433,6 +1579,8 @@ static void mhl_gpio_config(void)
 	gpio_tlmm_config(GPIO_CFG((GPIO_MHL_EN), 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(GPIO_MHL_RST, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
+	gpio_tlmm_config(GPIO_CFG(GPIO_MHL_WAKE_UP, 0, GPIO_CFG_OUTPUT,
 				GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
 }
 
@@ -1533,6 +1681,7 @@ struct sii9234_platform_data sii9234_pdata = {
 	.hw_reset = sii9234_hw_reset,
 	.gpio = GPIO_MHL_SEL,
 	.gpio_cfg = mhl_gpio_config,
+	.swing_level = 0xF7,
 #if defined(CONFIG_VIDEO_MHL_V2)
 	.mhl_sel = cfg_mhl_sel,
 	.vbus_present = fsa9485_mhl_cb,
@@ -1681,19 +1830,21 @@ static void taos_led_onoff(int onoff);
 static struct taos_platform_data taos_pdata = {
 	.power	= taos_power_on,
 	.led_on	=	taos_led_onoff,
-	.als_int = GPIO_ALS_INT,
-	.prox_thresh_hi = 620,
-	.prox_thresh_low = 500,
+	.als_int = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_ALS_INT),
+	.prox_thresh_hi = 590,
+	.prox_thresh_low = 460,
+	.prox_th_hi_cal = 480,
+	.prox_th_low_cal = 380,
 	.als_time = 0xED,
 	.intr_filter = 0x33,
-	.prox_pulsecnt = 0x0c,
+	.prox_pulsecnt = 0x08,
 	.prox_gain = 0x28,
 	.coef_atime = 50,
-	.ga = 105,
+	.ga = 98,
 	.coef_a = 1000,
-	.coef_b = 2000,
-	.coef_c = 660,
-	.coef_d = 1250,
+	.coef_b = 1910,
+	.coef_c = 714,
+	.coef_d = 1288,
 };
 #endif
 #if defined(CONFIG_SENSORS_CM36651)
@@ -1702,7 +1853,7 @@ static void cm36651_led_onoff(int);
 static struct cm36651_platform_data cm36651_pdata = {
 	.cm36651_led_on = cm36651_led_onoff,
 	.cm36651_power_on = cm36651_power_on,
-	.irq = GPIO_ALS_INT,
+	.irq = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_ALS_INT),
 };
 #endif
 static struct i2c_board_info opt_i2c_borad_info[] = {
@@ -1726,21 +1877,35 @@ static struct i2c_board_info opt_i2c_borad_info[] = {
 static void opt_init(void)
 {
 #if defined(CONFIG_OPTICAL_TAOS_TRITON)
-	gpio_tlmm_config(GPIO_CFG(GPIO_ALS_INT, 0, GPIO_CFG_INPUT,
-		GPIO_CFG_PULL_UP, GPIO_CFG_2MA), 1);
-#else
-	gpio_tlmm_config(GPIO_CFG(GPIO_ALS_INT, 0, GPIO_CFG_INPUT,
+int ret ;
+	int als_int = gpio_rev(PS_INT);
+	struct pm_gpio als_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = 2,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol = 0,
+	};
+	if (system_rev < BOARD_REV03) {
+		gpio_tlmm_config(GPIO_CFG(als_int, 0, GPIO_CFG_INPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+		}
+	else {
+	als_int = PM8921_GPIO_PM_TO_SYS(als_int);
+		pm8xxx_gpio_config(als_int, &als_cfg);
+	}
 #endif
 	gpio_tlmm_config(GPIO_CFG(GPIO_ALS_SDA, 0, GPIO_CFG_INPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
 	gpio_tlmm_config(GPIO_CFG(GPIO_ALS_SCL, 0, GPIO_CFG_INPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	gpio_request(GPIO_ALS_INT, "PSVOUT");
-	gpio_direction_input(GPIO_ALS_INT);
-
-	gpio_free(GPIO_ALS_INT);
-
+	ret = gpio_request(als_int, "PSVOUT");
+if (ret) {
+		pr_err("%s gpio request %d err\n", __func__, als_int);
+	} else {
+		gpio_direction_input(als_int);
+		gpio_free(als_int);
+		}
 }
 
 
@@ -1797,14 +1962,14 @@ static void gp2a_led_onoff(int);
 static struct opt_gp2a_platform_data opt_gp2a_data = {
 	.gp2a_led_on	= gp2a_led_onoff,
 	.power_on = sensor_power_on_vdd,
-	.irq = MSM_GPIO_TO_INT(GPIO_ALS_INT),
-	.ps_status = GPIO_ALS_INT,
+	.irq = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_ALS_INT),
+	.ps_status = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_ALS_INT),
 };
 #elif defined(CONFIG_OPTICAL_GP2AP020A00F)
 static struct gp2a_platform_data opt_gp2a_data = {
 	.gp2a_led_on	= gp2a_led_onoff,
 	.power_on = gp2a_power_on,
-	.p_out = GPIO_ALS_INT,
+	.p_out = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_ALS_INT),
 	.adapt_num	= MSM_OPT_I2C_BUS_ID,
 	.addr = 0x72>>1,
 	.version = 0,
@@ -1938,6 +2103,17 @@ static struct mpu_platform_data mpu_data_00 = {
 };
 #endif /*CONFIG_MPU_SENSORS_MPU6050B1 */
 
+#ifdef CONFIG_INPUT_YAS_SENSORS
+static struct yas_platform_data geomagnetic_pdata;
+static int __init yas_platform_data_init(void)
+{
+if (system_rev < BOARD_REV05)
+	geomagnetic_pdata.mag_orientation = YAS532_POSITION_0;
+else
+	geomagnetic_pdata.mag_orientation = YAS532_POSITION_1;
+}
+#endif
+
 #if defined(CONFIG_SENSORS_AK8975) || defined(CONFIG_INPUT_BMP180) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1_411) || \
@@ -1955,6 +2131,12 @@ static struct bmp_i2c_platform_data bmp180_pdata = {
 };
 #endif
 
+#ifdef CONFIG_YAS_ACC_MULTI_SUPPORT
+static struct accel_platform_data accel_pdata = {
+	.used_chip = BMA25X_ENABLED,
+	.position = 1,
+};
+#endif
 static struct i2c_board_info sns_i2c_borad_info[] = {
 #ifdef CONFIG_MPU_SENSORS_MPU6050B1
 	{
@@ -1992,7 +2174,16 @@ static struct i2c_board_info sns_i2c_borad_info[] = {
 #endif
 #ifdef CONFIG_INPUT_YAS_SENSORS
 	{
+#ifdef CONFIG_YAS_ACC_MULTI_SUPPORT
+		I2C_BOARD_INFO("accelerometer", 0x18),
+		.platform_data = &accel_pdata,
+#else
+		I2C_BOARD_INFO("accelerometer", 0x19),
+#endif
+	},
+	{
 		I2C_BOARD_INFO("geomagnetic", 0x2e),
+		.platform_data = &geomagnetic_pdata
 	},
 
 #endif
@@ -2069,14 +2260,7 @@ static int __init sensor_device_init(void)
 #elif defined(CONFIG_INPUT_YAS_SENSORS)
 static int __init sensor_device_init(void)
 {
-
-	gpio_request(GPIO_SENSOR_RDY, "COMPASS_RDY");
-	gpio_direction_output(GPIO_SENSOR_RDY, 1);
 	sensor_power_on_vdd(SNS_PWR_ON, SNS_PWR_ON);
-
-	gpio_request(GPIO_ACC_INT_N, "ACC_INT");
-	gpio_direction_input(GPIO_ACC_INT_N);
-
 	return 0;
 }
 
@@ -2922,71 +3106,43 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
 #else
+static bool vbus_is_on;
 static void msm_hsusb_vbus_power(bool on)
 {
-	int rc;
-	static bool vbus_is_on;
-	static struct regulator *mvs_otg_switch;
-	struct pm_gpio param = {
-		.direction	= PM_GPIO_DIR_OUT,
-		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
-		.output_value	= 1,
-		.pull		= PM_GPIO_PULL_NO,
-		.vin_sel	= PM_GPIO_VIN_S4,
-		.out_strength	= PM_GPIO_STRENGTH_MED,
-		.function	= PM_GPIO_FUNC_NORMAL,
-	};
+	struct power_supply *psy = power_supply_get_by_name("battery");
+	union power_supply_propval value;
+	int ret = 0;
 
+	pr_info("%s, attached %d, vbus_is_on %d\n", __func__, on, vbus_is_on);
+
+	/* If VBUS is already on (or off), do nothing. */
 	if (vbus_is_on == on)
 		return;
 
-	if (on) {
-		mvs_otg_switch = regulator_get(&msm8960_device_otg.dev,
-					       "vbus_otg");
-		if (IS_ERR(mvs_otg_switch)) {
-			pr_err("Unable to get mvs_otg_switch\n");
-			return;
-		}
+	if (on)
+		value.intval = POWER_SUPPLY_TYPE_OTG;
+	else
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
 
-		rc = gpio_request(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-						"usb_5v_en");
-		if (rc < 0) {
-			pr_err("failed to request usb_5v_en gpio\n");
-			goto put_mvs_otg;
+	if (psy) {
+		ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
+		if (ret) {
+			pr_err("%s: fail to set power_suppy otg property(%d)\n",
+				__func__, ret);
 		}
-
-		if (regulator_enable(mvs_otg_switch)) {
-			pr_err("unable to enable mvs_otg_switch\n");
-			goto free_usb_5v_en;
-		}
-
-		rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-				&param);
-		if (rc < 0) {
-			pr_err("failed to configure usb_5v_en gpio\n");
-			goto disable_mvs_otg;
-		}
-		vbus_is_on = true;
-		return;
-	} else {
-		gpio_set_value_cansleep(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-				0);
 #ifdef CONFIG_USB_SWITCH_FSA9485
-		fsa9485_otg_detach();
+		if (!on)
+			fsa9485_otg_detach();
 #endif
+		vbus_is_on = on;
+	} else {
+		pr_err("%s : psy is null!\n", __func__);
 	}
-disable_mvs_otg:
-		regulator_disable(mvs_otg_switch);
-free_usb_5v_en:
-		gpio_free(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN));
-put_mvs_otg:
-		regulator_put(mvs_otg_switch);
-		vbus_is_on = false;
 }
 
 static int phy_settings[] = {
 	0x44, 0x80,
-	0x3F, 0x81,
+	0x7F, 0x81,
 	0x3C, 0x82,
 	0x13, 0x83,
 	-1,
@@ -3421,6 +3577,7 @@ static struct i2c_board_info pn544_info[] __initdata = {
 
 #ifdef CONFIG_TOUCHSCREEN_MXT224
 /*atmel_mxt224E*/
+
 static void mxt224_power_onoff(int onoff)
 {
 	int ret;
@@ -3442,7 +3599,6 @@ static void mxt224_power_onoff(int onoff)
 			pr_err("enable lvs6 failed, ret=%d\n", ret);
 			return;
 		}
-		msleep(40);
 		pr_info("mxt224_1.8V on is finished.\n");
 	} else {
 		ret = regulator_disable(reg_lvs6);
@@ -3475,7 +3631,7 @@ static void mxt224_power_onoff(int onoff)
 			pr_err("enable l17 failed, ret=%d\n", ret);
 			return;
 		}
-		msleep(40);
+		msleep(30);
 		pr_info("mxt224_power_on is finished.\n");
 	} else {
 		ret = regulator_disable(reg_l17);
@@ -3550,6 +3706,94 @@ static const u8 *mxt224_config[] = {
 /*
 	Configuration for MXT224-E
 */
+#define MXT224E_THRESHOLD_BATT_03		25
+#define MXT224E_THRESHOLD_CHRG_03		32
+#define MXT224E_CALCFG_BATT_03		114
+#define MXT224E_CALCFG_CHRG_03		114
+#define MXT224E_ATCHFRCCALTHR_NORMAL_03		40
+#define MXT224E_ATCHFRCCALRATIO_NORMAL_03		55
+
+static u8 t7_config_e_03[] = {GEN_POWERCONFIG_T7,
+				48, 255, 25};
+
+static u8 t8_config_e_03[] = {GEN_ACQUISITIONCONFIG_T8,
+				22, 0, 5, 2, 0, 0, 4, 35,
+				MXT224E_ATCHFRCCALTHR_NORMAL_03,
+				MXT224E_ATCHFRCCALRATIO_NORMAL_03};
+
+static u8 t9_config_e_03[] = {TOUCH_MULTITOUCHSCREEN_T9,
+				139, 0, 0, 19, 11, 0, 32,
+				MXT224E_THRESHOLD_BATT_03, 2, 1, 10, 3, 1,
+				46, MXT224_MAX_MT_FINGERS, 5, 40, 10, 191, 3,
+				27, 2, 10, 10, 10, 10, 143, 40, 143, 80, 18,
+				15, 50, 50, 2};
+
+static u8 t15_config_e_03[] = {TOUCH_KEYARRAY_T15,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t18_config_e_03[] = {SPT_COMCONFIG_T18,
+				0, 0};
+
+static u8 t19_config_e_03[] = {SPT_GPIOPWM_T19,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t23_config_e_03[] = {TOUCH_PROXIMITY_T23,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t25_config_e_03[] = {SPT_SELFTEST_T25,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t40_config_e_03[] = {PROCI_GRIPSUPPRESSION_T40,
+				0, 0, 0, 0, 0};
+
+static u8 t42_config_e_03[] = {PROCI_TOUCHSUPPRESSION_T42,
+				0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t46_config_e_03[] = {SPT_CTECONFIG_T46,
+				0, 3, 24, 26, 0, 0, 1, 0};
+
+static u8 t47_config_e_03[] = {PROCI_STYLUS_T47,
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+static u8 t48_config_e_03[] = {PROCG_NOISESUPPRESSION_T48,
+				3, 132, MXT224E_CALCFG_BATT_03,
+				25, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				6, 6, 0, 0, 32, 4, 48, 10,
+				0, 100, 5, 0, 100, 0, 5,
+				0, 0, 0, 0, 0, 0, 0, MXT224E_THRESHOLD_BATT_03,
+				2, 15, 1, 80, MXT224_MAX_MT_FINGERS,
+				5, 40, 245, 245, 20, 20, 160, 50, 200,
+				80, 18, 15, 0 };
+
+static u8 t48_config_chrg_e_03[] = {PROCG_NOISESUPPRESSION_T48,
+				3, 132, MXT224E_CALCFG_CHRG_03,
+				0, 0, 0, 0, 0, 10, 20, 0, 0, 0,
+				6, 6, 0, 0, 64, 4, 64, 10,
+				0, 10, 5, 0, 20, 0, 20,
+				0, 0, 0, 0, 0, 0, 0, MXT224E_THRESHOLD_CHRG_03,
+				2, 5, 2, 47, MXT224_MAX_MT_FINGERS,
+				5, 40, 235, 235, 10, 10, 160, 50, 200,
+				80, 18, 15, 0 };
+
+static u8 end_config_e_03[] = {RESERVED_T255};
+
+static const u8 *mxt224e_config_03[] = {
+	t7_config_e_03,
+	t8_config_e_03,
+	t9_config_e_03,
+	t15_config_e_03,
+	t18_config_e_03,
+	t19_config_e_03,
+	t23_config_e_03,
+	t25_config_e_03,
+	t40_config_e_03,
+	t42_config_e_03,
+	t46_config_e_03,
+	t47_config_e_03,
+	t48_config_e_03,
+	end_config_e_03,
+};
+
 #define MXT224E_THRESHOLD_BATT		45
 #define MXT224E_THRESHOLD_CHRG		60
 #define MXT224E_CALCFG_BATT		64
@@ -3594,7 +3838,7 @@ static u8 t42_config_e[] = {PROCI_TOUCHSUPPRESSION_T42,
 				0, 0, 0, 0, 0, 0, 0, 0};
 
 static u8 t46_config_e[] = {SPT_CTECONFIG_T46,
-				0, 3, 24, 35, 0, 0, 1, 0};
+				0, 3, 24, 26, 0, 0, 1, 0};
 
 static u8 t47_config_e[] = {PROCI_STYLUS_T47,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -3613,7 +3857,7 @@ static u8 t48_config_chrg_e[] = {PROCG_NOISESUPPRESSION_T48,
 				3, 132, MXT224E_CALCFG_CHRG,
 				0, 0, 0, 0, 0, 10, 20, 0, 0, 0,
 				6, 6, 0, 0, 64, 4, 64, 10,
-				0, 9, 5, 0, 15, 0, 20,
+				0, 10, 5, 0, 20, 0, 20,
 				0, 0, 0, 0, 0, 0, 16, MXT224E_THRESHOLD_CHRG,
 				2, 5, 2, 47, MXT224_MAX_MT_FINGERS,
 				5, 40, 235, 235, 10, 10, 160, 50, 143,
@@ -3644,31 +3888,227 @@ static struct mxt224_platform_data mxt224_data = {
 	.config = mxt224_config,
 	.config_e = mxt224e_config,
 	.min_x = 0,
-	.max_x = 480,
 	.min_y = 0,
-	.max_y = 800,
 	.min_z = 0,
 	.max_z = 255,
 	.min_w = 0,
 	.max_w = 30,
-	.inverse_x = true,
-	.inverse_y = true,
 	.atchcalst = MXT224_ATCHCALST,
 	.atchcalsthr = MXT224_ATCHCALTHR,
 	.tchthr_batt = MXT224_THRESHOLD_BATT,
 	.tchthr_charging = MXT224_THRESHOLD_CHRG,
-	.tchthr_batt_e = MXT224E_THRESHOLD_BATT,
-	.tchthr_charging_e = MXT224E_THRESHOLD_CHRG,
-	.calcfg_batt_e = MXT224E_CALCFG_BATT,
-	.calcfg_charging_e = MXT224E_CALCFG_CHRG,
-	.atchfrccalthr_e = MXT224E_ATCHFRCCALTHR_NORMAL,
-	.atchfrccalratio_e = MXT224E_ATCHFRCCALRATIO_NORMAL,
-	.t48_config_batt_e = t48_config_e,
-	.t48_config_chrg_e = t48_config_chrg_e,
 	.power_onoff = mxt224_power_onoff,
 	.register_cb = mxt224_register_callback,
 	.read_ta_status = mxt224_read_ta_status,
 	.config_fw_version = "I547_At_0117",
+};
+
+/*
+	Configuration for MXT224S
+*/
+#define MXT224S_CHRGTIME_BATT		25
+#define MXT224S_CHRGTIME_CHRG		60
+#define MXT224S_THRESHOLD_BATT		0x28
+#define MXT224S_THRESHOLD_CHRG		0x28
+#define MXT224S_CALCFG_BATT		210
+#define MXT224S_CALCFG_CHRG		210
+
+
+static u8 t7_config_s[] = { GEN_POWERCONFIG_T7,
+	0x20, 0xFF, 0x32, 0x03
+};
+
+static u8 t8_config_s[] = { GEN_ACQUISITIONCONFIG_T8,
+	0x1D, 0x00, 0x05, 0x01, 0x00, 0x00, 0x0A, 0x1E, 0x00, 0x00
+};
+
+static u8 t9_config_s[] = { TOUCH_MULTITOUCHSCREEN_T9,
+	0x83, 0x00, 0x00, 0x13, 0x0B, 0x00, 0x70, 0x32, 0x02, 0x01,
+	MXT224S_MAX_MT_FINGERS,
+	0x0A, 0x01, 0x3F, 0x0A, 0x0F, 0x1E, 0x0A, 0x1F, 0x03,
+	0xDF, 0x01, 0x00, 0x0a, 0x14, 0x14, 0x80, 0x00, 0xc0, 0x00,
+	0x14, 0x0F, 0x00, 0x00, 0x00, 0x00
+};
+
+static u8 t15_config_s[] = { TOUCH_KEYARRAY_T15,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0
+};
+
+static u8 t18_config_s[] = { SPT_COMCONFIG_T18,
+	0, 0
+};
+
+static u8 t19_config_s[] = { SPT_GPIOPWM_T19,
+	0, 0, 0, 0, 0, 0
+};
+
+static u8 t23_config_s[] = { TOUCH_PROXIMITY_T23,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0
+};
+
+static u8 t25_config_s[] = { SPT_SELFTEST_T25,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0
+};
+
+static u8 t35_config_s[] = { SPT_GENERICDATA_T35,
+	0x1C, 0x00, 0x01, 0x02, 0x09, 0x0A
+};
+
+static u8 t35_config_s_ta[] = { SPT_GENERICDATA_T35,
+	0x0C, 0x00, 0x01, 0x02, 0x05, 0x06
+};
+
+static u8 t40_config_s[] = { PROCI_GRIPSUPPRESSION_T40,
+	0, 0, 0, 0, 0
+};
+
+static u8 t42_config_s[] = { PROCI_TOUCHSUPPRESSION_T42,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
+static u8 t46_config_s[] = { SPT_CTECONFIG_T46,
+	0x04, 0x00, 0x10, 0x14, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01
+};
+static u8 t46_config_s_ta[] = { SPT_CTECONFIG_T46,
+	0x04, 0x00, 0x10, 0x18, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01
+};
+
+static u8 t47_config_s[] = { PROCI_STYLUS_T47,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00
+};
+
+static u8 t55_config_s[] = { PROCI_ADAPTIVETHRESHOLD_T55,
+	0, 0, 0, 0, 0, 0
+};
+
+static u8 t56_config_s[] = { PROCI_SHIELDLESS_T56,
+	0x03, 0x00, 0x01, 0x35, 0x0C, 0x10, 0x0B, 0x10, 0x10, 0x0F,
+	0x10, 0x0E, 0x10, 0x10, 0x10, 0x13, 0x13, 0x14, 0x14, 0x13,
+	0x13, 0x13, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00
+};
+
+static u8 t57_config_s[] = { PROCI_EXTRATOUCHSCREENDATA_T57,
+	0xE3, 0x37, 0x00
+};
+
+static u8 t61_config_s[] = {SPT_TIMER_T61,
+	0, 0, 0, 0, 0
+};
+
+static u8 t62_config_s[] = { PROCG_NOISESUPPRESSION_T62,
+	0x03, 0x03, 0x00, 0x17, 0x08, 0x00, 0x00, 0x1C, 0x14, 0x00,
+	0x01, 0x02, 0x09, 0x0A, 0x05, 0x00, 0x0A, 0x05, 0x05, 0x50,
+	0x0A, 0x05, 0x30, 0x14, 0x64, 0x06, 0x06, 0x04, 0x64, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x60, MXT224S_THRESHOLD_BATT,
+	0x02, 0x05, 0x01, 0x30, MXT224S_MAX_MT_FINGERS,
+	0x0F, 0x0F, 0x1E, 0x1E, 0xF6, 0xF6, 0xF2, 0x3E, 0x00,
+	0x00, 0x12, 0x0A, 0x00
+};
+
+static u8 t62_config_s_ta[] = { PROCG_NOISESUPPRESSION_T62,
+	0x03, 0x01, 0x00, 0x17, 0x08, 0x00, 0x00, 0x0C, 0x14, 0x00,
+	0x01, 0x02, 0x05, 0x06, 0x05, 0x00, 0x0A, 0x05, 0x05, 0x60,
+	0x1E, 0x14, 0x30, 0x14, 0x64, 0x06, 0x06, 0x04, 0x64, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x50, MXT224S_THRESHOLD_CHRG,
+	0x02, 0x05, 0x01, 0x30, MXT224S_MAX_MT_FINGERS,
+	0x0F, 0x0F, 0x1E, 0x1E, 0xF6, 0xF6, 0xF2, 0x3E, 0x00,
+	0x00, 0x12, 0x0A, 0x00
+};
+
+static u8 end_config_s[] = { RESERVED_T255 };
+
+static const u8 *mxt224s_config[] = {
+
+	t7_config_s,
+	t8_config_s,
+	t9_config_s,
+	t15_config_s,
+	t18_config_s,
+	t19_config_s,
+	t23_config_s,
+	t25_config_s,
+	t35_config_s,
+	t40_config_s,
+	t42_config_s,
+	t46_config_s,
+	t47_config_s,
+	t55_config_s,
+	t56_config_s,
+	t57_config_s,
+	t61_config_s,
+	t62_config_s,
+	end_config_s
+};
+
+static struct mxt224s_platform_data mxt224s_data = {
+	.max_finger_touches = MXT224S_MAX_MT_FINGERS,
+	.gpio_read_done = GPIO_MXT_TS_IRQ,
+	.min_x = 0,
+	.max_x = 479,
+	.min_y = 0,
+	.max_y = 799,
+	.min_z = 0,
+	.max_z = 255,
+	.min_w = 0,
+	.max_w = 30,
+	.config = mxt224s_config,
+	.config_e = mxt224s_config,
+	.chrgtime_batt = 0,
+	.chrgtime_charging = 0,
+	.atchcalst = 0,
+	.atchcalsthr = 0,
+	.tchthr_batt = MXT224S_THRESHOLD_BATT,
+	.tchthr_charging = MXT224S_THRESHOLD_CHRG,
+	.tchthr_batt_e = 0,
+	.tchthr_charging_e = 0,
+	.calcfg_batt_e = 0,
+	.calcfg_charging_e = 0,
+	.atchcalsthr_e = 0,
+	.atchfrccalthr_e = 0,
+	.atchfrccalratio_e = 0,
+	.idlesyncsperx_batt = 0,
+	.idlesyncsperx_charging = 0,
+	.actvsyncsperx_batt = 0,
+	.actvsyncsperx_charging = 0,
+	.idleacqint_batt = 0,
+	.idleacqint_charging = 0,
+	.actacqint_batt = 0,
+	.actacqint_charging = 0,
+	.xloclip_batt = 0,
+	.xloclip_charging = 0,
+	.xhiclip_batt = 0,
+	.xhiclip_charging = 0,
+	.yloclip_batt = 0,
+	.yloclip_charging = 0,
+	.yhiclip_batt = 0,
+	.yhiclip_charging = 0,
+	.xedgectrl_batt = 0,
+	.xedgectrl_charging = 0,
+	.xedgedist_batt = 0,
+	.xedgedist_charging = 0,
+	.yedgectrl_batt = 0,
+	.yedgectrl_charging = 0,
+	.yedgedist_batt = 0,
+	.yedgedist_charging = 0,
+	.tchhyst_batt = 0,
+	.tchhyst_charging = 0,
+	.t62_config_batt_e = t62_config_s,
+	.t62_config_chrg_e = t62_config_s_ta,
+	.t46_config_batt_e = t46_config_s,
+	.t46_config_chrg_e = t46_config_s_ta,
+	.t35_config_batt_e = t35_config_s,
+	.t35_config_chrg_e = t35_config_s_ta,
+	.power_onoff = mxt224_power_onoff,
+	.register_cb = mxt224_register_callback,
+	.read_ta_status = mxt224_read_ta_status,
+	.config_fw_version = "I437_At_0620",
 };
 
 /* I2C2 */
@@ -3679,6 +4119,65 @@ static struct i2c_board_info mxt224_info[] __initdata = {
 		.irq = MSM_GPIO_TO_INT(GPIO_MXT_TS_IRQ),
 	},
 };
+
+static struct i2c_board_info mxt224s_info[] __initdata = {
+	{
+		I2C_BOARD_INFO(MXT224S_DEV_NAME, 0x4a),
+		.platform_data = &mxt224s_data,
+		.irq = MSM_GPIO_TO_INT(GPIO_MXT_TS_IRQ),
+	},
+};
+
+static void init_mxt_config_rev(void)
+{
+	printk(KERN_ERR "%s: init go\n", __func__);
+	if (system_rev > BOARD_REV02 && system_rev < BOARD_REV05) {
+		mxt224_data.config_e = mxt224e_config_03;
+		mxt224_data.max_x = 539;
+		mxt224_data.max_y = 959;
+		mxt224_data.tchthr_batt_e = MXT224E_THRESHOLD_BATT_03;
+		mxt224_data.tchthr_charging_e = MXT224E_THRESHOLD_CHRG_03;
+		mxt224_data.calcfg_batt_e = MXT224E_CALCFG_BATT_03;
+		mxt224_data.calcfg_charging_e = MXT224E_CALCFG_CHRG_03;
+		mxt224_data.atchfrccalthr_e = MXT224E_ATCHFRCCALTHR_NORMAL_03;
+		mxt224_data.atchfrccalratio_e =\
+					MXT224E_ATCHFRCCALRATIO_NORMAL_03;
+		mxt224_data.t48_config_batt_e = t48_config_e_03;
+		mxt224_data.t48_config_chrg_e = t48_config_chrg_e_03;
+		mxt224_data.inverse_x = false;
+		mxt224_data.inverse_y = false;
+		i2c_register_board_info(MSM_8960_GSBI3_QUP_I2C_BUS_ID,
+				mxt224_info,
+				ARRAY_SIZE(mxt224_info));
+		printk(KERN_ERR "%s: system_rev : %x\n", __func__, system_rev);
+
+	}	else if (system_rev < BOARD_REV02) {
+		mxt224_data.config_e = mxt224e_config;
+		mxt224_data.max_x = 480;
+		mxt224_data.max_y = 800;
+		mxt224_data.tchthr_batt_e = MXT224E_THRESHOLD_BATT;
+		mxt224_data.tchthr_charging_e = MXT224E_THRESHOLD_CHRG;
+		mxt224_data.calcfg_batt_e = MXT224E_CALCFG_BATT;
+		mxt224_data.calcfg_charging_e = MXT224E_CALCFG_CHRG;
+		mxt224_data.atchfrccalthr_e = MXT224E_ATCHFRCCALTHR_NORMAL;
+		mxt224_data.atchfrccalratio_e = MXT224E_ATCHFRCCALRATIO_NORMAL;
+		mxt224_data.t48_config_batt_e = t48_config_e;
+		mxt224_data.t48_config_chrg_e = t48_config_chrg_e;
+		mxt224_data.inverse_x = true;
+		mxt224_data.inverse_y = true;
+		i2c_register_board_info(MSM_8960_GSBI3_QUP_I2C_BUS_ID,
+				mxt224_info,
+				ARRAY_SIZE(mxt224_info));
+		printk(KERN_ERR "%s: system_rev : %x\n", __func__, system_rev);
+	} else {
+		i2c_register_board_info(MSM_8960_GSBI3_QUP_I2C_BUS_ID,
+				mxt224s_info,
+				ARRAY_SIZE(mxt224s_info));
+		printk(KERN_ERR "%s: system_rev : %x\n", __func__, system_rev);
+	}
+
+}
+
 #endif
 
 /* configuration data */
@@ -3862,6 +4361,13 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi7_pdata = {
 	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
 };
+
+#ifdef CONFIG_VP_A2220
+static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi8_pdata = {
+	.clk_freq = 400000,
+	.src_clk_rate = 24000000,
+};
+#endif
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi10_pdata = {
 	.clk_freq = 100000,
@@ -4054,6 +4560,9 @@ static struct platform_device msm_rpm_log_device = {
 };
 
 #ifdef CONFIG_SAMSUNG_JACK
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+#define PMIC_GPIO_EAR_GND		35
+#endif
 #define PMIC_GPIO_EAR_DET		36
 #define PMIC_GPIO_SHORT_SENDEND		32
 #define PMIC_GPIO_EAR_MICBIAS_EN	3
@@ -4097,6 +4606,18 @@ static struct sec_jack_buttons_zone jack_buttons_zones[] = {
 		.adc_high	= 450,
 	},
 };
+
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+static int get_sec_gnd_jack_state(void)
+{
+	if (system_rev >= BOARD_REV06)
+		return (gpio_get_value_cansleep(
+			PM8921_GPIO_PM_TO_SYS(
+			PMIC_GPIO_EAR_GND))) ^ 1;
+	else
+		return 1;
+}
+#endif
 
 static int get_sec_det_jack_state(void)
 {
@@ -4160,6 +4681,9 @@ static int sec_jack_get_adc_value(void)
 }
 
 static struct sec_jack_platform_data sec_jack_data = {
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+	.get_gnd_jack_state	= get_sec_gnd_jack_state,
+#endif
 	.get_det_jack_state	= get_sec_det_jack_state,
 	.get_send_key_state	= get_sec_send_key_state,
 	.set_micbias_state	= set_sec_micbias_state,
@@ -4201,6 +4725,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_qup_i2c_gsbi3,
 	&msm8960_device_qup_i2c_gsbi4,
 	&msm8960_device_qup_i2c_gsbi7,
+#ifdef CONFIG_VP_A2220
+	&msm8960_device_qup_i2c_gsbi8,
+#endif
 	&msm8960_device_qup_i2c_gsbi10,
 #ifndef CONFIG_MSM_DSPS
 	&msm8960_device_qup_i2c_gsbi12,
@@ -4286,6 +4813,7 @@ static struct platform_device *express_devices[] __initdata = {
 	&msm_8960_q6_mss_sw,
 	&msm_8960_riva,
 	&msm_pil_tzapps,
+	&msm_pil_vidc,
 	&msm8960_device_otg,
 	&msm8960_device_gadget_peripheral,
 	&msm_device_hsusb_host,
@@ -4352,9 +4880,6 @@ static struct platform_device *express_devices[] __initdata = {
 	&msm_bus_sys_fpb,
 	&msm_bus_cpss_fpb,
 	&pn544_i2c_gpio_device,
-#ifdef CONFIG_VP_A2220
-	&a2220_i2c_gpio_device,
-#endif
 #if defined(CONFIG_OPTICAL_GP2A) || \
 	defined(CONFIG_OPTICAL_GP2AP020A00F) || \
 	defined(CONFIG_OPTICAL_TAOS_TRITON)
@@ -4386,7 +4911,10 @@ static void __init msm8960_i2c_init(void)
 
 	msm8960_device_qup_i2c_gsbi7.dev.platform_data =
 					&msm8960_i2c_qup_gsbi7_pdata;
-
+#ifdef CONFIG_VP_A2220
+	msm8960_device_qup_i2c_gsbi8.dev.platform_data =
+					&msm8960_i2c_qup_gsbi8_pdata;
+#endif
 	msm8960_device_qup_i2c_gsbi3.dev.platform_data =
 					&msm8960_i2c_qup_gsbi3_pdata;
 
@@ -4412,28 +4940,15 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{0, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
 
-	{0, 1, "C1", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
-
-	{0, 2, "C2", "POWER_COLLAPSE",
+	{0, 1, "C2", "POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
 
 	{1, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
-
-	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
 
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
-		.idle_supported = 1,
-		.suspend_supported = 1,
-		.idle_enabled = 0,
-		.suspend_enabled = 0,
-	},
-
-	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
 		.idle_supported = 1,
 		.suspend_supported = 1,
 		.idle_enabled = 0,
@@ -4449,13 +4964,6 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
 		.idle_supported = 0,
-		.suspend_supported = 1,
-		.idle_enabled = 0,
-		.suspend_enabled = 0,
-	},
-
-	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
-		.idle_supported = 1,
 		.suspend_supported = 1,
 		.idle_enabled = 0,
 		.suspend_enabled = 0,
@@ -4478,13 +4986,6 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 	},
 
 	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE,
-		MSM_RPMRS_LIMITS(ON, ACTIVE, MAX, ACTIVE),
-		true,
-		2000, 200, 576000, 2000,
-	},
-
-	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, GDHS, MAX, ACTIVE),
 		false,
@@ -4497,6 +4998,7 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 		false,
 		9000, 51, 1130300, 9000,
 	},
+
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, ACTIVE, RET_HIGH),
@@ -4678,6 +5180,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(micro_usb_i2c_devices_info),
 	},
 #endif
+/*
 #ifdef CONFIG_TOUCHSCREEN_MXT224
 	{
 		I2C_SURF | I2C_FFA | I2C_FLUID,
@@ -4686,6 +5189,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(mxt224_info),
 	},
 #endif
+*/
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH
 {
 	I2C_SURF | I2C_FFA | I2C_FLUID,
@@ -4705,7 +5209,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #ifdef CONFIG_VP_A2220
 	{
 		I2C_SURF | I2C_FFA | I2C_FLUID,
-		MSM_A2220_I2C_BUS_ID,
+		MSM_8960_GSBI8_QUP_I2C_BUS_ID,
 		a2220_device,
 		ARRAY_SIZE(a2220_device),
 	},
@@ -4718,12 +5222,13 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(pn544_info),
 	},
 #endif /* CONFIG_NFC_PN544	*/
-	{
+/*	{
 		I2C_LIQUID,
 		MSM_8960_GSBI3_QUP_I2C_BUS_ID,
 		mxt_device_info,
 		ARRAY_SIZE(mxt_device_info),
 	},
+*/
 #if defined(CONFIG_SENSORS_AK8975) || defined(CONFIG_INPUT_BMP180) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1_411) || \
@@ -4844,6 +5349,8 @@ static void __init gpio_rev_init(void)
 
 	opt_i2c_gpio_data.sda_pin = GPIO_ALS_SDA;
 	opt_i2c_gpio_data.scl_pin = GPIO_ALS_SCL;
+	if (system_rev < BOARD_REV03)
+		taos_pdata.als_int = gpio_rev(PS_INT);
 }
 
 #ifdef CONFIG_SAMSUNG_JACK
@@ -4854,6 +5361,16 @@ static struct pm_gpio ear_det = {
 	.function		= PM_GPIO_FUNC_NORMAL,
 	.inv_int_pol	= 0,
 };
+
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+static struct pm_gpio ear_gnd = {
+	.direction		= PM_GPIO_DIR_IN,
+	.pull			= PM_GPIO_PULL_NO,
+	.vin_sel		= PM_GPIO_VIN_S4,
+	.function		= PM_GPIO_FUNC_NORMAL,
+	.inv_int_pol	= 0,
+};
+#endif
 
 static struct pm_gpio short_sendend = {
 	.direction		= PM_GPIO_DIR_IN,
@@ -4878,6 +5395,15 @@ static int secjack_gpio_init()
 {
 	int rc;
 
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+	rc = pm8xxx_gpio_config(
+		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_GND),
+					&ear_gnd);
+	if (rc) {
+		pr_err("%s PMIC_GPIO_EAR_GND config failed\n", __func__);
+		return rc;
+	}
+#endif
 	rc = pm8xxx_gpio_config(
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_DET),
 					&ear_det);
@@ -4906,17 +5432,6 @@ static int secjack_gpio_init()
 	return rc;
 }
 #endif
-void main_mic_bias_init()
-{
-	int ret;
-	ret = gpio_request(GPIO_MAIN_MIC_BIAS, "LDO_BIAS");
-	if (ret) {
-		pr_err("%s: ldo bias gpio %d request"
-				"failed\n", __func__, GPIO_MAIN_MIC_BIAS);
-		return ret;
-	}
-	gpio_direction_output(GPIO_MAIN_MIC_BIAS, 0);
-}
 
 static int configure_codec_lineout_gpio()
 {
@@ -5058,6 +5573,12 @@ static void __init samsung_express_init(void)
 	defined(CONFIG_OPTICAL_TAOS_TRITON)
 	opt_init();
 #endif
+#ifdef CONFIG_INPUT_YAS_SENSORS
+	yas_platform_data_init();
+#endif
+#ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH
+	cypress_init();
+#endif
 #if defined(CONFIG_NFC_PN544)
 	pn544_init();
 #endif
@@ -5066,8 +5587,8 @@ static void __init samsung_express_init(void)
 #endif
 	cypress_rev_check();
 	register_i2c_devices();
+	init_mxt_config_rev();
 	msm8960_init_fb();
-	main_mic_bias_init();
 	/* From REV02 onwards LINEOUT_EN is not used */
 	if (system_rev < BOARD_REV02) {
 		tabla_codec_ldo_en_init();

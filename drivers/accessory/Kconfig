@@ -1,6 +1,7 @@
 #
 # Accessory Configuration
 #
+source "drivers/accessory/mhl_tab_v2/Kconfig"
 
 menuconfig ACCESSORY
 	bool "Accessory devices"
@@ -19,4 +20,7 @@ config 30PIN_CONN
 config SEC_KEYBOARD_DOCK
 	tristate "sec keyboard dock support"
 
+config CAMERON_HEALTH
+	bool "Cameron Health device support"
+	default n
 endif # ACCESSORY

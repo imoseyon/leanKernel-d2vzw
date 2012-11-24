@@ -332,7 +332,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 };
 
 
-#define MSM_PMEM_ADSP_SIZE         0x4100000 /* 65 Mbytes */
+#define MSM_PMEM_ADSP_SIZE         0x5100000 /* 81 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
 #define MSM_LIQUID_PMEM_SIZE 0x4000000 /* 64 Mbytes */
@@ -1341,6 +1341,13 @@ static void fsa9485_usb_cdp_cb(bool attached)
 
 	set_cable_status =
 		attached ? CABLE_TYPE_CDP : CABLE_TYPE_NONE;
+
+	if (system_rev >= BOARD_REV11) {
+		if (attached) {
+			pr_info("%s set vbus state\n", __func__);
+			msm_otg_set_vbus_state(attached);
+		}
+	}
 
 	for (i = 0; i < 10; i++) {
 		psy = power_supply_get_by_name("battery");
@@ -3774,12 +3781,14 @@ static const u8 *mxt224_config[] = {
 #define MXT224E_CALCFG_CHRG		114
 #define MXT224E_ATCHFRCCALTHR_NORMAL		40
 #define MXT224E_ATCHFRCCALRATIO_NORMAL		55
+#define MXT224E_ATCHCALST		4
+#define MXT224E_ATCHCALTHR		20
 
 static u8 t7_config_e[] = {GEN_POWERCONFIG_T7,
 				48, 255, 25};
 
 static u8 t8_config_e[] = {GEN_ACQUISITIONCONFIG_T8,
-				22, 0, 5, 2, 0, 0, 4, 35,
+				22, 0, 5, 2, 0, 0, 4, 20,
 				MXT224E_ATCHFRCCALTHR_NORMAL,
 				MXT224E_ATCHFRCCALRATIO_NORMAL};
 
@@ -3824,17 +3833,17 @@ static u8 t48_config_e[] = {PROCG_NOISESUPPRESSION_T48,
 				0, 100, 5, 0, 100, 0, 5,
 				0, 0, 0, 0, 0, 0, 0, MXT224E_THRESHOLD_BATT,
 				2, 15, 1, 80, MXT224_MAX_MT_FINGERS,
-				5, 40, 245, 245, 20, 20, 160, 50, 200,
+				5, 20, 245, 245, 20, 20, 160, 50, 200,
 				80, 18, 15, 0 };
 
 static u8 t48_config_chrg_e[] = {PROCG_NOISESUPPRESSION_T48,
 				3, 132, MXT224E_CALCFG_CHRG,
 				0, 0, 0, 0, 0, 10, 20, 0, 0, 0,
 				6, 6, 0, 0, 64, 4, 64, 10,
-				0, 6, 5, 0, 18, 0, 20,
+				0, 8, 5, 0, 15, 0, 20,
 				0, 0, 0, 0, 0, 0, 0, MXT224E_THRESHOLD_CHRG,
-				2, 5, 2, 47, MXT224_MAX_MT_FINGERS,
-				5, 40, 235, 235, 10, 10, 160, 50, 200,
+				2, 5, 2, 80, MXT224_MAX_MT_FINGERS,
+				5, 20, 235, 235, 10, 10, 160, 50, 200,
 				80, 18, 15, 0 };
 
 static u8 end_config_e[] = {RESERVED_T255};
@@ -3869,8 +3878,8 @@ static struct mxt224_platform_data mxt224_data = {
 	.max_z = 255,
 	.min_w = 0,
 	.max_w = 30,
-	.atchcalst = MXT224_ATCHCALST,
-	.atchcalsthr = MXT224_ATCHCALTHR,
+	.atchcalst = MXT224E_ATCHCALST,
+	.atchcalsthr = MXT224E_ATCHCALTHR,
 	.tchthr_batt = MXT224_THRESHOLD_BATT,
 	.tchthr_charging = MXT224_THRESHOLD_CHRG,
 	.tchthr_batt_e = MXT224E_THRESHOLD_BATT,
@@ -4264,6 +4273,7 @@ static struct platform_device msm_rpm_log_device = {
 #define PMIC_GPIO_SHORT_SENDEND		32
 #define PMIC_GPIO_EAR_MICBIAS_EN	3
 
+#ifndef CONFIG_MACH_JAGUAR
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
@@ -4290,6 +4300,46 @@ static struct sec_jack_zone jack_zones[] = {
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
 };
+#else
+static struct sec_jack_zone jack_zones[] = {
+	[0] = {
+		.adc_high	= 3,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_3POLE,
+	},
+	[1] = {
+		.adc_high	= 630,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_3POLE,
+	},
+	[2] = {
+		.adc_high	= 900,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+	[3] = {
+		.adc_high	= 930,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_3POLE,
+	},
+	[4] = {
+		.adc_high	= 1700,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+	[5] = {
+		.adc_high	= 9999,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+};
+#endif
 
 /* To support 3-buttons earjack */
 static struct sec_jack_buttons_zone jack_buttons_zones[] = {
@@ -4674,29 +4724,16 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(ON, GDHS, MAX, ACTIVE),
-		false,
-		8500, 51, 1122000, 8500,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, MAX, ACTIVE),
 		false,
 		9000, 51, 1130300, 9000,
 	},
+
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, ACTIVE, RET_HIGH),
 		false,
 		10000, 51, 1130300, 10000,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, GDHS, MAX, ACTIVE),
-		false,
-		12000, 14, 2205900, 12000,
 	},
 
 	{

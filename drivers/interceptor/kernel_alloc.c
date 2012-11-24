@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * kernel_alloc.
@@ -62,6 +62,7 @@ ssh_realloc(void * oldptr, size_t oldsize, size_t newsize)
   return ssh_realloc_flags(oldptr, oldsize, newsize, SSH_KERNEL_ALLOC_NOWAIT);
 }
 
+/* coverity[ -tainted_data_sink : arg-0 ] */
 void ssh_free (void * ptr)
 {
   if (ptr != NULL)

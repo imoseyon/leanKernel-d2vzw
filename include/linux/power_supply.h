@@ -148,10 +148,12 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_MISC,
 	POWER_SUPPLY_TYPE_CARDOCK,
 	POWER_SUPPLY_TYPE_UARTOFF,
-	POWER_SUPPLY_TYPE_OTG,
 #ifdef CONFIG_WIRELESS_CHARGING
-	POWER_SUPPLY_TYPE_WPC,		/* Wireless Charging */
+	POWER_SUPPLY_TYPE_WPC,		/* Wireless Charging should be 10 */
+#else
+	POWER_SUPPLY_TYPE_DUMMY,	/* # 10 is assigned for wireless */
 #endif
+	POWER_SUPPLY_TYPE_OTG,
 };
 
 union power_supply_propval {

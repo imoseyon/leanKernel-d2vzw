@@ -739,6 +739,7 @@ static const u16 db8131m_common[] = {
 0x1041,
 
 /* Self-Cam END of Initial*/
+0xE7D2,
 };
 
 /* Set-data based on SKT VT standard ,when using 3G network */
@@ -1562,15 +1563,33 @@ static const u16 db8131m_pattern_off[] = {
 0x0200,		/*TPG Disable*/
 };
 
+static const u16 db8131m_flip_off[] = {
+0xFF87,
+0xd500,
+};
 
 static const u16 db8131m_vflip[] = {
-0xFF87,		/*Page mode */
-0xd508,		/*VFlip*/
+0xFF87,
+0xd508,
 };
 
 static const u16 db8131m_hflip[] = {
-0xFF87,		/*Page mode */
-0xd504,		/*HFlip*/
+0xFF87,
+0xd504,
 };
 
+static const u16 db8131m_flip_off_No15fps[] = {
+0xFF87,
+0xd502,
+};
+
+static const u16 db8131m_vflip_No15fps[] = {
+0xFF87,
+0xd50A,
+};
+
+static const u16 db8131m_hflip_No15fps[] = {
+0xFF87,
+0xd506,
+};
 #endif /* __DB8131M_REG_H */

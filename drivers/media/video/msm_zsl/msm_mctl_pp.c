@@ -145,6 +145,10 @@ int msm_mctl_do_pp_divert(
 	p_mctl->pp_info.cur_frame_id[pcam_inst->image_mode] = frame_id;
 	div.frame.frame_id =
 		p_mctl->pp_info.cur_frame_id[pcam_inst->image_mode];
+#if defined(CONFIG_MSM_IOMMU)
+	div.frame.buf_idx  = buf_idx;
+#endif
+
 	div.frame.handle = (uint32_t)vb;
 	msm_mctl_gettimeofday(&div.frame.timestamp);
 	vb->vidbuf.v4l2_buf.timestamp = div.frame.timestamp;
@@ -154,6 +158,10 @@ int msm_mctl_do_pp_divert(
 	 * this buffer.*/
 	mem = vb2_plane_cookie(&vb->vidbuf, 0);
 	div.frame.path = mem->path;
+#if defined(CONFIG_MSM_IOMMU)
+	div.frame.node_type = VIDEO_NODE;
+#endif
+
 	if (mem->buffer_type == VIDEOBUF2_SINGLE_PLANE) {
 		/* This buffer contains only 1 plane. Use the
 		 * single planar structure to store the info.*/

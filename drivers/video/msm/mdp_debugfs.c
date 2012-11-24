@@ -337,7 +337,7 @@ static ssize_t mdp_stat_read(
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "read_ptr: %08lu\n\n",
-					mdp4_stat.intr_rd_ptr);
+					mdp4_stat.intr_rdptr);
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "dsi:\n");
@@ -387,6 +387,10 @@ static ssize_t mdp_stat_read(
 	dlen -= len;
 	len = snprintf(bp, dlen, "dmas: %08lu\n",
 					mdp4_stat.kickoff_dmas);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "mixer_reset: %08lu\n",
+					mdp4_stat.mixer_reset);
 
 	bp += len;
 	dlen -= len;
@@ -412,8 +416,12 @@ static ssize_t mdp_stat_read(
 					mdp4_stat.overlay_unset[0]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "play:  %08lu\n",
+	len = snprintf(bp, dlen, "play:  %08lu\t",
 					mdp4_stat.overlay_play[0]);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "commit:  %08lu\n",
+					mdp4_stat.overlay_commit[0]);
 	bp += len;
 	dlen -= len;
 
@@ -428,31 +436,58 @@ static ssize_t mdp_stat_read(
 					mdp4_stat.overlay_unset[1]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "play:  %08lu\n\n",
+	len = snprintf(bp, dlen, "play:  %08lu\t",
 					mdp4_stat.overlay_play[1]);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "commit:  %08lu\n\n",
+					mdp4_stat.overlay_commit[1]);
 	bp += len;
 	dlen -= len;
 
 	len = snprintf(bp, dlen, "frame_push:\n");
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "rgb1:  %08lu\t\t",
-		       mdp4_stat.pipe[OVERLAY_PIPE_RGB1]);
+	len = snprintf(bp, dlen, "vg1 :   %08lu\t", mdp4_stat.pipe[0]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "rgb2:  %08lu\n",
-		       mdp4_stat.pipe[OVERLAY_PIPE_RGB2]);
+	len = snprintf(bp, dlen, "vg2 :   %08lu\t", mdp4_stat.pipe[1]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "vg1:   %08lu\t\t",
-		       mdp4_stat.pipe[OVERLAY_PIPE_VG1]);
+	len = snprintf(bp, dlen, "vg3 :   %08lu\n", mdp4_stat.pipe[5]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "vg2:   %08lu\n",
-		       mdp4_stat.pipe[OVERLAY_PIPE_VG2]);
+	len = snprintf(bp, dlen, "rgb1:   %08lu\t", mdp4_stat.pipe[2]);
 	bp += len;
 	dlen -= len;
-	len = snprintf(bp, dlen, "err_mixer: %08lu\t", mdp4_stat.err_mixer);
+	len = snprintf(bp, dlen, "rgb2:   %08lu\t", mdp4_stat.pipe[3]);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "rgb3:   %08lu\n\n", mdp4_stat.pipe[4]);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "wait4vsync: ");
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "mixer0 : %08lu\t", mdp4_stat.wait4vsync0);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "mixer1: %08lu\n\n", mdp4_stat.wait4vsync1);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "iommu: ");
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "map : %08lu\t", mdp4_stat.iommu_map);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "unmap: %08lu\t", mdp4_stat.iommu_unmap);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "drop: %08lu\n\n", mdp4_stat.iommu_drop);
+	bp += len;
+	dlen -= len;
+	len = snprintf(bp, dlen, "err_mixer : %08lu\t", mdp4_stat.err_mixer);
 	bp += len;
 	dlen -= len;
 	len = snprintf(bp, dlen, "err_size : %08lu\n", mdp4_stat.err_size);
@@ -537,12 +572,12 @@ struct mddi_reg {
 };
 
 static struct mddi_reg mddi_regs_list[] = {
-	{"MDDI_CMD", MDDI_CMD},		/* 0x0000 */
-	{"MDDI_VERSION", MDDI_VERSION},		/* 0x0004 */
-	{"MDDI_PRI_PTR", MDDI_PRI_PTR},		/* 0x0008 */
-	{"MDDI_BPS",  MDDI_BPS},		/* 0x0010 */
-	{"MDDI_SPM", MDDI_SPM},		/* 0x0014 */
-	{"MDDI_INT", MDDI_INT},		/* 0x0018 */
+	{"MDDI_CMD", MDDI_CMD},	 	/* 0x0000 */
+	{"MDDI_VERSION", MDDI_VERSION},  /* 0x0004 */
+	{"MDDI_PRI_PTR", MDDI_PRI_PTR},  /* 0x0008 */
+	{"MDDI_BPS",  MDDI_BPS}, 	/* 0x0010 */
+	{"MDDI_SPM", MDDI_SPM}, 	/* 0x0014 */
+	{"MDDI_INT", MDDI_INT}, 	/* 0x0018 */
 	{"MDDI_INTEN", MDDI_INTEN},	/* 0x001c */
 	{"MDDI_REV_PTR", MDDI_REV_PTR},	/* 0x0020 */
 	{"MDDI_	REV_SIZE", MDDI_REV_SIZE},/* 0x0024 */
@@ -551,7 +586,7 @@ static struct mddi_reg mddi_regs_list[] = {
 	{"MDDI_REV_CRC_ERR", MDDI_REV_CRC_ERR}, /* 0x0030 */
 	{"MDDI_TA1_LEN", MDDI_TA1_LEN}, /* 0x0034 */
 	{"MDDI_TA2_LEN", MDDI_TA2_LEN}, /* 0x0038 */
-	{"MDDI_TEST", MDDI_TEST},		/* 0x0040 */
+	{"MDDI_TEST", MDDI_TEST}, 	/* 0x0040 */
 	{"MDDI_REV_PKT_CNT", MDDI_REV_PKT_CNT}, /* 0x0044 */
 	{"MDDI_DRIVE_HI", MDDI_DRIVE_HI},/* 0x0048 */
 	{"MDDI_DRIVE_LO", MDDI_DRIVE_LO},	/* 0x004c */

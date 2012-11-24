@@ -499,18 +499,18 @@ static int send_message(struct fsg_common *common, char *msg)
 	return 0;
 }
 
-static int do_autorun_check(struct fsg_common *common)
+static int do_timer_stop(struct fsg_common *common)
 {
 	printk(KERN_INFO "%s called\n", __func__);
-	send_message(common, "autorun");
+	send_message(common, "time stop");
 
 	return 0;
 }
 
-static int do_switch_atmode(struct fsg_common *common)
+static int do_timer_reset(struct fsg_common *common)
 {
 	printk(KERN_INFO "%s called\n", __func__);
-	send_message(common, "Load AT");
+	send_message(common, "time reset");
 
 	return 0;
 }
@@ -1024,7 +1024,9 @@ static int do_read_cd(struct fsg_common *common)
 			break;		/* No more left to read */
 
 		/* Send this buffer and go read some more */
-		start_in_transfer(common, bh);
+		if (!start_in_transfer(common, bh))
+			/* Don't know what to do if common->fsg is NULL */
+			return -EIO;
 		common->next_buffhd_to_fill = bh->next;
 	}
 
@@ -1591,8 +1593,7 @@ static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 #if defined(CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE)
 	strncpy(new_product_name, common->product_string, 16);
 	new_product_name[16] = '\0';
-	if (common->product_string &&
-		strlen(common->product_string) <= 11 &&
+	if (strlen(common->product_string) <= 11 &&
 			/* check string length */
 			common->lun > 0) {
 		strncat(new_product_name, " Card", 16);
@@ -2593,12 +2594,12 @@ static int do_scsi_command(struct fsg_common *common)
 		break;
 
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
-	case RELEASE:	/* SC_AUTORUN_CHECK0 : 0x17 */
-		reply = do_switch_atmode(common);
+	case RELEASE:	/* SUA Timer Stop : 0x17 */
+		reply = do_timer_stop(common);
 		break;
 
-	case RESERVE:	/* SC_AUTORUN_CHECK1 : 0x16 */
-		reply = do_autorun_check(common);
+	case RESERVE:	/* SUA Timer Reset : 0x16 */
+		reply = do_timer_reset(common);
 		break;
 
 #ifdef _SUPPORT_MAC_
@@ -2634,7 +2635,7 @@ unknown_cmnd:
 		common->data_size_from_cmnd = 0;
 		sprintf(unknown, "Unknown x%02x", common->cmnd[0]);
 		reply = check_command(common, common->cmnd_size,
-				      DATA_DIR_UNKNOWN, 0xff, 0, unknown);
+				      DATA_DIR_UNKNOWN, ~0, 0, unknown);
 		if (reply == 0) {
 			common->curlun->sense_data = SS_INVALID_COMMAND;
 			reply = -EINVAL;

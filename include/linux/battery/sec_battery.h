@@ -99,7 +99,8 @@ struct sec_battery_info {
 	/* event set */
 	unsigned int event;
 	unsigned int event_wait;
-	struct timer_list event_expired_timer;
+	struct alarm event_termination_alarm;
+	ktime_t		last_event_time;
 
 	/* battery check */
 	unsigned int check_count;
@@ -137,6 +138,7 @@ struct sec_battery_info {
 
 	/* test mode */
 	bool test_activated;
+	bool factory_mode;
 };
 
 static char *supply_list[] = {
@@ -192,10 +194,13 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(batt_charging_source),
 	SEC_BATTERY_ATTR(fg_reg_dump),
 	SEC_BATTERY_ATTR(fg_reset_cap),
+	SEC_BATTERY_ATTR(fg_capacity),
 	SEC_BATTERY_ATTR(auth),
 	SEC_BATTERY_ATTR(chg_current_adc),
 	SEC_BATTERY_ATTR(wc_adc),
 	SEC_BATTERY_ATTR(wc_status),
+	SEC_BATTERY_ATTR(factory_mode),
+	SEC_BATTERY_ATTR(update),
 
 	SEC_BATTERY_ATTR(2g_call),
 	SEC_BATTERY_ATTR(3g_call),
@@ -232,10 +237,13 @@ enum {
 	BATT_CHARGING_SOURCE,
 	FG_REG_DUMP,
 	FG_RESET_CAP,
+	FG_CAPACITY,
 	AUTH,
 	CHG_CURRENT_ADC,
 	WC_ADC,
 	WC_STATUS,
+	FACTORY_MODE,
+	UPDATE,
 
 	BATT_EVENT_2G_CALL,
 	BATT_EVENT_3G_CALL,

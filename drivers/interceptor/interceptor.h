@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * interceptor.h
@@ -173,6 +173,14 @@ typedef struct
 #define SSH_PACKET_HWCKSUM       0x00000010U /** TCP/UDP cksum done by NIC. */
 #define SSH_PACKET_MEDIABCAST    0x00000020U /** Packet was media broadcast. */
 #define SSH_PACKET_UNMODIFIED    0x00000200U /** Unmodified packet. */
+
+/*  This flag specifies that the engine is allowed to fragment the packet if
+    the packet is too large to fit into interafce MTU. Some operating
+    system handle the fragmentation after us and therefore this flag
+    may be set for some outbound data packets. The packet is guaranteed
+    to have been originated from local stack and stack has indicated
+    that this packet can be fragmented. */
+#define SSH_PACKET_FRAGMENTATION_ALLOWED  0x00000400U
 
 /*  Flag bits with mask 0x00000fff are reserved for interceptor. */
 /*  Flag bits with mask 0xfffff000 are reserved for IPSEC engine. */

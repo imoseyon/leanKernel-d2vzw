@@ -16,8 +16,8 @@
 
 #define DEBUG
 /* #define VERBOSE_DEBUG */
-#define SEC_TSP_DEBUG
-/* #define SEC_TSP_VERBOSE_DEBUG */
+/* #define SEC_TSP_DEBUG */
+#define SEC_TSP_VERBOSE_DEBUG
 
 /* #define FORCE_FW_FLASH */
 /* #define FORCE_FW_PASS */
@@ -42,6 +42,8 @@
 #include <linux/slab.h>
 #include <mach/gpio.h>
 #include <linux/uaccess.h>
+#include <linux/cpufreq.h>
+#include <asm/mach-types.h>
 
 #include <linux/platform_data/mms_ts.h>
 
@@ -76,6 +78,12 @@ enum {
 /* each address addresses 4-byte words */
 #define ISP_MAX_FW_SIZE		(0x1F00 * 4)
 #define ISP_IC_INFO_ADDR	0x1F00
+
+#ifdef CONFIG_SEC_DVFS
+#define TOUCH_BOOSTER			1
+#define TOUCH_BOOSTER_OFF_TIME	100
+#define TOUCH_BOOSTER_CHG_TIME	200
+#endif
 
 #ifdef SEC_TSP_FW_UPDATE
 
@@ -118,12 +126,17 @@ enum {
 #define MMS_VSC_CMD_REFER		0X07
 #define VSC_INTENSITY_TK		0x14
 #define VSC_RAW_TK			0x16
+#define VSC_THRESHOLD_TK		0x18
 
 
 #define TSP_CMD_STR_LEN			32
 #define TSP_CMD_RESULT_STR_LEN		512
 #define TSP_CMD_PARAM_NUM		8
 #endif /* SEC_TSP_FACTORY_TEST */
+
+int touch_is_pressed;
+EXPORT_SYMBOL(touch_is_pressed);
+
 enum fw_flash_mode {
 	ISP_FLASH,
 	ISC_FLASH,
@@ -153,6 +166,12 @@ struct mms_ts_info {
 
 	char				*fw_name;
 	struct early_suspend		early_suspend;
+#if TOUCH_BOOSTER
+	struct delayed_work work_dvfs_off;
+	struct delayed_work	work_dvfs_chg;
+	bool	dvfs_lock_status;
+	struct mutex dvfs_lock;
+#endif
 
 	/* protects the enabled flag */
 	struct mutex			lock;
@@ -265,12 +284,104 @@ struct tsp_cmd tsp_cmds[] = {
 	{TSP_CMD("not_support_cmd", not_support_cmd),},
 };
 #endif
+
+#if TOUCH_BOOSTER
+static void change_dvfs_lock(struct work_struct *work)
+{
+	struct mms_ts_info *info = container_of(work,
+				struct mms_ts_info, work_dvfs_chg.work);
+	int ret;
+
+	mutex_lock(&info->dvfs_lock);
+	ret = cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
+	mutex_unlock(&info->dvfs_lock);
+
+	if (ret < 0)
+		pr_err("%s: 1booster stop failed(%d)\n",\
+					__func__, __LINE__);
+	else
+		pr_info("[TSP] %s", __func__);
+}
+
+static void set_dvfs_off(struct work_struct *work)
+{
+	struct mms_ts_info *info = container_of(work,
+				struct mms_ts_info, work_dvfs_off.work);
+	mutex_lock(&info->dvfs_lock);
+	cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
+	cpufreq_set_limit(TOUCH_BOOSTER_SECOND_STOP, 0);
+	info->dvfs_lock_status = false;
+	mutex_unlock(&info->dvfs_lock);
+
+	pr_info("[TSP] DVFS Off!");
+}
+
+static void set_dvfs_lock(struct mms_ts_info *info, uint32_t on)
+{
+	int ret = 0, ret2 = 0;
+
+	mutex_lock(&info->dvfs_lock);
+	if (on == 0) {
+		if (info->dvfs_lock_status) {
+			cancel_delayed_work(&info->work_dvfs_chg);
+			schedule_delayed_work(&info->work_dvfs_off,
+				msecs_to_jiffies(TOUCH_BOOSTER_OFF_TIME));
+		}
+	} else if (on == 1) {
+		cancel_delayed_work(&info->work_dvfs_off);
+		if (!info->dvfs_lock_status) {
+			ret = cpufreq_set_limit(TOUCH_BOOSTER_SECOND_START, 0);
+			ret2 = cpufreq_set_limit(TOUCH_BOOSTER_FIRST_START, 0);
+			if (ret < 0 || ret2 < 0)
+				pr_err("%s: cpu lock failed(%d, %d)\n",\
+							__func__, ret, ret2);
+
+			schedule_delayed_work(&info->work_dvfs_chg,
+				msecs_to_jiffies(TOUCH_BOOSTER_CHG_TIME));
+			info->dvfs_lock_status = true;
+			pr_info("[TSP] DVFS On!");
+		}
+	} else if (on == 2) {
+		cancel_delayed_work(&info->work_dvfs_off);
+		cancel_delayed_work(&info->work_dvfs_chg);
+		schedule_work(&info->work_dvfs_off.work);
+	}
+	mutex_unlock(&info->dvfs_lock);
+}
+#endif
+
+static void release_all_fingers(struct mms_ts_info *info)
+{
+#ifdef SEC_TSP_DEBUG
+	struct i2c_client *client = info->client;
+#endif
+	int i;
+
+	printk(KERN_DEBUG "[TSP] %s\n", __func__);
+
+	for (i = 0; i < MAX_FINGERS; i++) {
+#ifdef SEC_TSP_DEBUG
+		if (info->finger_state[i] == 1) {
+			dev_notice(&client->dev, "finger %d up(force)\n", i);
+		}
+#endif
+		info->finger_state[i] = 0;
+		input_mt_slot(info->input_dev, i);
+		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
+					   false);
+	}
+	input_sync(info->input_dev);
+#if TOUCH_BOOSTER
+	set_dvfs_lock(info, 2);
+	pr_info("[TSP] dvfs_lock free.\n ");
+#endif
+}
+
 static inline void mms_pwr_on_reset(struct mms_ts_info *info);
 
 static void reset_mms_ts(struct mms_ts_info *info)
 {
 	struct i2c_client *client = info->client;
-	int i;
 
 	if (info->enabled == false)
 		return;
@@ -278,19 +389,9 @@ static void reset_mms_ts(struct mms_ts_info *info)
 	dev_notice(&client->dev, "%s++\n", __func__);
 	disable_irq_nosync(info->irq);
 	info->enabled = false;
+	touch_is_pressed = 0;
 
-	for (i = 0; i < MAX_FINGERS; i++) {
-#ifdef SEC_TSP_DEBUG
-		if (info->finger_state[i] == 1) {
-			info->finger_state[i] = 0;
-			dev_notice(&client->dev, "finger %d up(force)\n", i);
-		}
-#endif
-		input_mt_slot(info->input_dev, i);
-		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
-					   false);
-	}
-	input_sync(info->input_dev);
+	release_all_fingers(info);
 
 	mms_pwr_on_reset(info);
 	enable_irq(info->irq);
@@ -369,9 +470,14 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			goto out;
 		}
 	}
-	BUG_ON(sz > MAX_FINGERS*FINGER_EVENT_SZ);
+	/* BUG_ON(sz > MAX_FINGERS*FINGER_EVENT_SZ); */
 	if (sz == 0)
 		goto out;
+
+	if (sz > MAX_FINGERS*FINGER_EVENT_SZ) {
+		dev_err(&client->dev, "[TSP] abnormal data inputed.\n");
+		goto out;
+	}
 
 	msg[1].len = sz;
 	ret = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
@@ -411,9 +517,14 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		if (info->use_touchkey && type == 0x02) {
 			input_report_key(info->input_dev,
 				info->keycode[id], action);
+#ifdef SEC_TSP_DEBUG
 			dev_notice(&client->dev,
 				"touchkey : keycode=%d action=%d\n",
 				info->keycode[id], action);
+#else
+			dev_notice(&client->dev,
+				"touchkey action=%d\n", action);
+#endif
 #ifdef SEC_TKEY_FACTORY_TEST
 			info->key_pressed[id] = action;
 #endif
@@ -475,6 +586,16 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 		}
 	}
 	input_sync(info->input_dev);
+
+	touch_is_pressed = 0;
+
+	for (i = 0; i < MAX_FINGERS; i++) {
+		if (info->finger_state[i] == 1)
+			touch_is_pressed++;
+	}
+#if TOUCH_BOOSTER
+	set_dvfs_lock(info, !!touch_is_pressed);
+#endif
 
 out:
 	return IRQ_HANDLED;
@@ -987,6 +1108,7 @@ static int mms_ts_disable(struct mms_ts_info *info, int sleepcmd)
 		usleep_range(10000, 12000);
 	}
 	info->enabled = false;
+	touch_is_pressed = 0;
 out:
 	mutex_unlock(&info->lock);
 	return 0;
@@ -1043,7 +1165,8 @@ static int mms_ts_fw_load(struct mms_ts_info *info)
 	if (module_rev < 0) {
 		module_rev = 0;
 		dev_err(&client->dev,
-			"can't read revision,controller dead? FW update!\n");
+			"can't read revision,controller dead?\n");
+		goto out;
 	}
 
 	if (!info->pdata || !info->pdata->mux_fw_flash) {
@@ -1059,6 +1182,12 @@ static int mms_ts_fw_load(struct mms_ts_info *info)
 		goto done;
 	}
 
+	if (machine_is_JASPER() && (system_rev < 0x4)) {
+		dev_info(&client->dev,
+			"fw update does not need - old module(3key)\n");
+		goto done;
+	}
+
 	if (ver >= FW_VERSION) {
 		dev_info(&client->dev,
 			"fw version update does not need\n");
@@ -1069,7 +1198,21 @@ static int mms_ts_fw_load(struct mms_ts_info *info)
 		i2c_lock_adapter(adapter);
 		info->pdata->mux_fw_flash(true);
 
-		ret = fw_download(info, MELFAS_binary, MELFAS_binary_nLength);
+		if (machine_is_JASPER() && (module_rev == 0x1)) {
+			ret = fw_download(info, OFILM_binary,
+					MELFAS_binary_nLength);
+		} else if (machine_is_JASPER() && (module_rev == 0x32)) {
+			ret = fw_download(info, OFILM_binary,
+					MELFAS_binary_nLength);
+		} else if (machine_is_JASPER() && (module_rev == 0x2)) {
+			ret = fw_download(info, MELFAS_binary,
+					MELFAS_binary_nLength);
+		} else if (machine_is_GOGH()) {
+			ret = fw_download(info, MELFAS_binary,
+					MELFAS_binary_nLength);
+		} else {
+			goto done;
+		}
 
 		info->pdata->mux_fw_flash(false);
 		i2c_unlock_adapter(adapter);
@@ -1132,6 +1275,9 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 	int i, j;
 	u32 max_value, min_value;
 	u32 raw_data;
+	int tx_diff = 0;
+	if (machine_is_JASPER())
+		tx_diff = 1;
 
 	gpio = msm_irq_to_gpio(info->irq);
 	disable_irq(info->irq);
@@ -1150,6 +1296,8 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 			w_buf[0], 5, &w_buf[1]);
 		if (ret < 0)
 			goto err_i2c;
+		touch_is_pressed = 0;
+		release_all_fingers(info);
 		info->pdata->vdd_on(0);
 		msleep(30);
 		info->pdata->vdd_on(1);
@@ -1178,8 +1326,11 @@ static void get_raw_data_all(struct mms_ts_info *info, u8 cmd)
 			udelay(100);
 	}
 
+	max_value = 0;
+	min_value = 0;
+
 	for (i = 0; i < RX_NUM; i++) {
-		for (j = 0; j < TX_NUM; j++) {
+		for (j = 0; j < (TX_NUM - tx_diff); j++) {
 
 			w_buf[2] = j; /* tx */
 			w_buf[3] = i; /* rx */
@@ -1254,7 +1405,8 @@ static u32 get_raw_data_one(struct mms_ts_info *info, u16 rx_idx, u16 tx_idx,
 	w_buf[5] = 0;			/* sub command */
 
 	if (cmd != MMS_VSC_CMD_INTENSITY && cmd != MMS_VSC_CMD_RAW &&
-		cmd != MMS_VSC_CMD_REFER && cmd != VSC_INTENSITY_TK) {
+		cmd != MMS_VSC_CMD_REFER && cmd != VSC_INTENSITY_TK &&
+		cmd != VSC_RAW_TK) {
 		dev_err(&info->client->dev, "%s: not profer command(cmd=%d)\n",
 				__func__, cmd);
 		return FAIL;
@@ -1304,9 +1456,12 @@ static int check_rx_tx_num(void *device_data)
 
 	char buff[TSP_CMD_STR_LEN] = {0};
 	int node;
+	int tx_diff = 0;
+	if (machine_is_JASPER())
+		tx_diff = 1;
 
 	if (info->cmd_param[0] < 0 ||
-			info->cmd_param[0] >= TX_NUM  ||
+			info->cmd_param[0] >= (TX_NUM - tx_diff) ||
 			info->cmd_param[1] < 0 ||
 			info->cmd_param[1] >= RX_NUM) {
 		snprintf(buff, sizeof(buff) , "%s", "NG");
@@ -1348,10 +1503,10 @@ static void fw_update(void *device_data)
 	int ret = 0;
 	int ver, module_rev;
 	int retries = 3;
-	u8 *buff;
+	const u8 *buff = 0;
 	mm_segment_t old_fs = {0};
 	struct file *fp = NULL;
-	long fsize, nread;
+	long fsize = 0, nread = 0;
 
 	#define MMS_TS "/sdcard/melfas_fw.bin"
 
@@ -1376,7 +1531,10 @@ static void fw_update(void *device_data)
 
 	switch (info->cmd_param[0]) {
 	case BUILT_IN:
-		buff = MELFAS_binary;
+		if (machine_is_JASPER() && (module_rev == 0x1))
+			buff = OFILM_binary;
+		else
+			buff = MELFAS_binary;
 		fsize = MELFAS_binary_nLength;
 		dev_info(&client->dev, "built in fw is loaded!!\n");
 		break;
@@ -1386,7 +1544,7 @@ static void fw_update(void *device_data)
 		set_fs(KERNEL_DS);
 
 		fp = filp_open(MMS_TS, O_RDONLY, S_IRUSR);
-		if (!fp) {
+		if (IS_ERR(fp)) {
 			dev_err(&client->dev,
 				"fail to open fw in ums (%s)\n", MMS_TS);
 			goto err_open;
@@ -1543,6 +1701,7 @@ static void module_off_master(void *device_data)
 	if (info->enabled) {
 		disable_irq(info->irq);
 		info->enabled = false;
+		touch_is_pressed = 0;
 	}
 	mutex_unlock(&info->lock);
 
@@ -2030,21 +2189,45 @@ static ssize_t show_intensity_logging_off(struct device *dev,
 #endif
 
 #ifdef SEC_TKEY_FACTORY_TEST
+static ssize_t tkey_threshold_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct mms_ts_info *info = dev_get_drvdata(dev);
+	struct i2c_client *client = info->client;
+	int tkey_threshold;
+
+	tkey_threshold = i2c_smbus_read_byte_data(info->client,
+						VSC_THRESHOLD_TK);
+	dev_info(&client->dev, "touch key threshold: %d\n", tkey_threshold);
+
+	return snprintf(buf, sizeof(int), "%d\n", tkey_threshold);
+}
+
 static ssize_t back_key_state_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
 	struct i2c_client *client = info->client;
-	int i;
+	int i, ret, val;
 
 	for (i = 0; i < ARRAY_SIZE(info->keycode); i++) {
 		if (info->keycode[i] == KEY_BACK)
 			break;
 	}
-
 	dev_info(&client->dev, "back key state: %d\n", info->key_pressed[i]);
 
-	return snprintf(buf, sizeof(int), "%d\n", info->key_pressed[i]);
+	/* back key*/
+	disable_irq(info->irq);
+
+	ret = get_raw_data_one(info, 0, 0, VSC_INTENSITY_TK);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
+
+	enable_irq(info->irq);
+	val = (u16)ret;
+
+	dev_info(&client->dev, "%s: val=%d\n", __func__, val);
+	return sprintf(buf, "%d\n", val);
 }
 
 static ssize_t home_key_state_show(struct device *dev,
@@ -2052,16 +2235,26 @@ static ssize_t home_key_state_show(struct device *dev,
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
 	struct i2c_client *client = info->client;
-	int i;
+	int i, ret, val;
 
 	for (i = 0; i < ARRAY_SIZE(info->keycode); i++) {
 		if (info->keycode[i] == KEY_HOMEPAGE)
 			break;
 	}
-
 	dev_info(&client->dev, "back key state: %d\n", info->key_pressed[i]);
 
-	return snprintf(buf, sizeof(int), "%d\n", info->key_pressed[i]);
+	/* home key*/
+	disable_irq(info->irq);
+
+	ret = get_raw_data_one(info, 0, 1, VSC_INTENSITY_TK);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
+
+	enable_irq(info->irq);
+	val = (u16)ret;
+
+	dev_info(&client->dev, "%s: val=%d\n", __func__, val);
+	return sprintf(buf, "%d\n", val);
 }
 
 static ssize_t recent_key_state_show(struct device *dev,
@@ -2069,16 +2262,26 @@ static ssize_t recent_key_state_show(struct device *dev,
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
 	struct i2c_client *client = info->client;
-	int i;
+	int i, ret, val;
 
 	for (i = 0; i < ARRAY_SIZE(info->keycode); i++) {
 		if (info->keycode[i] == KEY_F3)
 			break;
 	}
-
 	dev_info(&client->dev, "back key state: %d\n", info->key_pressed[i]);
 
-	return snprintf(buf, sizeof(int), "%d\n", info->key_pressed[i]);
+	/* recent key*/
+	disable_irq(info->irq);
+
+	ret = get_raw_data_one(info, 0, 2, VSC_INTENSITY_TK);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
+
+	enable_irq(info->irq);
+	val = (u16)ret;
+
+	dev_info(&client->dev, "%s: val=%d\n", __func__, val);
+	return sprintf(buf, "%d\n", val);
 }
 
 static ssize_t menu_key_state_show(struct device *dev,
@@ -2086,16 +2289,26 @@ static ssize_t menu_key_state_show(struct device *dev,
 {
 	struct mms_ts_info *info = dev_get_drvdata(dev);
 	struct i2c_client *client = info->client;
-	int i;
+	int i, ret, val;
 
 	for (i = 0; i < ARRAY_SIZE(info->keycode); i++) {
 		if (info->keycode[i] == KEY_MENU)
 			break;
 	}
-
 	dev_info(&client->dev, "back key state: %d\n", info->key_pressed[i]);
 
-	return snprintf(buf, sizeof(int), "%d\n", info->key_pressed[i]);
+	/* recent key*/
+	disable_irq(info->irq);
+
+	ret = get_raw_data_one(info, 0, 3, VSC_INTENSITY_TK);
+	if (ret < 0)
+		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
+
+	enable_irq(info->irq);
+	val = (u16)ret;
+
+	dev_info(&client->dev, "%s: val=%d\n", __func__, val);
+	return sprintf(buf, "%d\n", val);
 }
 
 static ssize_t tkey_rawcounter_show0(struct device *dev,
@@ -2106,10 +2319,10 @@ static ssize_t tkey_rawcounter_show0(struct device *dev,
 	u32 ret;
 	u16 val;
 
-	/* menu key*/
+	/* back key*/
 	disable_irq(info->irq);
 
-	ret = get_raw_data_one(info, 0, 0, VSC_INTENSITY_TK);
+	ret = get_raw_data_one(info, 0, 0, VSC_RAW_TK);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
 
@@ -2131,7 +2344,7 @@ static ssize_t tkey_rawcounter_show1(struct device *dev,
 	/* home key*/
 	disable_irq(info->irq);
 
-	ret = get_raw_data_one(info, 0, 1, VSC_INTENSITY_TK);
+	ret = get_raw_data_one(info, 0, 1, VSC_RAW_TK);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
 
@@ -2153,7 +2366,7 @@ static ssize_t tkey_rawcounter_show2(struct device *dev,
 	/* recent key*/
 	disable_irq(info->irq);
 
-	ret = get_raw_data_one(info, 0, 2, VSC_INTENSITY_TK);
+	ret = get_raw_data_one(info, 0, 2, VSC_RAW_TK);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
 
@@ -2175,7 +2388,7 @@ static ssize_t tkey_rawcounter_show3(struct device *dev,
 	/* menu key*/
 	disable_irq(info->irq);
 
-	ret = get_raw_data_one(info, 0, 3, VSC_INTENSITY_TK);
+	ret = get_raw_data_one(info, 0, 3, VSC_RAW_TK);
 	if (ret < 0)
 		dev_err(&client->dev, "%s: fail to read (%d)\n", __func__, ret);
 
@@ -2188,6 +2401,7 @@ static ssize_t tkey_rawcounter_show3(struct device *dev,
 #endif
 
 #ifdef SEC_TKEY_FACTORY_TEST
+static DEVICE_ATTR(touchkey_threshold, S_IRUGO, tkey_threshold_show, NULL);
 static DEVICE_ATTR(touchkey_back, S_IRUGO, back_key_state_show, NULL);
 static DEVICE_ATTR(touchkey_home, S_IRUGO, home_key_state_show, NULL);
 static DEVICE_ATTR(touchkey_recent, S_IRUGO, recent_key_state_show, NULL);
@@ -2198,6 +2412,7 @@ static DEVICE_ATTR(touchkey_raw_data2, S_IRUGO, tkey_rawcounter_show2, NULL) ;
 static DEVICE_ATTR(touchkey_raw_data3, S_IRUGO, tkey_rawcounter_show3, NULL) ;
 
 static struct attribute *touchkey_attributes[] = {
+	&dev_attr_touchkey_threshold.attr,
 	&dev_attr_touchkey_back.attr,
 	&dev_attr_touchkey_home.attr,
 	&dev_attr_touchkey_recent.attr,
@@ -2291,6 +2506,7 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 #ifdef SEC_TSP_FACTORY_TEST
 	struct device *fac_dev_ts;
 #endif
+	touch_is_pressed = 0;
 
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
@@ -2372,6 +2588,13 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 		goto err_reg_input_dev;
 	}
 
+#if TOUCH_BOOSTER
+	mutex_init(&info->dvfs_lock);
+	INIT_DELAYED_WORK(&info->work_dvfs_off, set_dvfs_off);
+	INIT_DELAYED_WORK(&info->work_dvfs_chg, change_dvfs_lock);
+	info->dvfs_lock_status = false;
+#endif
+
 	i2c_set_clientdata(client, info);
 
 	ret = mms_ts_fw_load(info);
@@ -2418,8 +2641,10 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 #endif
 	return 0;
 
+#ifdef SEC_TKEY_FACTORY_TEST
 err_factory_init:
 	free_irq(info->irq, info);
+#endif
 err_config:
 	input_unregister_device(input_dev);
 	input_dev = NULL;
@@ -2454,10 +2679,6 @@ static int mms_ts_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mms_ts_info *info = i2c_get_clientdata(client);
-	int i;
-#ifdef SEC_TSP_DEBUG
-	int mt_val;
-#endif
 
 	dev_notice(&info->client->dev, "%s: users=%d\n", __func__,
 			info->input_dev->users);
@@ -2466,28 +2687,8 @@ static int mms_ts_suspend(struct device *dev)
 		goto out;
 
 	mms_ts_disable(info, 0);
-	for (i = 0; i < MAX_FINGERS; i++) {
-
-#ifdef SEC_TSP_DEBUG
-		input_mt_slot(info->input_dev, i);
-		mt_val = input_mt_get_value(&info->input_dev->
-				mt[info->input_dev->slot], ABS_MT_TRACKING_ID);
-
-		if ((info->finger_state[i] == 1 && mt_val == -1) ||
-				(info->finger_state[i] == 0 && mt_val != -1))
-			dev_notice(&client->dev, "mismatch occured. (%d)\n", i);
-
-		if (info->finger_state[i] == 1) {
-			info->finger_state[i] = 0;
-			dev_notice(&client->dev, "finger %d up(force)\n", i);
-		}
-#endif
-		input_mt_slot(info->input_dev, i);
-		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
-					   false);
-	}
-	input_sync(info->input_dev);
-
+	touch_is_pressed = 0;
+	release_all_fingers(info);
 	info->pdata->vdd_on(0);
 
 out:

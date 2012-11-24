@@ -394,22 +394,27 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	if (!substream->oss.oss)
 #endif
-		if (atomic_read(&substream->mmap_count))
+		if (atomic_read(&substream->mmap_count)) {
+			pr_err("%s stream mmap_count error", __func__);
 			return -EBADFD;
-
+		}
 	params->rmask = ~0U;
 	err = snd_pcm_hw_refine(substream, params);
-	if (err < 0)
+	if (err < 0) {
+		pr_err("%s pcm hw refine failed %d\n", __func__, err);
 		goto _error;
-
+	}
 	err = snd_pcm_hw_params_choose(substream, params);
-	if (err < 0)
+	if (err < 0) {
+		pr_err("%s pcm hw param choose failed %d\n", __func__, err);
 		goto _error;
-
+	}
 	if (substream->ops->hw_params != NULL) {
 		err = substream->ops->hw_params(substream, params);
-		if (err < 0)
+		if (err < 0) {
+			pr_err("%s pcm hw params failed %d\n", __func__, err);
 			goto _error;
+		}
 	}
 
 	runtime->access = params_access(params);
@@ -477,13 +482,19 @@ static int snd_pcm_hw_params_user(struct snd_pcm_substream *substream,
 	int err;
 
 	params = memdup_user(_params, sizeof(*params));
-	if (IS_ERR(params))
+	if (IS_ERR(params)) {
+		pr_err("%s memdump_user failed %d\n", __func__, IS_ERR(params));
 		return PTR_ERR(params);
+	}
 
 	err = snd_pcm_hw_params(substream, params);
+	if (err < 0)
+		pr_err("%s snd_pcm_hw_params error %d\n", __func__, err);
 	if (copy_to_user(_params, params, sizeof(*params))) {
-		if (!err)
+		if (!err) {
+			pr_err("%s Failed to Copy User\n", __func__);
 			err = -EFAULT;
+		}
 	}
 
 	kfree(params);

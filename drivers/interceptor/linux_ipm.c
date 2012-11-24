@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * linux_ipm.c
@@ -39,17 +39,17 @@ static void interceptor_ipm_message_free_internal(SshInterceptor interceptor,
 {
   SSH_ASSERT(interceptor != NULL);
   SSH_ASSERT(msg != NULL);
-
+  
   if (msg->buf)
     ssh_free(msg->buf);
   msg->buf = NULL;
-
-  SSH_LINUX_STATISTICS(interceptor,
-  {
+  
+  SSH_LINUX_STATISTICS(interceptor, 
+  { 
     interceptor->stats.ipm_send_queue_len--;
     interceptor->stats.ipm_send_queue_bytes -= (SshUInt64) msg->len;
   });
-
+  
   if (msg->emergency_mallocated)
     {
       ssh_free(msg);
@@ -87,7 +87,7 @@ interceptor_ipm_message_alloc(SshInterceptor interceptor,
       msg = interceptor->ipm.msg_freelist;
       interceptor->ipm.msg_freelist = msg->next;
     }
-
+  
 #if SSH_LINUX_MAX_IPM_MESSAGES < 2000
 #error "SSH_LINUX_MAX_IPM_MESSAGES is too low"
 #endif /* SSH_LINUX_MAX_IPM_MESSAGES */
@@ -101,41 +101,47 @@ interceptor_ipm_message_alloc(SshInterceptor interceptor,
 	  interceptor->ipm.msg_allocated++;
 	}
     }
-
+  
   /* Try to reuse last unreliable message in send queue. */
   if (msg == NULL && reliable == TRUE)
     {
       /* This is a reliable message, reuse last unreliable message. */
-      for (msg = interceptor->ipm.send_queue_tail;
-	   msg != NULL;
-	   msg = msg->prev)
-	{
-	  if (msg->reliable == 0)
-	    {
-	      if (msg->next != NULL)
-		msg->next->prev = msg->prev;
+      if (interceptor->ipm.send_queue_num_unreliable > 0)
+        {
+          for (msg = interceptor->ipm.send_queue_tail;
+               msg != NULL;
+               msg = msg->prev)
+            {
+              if (msg->reliable == 0)
+                {
+                  if (msg->next != NULL)
+                    msg->next->prev = msg->prev;
+                  
+                  if (msg->prev != NULL)
+                    msg->prev->next = msg->next;
+                  
+                  if (msg == interceptor->ipm.send_queue)
+                    interceptor->ipm.send_queue = msg->next;
+                  
+                  if (msg == interceptor->ipm.send_queue_tail)
+                    interceptor->ipm.send_queue_tail = msg->prev;
 
-	      if (msg->prev != NULL)
-		msg->prev->next = msg->next;
+                  SSH_ASSERT(interceptor->ipm.send_queue_num_unreliable > 0);
+                  interceptor->ipm.send_queue_num_unreliable--;
 
-	      if (msg == interceptor->ipm.send_queue)
-		interceptor->ipm.send_queue = msg->next;
-
-	      if (msg == interceptor->ipm.send_queue_tail)
-		interceptor->ipm.send_queue_tail = msg->prev;
-
-	      SSH_LINUX_STATISTICS(interceptor,
-	      {
-		interceptor->stats.ipm_send_queue_len--;
-		interceptor->stats.ipm_send_queue_bytes
-		  -= (SshUInt64) msg->len;
-	      });
-
-	      ssh_free(msg->buf);
-	      break;
-	    }
-	}
-
+                  SSH_LINUX_STATISTICS(interceptor,
+	          {
+                    interceptor->stats.ipm_send_queue_len--;
+                    interceptor->stats.ipm_send_queue_bytes 
+                      -= (SshUInt64) msg->len;
+                  });
+	      
+                  ssh_free(msg->buf);
+                  break;
+                }
+            }
+        }
+      
       /* Last resort, malloc message. */
       if (msg == NULL)
 	{
@@ -146,12 +152,12 @@ interceptor_ipm_message_alloc(SshInterceptor interceptor,
     }
 
   if (msg)
-    SSH_LINUX_STATISTICS(interceptor,
-    {
+    SSH_LINUX_STATISTICS(interceptor, 
+    { 
       interceptor->stats.ipm_send_queue_len++;
       interceptor->stats.ipm_send_queue_bytes += (SshUInt64) len;
     });
-
+  
   return msg;
 }
 
@@ -159,7 +165,7 @@ void interceptor_ipm_message_freelist_uninit(SshInterceptor interceptor)
 {
   SshInterceptorIpmMsg msg;
   int freelist_len;
-
+  
   local_bh_disable();
   write_lock(&interceptor->ipm.lock);
 
@@ -175,7 +181,7 @@ void interceptor_ipm_message_freelist_uninit(SshInterceptor interceptor)
     }
 
   freelist_len = interceptor->ipm.msg_allocated;
-
+  
   write_unlock(&interceptor->ipm.lock);
   local_bh_enable();
 
@@ -191,7 +197,7 @@ ssize_t ssh_interceptor_receive_from_ipm(unsigned char *data, size_t len)
 {
   SshUInt32 msg_len;
   SshUInt8 msg_type;
-
+  
   /* Need a complete header. */
   if (len < 5)
     return 0;
@@ -207,7 +213,7 @@ ssize_t ssh_interceptor_receive_from_ipm(unsigned char *data, size_t len)
   /* Pass message to engine. */
   local_bh_disable();
 
-  ssh_engine_packet_from_ipm(ssh_interceptor_context->engine,
+  ssh_engine_packet_from_ipm(ssh_interceptor_context->engine, 
 			     msg_type, data + 5, msg_len);
 
   local_bh_enable();
@@ -225,7 +231,7 @@ Boolean ssh_interceptor_send_to_ipm(unsigned char *data, size_t len,
 
   local_bh_disable();
   write_lock(&ssh_interceptor_context->ipm.lock);
-
+  
   /* Check ipm channel status */
   if (atomic_read(&ssh_interceptor_context->ipm.open) == 0)
     {
@@ -242,19 +248,19 @@ Boolean ssh_interceptor_send_to_ipm(unsigned char *data, size_t len,
   if (msg == NULL)
     {
       write_unlock(&ssh_interceptor_context->ipm.lock);
-      local_bh_enable();
+      local_bh_enable();      
 
       if (reliable)
-	SSH_LINUX_IPM_WARN("Dropping reliable ipm message type %d len %d\n",
+	SSH_LINUX_IPM_WARN("Dropping reliable ipm message type %d len %d\n", 
 			   (int) (len < 5 ? -1 : data[4]), (int) len);
       else
 	SSH_LINUX_IPM_DEBUG("Dropping unreliable ipm message type %d "
-			    "len %d\n",
-			    (int) (len < 5 ? -1 : data[4]), (int) len);
+			    "len %d\n", 
+			    (int) (len < 5 ? -1 : data[4]), (int) len);  
       ssh_free(data);
       return FALSE;
     }
-
+  
   /* Fill message structure. */
   msg->buf = data;
   msg->len = len;
@@ -268,14 +274,20 @@ Boolean ssh_interceptor_send_to_ipm(unsigned char *data, size_t len,
   msg->next = NULL;
   if (msg->prev)
     msg->prev->next = msg;
-
+  
   if (ssh_interceptor_context->ipm.send_queue == NULL)
     ssh_interceptor_context->ipm.send_queue = msg;
+  
+  if (msg->reliable == 0)
+    {
+      ssh_interceptor_context->ipm.send_queue_num_unreliable++;
+      SSH_ASSERT(ssh_interceptor_context->ipm.send_queue_num_unreliable != 0);
+    }
 
   write_unlock(&ssh_interceptor_context->ipm.lock);
   local_bh_enable();
-
-  /* Wake up reader. */
+  
+  /* Wake up reader. */  
   wake_up_interruptible(&ssh_interceptor_context->ipm_proc_entry.wait_queue);
 
   return TRUE;
@@ -289,10 +301,10 @@ void interceptor_ipm_open(SshInterceptor interceptor)
 
   local_bh_disable();
   write_lock(&interceptor->ipm.lock);
-
+  
   /* Assert that send queue is empty */
   SSH_ASSERT(interceptor->ipm.send_queue == NULL);
-
+  
   /* Mark ipm channel open */
   atomic_set(&interceptor->ipm.open, 1);
 
@@ -306,18 +318,18 @@ void interceptor_ipm_close(SshInterceptor interceptor)
 
   local_bh_disable();
   write_lock(&interceptor->ipm.lock);
-
+ 
   /* Mark ipm channel closed */
   atomic_set(&interceptor->ipm.open, 0);
-
+  
   /* Clear send queue */
   list = interceptor->ipm.send_queue;
   interceptor->ipm.send_queue = NULL;
   interceptor->ipm.send_queue_tail = NULL;
-
+  
   write_unlock(&interceptor->ipm.lock);
   local_bh_enable();
-
+  
   /* Free all ipm messages from send queue. */
   while (list != NULL)
     {

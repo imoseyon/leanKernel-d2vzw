@@ -30,8 +30,12 @@
 #include "msm.h"
 #include "s5k5ccgx.h"
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 #include "s5k5ccgx_regs_espresso.h"
+#elif defined(CONFIG_MACH_ESPRESSO10_ATT) \
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO10_SPR)
+#include "s5k5ccgx_regs_espresso10.h"
 #else /* JASPER */
 #include "s5k5ccgx_regs.h"
 #endif
@@ -65,11 +69,14 @@ static void s5k5ccgx_set_scene_mode(int mode);
 static void s5k5ccgx_set_metering(int mode);
 static int s5k5ccgx_sensor_config(void __user *argp);
 
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+int cam_mode;
+#endif
+
 static struct s5k5ccgx_exif_data
 {
 	unsigned short iso;
-	unsigned short shutterspeed_low;
-	unsigned short shutterspeed_high;
+	unsigned short shutterspeed;
 };
 
 static struct s5k5ccgx_exif_data *s5k5ccgx_exif;
@@ -572,19 +579,14 @@ static struct device_attribute s5k5ccgx_cameraflash_attr = {
 };
 #endif
 
-static int s5k5ccgx_get_exif(int exif_cmd, unsigned short value2)
+static int s5k5ccgx_get_exif(int exif_cmd)
 {
-	unsigned short val_1, val_2, val;
+	unsigned short val;
 	CAM_DEBUG("E");
 
 	switch (exif_cmd) {
 	case EXIF_SHUTTERSPEED:
-		val_1 = s5k5ccgx_exif->shutterspeed_low;
-		val_2 = s5k5ccgx_exif->shutterspeed_high;
-		if (value2 == 1)	/* shutter speed high */
-			val = val_2;
-		else			/* shutter speed low */
-			val = val_1;
+		val = s5k5ccgx_exif->shutterspeed;
 		break;
 
 	case EXIF_ISO:
@@ -609,16 +611,8 @@ static void s5k5ccgx_exif_shutter_speed()
 	S5K5CCGX_WRT_LIST(s5k5ccgx_sht_spd);
 	s5k5ccgx_i2c_read(0x0F12, &lsb);
 	s5k5ccgx_i2c_read(0x0F12, &msb);
-	CAM_DEBUG("Shutter speed : lsb = %d\n", lsb);
-	s5k5ccgx_exif->shutterspeed_low = lsb;
-	CAM_DEBUG("Shutter speed : msb = %d\n", msb);
-	s5k5ccgx_exif->shutterspeed_high = msb;
-	val = msb;
-	val = msb << 16;
-	val = val + lsb;
-	val = val/400; /* Calculation for exact sht_speed */
-	CAM_DEBUG("Actual Shutter speed = %d\n", val);
-	CAM_DEBUG("Exposure time in secs = %d\n", 1000/val);
+	s5k5ccgx_exif->shutterspeed = 400000 / ((msb << 16) + lsb);
+	CAM_DEBUG("Exposure time = %d\n", s5k5ccgx_exif->shutterspeed);
 	return;
 }
 
@@ -648,11 +642,26 @@ void s5k5ccgx_set_preview_size(int32_t index)
 	CAM_DEBUG("index %d", index);
 
 	switch (index) {
-	case PREVIEW_SIZE_WVGA:
+	case PREVIEW_SIZE_WVGA:	/*For 3rd party app*/
+		CAM_DEBUG("800*480");
+		S5K5CCGX_WRT_LIST(s5k5ccgx_preview_wvga);
+		msleep(100);
+		break;
+
+	case PREVIEW_SIZE_1024x552:
 		CAM_DEBUG("1632*880");
 		S5K5CCGX_WRT_LIST(s5k5ccgx_preview_wvga);
 		msleep(100);
 		break;
+
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO10_SPR)
+	case PREVIEW_SIZE_1024x576:
+		CAM_DEBUG("1024*576");
+		S5K5CCGX_WRT_LIST(s5k5ccgx_preview_size_1024_576);
+		msleep(100);
+		break;
+#endif
 
 	default:
 		CAM_DEBUG("640*480");
@@ -672,6 +681,10 @@ void s5k5ccgx_set_preview(void)
 	mode_enable = true;
 
 	if (s5k5ccgx_ctrl->cam_mode == MOVIE_MODE) {
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+		cam_mode = 1;
+#endif
+
 		CAM_DEBUG("Camcorder_Mode_ON");
 		if (s5k5ccgx_ctrl->settings.preview_size_idx ==
 				PREVIEW_SIZE_HD) {
@@ -703,11 +716,8 @@ void s5k5ccgx_set_preview(void)
 		CAM_DEBUG("Preview_Mode");
 		if (s5k5ccgx_ctrl->op_mode == CAMERA_MODE_INIT) {
 			S5K5CCGX_WRT_LIST(s5k5ccgx_common);
-#if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
 			s5k5ccgx_set_preview_size\
 				(s5k5ccgx_ctrl->settings.preview_size_idx);
-#endif
 			if (s5k5ccgx_ctrl->settings.scene ==
 				CAMERA_SCENE_AUTO) {
 				s5k5ccgx_set_whitebalance\
@@ -718,9 +728,9 @@ void s5k5ccgx_set_preview(void)
 					(s5k5ccgx_ctrl->settings.brightness);
 				s5k5ccgx_set_af_mode\
 					(s5k5ccgx_ctrl->settings.focus_mode);
+				s5k5ccgx_set_metering\
+					(s5k5ccgx_ctrl->settings.metering);
 			} else {
-				s5k5ccgx_set_af_mode\
-					(s5k5ccgx_ctrl->settings.focus_mode);
 				s5k5ccgx_set_scene_mode\
 					(s5k5ccgx_ctrl->settings.scene);
 				if (s5k5ccgx_ctrl->settings.scene
@@ -744,7 +754,7 @@ void s5k5ccgx_set_preview(void)
 		else if (s5k5ccgx_ctrl->settings.scene == CAMERA_SCENE_FIRE)
 			msleep(1200);
 		else
-			msleep(50);
+			msleep(120);
 		}
 		s5k5ccgx_ctrl->op_mode = CAMERA_MODE_PREVIEW;
 	}
@@ -813,7 +823,7 @@ static int32_t s5k5ccgx_sensor_setting(int update_type, int rt)
 
 			/* stop streaming */
 			/*S5K5CCGX_WRT_LIST(s5k5ccgx_stream_stop);*/
-			mdelay(10);
+			mdelay(30);
 
 /*			if (config_csi2 == 0) { */
 				struct msm_camera_csid_vc_cfg
@@ -843,7 +853,7 @@ static int32_t s5k5ccgx_sensor_setting(int update_type, int rt)
 					&s5k5ccgx_csiphy_params);
 			mb();
 				/*s5k5ccgx_delay_msecs_stdby*/
-			mdelay(10);
+			mdelay(20);
 			config_csi2 = 1;
 /*			}*/
 			if (rc < 0)
@@ -1067,7 +1077,7 @@ static int s5k5ccgx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
 	CAM_DEBUG("CAM_3M_RST : %d", temp);
-	usleep(6 * 1000);
+	usleep(50 * 1000);
 
 	/* sensor validation test */
 	CAM_DEBUG(" Camera Sensor Validation Test");
@@ -1141,10 +1151,13 @@ static int s5k5ccgx_set_af_mode(int mode)
 	CAM_DEBUG(" %d", mode);
 
 	if (!mode_enable)
-		return 0;
+		goto focus_end;
 
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
+				|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO10_ATT) \
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 	return 0;
 #endif
 
@@ -1164,8 +1177,8 @@ static int s5k5ccgx_set_af_mode(int mode)
 		S5K5CCGX_WRT_LIST(s5k5ccgx_af_normal_on);
 	}
 
+focus_end:
 	s5k5ccgx_ctrl->settings.focus_mode = mode;
-
 }
 
 int s5k5ccgx_set_af_status(int status, int initial_pos)
@@ -1422,12 +1435,17 @@ int s5k5ccgx_get_af_status(int is_search_status)
 		break;
 	}
 
+	if (s5k5ccgx_ctrl->settings.scene == CAMERA_SCENE_NIGHT)
+		msleep(20);
+
 	return  af_status;
 }
 
 static int s5k5ccgx_set_effect(int effect)
 {
 	CAM_DEBUG("[s5k5ccgx] %s : %d", __func__, effect);
+	if (!mode_enable)
+		goto effect_end;
 
 	switch (effect) {
 	case CAMERA_EFFECT_OFF:
@@ -1452,6 +1470,7 @@ static int s5k5ccgx_set_effect(int effect)
 		return 0;
 	}
 
+effect_end:
 	s5k5ccgx_ctrl->settings.effect = effect;
 
 	return 0;
@@ -1459,6 +1478,9 @@ static int s5k5ccgx_set_effect(int effect)
 
 static int s5k5ccgx_set_whitebalance(int wb)
 {
+	if (!mode_enable)
+		goto whitebalance_end;
+
 	switch (wb) {
 	case CAMERA_WHITE_BALANCE_AUTO:
 			S5K5CCGX_WRT_LIST(s5k5ccgx_wb_auto);
@@ -1486,6 +1508,7 @@ static int s5k5ccgx_set_whitebalance(int wb)
 		return 0;
 	}
 
+whitebalance_end:
 	s5k5ccgx_ctrl->settings.wb = wb;
 
 	return 0;
@@ -1494,6 +1517,8 @@ static int s5k5ccgx_set_whitebalance(int wb)
 static void s5k5ccgx_set_ev(int ev)
 {
 	CAM_DEBUG("[s5k5ccgx] %s : %d", __func__, ev);
+	if (!mode_enable)
+		goto exposure_end;
 
 	switch (ev) {
 	case CAMERA_EV_M4:
@@ -1538,6 +1563,7 @@ static void s5k5ccgx_set_ev(int ev)
 		break;
 	}
 
+exposure_end:
 	s5k5ccgx_ctrl->settings.brightness = ev;
 }
 
@@ -1647,6 +1673,9 @@ static void s5k5ccgx_set_metering(int mode)
 {
 	CAM_DEBUG("[s5k5ccgx] %s : %d\n", __func__, mode);
 
+	if (!mode_enable)
+		goto metering_end;
+
 	switch (mode) {
 	case CAMERA_CENTER_WEIGHT:
 		S5K5CCGX_WRT_LIST(s5k5ccgx_Metering_Center);
@@ -1666,6 +1695,7 @@ static void s5k5ccgx_set_metering(int mode)
 		break;
 	}
 
+metering_end:
 	s5k5ccgx_ctrl->settings.metering = mode;
 
 }
@@ -1696,7 +1726,7 @@ void sensor_native_control(void __user *arg)
 		break;
 
 	case EXT_CAM_ISO:
-		s5k5ccgx_set_iso(ctrl_info.value_1);
+		/* s5k5ccgx_set_iso(ctrl_info.value_1); */
 		break;
 
 	case EXT_CAM_METERING:
@@ -1744,8 +1774,7 @@ void sensor_native_control(void __user *arg)
 		break;
 
 	case EXT_CAM_EXIF:
-		ctrl_info.value_1 = s5k5ccgx_get_exif(ctrl_info.address,
-							ctrl_info.value_2);
+		ctrl_info.value_1 = s5k5ccgx_get_exif(ctrl_info.address);
 		CAM_DEBUG("exif call value: %d\n", ctrl_info.value_1);
 		break;
 
@@ -1813,9 +1842,7 @@ static int s5k5ccgx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	CAM_DEBUG("=== Start ===");
 
 	S5K5CCGX_WRT_LIST(s5k5ccgx_preview);
-	mdelay(50);
 	S5K5CCGX_WRT_LIST(s5k5ccgx_af_off);
-	mdelay(500);
 
 #ifdef CONFIG_LOAD_FILE
 	s5k5ccgx_regs_table_exit();
@@ -1896,6 +1923,10 @@ static int s5k5ccgx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	data->sensor_platform_info->sensor_power_off(0);
 
 	msm_camera_request_gpio_table(data, 0);
+
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+	cam_mode = 0;
+#endif
 
 	return rc;
 }
@@ -1979,13 +2010,14 @@ static int s5k5ccgx_i2c_probe(struct i2c_client *client,
 	} else {
 		cam_err("s_ctrl->sensor_i2c_client is NULL\n");
 		rc = -EFAULT;
-		return rc;
+		goto probe_failure;
 	}
 
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
 		pr_err("%s: NULL sensor data\n", __func__);
 		return -EFAULT;
+		goto probe_failure;
 	}
 
 	s5k5ccgx_client = client;
@@ -2000,7 +2032,11 @@ static int s5k5ccgx_i2c_probe(struct i2c_client *client,
 	s5k5ccgx_ctrl->sensor_dev = &s_ctrl->sensor_v4l2_subdev;
 	s5k5ccgx_ctrl->sensordata = client->dev.platform_data;
 
-	msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	rc = msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	if (rc) {
+		CAM_DEBUG("msm_sensor_register failed\n");
+		goto probe_failure;
+		}
 
 	cam_err("s5k5ccgx_probe succeeded!");
 	return 0;
@@ -2049,7 +2085,10 @@ static struct msm_sensor_ctrl_t s5k5ccgx_s_ctrl = {
 	.msm_sensor_reg = &s5k5ccgx_regs,
 	.sensor_i2c_client = &s5k5ccgx_sensor_i2c_client,
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
+				|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO10_ATT) \
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 	.sensor_i2c_addr = 0x2D,
 #else
 	.sensor_i2c_addr = 0x3C,

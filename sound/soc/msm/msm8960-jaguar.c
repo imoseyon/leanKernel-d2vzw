@@ -35,6 +35,7 @@
 /* 8960 machine driver */
 
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
+#define PM8921_IRQ_BASE (NR_MSM_IRQS + NR_GPIO_IRQS)
 #define PM8921_GPIO_PM_TO_SYS(pm_gpio)  (pm_gpio - 1 + PM8921_GPIO_BASE)
 
 #define MSM8960_SPK_ON 1
@@ -77,6 +78,10 @@
 #define BOARD_REV16 (BOARD_REV15 + 1)
 #endif
 
+#define JACK_DETECT_GPIO 38
+#define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
+#define GPIO_DETECT_USED false
+
 #if defined(CONFIG_MACH_APEXQ)
 static u32 top_spk_pamp_gpio;
 #else
@@ -93,6 +98,8 @@ static int msm8960_ext_bottom_spk_pamp;
 static int msm8960_ext_top_spk_pamp;
 static int msm8960_slim_0_rx_ch = 1;
 static int msm8960_slim_0_tx_ch = 1;
+static int msm8960_slim_0_sample_rate = 48000;
+
 
 static int msm8960_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm8960_btsco_ch = 1;
@@ -107,7 +114,21 @@ static struct snd_soc_jack button_jack;
 static struct snd_soc_jack volumedown_jack;
 static struct snd_soc_jack volumeup_jack;
 
-static void *tabla_mbhc_cal;
+static int msm8960_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
+					bool dapm);
+
+static struct tabla_mbhc_config mbhc_cfg = {
+	.headset_jack = &hs_jack,
+	.button_jack = &button_jack,
+	.read_fw_bin = false,
+	.calibration = NULL,
+	.micbias = TABLA_MICBIAS2,
+	.mclk_cb_fn = msm8960_enable_codec_ext_clk,
+	.mclk_rate = TABLA_EXT_CLK_RATE,
+	.gpio = 0,
+	.gpio_irq = 0,
+	.gpio_level_insert = 1,
+};
 
 static int msm8960_i2s_rx_ch = 1;
 static int msm8960_i2s_tx_ch = 1;
@@ -118,6 +139,24 @@ static struct clk *tx_osr_clk;
 static struct clk *tx_bit_clk;
 
 static struct mutex cdc_mclk_mutex;
+
+struct ext_amp_work {
+	struct delayed_work dwork;
+};
+
+static struct ext_amp_work ext_amp_dwork;
+
+/* Work queue for delaying the amp power on-off to
+remove the static noise during SPK_PA enable */
+
+static void external_speaker_amp_work(struct work_struct *work)
+{
+	pr_info("kth %s :: Top Speaker Amp enable\n", __func__);
+	gpio_direction_output(top_spk_pamp_gpio, 1);
+	pr_info("%s: slepping 4 ms after turning on external "
+			" Top Speaker Ampl\n", __func__);
+	usleep_range(4000, 4000);
+}
 
 static void msm8960_enable_ext_spk_amp_gpio(u32 spk_amp_gpio)
 {
@@ -172,10 +211,14 @@ static void msm8960_ext_spk_power_amp_on(u32 spk)
 		if ((msm8960_ext_top_spk_pamp & TOP_SPK_AMP_POS) &&
 			(msm8960_ext_top_spk_pamp & TOP_SPK_AMP_NEG)) {
 
-			msm8960_enable_ext_spk_amp_gpio(top_spk_pamp_gpio);
-			pr_debug("%s: sleeping 4 ms after turning on "
+			/*msm8960_enable_ext_spk_amp_gpio(top_spk_pamp_gpio);
+			pr_info("%s: sleeping 4 ms after turning on "
 				" external Top Speaker Ampl\n", __func__);
-			usleep_range(4000, 4000);
+			usleep_range(4000, 4000);*/
+
+			schedule_delayed_work(
+			&ext_amp_dwork.dwork,
+			msecs_to_jiffies(50));
 		}
 	} else  {
 
@@ -198,7 +241,8 @@ static void msm8960_ext_spk_power_amp_off(u32 spk)
 		pr_debug("%s: sleeping 4 ms after turning off external Bottom"
 			" Speaker Ampl\n", __func__);
 
-		usleep_range(4000, 4000);
+		/*usleep_range(4000, 4000);*/
+		msleep(30);
 
 	} else if (spk & (TOP_SPK_AMP_POS | TOP_SPK_AMP_NEG)) {
 
@@ -211,7 +255,9 @@ static void msm8960_ext_spk_power_amp_off(u32 spk)
 		pr_debug("%s: sleeping 4 ms after turning off external Top"
 			" Spkaker Ampl\n", __func__);
 
-		usleep_range(4000, 4000);
+		/*usleep_range(4000, 4000);*/
+
+		msleep(30);
 	} else  {
 
 		pr_err("%s: ERROR : Invalid Ext Spk Ampl. spk = 0x%08x\n",
@@ -312,8 +358,22 @@ static int msm8960_ear_switch_event(struct snd_soc_dapm_widget *w,
 }
 #endif
 
-int msm8960_enable_codec_ext_clk(
-		struct snd_soc_codec *codec, int enable)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+static int msm8960_lineout_switch_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *k, int event)
+{
+	pr_debug("%s: %s Lineout Switch gpio\n", __func__,
+		SND_SOC_DAPM_EVENT_ON(event) ? "Enable" : "Disable");
+
+	gpio_set_value(GPIO_CRADLE_SW_EN, SND_SOC_DAPM_EVENT_ON(event));
+
+	return 0;
+}
+#endif
+static struct mutex cdc_mclk_mutex;
+
+static int msm8960_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
+		bool dapm)
 {
 	int r = 0;
 	pr_debug("%s: enable = %d\n", __func__, enable);
@@ -326,7 +386,7 @@ int msm8960_enable_codec_ext_clk(
 			if (codec_clk) {
 				clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
 				clk_enable(codec_clk);
-				tabla_mclk_enable(codec, 1);
+				tabla_mclk_enable(codec, 1, dapm);
 			} else {
 				pr_err("%s: Error setting Tabla MCLK\n",
 					__func__);
@@ -341,10 +401,10 @@ int msm8960_enable_codec_ext_clk(
 			 clk_users);
 			if (clk_users == 0) {
 				pr_debug("%s: disabling MCLK. clk_users = %d\n",
-					__func__, clk_users);
+						__func__, clk_users);
+				tabla_mclk_enable(codec, 0, dapm);
 				clk_disable(codec_clk);
 				clk_put(codec_clk);
-				tabla_mclk_enable(codec, 0);
 			}
 		} else {
 				pr_err("%s: Error releasing Tabla MCLK\n",
@@ -363,9 +423,9 @@ static int msm8960_mclk_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		return msm8960_enable_codec_ext_clk(w->codec, 1);
+		return msm8960_enable_codec_ext_clk(w->codec, 1, true);
 	case SND_SOC_DAPM_POST_PMD:
-		return msm8960_enable_codec_ext_clk(w->codec, 0);
+		return msm8960_enable_codec_ext_clk(w->codec, 0, true);
 	}
 	return 0;
 }
@@ -380,7 +440,9 @@ static const struct snd_soc_dapm_widget msm8960_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SPK("Ext Spk Top Pos", msm8960_spkramp_event),
 	SND_SOC_DAPM_SPK("Ext Spk Top Neg", msm8960_spkramp_event),
-
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+	SND_SOC_DAPM_SPK("LINEOUT Switch", msm8960_lineout_switch_event),
+#endif
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
@@ -436,7 +498,13 @@ static const struct snd_soc_dapm_route common_audio_map[] = {
 
 	{"Ext Spk Top Pos", NULL, "LINEOUT2"},
 	{"Ext Spk Top Neg", NULL, "LINEOUT4"},
-
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+	/*
+	 * ESPRESSO10_ATT has analog switch for
+	 * reducing the pop noise on dock path
+	 */
+	{"LINEOUT Switch", NULL, "LINEOUT5"},
+#endif
 	/* Microphone path */
 	/**
 	 *Samsung uses AMIC4 for Handset sub Mic
@@ -600,11 +668,14 @@ static const struct snd_soc_dapm_route common_audio_map_rev16[] = {
 static const char * const spk_function[] = {"Off", "On"};
 static const char * const slim0_rx_ch_text[] = {"One", "Two"};
 static const char * const slim0_tx_ch_text[] = {"One", "Two", "Three", "Four"};
+static const char * const slim0_sample_rate_text[] = {
+			"Eight", "Sixteen", "FourtyEight"};
 
 static const struct soc_enum msm8960_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
 	SOC_ENUM_SINGLE_EXT(2, slim0_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(4, slim0_tx_ch_text),
+	SOC_ENUM_SINGLE_EXT(3, slim0_sample_rate_text),
 };
 
 static const char * const btsco_rate_text[] = {"8000", "16000"};
@@ -688,6 +759,49 @@ static int msm8960_slim_0_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+static int msm8960_slim_0_sample_rate_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+
+	pr_debug("%s: msm8960_slim_0_sample_rate  = %d\n", __func__,
+			msm8960_slim_0_sample_rate);
+
+	ucontrol->value.integer.value[0] = msm8960_slim_0_sample_rate;
+
+
+	return 0;
+}
+
+
+
+static int msm8960_slim_0_sample_rate_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm8960_slim_0_sample_rate = 8000;
+		break;
+
+	case 1:
+		msm8960_slim_0_sample_rate = 16000;
+		break;
+
+	case 2:
+		msm8960_slim_0_sample_rate = 48000;
+		break;
+
+	default:
+		msm8960_slim_0_sample_rate = 48000;
+		break;
+	}
+
+	pr_debug("%s : msm8960_slim_0_sample_rate  =%d\n",
+			__func__, msm8960_slim_0_sample_rate);
+	return 1;
+
+}
+
+
 static int msm8960_btsco_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -754,6 +868,9 @@ static const struct snd_kcontrol_new tabla_msm8960_controls[] = {
 		msm8960_slim_0_rx_ch_get, msm8960_slim_0_rx_ch_put),
 	SOC_ENUM_EXT("SLIM_0_TX Channels", msm8960_enum[2],
 		msm8960_slim_0_tx_ch_get, msm8960_slim_0_tx_ch_put),
+	SOC_ENUM_EXT("SLIM_0 SampleRate", msm8960_enum[3],
+		msm8960_slim_0_sample_rate_get, msm8960_slim_0_sample_rate_put),
+
 };
 
 static const struct snd_kcontrol_new int_btsco_rate_mixer_controls[] = {
@@ -900,11 +1017,8 @@ static int msm8960_i2s_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_jack_set_key(volumedown_jack.jack,
 			SND_JACK_BTN_2, KEY_VOLUMEDOWN);
 
-	tabla_hs_detect(codec, &hs_jack, &button_jack,
-			&volumeup_jack, &volumedown_jack,
-			tabla_mbhc_cal, TABLA_MICBIAS2,
-			msm8960_enable_codec_ext_clk, 0,
-			TABLA_EXT_CLK_RATE);
+			tabla_hs_detect(codec, &mbhc_cfg);
+
 
 	return 0;
 }
@@ -914,6 +1028,14 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	int err;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	struct pm_gpio jack_gpio_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_UP_1P5,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.vin_sel = 2,
+		.inv_int_pol = 0,
+	};
 
 	pr_debug("%s()\n", __func__);
 
@@ -992,18 +1114,29 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	if ((machine_is_jaguar() && system_rev < BOARD_REV16) ||
 		(machine_is_APEXQ() && system_rev < BOARD_REV02) ||
-		((machine_is_ESPRESSO_VZW() || machine_is_ESPRESSO10_VZW()) \
-			&& system_rev < BOARD_REV03) ||
+		(machine_is_ESPRESSO_VZW() && system_rev < BOARD_REV03) ||
 		(!machine_is_jaguar() && !machine_is_ESPRESSO_VZW()
 			&& !machine_is_ESPRESSO10_VZW()
+			&& !machine_is_ESPRESSO10_SPR()
+			&& !machine_is_ESPRESSO10_ATT()
 			&& !machine_is_ESPRESSO_SPR()
 		&& !machine_is_APEXQ())) {
 		/* using mbhc driver for earjack */
-		tabla_hs_detect(codec, &hs_jack, &button_jack,
-				&volumeup_jack, &volumedown_jack,
-				tabla_mbhc_cal, TABLA_MICBIAS2,
-				msm8960_enable_codec_ext_clk, 0,
-				TABLA_EXT_CLK_RATE);
+		if (GPIO_DETECT_USED) {
+			mbhc_cfg.gpio = PM8921_GPIO_PM_TO_SYS(JACK_DETECT_GPIO);
+			mbhc_cfg.gpio_irq = JACK_DETECT_INT;
+		}
+		
+		if (mbhc_cfg.gpio) {
+			err = pm8xxx_gpio_config(mbhc_cfg.gpio, &jack_gpio_cfg);
+			if (err) {
+				pr_err("%s: pm8xxx_gpio_config failed %d\n", __func__,
+					   err);
+				return err;
+			}
+		}
+		err = tabla_hs_detect(codec, &mbhc_cfg);
+
 	}
 
 	return 0;
@@ -1086,10 +1219,12 @@ static int msm8960_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = msm8960_slim_0_sample_rate;
+
 	channels->min = channels->max = msm8960_slim_0_rx_ch;
 
+	pr_info("%s channels %u () sample rate =%d\n",
+			__func__, channels->min, rate->min);
 	return 0;
 }
 
@@ -1102,10 +1237,12 @@ static int msm8960_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 			SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
-	rate->min = rate->max = 48000;
+	rate->min = rate->max = msm8960_slim_0_sample_rate;
+
 	channels->min = channels->max = msm8960_slim_0_tx_ch;
 
+	pr_info("%s channels %u () sample rate =%d\n",
+			__func__, channels->min, rate->min);
 	return 0;
 }
 
@@ -1906,6 +2043,22 @@ else
 			gpio_direction_output(ear_switch_gpio, 0);
 	}
 #endif
+
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+	ret = gpio_request(GPIO_CRADLE_SW_EN, "CRADLE_SW_EN");
+	if (ret) {
+		pr_err("%s: Failed to request gpio %d\n", __func__,
+			GPIO_CRADLE_SW_EN);
+		gpio_free(PM8921_GPIO_PM_TO_SYS(23));
+		gpio_free(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_USEURO_SWITCH));
+		gpio_free(bottom_spk_pamp_gpio);
+		gpio_free(top_spk_pamp_gpio);
+		return ret;
+	}
+
+	gpio_tlmm_config(GPIO_CFG(GPIO_CRADLE_SW_EN, 0, GPIO_CFG_OUTPUT,
+				GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
+#endif
 	return 0;
 }
 static void msm8960_free_headset_mic_gpios(void)
@@ -1915,6 +2068,9 @@ static void msm8960_free_headset_mic_gpios(void)
 		gpio_free(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_USEURO_SWITCH));
 		gpio_free(top_spk_pamp_gpio);
 		gpio_free(bottom_spk_pamp_gpio);
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+		gpio_free(GPIO_CRADLE_SW_EN);
+#endif
 	}
 }
 
@@ -1939,16 +2095,18 @@ static int __init msm8960_audio_init(void)
 					ARRAY_SIZE(msm8960_i2s_be_dai);
 	}
 
-	tabla_mbhc_cal = def_tabla_mbhc_cal();
-	if (!tabla_mbhc_cal) {
+	mbhc_cfg.calibration = def_tabla_mbhc_cal();
+	if (!mbhc_cfg.calibration) {
 		pr_err("Calibration data allocation failed\n");
+		kfree(msm8960_dai_list);
 		return -ENOMEM;
 	}
 
 	msm8960_snd_device = platform_device_alloc("soc-audio", 0);
 	if (!msm8960_snd_device) {
 		pr_err("Platform device allocation failed\n");
-		kfree(tabla_mbhc_cal);
+		kfree(mbhc_cfg.calibration);
+		kfree(msm8960_dai_list);
 		return -ENOMEM;
 	}
 
@@ -1956,7 +2114,8 @@ static int __init msm8960_audio_init(void)
 	ret = platform_device_add(msm8960_snd_device);
 	if (ret) {
 		platform_device_put(msm8960_snd_device);
-		kfree(tabla_mbhc_cal);
+		kfree(mbhc_cfg.calibration);
+		kfree(msm8960_dai_list);
 		return ret;
 	}
 
@@ -1966,6 +2125,10 @@ static int __init msm8960_audio_init(void)
 	} else
 		msm8960_headset_gpios_configured = 1;
 
+	mutex_init(&cdc_mclk_mutex);
+	
+	INIT_DELAYED_WORK(&ext_amp_dwork.dwork,
+			external_speaker_amp_work);
 	mutex_init(&cdc_mclk_mutex);
 	return ret;
 
@@ -1977,7 +2140,7 @@ static void __exit msm8960_audio_exit(void)
 	msm8960_free_headset_mic_gpios();
 	kfree(msm8960_dai_list);
 	platform_device_unregister(msm8960_snd_device);
-	kfree(tabla_mbhc_cal);
+	kfree(mbhc_cfg.calibration);
 	mutex_destroy(&cdc_mclk_mutex);
 }
 module_exit(msm8960_audio_exit);

@@ -366,7 +366,7 @@ static inline s32 tcbd_calc_threshold(struct tcbd_service *_service)
 	tcbd_debug(DEBUG_API_COMMON, "ptype:%s, bitrate :%d, interrupt "
 			"threshold:%d\n", (_service->ptype) ? "EEP" : "UEP",
 			 _service->bitrate, threshold);
-
+	threshold = (threshold>>1);
 	return threshold;
 }
 
@@ -406,12 +406,15 @@ static inline s32 tcbd_set_service(struct tcbd_device *_device,
 	s32 ret = 0;
 	u32 threshold = 0, sel_buff = 0, sel_stream = 0;
 	u8 en_cmd_fifo = 0;
+
+	sel_buff = STREAM_DATA_ENABLE | STREAM_HEADER_ON |
+				STREAM_MASK_BUFFERA;
 	switch (_device->peri_type) {
 	case PERI_TYPE_SPI_ONLY:
 		if (_flag == FLAG_LONG_PARAM) {
 			threshold = tcbd_calc_threshold(_service);
 			sel_stream = STREAM_SET_GARBAGE(threshold) |
-					STREAM_TYPE_ALL;
+							STREAM_TYPE_ALL;
 		} else {
 			threshold = TCBD_MAX_THRESHOLD;
 			sel_stream = STREAM_SET_GARBAGE(TCBD_MAX_THRESHOLD) |
@@ -423,13 +426,14 @@ static inline s32 tcbd_set_service(struct tcbd_device *_device,
 	case PERI_TYPE_STS:
 		en_cmd_fifo = DISABLE_CMD_FIFO;
 		sel_stream = STREAM_TYPE_ALL;
+#if !defined(__ALWAYS_FIC_ON__)
+		sel_buff &= ~(STREAM_HEADER_ON);
+#endif /*__ALWAYS_FIC_ON__*/
 		break;
 	default:
 		tcbd_debug(DEBUG_ERROR, "not implemented!\n");
 		return -1;
 	}
-	sel_buff = STREAM_DATA_ENABLE | STREAM_HEADER_ON |
-				STREAM_MASK_BUFFERA | STREAM_MASK_BUFFERB;
 
 #if !defined(__ALWAYS_FIC_ON__)
 	sel_stream &= ~(STREAM_TYPE_FIC);

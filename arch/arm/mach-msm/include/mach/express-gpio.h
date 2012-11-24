@@ -24,11 +24,11 @@
 #define GPIO_MDP_VSYNC			0
 #define GPIO_MHL_RST			1
 #define GPIO_MSM_FLASH_CNTL_EN	2
+#define GPIO_CAM_MCLK2			2	/* >= REV03 */
 #define GPIO_MSM_FLASH_NOW		3
 #define GPIO_MAIN_CAM_STBY		4
 #define GPIO_CAM_MCLK				5
 #define GPIO_CAM_CORE_EN			6
-#define GPIO_MAIN_MIC_BIAS		7/* Temp */
 #define GPIO_CODEC_I2C_SDA              8
 #define GPIO_CODEC_I2C_SCL              9
 #define GPIO_LCD_22V_EN			10
@@ -53,7 +53,7 @@
 #endif
 #define GPIO_KEY_HOME			40
 
-#define GPIO_ALS_INT			42
+#define GPIO_ALS_INT			-1 /*42*/
 #define GPIO_SENSOR_SNS_SDA		44
 #define GPIO_SENSOR_SNS_SCL		45
 #define GPIO_CAM_A_EN			46
@@ -75,9 +75,6 @@
 #ifdef CONFIG_MPU_SENSORS_MPU6050B1_411
 #define GPIO_MSENSE_RST                 68
 #define GPIO_MPU3050_INT                69
-#else
-#define GPIO_SENSOR_RDY			68
-#define GPIO_ACC_INT_N			69
 #endif
 #define GPIO_VIB_PWM                    70
 
@@ -105,6 +102,11 @@
 #define GPIO_NFC_IRQ			106
 #define GPIO_CAM1_RST_N				107
 
+/* MSM8960 NC GPIOs */
+#define GPIO_NC_7				7
+#define GPIO_NC_42				42
+#define GPIO_NC_68				68
+
 /* ES305B GPIO */
 #define MSM_AUD_A2220_WAKEUP		35
 #define MSM_AUD_A2220_RESET		75
@@ -116,11 +118,14 @@
 #define PMIC_GPIO_CHG_EN		2
 #define PMIC_GPIO_VIB_ON		4
 #define PMIC_GPIO_LINEOUT_EN		5
+#define PMIC_MSM_FLASH_CNTL_EN		5
+#define PMIC_GPIO_ALS_INT               6
 #define PMIC_GPIO_CHG_STAT		17
 #define PMIC_GPIO_SPK_EN		18
 #define PMIC_GPIO_VPS_EN		19 /* NC */
 #define PMIC_GPIO_NFC_EN		21
 #define PMIC_GPIO_OTG_EN		22
+#define PMIC_GPIO_BATT_INT		37
 #define PMIC_GPIO_CODEC_RST		38
 #define PMIC_GPIO_OTG_POWER		42
 #define PMIC_GPIO_LCD_RST		43
@@ -148,4 +153,5 @@ enum {
 
 enum {
 	MDP_VSYNC,
+	PS_INT,
 };

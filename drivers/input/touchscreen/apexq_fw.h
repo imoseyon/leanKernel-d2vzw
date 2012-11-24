@@ -16,6 +16,7 @@
 
 const size_t MELFAS_binary_nLength = 0x7C00;
 
+const  u8 OFILM_binary[] = {};
 const  u8 MELFAS_binary[] = {
 
 /* Model name       : 0PB43*/

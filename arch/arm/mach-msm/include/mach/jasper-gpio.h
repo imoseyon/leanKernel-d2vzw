@@ -24,6 +24,8 @@
 #define GPIO_MDP_VSYNC			0
 #define GPIO_MSM_FLASH_CNTL_EN	2
 
+#define GPIO_CAM_MCLK2				2 /* >= REV04 */
+
 #define GPIO_NC_2				2
 #define GPIO_NC_3				3
 #define GPIO_NC_10				10

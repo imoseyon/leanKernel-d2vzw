@@ -17,7 +17,8 @@
 #define NOVATEK_TWO_LANE
 #include "mipi_dsi.h"
 
-#if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_APEXQ) || \
+	defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 #define MAX_BL_LEVEL 225
 #define MAX_GAMMA_VALUE 25
 #define MIN_BL_LEVEL 30
@@ -40,6 +41,10 @@ enum mipi_novatek_cmd_list {
 
 };
 
+enum {
+	MIPI_RESUME_STATE,
+	MIPI_SUSPEND_STATE,
+};
 struct cmd_set {
 	struct dsi_cmd_desc *cmd;
 	int size;

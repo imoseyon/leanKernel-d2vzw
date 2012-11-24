@@ -32,7 +32,6 @@
 #include <linux/device.h>
 #include <linux/ir_remote_con.h>
 #include <linux/earlysuspend.h>
-#include <linux/spinlock.h>
 #include "espresso_irda_fw.h"
 
 #define MAX_SIZE 2048
@@ -44,9 +43,7 @@ struct ir_remocon_data {
 	struct mutex			mutex;
 	struct i2c_client		*client;
 	struct mc96_platform_data	*pdata;
-	struct delayed_work		init_work;
 	struct early_suspend		early_suspend;
-	spinlock_t                              lock;
 	char signal[MAX_SIZE];
 	int length;
 	int count;
@@ -61,7 +58,7 @@ static void ir_remocon_early_suspend(struct early_suspend *h);
 static void ir_remocon_late_resume(struct early_suspend *h);
 #endif
 
-static int mc96_fw_update(struct ir_remocon_data *ir_data)
+static int irda_fw_update(struct ir_remocon_data *ir_data)
 {
 	struct ir_remocon_data *data = ir_data;
 	struct i2c_client *client = data->client;
@@ -69,67 +66,99 @@ static int mc96_fw_update(struct ir_remocon_data *ir_data)
 	u8 buf_ir_test[8];
 
 	data->pdata->ir_vdd_onoff(0);
-	data->pdata->ir_wake_en(0);
+	data->pdata->ir_wake_en(1);
 	data->pdata->ir_vdd_onoff(1);
 	msleep(100);
 
 	ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
-	if (ret < 0)
+	if (ret < 0) {
 		printk(KERN_ERR "%s: err %d\n", __func__, ret);
+		ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
+		if (ret < 0)
+			goto err_i2c_fail;
+	}
+	ret = buf_ir_test[2] << 8 | buf_ir_test[3];
+	if (ret < FW_VERSION) {
+		printk(KERN_INFO "%s: chip : %04x, bin : %04x, need update!\n",
+						__func__, ret, FW_VERSION);
+		data->pdata->ir_vdd_onoff(0);
+		data->pdata->ir_wake_en(0);
+		data->pdata->ir_vdd_onoff(1);
+		msleep(100);
 
-	ret = buf_ir_test[6] << 8 | buf_ir_test[7];
+		ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
+		if (ret < 0)
+			printk(KERN_ERR "%s: err %d\n", __func__, ret);
 
-	if (ret == 0x01fe)
-		printk(KERN_INFO "%s: boot mode start\n", __func__);
-	else
-		goto err_bootmode;
-	msleep(30);
+		ret = buf_ir_test[6] << 8 | buf_ir_test[7];
 
-	for (i = 0; i < FRAME_COUNT; i++) {
-		if (i == FRAME_COUNT-1) {
-			ret = i2c_master_send(client, &IRDA_binary[i * 70], 6);
-			if (ret < 0)
-				goto err_update;
-		} else {
-			ret = i2c_master_send(client, &IRDA_binary[i * 70], 70);
-			if (ret < 0)
-				goto err_update;
-		}
+		if (ret == 0x01fe)
+			printk(KERN_INFO "%s: boot mode, FW download start\n",
+							__func__);
+		else
+			goto err_bootmode;
 		msleep(30);
+
+		for (i = 0; i < FRAME_COUNT; i++) {
+			if (i == FRAME_COUNT-1) {
+				ret = i2c_master_send(client,
+						&IRDA_binary[i * 70], 6);
+				if (ret < 0)
+					goto err_update;
+			} else {
+				ret = i2c_master_send(client,
+						&IRDA_binary[i * 70], 70);
+				if (ret < 0)
+					goto err_update;
+			}
+			msleep(30);
+		}
+
+		ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
+		if (ret < 0)
+			printk(KERN_ERR "%s: err %d\n", __func__, ret);
+
+		ret = buf_ir_test[6] << 8 | buf_ir_test[7];
+
+		if (ret == 0x02a3)
+			printk(KERN_INFO "%s: boot down complete\n", __func__);
+		else
+			goto err_bootmode;
+
+		data->pdata->ir_vdd_onoff(0);
+		data->pdata->ir_wake_en(1);
+		data->pdata->ir_vdd_onoff(1);
+		msleep(60);
+		ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
+
+		ret = buf_ir_test[2] << 8 | buf_ir_test[3];
+		printk(KERN_INFO "%s: user mode dev: %04x\n", __func__, ret);
+		data->pdata->ir_vdd_onoff(0);
+		data->on_off = 0;
+
+	} else {
+		printk(KERN_INFO "%s: chip : %04x, bin : %04x, not update\n",
+						__func__, ret, FW_VERSION);
+		data->pdata->ir_wake_en(0);
+		data->pdata->ir_vdd_onoff(0);
+		data->on_off = 0;
 	}
 
-	ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
-	if (ret < 0)
-		printk(KERN_ERR "%s: err %d\n", __func__, ret);
-
-	ret = buf_ir_test[6] << 8 | buf_ir_test[7];
-
-	if (ret == 0x0266)
-		printk(KERN_INFO "%s: boot down complete\n", __func__);
-	else
-		goto err_bootmode;
-
-	data->pdata->ir_vdd_onoff(0);
-	data->pdata->ir_wake_en(1);
-	data->pdata->ir_vdd_onoff(1);
-	msleep(60);
-	ret = i2c_master_recv(client, buf_ir_test, MC96_READ_LENGTH);
-
-	ret = buf_ir_test[2] << 8 | buf_ir_test[3];
-	printk(KERN_INFO "%s: user mode dev: %x\n", __func__, ret);
-	data->pdata->ir_vdd_onoff(0);
 	return 0;
-
+err_i2c_fail:
+	printk(KERN_ERR "%s: update fail! i2c ret : %x\n",
+							__func__, ret);
 err_update:
 	printk(KERN_ERR "%s: update fail! count : %x, ret = %x\n",
 							__func__, i, ret);
 err_bootmode:
 	printk(KERN_ERR "%s: update fail, ret = %x\n", __func__, ret);
 	data->pdata->ir_vdd_onoff(0);
+	data->on_off = 0;
 	return ret;
 }
 
-static void mc96_add_checksum_length(struct ir_remocon_data *ir_data, int count)
+static void irda_add_checksum_length(struct ir_remocon_data *ir_data, int count)
 {
 	struct ir_remocon_data *data = ir_data;
 	int i = 0, csum = 0;
@@ -151,7 +180,7 @@ static void mc96_add_checksum_length(struct ir_remocon_data *ir_data, int count)
 
 }
 
-static int mc96_read_device_info(struct ir_remocon_data *ir_data)
+static int irda_read_device_info(struct ir_remocon_data *ir_data)
 {
 	struct ir_remocon_data *data = ir_data;
 	struct i2c_client *client = data->client;
@@ -192,19 +221,22 @@ static void ir_remocon_work(struct ir_remocon_data *ir_data, int count)
 
 	printk(KERN_INFO "%s: total buf_size: %d\n", __func__, buf_size);
 
-	mc96_add_checksum_length(data, count);
+	irda_add_checksum_length(data, count);
 
-	spin_lock_irqsave(&data->lock, flags);
-
+	mutex_lock(&data->mutex);
 	ret = i2c_master_send(client, data->signal, buf_size);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s: err1 %d\n", __func__, ret);
 		ret = i2c_master_send(client, data->signal, buf_size);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(&client->dev, "%s: err2 %d\n", __func__, ret);
+			data->pdata->ir_vdd_onoff(0);
+			data->pdata->ir_vdd_onoff(1);
+			msleep(60);
+			data->on_off = 1;
+		}
 	}
-
-	spin_unlock_irqrestore(&data->lock, flags);
+	mutex_unlock(&data->mutex);
 
 /*
 	for (i = 0; i < buf_size; i++) {
@@ -304,7 +336,7 @@ static ssize_t check_ir_show(struct device *dev, struct device_attribute *attr,
 	struct ir_remocon_data *data = dev_get_drvdata(dev);
 	int ret;
 
-	ret = mc96_read_device_info(data);
+	ret = irda_read_device_info(data);
 	return snprintf(buf, 4, "%d\n", ret);
 }
 
@@ -341,12 +373,11 @@ static int __devinit ir_remocon_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, data);
 
-/*
-	mc96_fw_update(data);
-*/
-	spin_lock_init(&data->lock);
-	mc96_read_device_info(data);
+	irda_fw_update(data);
 
+/*
+	irda_read_device_info(data);
+*/
 	ir_remocon_dev = device_create(sec_class, NULL, 0, data, "sec_ir");
 
 	if (IS_ERR(ir_remocon_dev))

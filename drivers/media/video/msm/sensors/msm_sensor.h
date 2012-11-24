@@ -32,6 +32,7 @@
 
 #define MSM_SENSOR_MCLK_8HZ 8000000
 #define MSM_SENSOR_MCLK_16HZ 16000000
+#define MSM_SENSOR_MCLK_19HZ 19200000
 #define MSM_SENSOR_MCLK_24HZ 24000000
 
 enum msm_sensor_reg_update {
@@ -120,6 +121,8 @@ struct msm_sensor_fn_t {
 			uint16_t, uint32_t);
 	int32_t (*sensor_setting) (struct msm_sensor_ctrl_t *,
 			int update_type, int rt);
+	int32_t (*sensor_csi_setting) (struct msm_sensor_ctrl_t *,
+			int update_type, int rt);
 	int32_t (*sensor_set_sensor_mode)
 			(struct msm_sensor_ctrl_t *, int, int);
 	int32_t (*sensor_mode_init) (struct msm_sensor_ctrl_t *,
@@ -130,6 +133,9 @@ struct msm_sensor_fn_t {
 	int (*sensor_power_down)
 		(struct msm_sensor_ctrl_t *);
 	int (*sensor_power_up) (struct msm_sensor_ctrl_t *);
+	int32_t (*sensor_match_id)(struct msm_sensor_ctrl_t *s_ctrl);
+	int (*sensor_adjust_frame_lines)
+		(struct msm_sensor_ctrl_t *s_ctrl, uint16_t res);
 };
 
 struct msm_sensor_ctrl_t {
@@ -220,6 +226,9 @@ int msm_sensor_write_res_settings
 int32_t msm_sensor_write_output_settings(struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t res);
 
+int32_t msm_sensor_adjust_frame_lines(struct msm_sensor_ctrl_t *s_ctrl,
+	uint16_t res);
+
 int32_t msm_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			int update_type, int res);
 
@@ -235,5 +244,8 @@ struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);
 
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, void __user *)
+
+#define VIDIOC_MSM_SENSOR_RELEASE \
+	_IO('V', BASE_VIDIOC_PRIVATE + 11)
 
 #endif

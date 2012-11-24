@@ -23,6 +23,8 @@
 #include <media/v4l2-subdev.h>
 #include <media/msm_isp.h>
 
+#include <linux/hrtimer.h>
+
 #include "msm.h"
 #include "msm_vfe32.h"
 #include "msm_ispif.h"		/*aswoogi_zsl */
@@ -1442,6 +1444,15 @@ static int vfe32_proc_general(struct msm_isp_cmd *cmd)
 
 	CDBG("vfe32_proc_general: cmdID = %s, length = %d\n",
 	     vfe32_general_cmd[cmd->id], cmd->length);
+
+	if (vfe32_ctrl->vfebase == NULL) {
+	    pr_err("Error : vfe32_ctrl->vfebase is NULL!!\n");
+	    pr_err("vfe32_proc_general: cmdID = %s, length = %d\n",
+		 vfe32_general_cmd[cmd->id], cmd->length);
+	    rc = -EINVAL;
+	    goto proc_general_done;
+	}
+
 	switch (cmd->id) {
 	case VFE_CMD_RESET:
 		CDBG("vfe32_proc_general: cmdID = %s\n",
@@ -3070,6 +3081,9 @@ static void vfe32_process_output_path_irq_0(void)
 	} else {
 		vfe32_ctrl->outpath.out0.frame_drop_cnt++;
 		CDBG("path_irq_0 - no free buffer!\n");
+		if (no_free_buffer_flag == 0)
+		    pr_warn("Waiting output 0 buffer."
+			    " but it doesn't matter.\n");
 	}
 }
 
@@ -3088,17 +3102,58 @@ static void vfe32_process_zsl_frame(void)
 	bool s_avail = false;
 	struct msm_free_buf *free_buf_t = NULL;
 	struct msm_free_buf *free_buf_s = NULL;
+	struct timespec tv;
+	unsigned int time_diff = 0;
+
 	CDBG("nishu process zsl handled\n");	/*aswoogi_zsl */
+
+	getnstimeofday(&tv);
+	CDBG("[%s:%d] sec %ld, nsec %ld\n", __func__, __LINE__, tv.tv_sec, tv.tv_nsec);
 
 	t_avail = vfe32_is_free_buf_avail(VFE_MSG_OUTPUT_T);
 	s_avail = vfe32_is_free_buf_avail(VFE_MSG_OUTPUT_S);
 	if (!(t_avail && s_avail)) {
-		if (!t_avail)
-			pr_err("nishu zsl no free thumbnail buffer\n");
+	    if (pre_frame_sec != 0 && pre_frame_msec != 0) {
+		if (pre_frame_sec == tv.tv_sec)
+		    time_diff = TV_MSEC(tv.tv_nsec) - pre_frame_msec;
+		else
+		    time_diff = (TV_MSEC(tv.tv_nsec) + 1000) - pre_frame_msec;
+
+		if (time_diff <= 70) /* 70msec is a frame when fps is 15*/
+		    no_free_buffer_count++;
+		else
+		    no_free_buffer_count = 0;
+		CDBG("count %d\n", no_free_buffer_count);
+		CDBG("time_diff %d, tv_msec %d, pre_frame_msec %d\n",
+		       time_diff, TV_MSEC(tv.tv_nsec), pre_frame_msec);
+		/* max 66msec * 60 = 3960msec */
+		/* min 33msec * 60 = 1980msec */
+		if (no_free_buffer_count > 60)
+		    no_free_buffer_flag = 1;
+		else
+		    no_free_buffer_flag = 0;
+	    }
+	    
+	    if (no_free_buffer_flag) {
 		if (!s_avail)
-			pr_err("nishu zsl no free snapshot buffer\n");
+		    pr_err("%d : nishu zsl no free snapshot buffer\n", __LINE__);
+		if (!t_avail)
+		    pr_err("%d : nishu zsl no free thumbnail buffer\n", __LINE__);
+	    } else {
+		if (!s_avail)
+		    CDBG("nishu zsl no free snapshot buffer\n");
+		if (!t_avail)
+		    CDBG("nishu zsl no free thumbnail buffer\n");
+	    }
+	    pre_frame_sec = tv.tv_sec;
+	    pre_frame_msec = TV_MSEC(tv.tv_nsec);
+
 		return;
 	}
+	pre_frame_sec = 0;
+	pre_frame_msec = 0;
+	no_free_buffer_count = 0;
+	no_free_buffer_flag = 0;
 
 	ping_pong = msm_io_r(vfe32_ctrl->vfebase + VFE_BUS_PING_PONG_STATUS);
 	CDBG("%s: ping_pong = %d\n", __func__, ping_pong);
@@ -3245,6 +3300,7 @@ static void vfe32_process_output_path_irq_1(void)
 	} else {
 		vfe32_ctrl->outpath.out1.frame_drop_cnt++;
 		CDBG("path_irq_1 - no free buffer!\n");
+		pr_warn("Waiting output 1 buffer.\n");
 	}
 }
 
@@ -4067,14 +4123,6 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 		goto vfe_remap_failed;
 	}
 
-	rc = request_irq(vfe32_ctrl->vfeirq->start, vfe32_parse_irq,
-			 IRQF_TRIGGER_RISING, "vfe", 0);
-	if (rc < 0) {
-		pr_err("%s: irq request fail\n", __func__);
-		rc = -EBUSY;
-		goto request_irq_failed;
-	}
-
 	if (vfe32_ctrl->fs_vfe == NULL) {
 		vfe32_ctrl->fs_vfe =
 		    regulator_get(&vfe32_ctrl->pdev->dev, "fs_vfe");
@@ -4098,6 +4146,14 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 	if (rc < 0)
 		goto vfe_clk_enable_failed;
 
+	rc = request_irq(vfe32_ctrl->vfeirq->start, vfe32_parse_irq,
+			 IRQF_TRIGGER_RISING, "vfe", 0);
+	if (rc < 0) {
+		pr_err("%s: irq request fail\n", __func__);
+		rc = -EBUSY;
+		goto request_irq_failed;
+	}
+
 	msm_camio_set_perf_lvl(S_INIT);
 	msm_camio_set_perf_lvl(S_PREVIEW);
 
@@ -4109,13 +4165,15 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 
 	return rc;
 
+request_irq_failed:
+	msm_cam_clk_enable(&vfe32_ctrl->pdev->dev, vfe32_clk_info,
+			vfe32_ctrl->vfe_clk, ARRAY_SIZE(vfe32_clk_info),
+			0);
 vfe_clk_enable_failed:
 	regulator_disable(vfe32_ctrl->fs_vfe);
 	regulator_put(vfe32_ctrl->fs_vfe);
 	vfe32_ctrl->fs_vfe = NULL;
 vfe_fs_failed:
-	free_irq(vfe32_ctrl->vfeirq->start, 0);
-request_irq_failed:
 	iounmap(vfe32_ctrl->vfebase);
 vfe_remap_failed:
 	return rc;

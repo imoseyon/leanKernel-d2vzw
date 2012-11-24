@@ -29,12 +29,14 @@ static char etc_cond_set_1_2[] = {
 	0x31, 0x08, 0x11, 0x00
 };
 static char etc_cond_set_1_3[] = {
-	0xF0,
-	0x55, 0xAA, 0x52, 0x08, 0x00
+	0xF8,
+	0x01, 0x02, 0x00, 0x20, 0x33,
+	0x13, 0x00, 0x40, 0x00, 0x00,
+	0x23, 0x02
 };
 static char etc_cond_set_1_4[] = {
-	0xB0,
-	0x04, 0x0A, 0x0E, 0x09, 0x04
+	0xF0,
+	0x55, 0xAA, 0x52, 0x08, 0x00
 };
 #ifdef CONFIG_MACH_APEXQ
 static char etc_cond_set_1_5[] = {
@@ -64,10 +66,7 @@ static char etc_cond_set_1_6[] = {
 	0x0A,
 };
 #endif /* CONFIG_MACH_APEXQ */
-static char etc_cond_set_1_7[] = {
-	0xB3,
-	0x00
-};
+
 static char etc_cond_set_1_8[] = {
 	0xB6,
 	0x03
@@ -87,12 +86,13 @@ static char etc_cond_set_1_11[] = {
 };
 static char etc_cond_set_1_12[] = {
 	0xBD,
-	0x01, 0x84, 0x06, 0x50, 0x00
+	0x01, 0x84, 0x06, 0x30, 0x00
 };
 static char etc_cond_set_1_13[] = {
 	0xCC,
 	0x03, 0x2A, 0x06
 };
+/*Power Set*/
 static char etc_cond_set_1_14[] = {
 	0xF0,
 	0x55, 0xAA, 0x52, 0x08, 0x01
@@ -143,7 +143,7 @@ static char etc_cond_set_1_21[] = {
 };
 static char etc_cond_set_1_22[] = {
 	0xB5,
-	0x08, 0x08, 0x08, 0x08,
+	0x08, 0x08, 0x08,
 };
 static char etc_cond_set_1_24[] = {
 	0xB4,
@@ -157,13 +157,13 @@ static char etc_cond_set_1_26[] = {
 	0xBD,
 	0x00, 0x60, 0x00,
 };
-static char etc_cond_set_1_27[] = {
-	0xBE,
-	0x00, 0x3D,
-};
 static char etc_cond_set_1_28[] = {
 	0xCE,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+static char etc_cond_set_1_29[] = {
+	0x44,
+	0x00, 0x06
 };
 
 /* gamma settings */
@@ -265,7 +265,7 @@ static char pwm_cond_set_1_0[] = {
 #endif /* CONFIG_FB_MSM_BACKLIGHT_AAT1402IUQ */
 static char pwm_cond_set_2_0[] = {
 	0x53,
-	0x2C
+	0x24
 };
 static char pwm_cond_off[] = {
 	0x51,
@@ -312,9 +312,9 @@ static struct dsi_cmd_desc novatek_panel_early_off_cmds[] = {
 		sizeof(all_pixel_off), all_pixel_off},
 };
 static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 50,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
 		sizeof(sw_reset), sw_reset},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 10,
 		sizeof(etc_cond_set_1_1), etc_cond_set_1_1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set_1_2), etc_cond_set_1_2},
@@ -326,8 +326,6 @@ static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt[] = {
 		sizeof(etc_cond_set_1_5), etc_cond_set_1_5},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set_1_6), etc_cond_set_1_6},
-				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(etc_cond_set_1_7), etc_cond_set_1_7},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set_1_8), etc_cond_set_1_8},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
@@ -365,9 +363,9 @@ static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set_1_26), etc_cond_set_1_26},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-		sizeof(etc_cond_set_1_27), etc_cond_set_1_27},
-			{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set_1_28), etc_cond_set_1_28},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_29), etc_cond_set_1_29},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 			sizeof(gamma_cond_set_1_0), gamma_cond_set_1_0},
@@ -406,13 +404,13 @@ static int lux_tbl[] = {
 };
 #else
 static int lux_tbl[] = {
-	6, 6, 6, 6, 6, 6, 6, 10, 15, 20,
-	25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
-	75, 80, 83, 87, 92, 95, 98, 102, 105, 108,
-	110, 110, 110, 120, 130, 135, 140, 150, 160, 170,
-	180, 190, 200, 210, 220, 225, 230, 235, 240, 240
+	9, 9, 9, 9, 9, 9, 9, 10, 15, 20,
+	30, 40, 50, 60, 70, 80, 86, 90, 95, 100,
+	105, 107, 110, 113, 115, 118, 121, 125, 130,
+	135, 140, 145, 150, 155, 160, 163, 165, 170, 175,
+	185, 195, 205, 215, 225, 230, 235, 240, 245, 253, 253
+};
 
-	};
 
 #endif
 
@@ -527,7 +525,7 @@ static int __init mipi_cmd_novatek_wvga_pt_init(void)
 	pinfo.mipi.wr_mem_continue = 0x3c;
 	pinfo.mipi.wr_mem_start = 0x2c;
 	pinfo.mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
-
+	pinfo.mipi.esc_byte_ratio = 4;
 
 	ret = mipi_novatek_disp_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_WVGA_PT,

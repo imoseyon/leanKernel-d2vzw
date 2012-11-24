@@ -159,7 +159,7 @@ u32 vcd_open(s32 driver_handle, u32 decoding,
 	struct vcd_drv_ctxt *drv_ctxt;
 	struct vcd_clnt_ctxt *cctxt;
 	int is_secure = (flags & VCD_CP_SESSION) ? 1:0;
-	VCD_MSG_MED("vcd_open");
+	VCD_MSG_MED("vcd_open:");
 
 	if (!callback) {
 		VCD_MSG_ERROR("Bad parameters");

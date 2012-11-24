@@ -132,6 +132,7 @@ struct smb347_chip {
 	int aicl_status;
 	int otg_check;
 	int input_source;
+	int ovp_state;
 };
 
 static enum power_supply_property smb347_battery_props[] = {
@@ -250,7 +251,7 @@ static void check_smb347_version(void)
 #elif defined(CONFIG_MACH_M2_SKT)
 	if (system_rev >= 0x7)
 		smb347_verA5 = 1;
-#elif defined(CONFIG_MACH_M2_DCM)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
 	if (system_rev >= 0x3)
 		smb347_verA5 = 1;
 #elif defined(CONFIG_MACH_JAGUAR)
@@ -259,6 +260,8 @@ static void check_smb347_version(void)
 #elif defined(CONFIG_MACH_AEGIS2)
 	if (system_rev >= 0x4)
 		smb347_verA5 = 1;
+#elif defined(CONFIG_MACH_SUPERIORLTE_SKT)
+	smb347_verA5 = 1;
 #else
 	smb347_verA5 = 0;
 #endif
@@ -335,7 +338,7 @@ static void smb347_enter_suspend(struct i2c_client *client)
 static int smb347_get_current_input_source(struct i2c_client *client)
 {
 	struct smb347_chip *chip = i2c_get_clientdata(client);
-	int val = 0;
+	int val, val2 = 0;
 
 	val = smb347_read_reg(client, SMB347_INTERRUPT_STATUS_F);
 	/*
@@ -350,6 +353,12 @@ static int smb347_get_current_input_source(struct i2c_client *client)
 	} else {
 		pr_info("%s : power is not ok(%d)\n", __func__, val);
 		val = INPUT_NONE;
+	}
+
+	val2 = smb347_read_reg(client, SMB347_INTERRUPT_STATUS_E);
+	if (val2 & 0x04) {
+		pr_info("%s:OVP cut off input power\n", __func__);
+		chip->ovp_state = 1;
 	}
 
 	return val;
@@ -379,19 +388,19 @@ static void smb347_charger_function_conrol(struct i2c_client *client)
 
 #ifdef CONFIG_WIRELESS_CHARGING
 		if (chip->input_source == INPUT_DCIN) {
-			pr_info("[battery] INPUT_DCIN ----------\n");
+			pr_info("[battery] INPUT_DCIN\n");
 			data &= 0x0f;
 			if (chip->chg_mode == CHG_MODE_MISC) {
-				pr_info("[battery] wpc 700mA ----------\n");
+				pr_info("[battery] wpc 700mA\n");
 				data |= 0x20;
 			} else {
-				pr_info("[battery] wpc 500mA ----------\n");
+				pr_info("[battery] wpc 500mA\n");
 				data |= 0x10;
 			}
 		}
 #endif /*CONFIG_WIRELESS_CHARGING*/
 
-		pr_info("[battery] INPUT_USBIN ----------\n");
+		pr_info("[battery] INPUT_USBIN\n");
 		data &= 0xf0;
 		if (chip->chg_mode == CHG_MODE_AC) {
 			/* 900mA limit */
@@ -1543,6 +1552,7 @@ static irqreturn_t smb347_inok_work_func(int irq, void *smb_chip)
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 	int input_source = 0;
+	int cable_type = 0;
 	int ret = 0;
 
 	if (psy) {
@@ -1551,6 +1561,17 @@ static irqreturn_t smb347_inok_work_func(int irq, void *smb_chip)
 		input_source = smb347_get_current_input_source(chip->client);
 		switch (input_source) {
 		case INPUT_NONE:
+			ret = smb347_read_reg(chip->client,
+				SMB347_INTERRUPT_STATUS_E);
+			if (ret & 0x04) {
+				pr_info("%s: OVP cut off input power\n",
+					__func__);
+				chip->ovp_state = 1;
+			} else {
+				pr_debug("%s: OVP isn't set\n", __func__);
+				chip->ovp_state = 0;
+			}
+
 			if (chip->input_source == INPUT_DCIN) {
 				/* AICL enable */
 				smb347_AICL_enable(chip->client, true);
@@ -1595,7 +1616,15 @@ static irqreturn_t smb347_inok_work_func(int irq, void *smb_chip)
 #endif
 			break;
 		case INPUT_USBIN:
-			pr_info("%s : skip dcin type.\n", __func__);
+			if (chip->pdata->smb347_get_cable) {
+				if (chip->ovp_state) {
+					cable_type =
+						chip->pdata->smb347_get_cable();
+					pr_info("%s: Recovery OVP, restart charging (%d)\n",
+						__func__, cable_type);
+				}
+			}
+			chip->ovp_state = 0;
 			break;
 		default:
 			pr_err("%s : failed to read input source type(%d)\n",
@@ -1646,6 +1675,8 @@ static int __devinit smb347_probe(struct i2c_client *client,
 	chip->chg_set_current = 0;
 	chip->chg_icl = 0;
 	chip->float_voltage = 0;
+	chip->ovp_state = 0;
+
 	if (poweroff_charging) {
 		chip->lpm_chg_mode = 1;
 		pr_info("%s : is lpm charging mode (%d)\n",
@@ -1666,16 +1697,20 @@ static int __devinit smb347_probe(struct i2c_client *client,
 	}
 
 	/* Vdcin polarity setting */
-	value = smb347_read_reg(client, 0x08);
+	value = smb347_read_reg(client, SMB347_SYSOK_USB30_SELECTION);
 	value = (value | 0x1);
-	smb347_write_reg(client, 0x08, value);
+	ret =
+		smb347_write_reg(client, SMB347_SYSOK_USB30_SELECTION, value);
+	if (ret < 0) {
+		pr_err("%s: INOK polarity setting error!\n");
+	}
 
 	ret =
 	    request_threaded_irq(chip->client->irq, NULL, smb347_int_work_func,
 				 IRQF_TRIGGER_FALLING, "smb347", chip);
 	if (ret) {
 		pr_err("%s : Failed to request smb347 charger irq\n", __func__);
-		goto err_irq_wake;
+		goto err_request_irq;
 	}
 
 	ret = enable_irq_wake(chip->client->irq);
@@ -1697,7 +1732,7 @@ static int __devinit smb347_probe(struct i2c_client *client,
 			if (ret) {
 				pr_err("%s : Failed to request smb347 charger inok irq\n",
 					__func__);
-				goto err_request_irq;
+				goto err_irq_wake;
 			}
 
 			ret = enable_irq_wake(

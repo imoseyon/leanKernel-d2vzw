@@ -64,6 +64,7 @@ struct mpuirq_dev_data {
 static struct mpuirq_dev_data mpuirq_dev_data;
 static struct mpuirq_data mpuirq_data;
 static char *interface = MPUIRQ_NAME;
+static int mpuirq_logcount = 51;
 
 static int mpuirq_open(struct inode *inode, struct file *file)
 {
@@ -165,6 +166,10 @@ static irqreturn_t mpuirq_handler(int irq, void *dev_id)
 
 	mpuirq_data.interruptcount++;
 
+	if (mpuirq_logcount++ > 51) {
+		pr_info("mpuirq_handler: every 50'th\n");
+		mpuirq_logcount = 0;
+	}
 	/* wake up (unblock) for reading data from userspace */
 	/* and ignore first interrupt generated in module init */
 	mpuirq_dev_data.data_ready = 1;
@@ -175,7 +180,8 @@ static irqreturn_t mpuirq_handler(int irq, void *dev_id)
 	mpuirq_data.data_type = MPUIRQ_DATA_TYPE_MPU_IRQ;
 	mpuirq_data.data = 0;
 
-	wake_up_interruptible(&mpuirq_wait);
+	if (!mldl_cfg->inv_mpu_state->use_accel_reactive)
+		wake_up_interruptible(&mpuirq_wait);
 	if (mldl_cfg->inv_mpu_state->accel_reactive)
 		schedule_delayed_work(&mpuirq_dev_data.reactive_work,
 		msecs_to_jiffies(20));
@@ -201,12 +207,15 @@ static void reactive_work_func(struct work_struct *work)
 		 MPUREG_INT_STATUS, 1, &reg_data);
 	if (err)
 		pr_err("%s i2c err\n", __func__);
-	if (reg_data & BIT_MOT_EN) {
+	if ((reg_data & BIT_MOT_EN) ||
+		((reg_data & BIT_RAW_RDY_EN) &&
+		mldl_cfg->inv_mpu_state->reactive_factory)) {
 		if (mldl_cfg->inv_mpu_state->accel_reactive)
 			disable_irq_wake(mpuirq_dev_data.irq);
 
 		pr_info("Reactive Alert\n");
 		mldl_cfg->inv_mpu_state->accel_reactive = false;
+		mldl_cfg->inv_mpu_state->reactive_factory = false;
 		wake_lock_timeout(&mpuirq_dev_data.reactive_wake_lock,
 			msecs_to_jiffies(2000));
 		err = inv_serial_read(slave_adapter, 0x68,

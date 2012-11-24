@@ -48,12 +48,23 @@ do {\
 #define LOW_LIGHT_LEVEL		0x20
 
 #define LOWLIGHT_DEFAULT	0x002B	/*for tuning*/
+#define LOWLIGHT_DEFAULT2	0x002D	/*for tuning*/
 #define LOWLIGHT_SCENE_NIGHT	0x003D	/*for night mode*/
 #define LOWLIGHT_ISO50		0xB52A	/*for tuning*/
 #define LOWLIGHT_ISO100		0x9DBA	/*for tuning*/
 #define LOWLIGHT_ISO200		0x864A	/*for tuning*/
 #define LOWLIGHT_ISO400		0x738A	/*for tuning*/
 
+#if defined(CONFIG_MACH_EXPRESS)
+#define LOWLIGHT_EV_P4		0x003B
+#define LOWLIGHT_EV_P3		0x0038
+#define LOWLIGHT_EV_P2		0x0035
+#define LOWLIGHT_EV_P1		0x0031
+#define LOWLIGHT_EV_M1		0x0028
+#define LOWLIGHT_EV_M2		0x0023
+#define LOWLIGHT_EV_M3		0x001D
+#define LOWLIGHT_EV_M4		0x0015
+#else
 #define LOWLIGHT_EV_P4		0x003B
 #define LOWLIGHT_EV_P3		0x0037
 #define LOWLIGHT_EV_P2		0x0033
@@ -62,6 +73,7 @@ do {\
 #define LOWLIGHT_EV_M2		0x0021
 #define LOWLIGHT_EV_M3		0x001C
 #define LOWLIGHT_EV_M4		0x0014
+#endif
 
 /* for flash */
 #define ERRSCL_AUTO			0x01CA	/*for tuning*/

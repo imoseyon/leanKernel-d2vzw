@@ -279,6 +279,7 @@ static s32 __set_frequency(unsigned long freqKHz, bool scan_mode)
 	u8 status;
 
 	tcbd_disable_irq(&tcc3170_device, 0);
+	tcc_fic_parser_init();
 	ret = tcbd_tune_frequency(&tcc3170_device, freqKHz, 1500);
 	if (ret < 0) {
 		DPRINTK("tcbd_tune_frequency fail %d\n", ret);

@@ -307,7 +307,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 };
 
 
-#define MSM_PMEM_ADSP_SIZE         0x7800000 /* 120 Mbytes */
+#define MSM_PMEM_ADSP_SIZE         0x4E00000 /* 78 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
 #define MSM_LIQUID_PMEM_SIZE 0x4000000 /* 64 Mbytes */
@@ -318,7 +318,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #define MSM_ION_SF_SIZE		0x2200000 /* 34MB */
 #define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
-#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
+#define MSM_ION_QSECOM_SIZE	0x100000 /* (1MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
 #define MSM_ION_HEAP_NUM	8
@@ -661,12 +661,12 @@ static void __init adjust_mem_for_liquid(void)
 			msm_ion_sf_size = MSM_HDMI_PRIM_ION_SF_SIZE;
 
 		if (machine_is_msm8960_liquid() || hdmi_is_primary) {
-		for (i = 0; i < ion_pdata.nr; i++) {
-					if (ion_pdata.heaps[i].id == ION_SF_HEAP_ID) {
-						ion_pdata.heaps[i].size =
-							msm_ion_sf_size;
-						pr_debug("msm_ion_sf_size 0x%x\n",
-							msm_ion_sf_size);
+			for (i = 0; i < ion_pdata.nr; i++) {
+				if (ion_pdata.heaps[i].id == ION_SF_HEAP_ID) {
+					ion_pdata.heaps[i].size =
+						 msm_ion_sf_size;
+					pr_debug("msm_ion_sf_size 0x%x\n",
+						msm_ion_sf_size);
 				break;
 			}
 		}
@@ -1086,7 +1086,63 @@ static void cypress_init(void)
 
 #ifdef CONFIG_USB_SWITCH_FSA9485
 static enum cable_type_t set_cable_status;
+#ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
+static void fsa9485_mhl_cb(bool attached, int mhl_charge)
+{
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
 
+	pr_info("fsa9485_mhl_cb attached (%d), mhl_charge(%d)\n",
+			attached, mhl_charge);
+
+	if (attached) {
+		switch (mhl_charge) {
+		case 0:
+		case 1:
+			set_cable_status = CABLE_TYPE_USB;
+			break;
+		case 2:
+			set_cable_status = CABLE_TYPE_AC;
+			break;
+		}
+	} else {
+		set_cable_status = CABLE_TYPE_NONE;
+	}
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return;
+	}
+
+	switch (set_cable_status) {
+	case CABLE_TYPE_USB:
+		value.intval = POWER_SUPPLY_TYPE_USB;
+		break;
+	case CABLE_TYPE_AC:
+		value.intval = POWER_SUPPLY_TYPE_MAINS;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("%s: invalid cable :%d\n", __func__, set_cable_status);
+		return;
+	}
+
+	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		&value);
+	if (ret) {
+		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
+			__func__, ret);
+	}
+}
+#else
 static void fsa9485_mhl_cb(bool attached)
 {
 	union power_supply_propval value;
@@ -1125,6 +1181,8 @@ static void fsa9485_mhl_cb(bool attached)
 			__func__, ret);
 	}
 }
+#endif
+
 
 static void fsa9485_otg_cb(bool attached)
 {
@@ -1290,6 +1348,55 @@ static void fsa9485_dock_cb(int attached)
 	}
 }
 
+static void fsa9485_usb_cdp_cb(bool attached)
+{
+
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
+
+	pr_info("fsa9485_usb_cdp_cb attached %d\n", attached);
+
+	set_cable_status =
+		attached ? CABLE_TYPE_CDP : CABLE_TYPE_NONE;
+
+	if (system_rev >= 0x1) {
+		if (attached) {
+			pr_info("%s set vbus state\n", __func__);
+			msm_otg_set_vbus_state(attached);
+		}
+	}
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return;
+	}
+
+	switch (set_cable_status) {
+	case CABLE_TYPE_CDP:
+		value.intval = POWER_SUPPLY_TYPE_USB_CDP;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("invalid status:%d\n", attached);
+		return;
+	}
+
+	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		&value);
+	if (ret) {
+		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
+			__func__, ret);
+	}
+}
+
 static int fsa9485_dock_init(void)
 {
 	int ret;
@@ -1310,7 +1417,11 @@ int msm8960_get_cable_type(void)
 	if (set_cable_status != CABLE_TYPE_NONE) {
 		switch (set_cable_status) {
 		case CABLE_TYPE_MISC:
+#ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
+			fsa9485_mhl_cb(1 , 0);
+#else
 			fsa9485_mhl_cb(1);
+#endif
 			break;
 		case CABLE_TYPE_USB:
 			fsa9485_usb_cb(1);
@@ -1348,6 +1459,8 @@ static struct fsa9485_platform_data fsa9485_pdata = {
 	.jig_cb = fsa9485_jig_cb,
 	.dock_cb = fsa9485_dock_cb,
 	.dock_init = fsa9485_dock_init,
+	.usb_cdp_cb = fsa9485_usb_cdp_cb,
+
 };
 
 static struct i2c_board_info micro_usb_i2c_devices_info[] __initdata = {
@@ -1518,17 +1631,17 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
 	.iterm = 100,
-	.charge_duration = 8 * 60 * 60,
+	.charge_duration = 6 * 60 * 60,
 	.recharge_duration = 2 * 60 * 60,
-	.event_block = 600,
-	.high_block = 600,
-	.high_recovery = 400,
+	.event_block = 670,
+	.high_block = 490,
+	.high_recovery = 425,
 	.low_block = -50,
-	.low_recovery = 0,
-	.lpm_high_block = 480,
-	.lpm_high_recovery = 400,
-	.lpm_low_block = -50,
-	.lpm_low_recovery = 0,
+	.low_recovery = -10,
+	.lpm_high_block = 515,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -40,
+	.lpm_low_recovery = -10,
 };
 
 static struct platform_device sec_device_battery = {
@@ -1547,9 +1660,58 @@ static int is_smb347_using(void)
 }
 
 #ifdef CONFIG_CHARGER_SMB347
+
+static int is_smb347_inok_using(void)
+{
+	if (system_rev >= 0xd)
+		return 1;
+
+	return 0;
+}
+
 void smb347_hw_init(void)
 {
-	pr_info("%s : share gpioi2c with max17048\n", __func__);
+	struct pm_gpio batt_int_param = {
+		.direction	= PM_GPIO_DIR_IN,
+		.pull		= PM_GPIO_PULL_NO,
+		.vin_sel	= PM_GPIO_VIN_S4,
+		.function	= PM_GPIO_FUNC_NORMAL,
+	};
+	int rc = 0;
+
+	if (system_rev >= 0xD) {
+		gpio_tlmm_config(GPIO_CFG(GPIO_INOK_INT, 0,
+			GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
+			GPIO_CFG_2MA), 1);
+
+		rc = gpio_request(GPIO_INOK_INT, "wpc-detect");
+		if (rc < 0) {
+			pr_err("%s: GPIO_INOK_INT gpio_request failed\n",
+				__func__);
+			return;
+		}
+		rc = gpio_direction_input(GPIO_INOK_INT);
+		if (rc < 0) {
+			pr_err("%s: GPIO_INOK_INT gpio_direction_input failed\n",
+				__func__);
+			return;
+		}
+	}
+
+
+	if (system_rev >= 0xB) {
+		sec_bat_pdata.batt_int =
+		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT);
+		pm8xxx_gpio_config(
+			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT),
+			&batt_int_param);
+		gpio_request(
+			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT),
+			"batt_int");
+		gpio_direction_input(
+			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_BATT_INT));
+	}
+	pr_debug("%s : share gpioi2c with max17048\n", __func__);
 }
 
 static int smb347_intr_trigger(int status)
@@ -1563,10 +1725,13 @@ static int smb347_intr_trigger(int status)
 	}
 	pr_info("%s : charging status =%d\n", __func__, status);
 
-	if (status)
+	value.intval = status;
+
+	/*if (status)
 		value.intval = POWER_SUPPLY_STATUS_CHARGING;
 	else
-		value.intval = POWER_SUPPLY_STATUS_DISCHARGING;
+		value.intval = POWER_SUPPLY_STATUS_DISCHARGING;*/
+
 	return psy->set_property(psy, POWER_SUPPLY_PROP_STATUS, &value);
 }
 
@@ -1576,6 +1741,9 @@ static struct smb347_platform_data smb347_pdata = {
 	.enable = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
 	.stat = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_STAT),
 	.smb347_using = is_smb347_using,
+	.smb347_get_cable = msm8960_get_cable_type,
+	.inok = GPIO_INOK_INT,
+	.smb347_inok_using = is_smb347_inok_using,
 };
 #endif /* CONFIG_CHARGER_SMB347 */
 
@@ -1716,7 +1884,7 @@ static struct cm36651_platform_data cm36651_pdata = {
 	.cm36651_led_on = cm36651_led_onoff,
 	.cm36651_power_on = cm36651_power_on,
 	.irq = GPIO_ALS_INT,
-	.threshold = 10,
+	.threshold = 13,
 };
 #endif
 static struct i2c_board_info opt_i2c_borad_info[] = {
@@ -1776,8 +1944,8 @@ static struct platform_device opt_gp2a = {
 	/* compass */
 	static struct ext_slave_platform_data inv_mpu_ak8963_data = {
 	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {0, 1, 0,
-			1, 0, 0,
+	.orientation = {-1, 0, 0,
+			0, 1, 0,
 			0, 0, -1},
 	};
 
@@ -1791,8 +1959,8 @@ static struct platform_device opt_gp2a = {
 	/* compass */
 	static struct ext_slave_platform_data inv_mpu_ak8963_data_05 = {
 	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {0, 1, 0,
-			1, 0, 0,
+	.orientation = {-1, 0, 0,
+			0, 1, 0,
 			0, 0, -1},
 	};
 	struct mpu_platform_data mpu6050_data_00 = {
@@ -3092,12 +3260,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_HOST_NOTIFY
 static void __init msm_otg_power_init(void)
 {
-	if (system_rev >= BOARD_REV01) {
-		msm_otg_pdata.otg_power_gpio =
-			PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_POWER);
-		msm_otg_pdata.otg_power_irq =
-			PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_OTG_POWER);
-	}
 	if (system_rev >= BOARD_REV01)
 		msm_otg_pdata.smb347s = true;
 	else
@@ -3584,7 +3746,7 @@ static const u8 *mxt224_config[] = {
 /*
 	Configuration for MXT224-E
 */
-#define MXT224E_THRESHOLD_BATT		30
+#define MXT224E_THRESHOLD_BATT		25
 #define MXT224E_THRESHOLD_CHRG		40
 #define MXT224E_T48_BLEN_BATT		0
 #define MXT224E_T48_BLEN_CHRG		0
@@ -3592,12 +3754,18 @@ static const u8 *mxt224_config[] = {
 #define MXT224E_CALCFG_CHRG		114
 #define MXT224E_ATCHFRCCALTHR_NORMAL		45
 #define MXT224E_ATCHFRCCALRATIO_NORMAL		60
+#define MXT224E_T46_MODE		3
+#define MXT224E_ATCHCALST		4
+#define MXT224E_ATCHCALTHR		25
+
 
 static u8 t7_config_e[] = {GEN_POWERCONFIG_T7,
 				48, 255, 25};
 
 static u8 t8_config_e[] = {GEN_ACQUISITIONCONFIG_T8,
-				22, 0, 5, 1, 0, 0, 4, 35,
+				22, 0, 5, 1, 0, 0,
+				MXT224E_ATCHCALST,
+				MXT224E_ATCHCALTHR,
 				MXT224E_ATCHFRCCALTHR_NORMAL,
 				MXT224E_ATCHFRCCALRATIO_NORMAL};
 
@@ -3630,7 +3798,7 @@ static u8 t42_config_e[] = {PROCI_TOUCHSUPPRESSION_T42,
 				0, 0, 0, 0, 0, 0, 0, 0};
 
 static u8 t46_config_e[] = {SPT_CTECONFIG_T46,
-				0, 3, 24, 25, 0, 0, 1, 0};
+				0, MXT224E_T46_MODE, 24, 25, 0, 0, 1, 0};
 
 static u8 t47_config_e[] = {PROCI_STYLUS_T47,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -3689,8 +3857,8 @@ static struct mxt224_platform_data mxt224_data = {
 	.max_z = 255,
 	.min_w = 0,
 	.max_w = 30,
-	.atchcalst = MXT224_ATCHCALST,
-	.atchcalsthr = MXT224_ATCHCALTHR,
+	.atchcalst = MXT224E_ATCHCALST,
+	.atchcalsthr = MXT224E_ATCHCALTHR,
 	.tchthr_batt = MXT224_THRESHOLD_BATT,
 	.tchthr_charging = MXT224_THRESHOLD_CHRG,
 	.tchthr_batt_e = MXT224E_THRESHOLD_BATT,
@@ -4115,6 +4283,12 @@ static struct sec_jack_zone jack_zones[] = {
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
+		.adc_high	= 1700,
+		.delay_ms	= 10,
+		.check_count	= 10,
+		.jack_type	= SEC_HEADSET_4POLE,
+	},
+	[3] = {
 		.adc_high	= 9999,
 		.delay_ms	= 10,
 		.check_count	= 10,
@@ -4533,29 +4707,16 @@ static struct msm_rpmrs_level msm_rpmrs_levels[] = {
 
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(ON, GDHS, MAX, ACTIVE),
-		false,
-		8500, 51, 1122000, 8500,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, MAX, ACTIVE),
 		false,
 		9000, 51, 1130300, 9000,
 	},
+
 	{
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
 		MSM_RPMRS_LIMITS(ON, HSFS_OPEN, ACTIVE, RET_HIGH),
 		false,
 		10000, 51, 1130300, 10000,
-	},
-
-	{
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE,
-		MSM_RPMRS_LIMITS(OFF, GDHS, MAX, ACTIVE),
-		false,
-		12000, 14, 2205900, 12000,
 	},
 
 	{

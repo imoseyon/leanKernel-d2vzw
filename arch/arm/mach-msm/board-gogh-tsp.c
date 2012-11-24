@@ -26,9 +26,6 @@
 
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
 
-int touch_is_pressed;
-EXPORT_SYMBOL(touch_is_pressed);
-
 static int melfas_mux_fw_flash(bool to_gpios)
 {
 	if (to_gpios) {
@@ -157,12 +154,20 @@ static void melfas_register_callback(struct tsp_callbacks *cb)
 	pr_err("[TSP] melfas_register_callback\n");
 }
 
+#if defined(CONFIG_MACH_INFINITE)
+#define USE_TOUCHKEY 1
+static u8 touchkey_keycode[] = {KEY_MENU, KEY_BACK};
+#else
 #define USE_TOUCHKEY 0
+#endif
 
 static struct mms_ts_platform_data mms_ts_pdata = {
 	.max_x		= 480,
 	.max_y		= 800,
 	.use_touchkey = USE_TOUCHKEY,
+	#if defined(CONFIG_MACH_INFINITE)
+	.touchkey_keycode = touchkey_keycode,
+	#endif
 	.mux_fw_flash	= melfas_mux_fw_flash,
 	.vdd_on		= melfas_vdd_on,
 	.is_vdd_on	= is_melfas_vdd_on,

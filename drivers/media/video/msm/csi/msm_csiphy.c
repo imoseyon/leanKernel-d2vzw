@@ -169,6 +169,7 @@ static int msm_csiphy_init(struct v4l2_subdev *sd)
 
 	if (rc < 0) {
 		iounmap(csiphy_dev->base);
+		csiphy_dev->base = NULL;
 		return rc;
 	}
 
@@ -198,6 +199,7 @@ static int msm_csiphy_release(struct v4l2_subdev *sd)
 		csiphy_dev->csiphy_clk, ARRAY_SIZE(csiphy_clk_info), 0);
 
 	iounmap(csiphy_dev->base);
+	csiphy_dev->base = NULL;
 	return 0;
 }
 
@@ -293,7 +295,7 @@ static int __devinit csiphy_probe(struct platform_device *pdev)
 csiphy_no_resource:
 	mutex_destroy(&new_csiphy_dev->mutex);
 	kfree(new_csiphy_dev);
-	return 0;
+	return rc;
 }
 
 static struct platform_driver csiphy_driver = {

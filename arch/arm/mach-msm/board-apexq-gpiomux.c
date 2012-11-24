@@ -88,7 +88,7 @@ static struct gpiomux_setting gsbi12 = {
 
 static struct gpiomux_setting cdc_mclk = {
 	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
@@ -538,12 +538,23 @@ static struct msm_gpiomux_config nc_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio = GPIO_NC_62,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
 		.gpio = GPIO_NC_66,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &nc_cfg,
 		},
 	},
-
+	{
+		.gpio = GPIO_NC_94,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm8960_audio_i2s_rx_codec_configs[] = {
@@ -860,6 +871,7 @@ static struct msm_gpiomux_config msm8960_mhl_configs[] __initdata = {
 	{
 		.gpio = GPIO_MHL_WAKE_UP,
 		.settings = {
+			[GPIOMUX_ACTIVE]    = &mhl_active_1_cfg,
 			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
 		},
 	},

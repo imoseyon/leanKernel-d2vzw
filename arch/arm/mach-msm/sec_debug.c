@@ -151,6 +151,9 @@ static unsigned reset_reason = 0xFFEEFFEE;
 static char sec_build_info[100];
 static unsigned int secdbg_paddr;
 static unsigned int secdbg_size;
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+static unsigned enable_cp_debug = 1;
+#endif
 
 uint runtime_debug_val;
 
@@ -158,9 +161,15 @@ module_param_named(enable, enable, uint, 0644);
 module_param_named(enable_user, enable_user, uint, 0644);
 module_param_named(reset_reason, reset_reason, uint, 0644);
 module_param_named(runtime_debug_val, runtime_debug_val, uint, 0644);
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+module_param_named(enable_cp_debug, enable_cp_debug, uint, 0644);
+#endif
 
 static int force_error(const char *val, struct kernel_param *kp);
 module_param_call(force_error, force_error, NULL, NULL, 0644);
+
+static int dbg_set_cpu_affinity(const char *val, struct kernel_param *kp);
+module_param_call(setcpuaff, dbg_set_cpu_affinity, NULL, NULL, 0644);
 
 static char *sec_build_time[] = {
 	__DATE__,
@@ -199,6 +208,7 @@ struct sec_debug_log {
 struct sec_debug_log *secdbg_log;
 struct sec_debug_subsys *secdbg_subsys;
 struct sec_debug_subsys_data_krait *secdbg_krait;
+struct sec_debug_subsys_data_modem *secdbg_modem;
 
 #endif	/* CONFIG_SEC_DEBUG_SCHED_LOG */
 
@@ -246,6 +256,11 @@ static int force_error(const char *val, struct kernel_param *kp)
 	} else if (!strncmp(val, "undef", 5)) {
 		pr_emerg("Generating a undefined instruction exception!\n");
 		BUG();
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+	} else if (!strncmp(val, "ldcache", 7)) {
+		pr_emerg("Generating a sec_l1_dcache_check_fail!\n");
+		sec_l1_dcache_check_fail();
+#endif
 	} else if (!strncmp(val, "bushang", 7)) {
 		void __iomem *p;
 		unsigned int val;
@@ -261,7 +276,29 @@ static int force_error(const char *val, struct kernel_param *kp)
 
 	return 0;
 }
+static int dbg_set_cpu_affinity(const char *val, struct kernel_param *kp)
+{
+	char *endptr;
+	pid_t pid;
+	int cpu;
+	struct cpumask mask;
+	long ret;
 
+	pid = (pid_t)memparse(val, &endptr);
+	if (*endptr != '@') {
+		pr_info("%s: invalid input strin: %s\n", __func__, val);
+		return -EINVAL;
+	}
+	cpu = memparse(++endptr, &endptr);
+	cpumask_clear(&mask);
+	cpumask_set_cpu(cpu, &mask);
+	pr_info("%s: Setting %d cpu affinity to cpu%d\n",
+		__func__, pid, cpu);
+	ret = sched_setaffinity(pid, &mask);
+	pr_info("%s: sched_setaffinity returned %ld\n", __func__, ret);
+
+	return 0;
+}
 /* for sec debug level */
 unsigned int sec_dbg_level;
 static int __init sec_debug_level(char *str)
@@ -540,6 +577,25 @@ EXPORT_SYMBOL(sec_peripheral_secure_check_fail);
 #endif
 
 
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+void sec_l1_dcache_check_fail(void)
+{
+	sec_debug_set_qc_dload_magic(0);
+	sec_debug_set_upload_magic(0x77665588);
+	pr_emerg("(%s) %s\n", __func__, sec_build_info);
+	pr_emerg("(%s) rebooting...\n", __func__);
+	flush_cache_all();
+	outer_flush_all();
+	arch_reset(0, "l1_dcache_reset");
+
+	while (1)
+		;
+}
+EXPORT_SYMBOL(sec_l1_dcache_check_fail);
+#endif
+
+
+
 #ifdef CONFIG_SEC_DEBUG_LOW_LOG
 unsigned sec_debug_get_reset_reason(void)
 {
@@ -554,7 +610,11 @@ static int sec_debug_panic_handler(struct notifier_block *nb,
 	sec_debug_set_qc_dload_magic(1);
 	sec_debug_set_upload_magic(0x776655ee);
 
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+	if (!enable && !enable_cp_debug) {
+#else
 	if (!enable) {
+#endif
 #ifdef CONFIG_SEC_DEBUG_LOW_LOG
 		sec_debug_hw_reset();
 #endif
@@ -752,6 +812,34 @@ int sec_debug_subsys_add_var_mon(char *name, unsigned int size, unsigned int pa)
 	return 0;
 }
 
+void print_modem_dump_info(void)
+{
+	int i = 0;
+	char modem_exception_info[1024];
+
+	if (!secdbg_subsys)
+		return;
+	secdbg_modem = &secdbg_subsys->priv.modem;
+	if (!secdbg_modem)
+		return;
+	pr_info("secdbg_modem address : 0x%x", secdbg_modem);
+	snprintf(modem_exception_info, ARRAY_SIZE(modem_exception_info)-1,
+		"Task: %s\nFile name: %s\nLine: %d\nError msg: %s\n",
+		secdbg_modem->excp.task, secdbg_modem->excp.file,
+		secdbg_modem->excp.line, secdbg_modem->excp.msg);
+	pr_info("*******************************************************\n");
+	pr_info("modem exception information : %s\n", modem_exception_info);
+	pr_info("Register information:\n");
+	for (i = 0; i < ARRAY_SIZE(secdbg_modem->excp.core_reg); i++) {
+		snprintf(modem_exception_info,
+		ARRAY_SIZE(modem_exception_info)-1,
+		"\t%s: 0x%08x\n", secdbg_modem->excp.core_reg[i].name,
+		secdbg_modem->excp.core_reg[i].value);
+		pr_info(" %s\n", modem_exception_info);
+	}
+	pr_info("*******************************************************\n");
+}
+
 int sec_debug_subsys_init(void)
 {
 	pr_info("%s: msm_shared_ram_phys=%x SMEM_ID_VENDOR2=%d size=%d\n",
@@ -794,6 +882,7 @@ int sec_debug_subsys_init(void)
 
 	sec_debug_subsys_set_kloginfo(&secdbg_krait->log.idx_paddr,
 		&secdbg_krait->log.log_paddr, &secdbg_krait->log.size);
+	sec_debug_subsys_set_logger_info(&secdbg_krait->logger_log);
 
 	secdbg_krait->tz_core_dump =
 		(struct tzbsp_dump_buf_s **)get_wdog_regsave_paddr();
@@ -810,6 +899,7 @@ int sec_debug_subsys_init(void)
 		&secdbg_krait->fb_info.rgb_bitinfo.a_off,
 		&secdbg_krait->fb_info.rgb_bitinfo.a_len);
 
+    SEC_DEBUG_SUBSYS_ADD_STR_TO_MONITOR(unit_name);
 	SEC_DEBUG_SUBSYS_ADD_STR_TO_MONITOR(linux_banner);
 	SEC_DEBUG_SUBSYS_ADD_VAR_TO_MONITOR(global_pvs);
 
@@ -888,7 +978,7 @@ int sec_debug_is_enabled(void)
 #ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
 int sec_debug_is_enabled_for_ssr(void)
 {
-	return enable_user;
+	return enable_cp_debug;
 }
 #endif
 
@@ -921,7 +1011,9 @@ void __sec_debug_task_sched_log(int cpu, struct task_struct *task,
 
 void sec_debug_task_sched_log_short_msg(char *msg)
 {
+	preempt_disable();
 	__sec_debug_task_sched_log(smp_processor_id(), NULL, msg);
+	preempt_enable();
 }
 
 void sec_debug_task_sched_log(int cpu, struct task_struct *task)

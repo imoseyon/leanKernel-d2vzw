@@ -159,7 +159,13 @@ static char *log_buf = __log_buf;
 static int log_buf_len = __LOG_BUF_LEN;
 static unsigned logged_chars; /* Number of chars produced since last read+clear operation */
 static int saved_console_loglevel = -1;
-
+#ifdef CONFIG_SEC_SSR_DUMP
+/*
+ * variable to hold the ioremap address of kernel log buffer,
+ * which is reused in ramdump.c
+ */
+unsigned *ramdump_kernel_log_addr;
+#endif
 #ifdef CONFIG_KEXEC
 /*
  * This appends the listed symbols to /proc/vmcoreinfo
@@ -253,6 +259,20 @@ static int __init printk_remap_nocache(void)
 	sec_getlog_supply_kloginfo(log_buf);
 
 	if (0 == sec_debug_is_enabled()) {
+#ifdef CONFIG_SEC_SSR_DUMP
+		nocache_base = ioremap_nocache(sec_log_save_base - 4096,
+		sec_log_save_size + 8192);
+		nocache_base = nocache_base + 4096;
+		sec_log_mag = nocache_base - 8;
+		sec_log_ptr = nocache_base - 4;
+		sec_log_buf = nocache_base;
+		ramdump_kernel_log_addr = sec_log_ptr;
+		pr_debug("ramdump_kernel_log_addr = 0x%x\n",
+		ramdump_kernel_log_addr);
+		sec_log_size = sec_log_save_size;
+		sec_log_irq_en = nocache_base - 0xC ;
+#endif
+
 #ifdef CONFIG_SEC_DEBUG_LOW_LOG
 		nocache_base = ioremap_nocache(sec_log_save_base - 4096,
 		sec_log_save_size + 8192);
@@ -278,6 +298,11 @@ static int __init printk_remap_nocache(void)
 	sec_log_mag = nocache_base - 8;
 	sec_log_ptr = nocache_base - 4;
 	sec_log_buf = nocache_base;
+#ifdef CONFIG_SEC_SSR_DUMP
+		ramdump_kernel_log_addr = sec_log_ptr;
+		pr_info("%s: ramdump_kernel_log_addr = 0x%x\n",
+		__func__, ramdump_kernel_log_addr);
+#endif
 	sec_log_size = sec_log_save_size;
 	sec_log_irq_en = nocache_base - 0xC ;
 
@@ -515,8 +540,10 @@ static int check_syslog_permissions(int type, bool from_file)
 			return 0;
 		/* For historical reasons, accept CAP_SYS_ADMIN too, with a warning */
 		if (capable(CAP_SYS_ADMIN)) {
-			WARN_ONCE(1, "Attempt to access syslog with CAP_SYS_ADMIN "
-				 "but no CAP_SYSLOG (deprecated).\n");
+			printk_once(KERN_WARNING "%s (%d): "
+				 "Attempt to access syslog with CAP_SYS_ADMIN "
+				 "but no CAP_SYSLOG (deprecated).\n",
+				 current->comm, task_pid_nr(current));
 			return 0;
 		}
 		return -EPERM;

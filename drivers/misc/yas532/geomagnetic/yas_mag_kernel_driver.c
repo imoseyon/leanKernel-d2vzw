@@ -1597,13 +1597,14 @@ geomagnetic_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	int rt, sysfs_created = 0, sysfs_raw_created = 0;
 	int data_registered = 0, raw_registered = 0, i;
 	struct yas_mag_filter filter;
-
+	struct yas_platform_data *pdata;
 	i2c_set_clientdata(client, NULL);
 	data = kzalloc(sizeof(struct geomagnetic_data), GFP_KERNEL);
 	if (data == NULL) {
 		rt = -ENOMEM;
 		goto err;
 	}
+	pdata = (struct yas_platform_data *) client->dev.platform_data;
 	data->threshold = YAS_DEFAULT_MAGCALIB_THRESHOLD;
 	data->distortion[0] = YAS_MAGCALIB_DISTORTION_LV1;
 	data->distortion[1] = YAS_MAGCALIB_DISTORTION_LV2;
@@ -1712,12 +1713,28 @@ geomagnetic_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 	}
 	if (hwdriver.set_position != NULL) {
-		if (hwdriver.set_position(
+		if (pdata != NULL) {
+			if (pdata->mag_orientation) {
+				pr_info("%s: set from board file.\n", __func__);
+				if (hwdriver.set_position(pdata->mag_orientation
+					- YAS532_POSITION_OFFSET) < 0) {
+					pr_err("set_position()"
+					"failed[%d]\n", rt);
+					goto err;
+				}
+			}
+		} else {
+			pr_info("%s: set from defconfig.\n", __func__);
+			if (hwdriver.set_position(
 					CONFIG_INPUT_YAS_MAGNETOMETER_POSITION)
 				< 0) {
-			YLOGE(("hwdriver.set_position() failed[%d]\n", rt));
-			goto err;
+				YLOGE(("hwdriver.set_position()"
+				"failed[%d]\n", rt));
+				goto err;
+			}
 		}
+		pr_info("%s: yas magnetic position is %d\n", __func__,
+			hwdriver.get_position());
 	}
 	if (hwdriver.get_offset != NULL) {
 		if (hwdriver.get_offset(&data->driver_offset) < 0) {

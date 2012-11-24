@@ -295,7 +295,7 @@ static int __devinit sec_charger_probe(
 		if (ret) {
 			dev_err(&client->dev,
 				"%s: Failed to Reqeust IRQ\n", __func__);
-			return ret;
+			goto err_supply_unreg;
 		}
 
 		if (charger->pdata->full_check_type ==
@@ -315,13 +315,15 @@ static int __devinit sec_charger_probe(
 	if (ret) {
 		dev_err(&client->dev,
 			"%s : Failed to create_attrs\n", __func__);
-		goto err_free;
+		goto err_supply_unreg;
 	}
 
 	dev_dbg(&client->dev,
 		"%s: SEC Charger Driver Loaded\n", __func__);
 	return 0;
 
+err_supply_unreg:
+	power_supply_unregister(&charger->psy_chg);
 err_free:
 	kfree(charger);
 

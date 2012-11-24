@@ -82,7 +82,8 @@ void  melfas_vdd_on(bool onoff)
 #endif
 	{
 #if !defined(CONFIG_MACH_ESPRESSO_VZW) && !defined(CONFIG_MACH_ESPRESSO_ATT) \
-				&& !defined(CONFIG_MACH_ESPRESSO10_VZW)
+				&& !defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				&& !defined(CONFIG_MACH_ESPRESSO_SPR)
 		static struct regulator *reg_lvs6;
 
 		if (!reg_lvs6) {
@@ -147,7 +148,7 @@ void  melfas_vdd_on(bool onoff)
 	}
 #else
 		/* 2.8V */
-		if (system_rev < BOARD_REV03) {
+		if (machine_is_ESPRESSO_VZW() && system_rev < BOARD_REV03) {
 			if (!reg_l17) {
 				reg_l17 = regulator_get(NULL, "8921_l17");
 				if (IS_ERR(reg_l17)) {
@@ -233,7 +234,8 @@ int is_melfas_vdd_on(void)
 	static struct regulator *reg_l17;
 	static struct regulator *reg_l11;
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 	if (system_rev < BOARD_REV03) {
 		if (!reg_l17) {
 			reg_l17 = regulator_get(NULL, "8921_l17");
@@ -319,7 +321,8 @@ static struct mms_ts_platform_data mms_ts_pdata = {
 #if defined(CONFIG_TOUCHSCREEN_MMS136) || \
 	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
-				|| defined(CONFIG_MACH_ESPRESSO10_VZW)
+				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
+				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 	.max_x		= 1024,
 	.max_y		= 600,
 	.config_fw_version = "I705_MELFAS_0313",

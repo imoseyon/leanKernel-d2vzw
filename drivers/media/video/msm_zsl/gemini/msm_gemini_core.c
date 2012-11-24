@@ -71,7 +71,9 @@ void msm_gemini_core_release(int release_buf)
 	for (i = 0; i < 2; i++) {
 		if (we_pingpong_buf.buf_status[i] && release_buf)
 			msm_gemini_platform_p2v(we_pingpong_buf.buf[i].file,
+#if !defined(CONFIG_MSM_IOMMU)
 					&we_pingpong_buf.buf[i].msm_buffer,
+#endif
 					&we_pingpong_buf.buf[i].handle);
 		we_pingpong_buf.buf_status[i] = 0;
 	}

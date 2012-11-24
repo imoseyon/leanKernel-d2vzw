@@ -129,6 +129,8 @@ struct inv_mpu_state {
 	/* 0-1 for 3050, bitfield of BIT_SLVx_DLY_EN, x = [0..4] */
 	__u8 i2c_slaves_enabled;
 	bool accel_reactive;
+	bool use_accel_reactive;
+	bool reactive_factory;
 };
 
 /* Platform data for the MPU */

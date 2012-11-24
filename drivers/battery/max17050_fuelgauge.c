@@ -840,6 +840,7 @@ static int fg_read_temp(struct i2c_client *client)
 		if (data[1]&(0x1 << 7)) {
 			temper = ((~(data[1]))&0xFF)+1;
 			temper *= (-1000);
+			temper -= ((~((int)data[0]))+1) * 39 / 10;
 		} else {
 			temper = data[1] & 0x7f;
 			temper *= 1000;
@@ -927,6 +928,69 @@ static int fg_read_soc(struct i2c_client *client)
 			__func__, soc, (data[1]<<8) | data[0]);
 
 	return min(soc, 1000);
+}
+
+static int fg_read_fullcap(struct i2c_client *client)
+{
+	u8 data[2];
+	int ret;
+
+	if (fg_i2c_read(client, FULLCAP_REG, data, 2) < 0) {
+		dev_err(&client->dev, "%s: Failed to read FULLCAP\n", __func__);
+		return -1;
+	}
+
+	ret = (data[1] << 8) + data[0];
+
+	return ret;
+}
+
+static int fg_read_mixcap(struct i2c_client *client)
+{
+	u8 data[2];
+	int ret;
+
+	if (fg_i2c_read(client, REMCAP_MIX_REG, data, 2) < 0) {
+		dev_err(&client->dev, "%s: Failed to read REMCAP_MIX_REG\n",
+			__func__);
+		return -1;
+	}
+
+	ret = (data[1] << 8) + data[0];
+
+	return ret;
+}
+
+static int fg_read_avcap(struct i2c_client *client)
+{
+	u8 data[2];
+	int ret;
+
+	if (fg_i2c_read(client, REMCAP_AV_REG, data, 2) < 0) {
+		dev_err(&client->dev, "%s: Failed to read REMCAP_AV_REG\n",
+			__func__);
+		return -1;
+	}
+
+	ret = (data[1] << 8) + data[0];
+
+	return ret;
+}
+
+static int fg_read_repcap(struct i2c_client *client)
+{
+	u8 data[2];
+	int ret;
+
+	if (fg_i2c_read(client, REMCAP_REP_REG, data, 2) < 0) {
+		dev_err(&client->dev, "%s: Failed to read REMCAP_REP_REG\n",
+			__func__);
+		return -1;
+	}
+
+	ret = (data[1] << 8) + data[0];
+
+	return ret;
 }
 
 static int fg_read_current(struct i2c_client *client)
@@ -1262,6 +1326,22 @@ int get_fuelgauge_value(struct i2c_client *client, int data)
 
 	case FG_AV_SOC:
 		ret = fg_read_avsoc(client);
+		break;
+
+	case FG_FULLCAP:
+		ret = fg_read_fullcap(client);
+		break;
+
+	case FG_MIXCAP:
+		ret = fg_read_mixcap(client);
+		break;
+
+	case FG_AVCAP:
+		ret = fg_read_avcap(client);
+		break;
+
+	case FG_REPCAP:
+		ret = fg_read_repcap(client);
 		break;
 
 	default:
@@ -2089,6 +2169,23 @@ bool sec_hal_fg_get_property(struct i2c_client *client,
 		/* Average Current (mA) */
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		val->intval = get_fuelgauge_value(client, FG_CURRENT_AVG);
+		break;
+		/* Full Capacity */
+	case POWER_SUPPLY_PROP_ENERGY_NOW:
+		switch (val->intval) {
+		case SEC_BATTEY_CAPACITY_DESIGNED:
+			val->intval = get_fuelgauge_value(client, FG_FULLCAP);
+			break;
+		case SEC_BATTEY_CAPACITY_ABSOLUTE:
+			val->intval = get_fuelgauge_value(client, FG_MIXCAP);
+			break;
+		case SEC_BATTEY_CAPACITY_TEMPERARY:
+			val->intval = get_fuelgauge_value(client, FG_AVCAP);
+			break;
+		case SEC_BATTEY_CAPACITY_CURRENT:
+			val->intval = get_fuelgauge_value(client, FG_REPCAP);
+			break;
+		}
 		break;
 		/* SOC (%) */
 	case POWER_SUPPLY_PROP_CAPACITY:

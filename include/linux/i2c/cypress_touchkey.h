@@ -28,16 +28,26 @@ struct cypress_touchkey_platform_data {
 #define CYPRESS_DIFF_MENU      0x0A
 #define CYPRESS_DIFF_BACK      0x0C
 #define CYPRESS_DIFF_HOME      0
+#define CYPRESS_DIFF_RECENT    0
 #define CYPRESS_RAW_DATA_MENU  0x0E
 #define CYPRESS_RAW_DATA_BACK  0x10
 #define CYPRESS_RAW_DATA_HOME  0
+#define CYPRESS_RAW_DATA_RECENT    0
+#define CYPRESS_IDAC_MENU 0x06
+#define CYPRESS_IDAC_BACK 0x07
+
 #elif defined(CONFIG_MACH_AEGIS2)
-#define CYPRESS_DIFF_MENU      0x0E
-#define CYPRESS_DIFF_BACK      0x0A
-#define CYPRESS_DIFF_HOME      0x0C
-#define CYPRESS_RAW_DATA_MENU  0x14
-#define CYPRESS_RAW_DATA_BACK  0x10
-#define CYPRESS_RAW_DATA_HOME  0x12
+#define CYPRESS_DIFF_BACK      0x10
+#define CYPRESS_DIFF_HOME      0x0E
+#define CYPRESS_DIFF_RECENT    0x0C
+#define CYPRESS_DIFF_MENU      0x0A
+
+#define CYPRESS_RAW_DATA_BACK  0x18
+#define CYPRESS_RAW_DATA_HOME  0x16
+#define CYPRESS_RAW_DATA_RECENT 0x14
+#define CYPRESS_RAW_DATA_MENU  0x12
+
+
 #endif
 #endif
 

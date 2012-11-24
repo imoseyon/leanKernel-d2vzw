@@ -367,8 +367,15 @@ static void smb347_charger_function_conrol(
 		 * Max System voltage =Vflt + 0.1v
 		 * Input Source Priority : USBIN
 		 */
-		smb347_set_command(client,
-			SMB347_VARIOUS_FUNCTIONS, 0x95);
+		if (charger->pdata->chg_functions_setting &
+			SEC_CHARGER_NO_GRADUAL_CHARGING_CURRENT)
+			/* disable AICL */
+			smb347_set_command(client,
+				SMB347_VARIOUS_FUNCTIONS, 0x85);
+		else
+			/* enable AICL */
+			smb347_set_command(client,
+				SMB347_VARIOUS_FUNCTIONS, 0x95);
 
 		/* Float voltage, Vprechg : 2.4V */
 		dev_dbg(&client->dev, "%s : float voltage (%dmV)\n",

@@ -3196,15 +3196,15 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0100},	/*  3__1_         */
 	{0x0F12, 0x0100},	/*  3__2_         */
 	{0x0F12, 0x00FC},	/* 0100 TVAR_ash_GASAlpha_3__3_ */
-	{0x0F12, 0x00DA},	/* TVAR_ash_GASAlpha_4__0_ D50     */
+	{0x0F12, 0x00DA},	/* 00E8 TVAR_ash_GASAlpha_4__0 */
 	{0x0F12, 0x0100},	/*  3__3_         */
 	{0x0F12, 0x0100},	/*  4__3_         */
-	{0x0F12, 0x00FC},	/* 0100 TVAR_ash_GASAlpha_4__3_*/
-	{0x0F12, 0x00E8},	/*  5__0_ D65     */
+	{0x0F12, 0x00FC},	/* 0100 TVAR_ash_GASAlpha_4__3_         */
+	{0x0F12, 0x00E8},	/* TVAR_ash_GASAlpha_5__0_ D65     */
 	{0x0F12, 0x0100},	/*  5__1_         */
 	{0x0F12, 0x0100},	/*  5__2_         */
 	{0x0F12, 0x0100},	/*  5__3_         */
-	{0x0F12, 0x00F0},	/*  6__0_ D75     */
+	{0x0F12, 0x00F0},	/* TVAR_ash_GASAlpha_6__0_ D75     */
 	{0x0F12, 0x0100},	/*  6__1_         */
 	{0x0F12, 0x0100},	/*  6__2_         */
 	{0x0F12, 0x0100},	/*  6__3_         */
@@ -3973,25 +3973,25 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x002A, 0x0B70},
 	{0x0F12, 0x0005},	/*   ZInfo_m_GridStep */
 	{0x002A, 0x0B74},
-	{0x0F12, 0x01F8},	/*   ZInfo_m_BMin */
-	{0x0F12, 0x02A8},	/*   ZInfo_m_BMax */
+	{0x0F12, 0x01F8},	/* awbb_OutdoorGrZones_ZInfo_m_BMin */
+	{0x0F12, 0x02A8},	/* awbb_OutdoorGrZones_ZInfo_m_BMax */
 	{0x002A, 0x0B72},
 	{0x0F12, 0x0007},	/*   ZInfo_m_GridSz */
 	{0x002A, 0x0B40},
-	{0x0F12, 0x029E},	/*   m_BGrid_0__m_left   */
-	{0x0F12, 0x02C8},	/*   m_BGrid_0__m_right  */
-	{0x0F12, 0x0281},	/*   m_BGrid_1__m_left   */
-	{0x0F12, 0x02C8},	/*   m_BGrid_1__m_right  */
-	{0x0F12, 0x0266},	/*   m_BGrid_2__m_left   */
-	{0x0F12, 0x02AC},	/*   m_BGrid_2__m_right  */
-	{0x0F12, 0x0251},	/*   m_BGrid_3__m_left   */
-	{0x0F12, 0x028E},	/*   m_BGrid_3__m_right  */
-	{0x0F12, 0x023D},	/*   m_BGrid_4__m_left   */
-	{0x0F12, 0x0275},	/*   m_BGrid_4__m_right  */
-	{0x0F12, 0x0228},	/*   m_BGrid_5__m_left   */
-	{0x0F12, 0x025D},	/*   m_BGrid_5__m_right  */
-	{0x0F12, 0x0228},	/*   m_BGrid_6__m_left   */
-	{0x0F12, 0x0243},	/*   m_BGrid_6__m_right  */
+	{0x0F12, 0x029E},	/* awbb_OutdoorGrZones_m_BGrid_0__m_left   */
+	{0x0F12, 0x02C8},	/* awbb_OutdoorGrZones_m_BGrid_0__m_right  */
+	{0x0F12, 0x0281},	/* awbb_OutdoorGrZones_m_BGrid_1__m_left   */
+	{0x0F12, 0x02C8},	/* awbb_OutdoorGrZones_m_BGrid_1__m_right  */
+	{0x0F12, 0x0266},	/* awbb_OutdoorGrZones_m_BGrid_2__m_left   */
+	{0x0F12, 0x02AC},	/* awbb_OutdoorGrZones_m_BGrid_2__m_right  */
+	{0x0F12, 0x0251},	/* awbb_OutdoorGrZones_m_BGrid_3__m_left   */
+	{0x0F12, 0x028E},	/* awbb_OutdoorGrZones_m_BGrid_3__m_right  */
+	{0x0F12, 0x023D},	/* awbb_OutdoorGrZones_m_BGrid_4__m_left   */
+	{0x0F12, 0x0275},	/* awbb_OutdoorGrZones_m_BGrid_4__m_right  */
+	{0x0F12, 0x0228},	/* awbb_OutdoorGrZones_m_BGrid_5__m_left   */
+	{0x0F12, 0x025D},	/* awbb_OutdoorGrZones_m_BGrid_5__m_right  */
+	{0x0F12, 0x0228},	/* awbb_OutdoorGrZones_m_BGrid_6__m_left   */
+	{0x0F12, 0x0243},	/* awbb_OutdoorGrZones_m_BGrid_6__m_right  */
 	{0x0F12, 0x0000},	/*   m_BGrid_7__m_left   */
 	{0x0F12, 0x0000},	/*   m_BGrid_7__m_right  */
 	{0x0F12, 0x0000},	/*   m_BGrid_8__m_left   */
@@ -4076,58 +4076,57 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x00B8},	/*  GridCoeff_R_2 */
 	{0x0F12, 0x00B2},	/*  GridCoeff_B_2 */
 	{0x002A, 0x0CFE},
-	{0x0F12, 0x0FAB},	/*  GridConst_2_0_ */
-	{0x0F12, 0x0FF5},	/*  GridConst_2_1_ */
-	{0x0F12, 0x10BB},	/*  GridConst_2_2_ */
-	{0x0F12, 0x1117},	/* 1123 1153  GridConst_2_3_ */
-	{0x0F12, 0x116D},	/* 1165 11C5  GridConst_2_4_ */
-	{0x0F12, 0x11BE},	/* 122A  GridConst_2_5_ */
+	{0x0F12, 0x0FAB},	/* awbb_GridConst_2_0_ */
+	{0x0F12, 0x0FF5},	/* awbb_GridConst_2_1_ */
+	{0x0F12, 0x10BB},	/* awbb_GridConst_2_2_ */
+	{0x0F12, 0x1117},	/* 1123 1153 awbb_GridConst_2_3_ */
+	{0x0F12, 0x116D},	/* 1165 11C5 awbb_GridConst_2_4_ */
+	{0x0F12, 0x11BE},	/* 122A awbb_GridConst_2_5_ */
 	{0x0F12, 0x00A9},	/*  GridCoeff_R_1 */
 	{0x0F12, 0x00C0},	/*  GridCoeff_B_1 */
 	{0x002A, 0x0CF8},
-	{0x0F12, 0x030E},	/*  GridConst_1_0_ */
-	{0x0F12, 0x034C},	/*  GridConst_1_1_ */
-	{0x0F12, 0x0388},	/*  GridConst_1_2_ */
+	{0x0F12, 0x030E},	/* awbb_GridConst_1_0_ */
+	{0x0F12, 0x034C},	/* awbb_GridConst_1_1_ */
+	{0x0F12, 0x0388},	/* awbb_GridConst_1_2_ */
 
 	{0x002A, 0x0CB0},
 	{0x0F12, 0x0070},	/* 0000 awbb_GridCorr_R_0__0_ */
 	{0x0F12, 0x0070},	/* 0000 awbb_GridCorr_R_0__1_ */
 	{0x0F12, 0x0060},	/* 0078 awbb_GridCorr_R_0__2_ */
-	{0x0F12, 0x0020},	/* 00AA awbb_GridCorr_R_0__3_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_R_0__4_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_R_0__5_ */
-
+	{0x0F12, 0x0010},	/* 00AA awbb_GridCorr_R_0__3_ */
+	{0x0F12, 0x0000},/* 0000 awbb_GridCorr_R_0__4_ */
+	{0x0F12, 0x0000},	/* 0000 awbb_GridCorr_R_0__5_ */
 	{0x0F12, 0x0070},	/* 0000 awbb_GridCorr_R_1__0_ */
 	{0x0F12, 0x0070},	/* 0096 awbb_GridCorr_R_1__1_ */
 	{0x0F12, 0x0060},	/* 0000 awbb_GridCorr_R_1__2_ */
-	{0x0F12, 0x0020},	/* 0000 awbb_GridCorr_R_1__3_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_R_1__4_ */
+	{0x0F12, 0x0010},	/* 0000 awbb_GridCorr_R_1__3_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_R_1__5_ */
 
+	{0x0F12, 0x0000},	/* 0000 awbb_GridCorr_R_1__5_ */
 	{0x0F12, 0x0070},	/* 00E6 awbb_GridCorr_R_2__0_ */
 	{0x0F12, 0x0070},	/* 0000 awbb_GridCorr_R_2__1_ */
 	{0x0F12, 0x0060},	/* 0000 awbb_GridCorr_R_2__2_ */
-	{0x0F12, 0x0020},	/* 0000 awbb_GridCorr_R_2__3_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_R_2__4_ */
+	{0x0F12, 0x0010},	/* 0000 awbb_GridCorr_R_2__3_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_R_2__5_ */
+	{0x0F12, 0x0000},	/* 0000 awbb_GridCorr_R_2__5_ */
 
-	{0x0F12, 0xFFD0},	/* 0000  GridCorr_B_0__0_ */
-	{0x0F12, 0xFFD0},	/* 0000  GridCorr_B_0__1_ */
-	{0x0F12, 0x0000},	/* 0064  GridCorr_B_0__2_ */
+	{0x0F12, 0xFFC0},	/* 0000 awbb_GridCorr_B_0__0_ */
+	{0x0F12, 0xFFC0},	/* 0000 awbb_GridCorr_B_0__1_ */
+	{0x0F12, 0x0000},	/* 0064 awbb_GridCorr_B_0__2_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_0__3_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_0__4_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_0__5_ */
 
 	{0x0F12, 0xFFC0},	/* 0000 awbb_GridCorr_B_1__0_ */
 	{0x0F12, 0xFFC0},	/* 0032 awbb_GridCorr_B_1__1_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_B_1__2_ */
+	{0x0F12, 0x0000},	/* 0000 awbb_GridCorr_B_1__2_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_1__3_ */
 	{0x0F12, 0x0000},	/* FF38  GridCorr_B_1__4_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_1__5_ */
 
 	{0x0F12, 0xFFC0},	/* 0000 awbb_GridCorr_B_2__0_ */
 	{0x0F12, 0xFFC0},	/* 0032 awbb_GridCorr_B_2__1_ */
-	{0x0F12, 0x0000},	/* 0000  GridCorr_B_2__2_ */
+	{0x0F12, 0x0000},	/* 0000 awbb_GridCorr_B_2__2_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_2__3_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_2__4_ */
 	{0x0F12, 0x0000},	/* 0000  GridCorr_B_2__5_ */
@@ -4233,7 +4232,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x01B0},	/* lt_uMaxAnGain_1_ */
 	{0x0F12, 0x0280},	/* lt_uMaxAnGain_2_ */
 	{0x0F12, 0x0A80},	/* lt_uMaxAnGain_3_ */
-	{0x0F12, 0x0150},	/* 0100 lt_uMaxDigGain */
+	{0x0F12, 0x0158},	/* 0150 0100 lt_uMaxDigGain */
 	{0x0F12, 0x3000},	/* lt_uMaxTotGain */
 	{0x002A, 0x042E},
 	{0x0F12, 0x010E},	/* lt_uMaxTotGain */
@@ -4550,7 +4549,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0000},	/* AfitBaseVals_0__0_  Brightness[0] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_0__1_  Contrast[0] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_0__2_  Saturaion[0] */
-	{0x0F12, 0x0000},	/* AfitBaseVals_0__3_  Sharp_Blur[0] */
+	{0x0F12, 0x0002},	/* AfitBaseVals_0__3_  Sharp_Blur[0] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_0__4_  */
 	{0x0F12, 0x0078},	/* AfitBaseVals_0__5_  */
 	{0x0F12, 0x012C},	/* AfitBaseVals_0__6_  */
@@ -4634,7 +4633,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0000},	/* AfitBaseVals_1__0_  Brightness[1] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_1__1_  Contrast[1] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_1__2_  Saturaion[1] */
-	{0x0F12, 0x0000},	/* AfitBaseVals_1__3_  Sharp_Blur[1] */
+	{0x0F12, 0x0002},	/* AfitBaseVals_1__3_  Sharp_Blur[1] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_1__4_  */
 	{0x0F12, 0x006A},	/* AfitBaseVals_1__5_  */
 	{0x0F12, 0x012C},	/* AfitBaseVals_1__6_  */
@@ -4718,7 +4717,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0000},	/* AfitBaseVals_2__0_  Brightness[2] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_2__1_  Contrast[2] */
 	{0x0F12, 0xFFFA},	/* 0000 AfitBaseVals_2__2_  */
-	{0x0F12, 0x0000},	/* AfitBaseVals_2__3_  Sharp_Blur[2] */
+	{0x0F12, 0x0002},	/* 0000 AfitBaseVals_2__3_  Sharp_Blur[2] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_2__4_  */
 	{0x0F12, 0x0064},	/* AfitBaseVals_2__5_  */
 	{0x0F12, 0x012C},	/* AfitBaseVals_2__6_  */
@@ -4802,7 +4801,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0000},	/* AfitBaseVals_3__0_  Brightness[3] */
 	{0x0F12, 0x0000},	/* 0000 AfitBaseVals_3__1_  Contrast[3] */
 	{0x0F12, 0xFFF4},	/* 0000 AfitBaseVals_3__2_  Saturation[3] */
-	{0x0F12, 0x0004},	/* 0000 AfitBaseVals_3__3_  Sharp_Blur[3] */
+	{0x0F12, 0x0008},	/* 0000 AfitBaseVals_3__3_  Sharp_Blur[3] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_3__4_  */
 	{0x0F12, 0x0064},	/* AfitBaseVals_3__5_  */
 	{0x0F12, 0x012C},	/* AfitBaseVals_3__6_  */
@@ -4886,7 +4885,7 @@ struct s5k8aay_short_t s5k8aay_skt_vt_common[] = {
 	{0x0F12, 0x0000},	/* AfitBaseVals_4__0_  Brightness[4] */
 	{0x0F12, 0x0000},	/* 0000 AfitBaseVals_4__1_  Contrast[4] */
 	{0x0F12, 0xFFF0},	/* 0000 AfitBaseVals_4__2_  Saturation[4] */
-	{0x0F12, 0x0008},	/* 0000 AfitBaseVals_4__3_  Sharp_Blur[4] */
+	{0x0F12, 0x000B},	/* 0000 AfitBaseVals_4__3_  Sharp_Blur[4] */
 	{0x0F12, 0x0000},	/* AfitBaseVals_4__4_  */
 	{0x0F12, 0x0028},	/* AfitBaseVals_4__5_  */
 	{0x0F12, 0x012C},	/* AfitBaseVals_4__6_  */

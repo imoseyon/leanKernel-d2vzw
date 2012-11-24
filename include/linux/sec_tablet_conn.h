@@ -32,6 +32,9 @@ struct sec_keyboard_platform_data {
 
 struct acc_con_platform_data {
 	void	(*otg_en) (int active);
+#ifdef CONFIG_CAMERON_HEALTH
+	void (*cameron_health_en) (bool active);
+#endif
 	void	(*acc_power) (u8 token, bool active);
 	void    (*usb_ldo_en) (int active);
 	int (*get_dock_state)(void);
@@ -43,5 +46,7 @@ struct acc_con_platform_data {
 };
 
 extern int64_t acc_get_adc_value(void);
+
+extern struct class *sec_class;
 
 #endif

@@ -34,7 +34,9 @@
 
 #define GPIO_NC_8                       8
 #define GPIO_NC_9                       9
+#define GPIO_NC_62                      62
 #define GPIO_NC_66                      66
+#define GPIO_NC_94                      94
 
 #define GPIO_LCD_22V_EN			10
 #define GPIO_MXT_TS_IRQ			11

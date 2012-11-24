@@ -51,3 +51,7 @@ obj-$(CONFIG_PM8921_SEC_CHARGER)	+= pm8921-sec-charger.o
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347_charger.o
 obj-$(CONFIG_BATTERY_SEC)	+= sec_battery.o
 obj-$(CONFIG_LTC4088_CHARGER)  += ltc4088-charger.o
+obj-$(CONFIG_BATTERY_SAMSUNG_STRETTO)	+= stretto_battery.o	\
+					battery-factory.o
+obj-$(CONFIG_BATTERY_MAX17047_FUELGAUGE)	+= max17047_fuelgauge.o
+obj-$(CONFIG_BATTERY_MAX77693_CHARGER)		+= max77693_charger.o

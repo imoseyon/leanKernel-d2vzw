@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * linux_usermode.c
@@ -31,7 +31,7 @@ ssh_interceptor_dst_entry_cache_init(SshInterceptor interceptor)
     return FALSE;
 
   interceptor->dst_entry_cache_timeout_registered = FALSE;
-  memset(interceptor->dst_entry_table, 0x0,
+  memset(interceptor->dst_entry_table, 0x0, 
 	 sizeof(SshDstEntry) * SSH_DST_ENTRY_TBL_SIZE);
 
   interceptor->dst_entry_id = 1;
@@ -54,7 +54,7 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
 
   ssh_kernel_mutex_lock(interceptor->dst_entry_cache_lock);
 
-  SSH_DEBUG(SSH_D_MIDOK,
+  SSH_DEBUG(SSH_D_MIDOK, 
 	    ("Dst entry cache timeout %lu items in cache",
 	     (unsigned long)interceptor->dst_entry_cached_items));
   SSH_ASSERT(interceptor->dst_entry_cache_timeout_registered == TRUE);
@@ -75,8 +75,8 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
     {
     restart:
       prev = NULL;
-      for (tmp = interceptor->dst_entry_table[slot];
-	   tmp != NULL;
+      for (tmp = interceptor->dst_entry_table[slot]; 
+	   tmp != NULL; 
 	   tmp = tmp->next)
 	{
 	  /* Do we have a match? */
@@ -86,11 +86,11 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
 	      /* Head of list. */
 	      if (tmp == interceptor->dst_entry_table[slot])
 		{
-		  SSH_DEBUG(SSH_D_MIDOK,
+		  SSH_DEBUG(SSH_D_MIDOK, 
 			    ("Dst entry cache timeout freeing head ID %lu",
 			     (unsigned long)tmp->dst_entry_id));
 		  interceptor->dst_entry_table[slot] = tmp->next;
-
+		  
 		  interceptor->dst_entry_cached_items--;
 
 		  dst_release(tmp->dst_entry);
@@ -98,15 +98,15 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
 
 		  goto restart;
 		}
-
+	      
 	      /* Any other place in the list. */
 	      else
 		{
 		  prev->next = tmp->next;
-
+		  
 		  interceptor->dst_entry_cached_items--;
-
-		  SSH_DEBUG(SSH_D_MIDOK,
+		  
+		  SSH_DEBUG(SSH_D_MIDOK, 
 			    ("Dst entry cache timeout freeing ID %lu",
 			     (unsigned long)tmp->dst_entry_id));
 
@@ -116,7 +116,7 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
 		  goto restart;
 		}
 	    }
-
+	  
 	  prev = tmp;
 	}
     }
@@ -130,10 +130,10 @@ ssh_interceptor_dst_entry_cache_timeout(unsigned long data)
 
       interceptor->dst_cache_timer.expires = jiffies + timeval_to_jiffies(&tv);
       interceptor->dst_cache_timer.data = (unsigned long)interceptor;
-      interceptor->dst_cache_timer.function =
+      interceptor->dst_cache_timer.function = 
 	ssh_interceptor_dst_entry_cache_timeout;
-
-      mod_timer(&interceptor->dst_cache_timer,
+      
+      mod_timer(&interceptor->dst_cache_timer, 
 		interceptor->dst_cache_timer.expires);
     }
   else
@@ -170,23 +170,23 @@ ssh_interceptor_dst_entry_cache_flush(SshInterceptor interceptor)
   /* Free all entries that are left in the table. */
   for (slot = 0; slot < SSH_DST_ENTRY_TBL_SIZE; slot++)
     {
-    restart:
-      for (tmp = interceptor->dst_entry_table[slot];
-	   tmp != NULL;
-	   tmp = tmp->next)
-	{
-	  interceptor->dst_entry_table[slot] = tmp->next;
+      tmp = interceptor->dst_entry_table[slot];
+      while (tmp != NULL)
+        {
+          SshDstEntry next = tmp->next;
+          interceptor->dst_entry_table[slot] = next;
+          
+          interceptor->dst_entry_cached_items--;
+          
+          SSH_DEBUG(SSH_D_NICETOKNOW, ("Releasing dst cache entry"));
 
-	  interceptor->dst_entry_cached_items--;
+          dst_release(tmp->dst_entry);
+          ssh_free(tmp);
 
-	  SSH_DEBUG(SSH_D_NICETOKNOW, ("Releasing dst cache entry"));
-
-	  dst_release(tmp->dst_entry);
-	  ssh_free(tmp);
-
-	  goto restart;
-	}
+          tmp = next;
+        }      
     }
+
   SSH_ASSERT(interceptor->dst_entry_cached_items == 0);
   ssh_kernel_mutex_unlock(interceptor->dst_entry_cache_lock);
 }
@@ -206,12 +206,12 @@ ssh_interceptor_dst_entry_cache_uninit(SshInterceptor interceptor)
   ssh_kernel_mutex_free(interceptor->dst_entry_cache_lock);
 }
 
-/* Cache a dst entry for later purposes. This is required by the
-   pass unmodified to work. If we lose the dst entry, we basically
+/* Cache a dst entry for later purposes. This is required by the 
+   pass unmodified to work. If we lose the dst entry, we basically 
    cannot return the packet as unmodified to the linux. Return 0
    if the caching fails. If it succeeds, return a valid cache ID. */
-SshUInt32
-ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
+SshUInt32 
+ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor, 
 				       SshInterceptorPacket pp)
 {
   SshInterceptorInternalPacket ipp = (SshInterceptorInternalPacket)pp;
@@ -219,7 +219,7 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
   SshDstEntry tmp;
   SshUInt32 slot;
 
-  SSH_DEBUG(SSH_D_MIDOK,
+  SSH_DEBUG(SSH_D_MIDOK, 
 	    ("Dst entry cache, caching dst for pp 0x%p, %lu items in cache",
 	     pp, (unsigned long)interceptor->dst_entry_cached_items));
 
@@ -229,7 +229,7 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
   cache_dst = ssh_calloc(1, sizeof(SshDstEntryStruct));
   if (cache_dst == NULL)
     return 0;
-
+  
   cache_dst->allocation_time = jiffies;
   cache_dst->next = NULL;
 
@@ -240,7 +240,7 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
 
   cache_dst->dst_entry_id = interceptor->dst_entry_id++;
   slot = cache_dst->dst_entry_id % SSH_DST_ENTRY_TBL_SIZE;
-
+  
   interceptor->dst_entry_cached_items++;
 
   SSH_ASSERT(slot < SSH_DST_ENTRY_TBL_SIZE);
@@ -254,15 +254,15 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
     {
       /* We do not care about potential collisions. These are highly unlikely
 	 to happen and in the end */
-      for (tmp = interceptor->dst_entry_table[slot];
-	   tmp->next != NULL;
+      for (tmp = interceptor->dst_entry_table[slot]; 
+	   tmp->next != NULL; 
 	   tmp = tmp->next)
 	SSH_ASSERT(cache_dst->dst_entry_id != tmp->dst_entry_id);
-
+ 
       tmp->next = cache_dst;
     }
 
-  /* Handle special case, the id is overflowing. 0 is used for special
+  /* Handle special case, the id is overflowing. 0 is used for special 
      purposes, i.e. for 'real' engine created packets. */
   if (interceptor->dst_entry_id == 0)
     interceptor->dst_entry_id = 1;
@@ -272,17 +272,17 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
       struct timeval tv;
 
       SSH_ASSERT(interceptor->dst_entry_cached_items > 0);
-
+      
       tv.tv_sec = DST_ENTRY_MAX_CACHE_TIME;
       tv.tv_usec = 0;
 
       init_timer(&interceptor->dst_cache_timer);
       interceptor->dst_cache_timer.expires = jiffies + timeval_to_jiffies(&tv);
       interceptor->dst_cache_timer.data = (unsigned long)interceptor;
-      interceptor->dst_cache_timer.function =
+      interceptor->dst_cache_timer.function = 
 	ssh_interceptor_dst_entry_cache_timeout;
       add_timer(&interceptor->dst_cache_timer);
-
+      
       interceptor->dst_entry_cache_timeout_registered = TRUE;
     }
 
@@ -296,8 +296,8 @@ ssh_interceptor_packet_cache_dst_entry(SshInterceptor interceptor,
   return cache_dst->dst_entry_id;
 }
 
-void
-ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor,
+void 
+ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor, 
 					SshUInt32 dst_entry_id,
 					SshInterceptorPacket pp,
 					Boolean remove_only)
@@ -306,10 +306,10 @@ ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor,
   SshUInt32 slot = dst_entry_id % SSH_DST_ENTRY_TBL_SIZE;
   SshDstEntry tmp, prev = NULL;
 
-  SSH_DEBUG(SSH_D_MIDOK,
+  SSH_DEBUG(SSH_D_MIDOK, 
 	    ("Returning dst entry ID %lu, pp 0x%p, %lu items in cache, "
 	     "update %s",
-	     (unsigned long)dst_entry_id, pp,
+	     (unsigned long)dst_entry_id, pp, 
 	     (unsigned long)interceptor->dst_entry_cached_items,
 	     remove_only == TRUE ? "no" : "yes"));
 
@@ -337,12 +337,12 @@ ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor,
 		SSH_SKB_DST_SET(ipp->skb, tmp->dst_entry);
 	      else
 		dst_release(tmp->dst_entry);
-
+	      
 	      ssh_free(tmp);
 
-	      SSH_DEBUG(SSH_D_NICETOKNOW,
+	      SSH_DEBUG(SSH_D_NICETOKNOW, 
 			("Removed cache ID %lu, left %lu items in dst cache",
-			 (unsigned long)dst_entry_id,
+			 (unsigned long)dst_entry_id, 
 			 (unsigned long)interceptor->dst_entry_cached_items));
 
 	      return;
@@ -360,12 +360,12 @@ ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor,
 		SSH_SKB_DST_SET(ipp->skb, tmp->dst_entry);
 	      else
 		dst_release(tmp->dst_entry);
-
+	      
 	      ssh_free(tmp);
 
-	      SSH_DEBUG(SSH_D_NICETOKNOW,
+	      SSH_DEBUG(SSH_D_NICETOKNOW, 
 			("Removed cache ID %lu, left %lu items in dst cache",
-			 (unsigned long)dst_entry_id,
+			 (unsigned long)dst_entry_id, 
 			 (unsigned long)interceptor->dst_entry_cached_items));
 
 	      return;
@@ -375,9 +375,9 @@ ssh_interceptor_packet_return_dst_entry(SshInterceptor interceptor,
       prev = tmp;
     }
 
-  SSH_DEBUG(SSH_D_NICETOKNOW,
+  SSH_DEBUG(SSH_D_NICETOKNOW, 
 	    ("Cache ID %lu was not found, left %lu items in dst cache",
-	     (unsigned long)dst_entry_id,
+	     (unsigned long)dst_entry_id, 
 	     (unsigned long)interceptor->dst_entry_cached_items));
 
   ssh_kernel_mutex_unlock(interceptor->dst_entry_cache_lock);

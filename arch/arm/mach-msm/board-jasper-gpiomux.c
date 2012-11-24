@@ -73,7 +73,18 @@ static struct gpiomux_setting gsbi7 = {
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-
+#ifdef CONFIG_VP_A2220
+static struct gpiomux_setting gsbi8 = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+static struct gpiomux_setting audience_suspend_gpio_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+#endif
 static struct gpiomux_setting gsbi10 = {
 	.func = GPIOMUX_FUNC_2,
 	.drv = GPIOMUX_DRV_8MA,
@@ -127,11 +138,7 @@ static struct gpiomux_setting slimbus = {
 	.pull = GPIOMUX_PULL_KEEPER,
 };
 
-static struct gpiomux_setting volkey = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
+
 
 static struct gpiomux_setting wcnss_5wire_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -261,6 +268,33 @@ static struct gpiomux_setting fsa9485_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gpio_key_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_key_suspend_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+struct msm_gpiomux_config msm8960_gpio_key_configs[] = {
+	{
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_key_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_key_suspend_cfg,
+		}
+	},
+	{
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_key_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_key_suspend_cfg,
+		}
+	},
+};
+
 static struct msm_gpiomux_config msm8960_fsa9485_configs[] __initdata = {
 	{
 		.gpio = 14,
@@ -301,6 +335,22 @@ static struct msm_gpiomux_config msm8960_ethernet_configs[] = {
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_eth_config,
 		}
+	},
+};
+#endif
+#ifdef CONFIG_VP_A2220
+static struct msm_gpiomux_config audience_suspend_configs[] __initdata = {
+	{
+		.gpio    = 35, /* 2MIC PW DN */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &audience_suspend_gpio_config,
+		},
+	},
+	{
+		.gpio    = 75, /* 2MIC RESET */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &audience_suspend_gpio_config,
+		},
 	},
 };
 #endif
@@ -403,6 +453,20 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gsbi12,
 		},
 	},
+#ifdef CONFIG_VP_A2220
+	{
+		.gpio	   = 36,	/* GSBI8 I2C QUP SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi8,
+		},
+	},
+	{
+		.gpio	   = 37,	/* GSBI8 I2C QUP SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi8,
+		},
+	},
+#endif
 	{
 		.gpio      = 73,	/* GSBI10 I2C QUP SDA */
 		.settings = {
@@ -443,7 +507,7 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
@@ -877,6 +941,17 @@ int __init msm8960_init_gpiomux(void)
 
 	msm_gpiomux_install(msm8960_gsbi_configs,
 			ARRAY_SIZE(msm8960_gsbi_configs));
+
+#ifdef CONFIG_VP_A2220
+	msm_gpiomux_install(audience_suspend_configs,
+		ARRAY_SIZE(audience_suspend_configs));
+#endif
+	msm8960_gpio_key_configs[0].gpio = gpio_rev(VOLUME_UP);
+	msm8960_gpio_key_configs[1].gpio = gpio_rev(VOLUME_DOWN);
+
+	msm_gpiomux_install(msm8960_gpio_key_configs,
+				ARRAY_SIZE(msm8960_gpio_key_configs));
+
 
 	msm_gpiomux_install(msm8960_sec_ts_configs,
 			ARRAY_SIZE(msm8960_sec_ts_configs));

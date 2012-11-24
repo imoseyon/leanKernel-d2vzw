@@ -125,7 +125,7 @@ void s5k8aay_regs_table_init(void)
 	/*Get the current address space */
 	mm_segment_t fs = get_fs();
 
-	CAM_DEBUG("%s %d", __func__, __LINE__);
+	CAM_DEBUG(" %d", __LINE__);
 
 	/*Set the current segment to kernel data segment */
 	set_fs(get_ds());
@@ -133,14 +133,14 @@ void s5k8aay_regs_table_init(void)
 	filp = filp_open("/mnt/sdcard/s5k8aay_regs_v2.h", O_RDONLY, 0);
 
 	if (IS_ERR_OR_NULL(filp)) {
-		cam_err("file open error\n");
+		cam_err(" file open error");
 		return ;
 	}
 
 	lsize = filp->f_path.dentry->d_inode->i_size;
 	dp = vmalloc(lsize);
 	if (dp == NULL) {
-		cam_err("Out of Memory");
+		cam_err(" Out of Memory");
 		filp_close(filp, current->files);
 	}
 
@@ -148,7 +148,7 @@ void s5k8aay_regs_table_init(void)
 	memset(dp, 0, lsize);
 	ret = vfs_read(filp, (char __user *)dp, lsize, &pos);
 	if (ret != lsize) {
-		cam_err("Failed to read file ret = %d\n", ret);
+		cam_err(" Failed to read file ret = %d", ret);
 		vfree(dp);
 		filp_close(filp, current->files);
 	}
@@ -172,7 +172,7 @@ void s5k8aay_regs_table_init(void)
 
 void s5k8aay_regs_table_exit(void)
 {
-	CAM_DEBUG("%s %d", __func__, __LINE__);
+	CAM_DEBUG(" %d", __LINE__);
 	if (s5k8aay_regs_table) {
 		vfree(s5k8aay_regs_table);
 		s5k8aay_regs_table = NULL;
@@ -194,8 +194,8 @@ static int s5k8aay_write_regs_from_sd(char *name)
 	*(data_buf1 + 4) = '\0';
 	*(data_buf2 + 6) = '\0';
 
-	CAM_DEBUG("s5k8aay_regs_table_write start!");
-	CAM_DEBUG("E string = %s", name);
+	CAM_DEBUG(" s5k8aay_regs_table_write start!");
+	CAM_DEBUG(" E string = %s", name);
 
 	start = strstr(s5k8aay_regs_table, name);
 	end = strstr(start, "};");
@@ -227,7 +227,7 @@ static int s5k8aay_write_regs_from_sd(char *name)
 			}
 			size = NULL;
 
-			CAM_DEBUG("addr 0x%04x, value 0x%04x", addr, value);
+			CAM_DEBUG(" addr 0x%04x, value 0x%04x", addr, value);
 
 			if (addr == 0xFFFF)
 				msleep(value);
@@ -236,7 +236,7 @@ static int s5k8aay_write_regs_from_sd(char *name)
 
 		}
 	}
-	CAM_DEBUG("s5k8aay_regs_table_write end!");
+	CAM_DEBUG(" s5k8aay_regs_table_write end!");
 
 	return 0;
 }
@@ -265,8 +265,7 @@ static int s5k8aay_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 	int err = 0;
 
 	if (!s5k8aay_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
@@ -275,7 +274,7 @@ static int s5k8aay_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 
 	err = i2c_transfer(s5k8aay_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		cam_err("%s: i2c_transfer  error, %d\n", __func__, err);
+		cam_err(" i2c_transfer  error, %d", err);
 		return -EIO;
 	}
 
@@ -284,7 +283,7 @@ static int s5k8aay_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 
 	err = i2c_transfer(s5k8aay_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		cam_err("%s: i2c_transfer returned error, %d\n", __func__, err);
+		cam_err(" i2c_transfer returned error, %d", err);
 		return -EIO;
 	}
 	/*
@@ -314,8 +313,7 @@ static int s5k8aay_i2c_read(unsigned short subaddr, unsigned short *data)
 	int err = 0;
 
 	if (!s5k8aay_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
@@ -324,7 +322,7 @@ static int s5k8aay_i2c_read(unsigned short subaddr, unsigned short *data)
 
 	err = i2c_transfer(s5k8aay_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		cam_err("%s: i2c_transfer returned error, %d\n", __func__, err);
+		cam_err(" i2c_transfer returned error, %d", err);
 		return -EIO;
 	}
 
@@ -332,7 +330,7 @@ static int s5k8aay_i2c_read(unsigned short subaddr, unsigned short *data)
 
 	err = i2c_transfer(s5k8aay_client->adapter, &msg, 1);
 	if (unlikely(err < 0)) {
-		cam_err("%s: i2c_transfer returned error, %d\n", __func__, err);
+		cam_err(" i2c_transfer returned error, %d", err);
 		return -EIO;
 	}
 	/*
@@ -363,8 +361,7 @@ static int s5k8aay_i2c_write_multi(unsigned short addr, unsigned int w_data)
 	int err = 0;
 
 	if (!s5k8aay_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
@@ -384,7 +381,7 @@ static int s5k8aay_i2c_write_multi(unsigned short addr, unsigned int w_data)
 	}
 
 	if (err != 1) {
-		cam_err("%s: i2c_transfer returned error, %d\n", __func__, err);
+		cam_err(" i2c_transfer returned error, %d", err);
 		return -EIO;
 	}
 
@@ -400,24 +397,23 @@ static int s5k8_i2c_wrt_list(struct s5k8aay_short_t regs[],
 	int err = 0;
 	int i = 0;
 
-	CAM_DEBUG("%s", name);
+	CAM_DEBUG(" %s", name);
 
 	if (!s5k8aay_client->adapter) {
-		CAM_DEBUG("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
 	for (i = 0; i < size; i++) {
 		if (regs[i].subaddr == 0xFFFF) {
 			msleep(regs[i].value);
-			CAM_DEBUG("delay = 0x%04x, value = 0x%04x",
-						regs[i].subaddr, regs[i].value);
+			CAM_DEBUG(" delay = 0x%04x, value = 0x%04x",
+				regs[i].subaddr, regs[i].value);
 		} else {
 			err = s5k8aay_i2c_write_multi(regs[i].subaddr,
 								regs[i].value);
 			if (unlikely(err < 0)) {
-				cam_err("register set failed");
+				cam_err(" register set failed");
 				return -EIO;
 			}
 		}
@@ -444,16 +440,13 @@ static int s5k8_i2c_burst_wrt_list(struct s5k8aay_short_t regs[], int size,
 	struct i2c_msg msg = {s5k8aay_client->addr, 0, 0, s5k8aay_buf};
 
 	if (!s5k8aay_client->adapter) {
-		cam_err("%s: %d can't search i2c client adapter\n",
-			__func__, __LINE__);
+		cam_err(" can't search i2c client adapter");
 		return -EIO;
 	}
 
 	for (i = 0; i < size; i++) {
-		if (idx > (S5K8_BURST_DATA_LENGTH - 10)) {
-			cam_err("%s: %d BURST MODE buffer overflow!!!\n\n",
-				__func__, __LINE__);
-		}
+		if (idx > (S5K8_BURST_DATA_LENGTH - 10))
+			cam_err(" BURST MODE buffer overflow!!!");
 
 		subaddr = regs[i].subaddr; /* address */
 		if (subaddr == 0x0F12)
@@ -497,7 +490,7 @@ static int s5k8_i2c_burst_wrt_list(struct s5k8aay_short_t regs[], int size,
 	}
 
 	if (err != 1) {
-		cam_err("%s: returned error, %d\n", __func__, err);
+		cam_err(" returned error, %d\n", err);
 		return -EIO;
 	}
 
@@ -540,10 +533,10 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 	sscanf(buf, "%d", &value);
 
 	if (value == 0) {
-		CAM_DEBUG("[Factory flash]OFF");
+		CAM_DEBUG(" [Factory flash]OFF");
 		s5k8aay_set_flash(MOVIE_FLASH, 0);
 	} else {
-		CAM_DEBUG("[Factory flash]ON");
+		CAM_DEBUG(" [Factory flash]ON");
 		s5k8aay_set_flash(MOVIE_FLASH, 1);
 	}
 	return size;
@@ -600,7 +593,6 @@ static int s5k8aay_get_exif(int exif_cmd)
 {
 	unsigned short val;
 
-	CAM_DEBUG("E");
 	switch (exif_cmd) {
 	case EXIF_SHUTTERSPEED:
 		val = s5k8aay_ctrl->shutter_speed;
@@ -635,12 +627,15 @@ void s5k8aay_set_preview_size(int32_t index)
 
 void s5k8aay_set_preview(void)
 {
-	CAM_DEBUG("cam_mode = %d", s5k8aay_ctrl->cam_mode);
+	int stable_delay = 250;
+
+	CAM_DEBUG(" cam_mode = %d, vt_mode = %d",
+		s5k8aay_ctrl->cam_mode, s5k8aay_ctrl->vtcall_mode);
 
 	if (s5k8aay_ctrl->cam_mode == MOVIE_MODE) {
 		if (s5k8aay_ctrl->settings.preview_size_idx ==
 				PREVIEW_SIZE_HD) {
-			CAM_DEBUG("720P recording");
+			CAM_DEBUG(" 720P recording common");
 			if (s5k8aay_ctrl->op_mode == CAMERA_MODE_INIT ||
 				s5k8aay_ctrl->op_mode == CAMERA_MODE_PREVIEW ||
 				s5k8aay_ctrl->isHDSize == 0) {
@@ -648,7 +643,7 @@ void s5k8aay_set_preview(void)
 				S5K8_BURST_WRT_LIST(s5k8aay_720p_common);
 			}
 		} else {
-			CAM_DEBUG("VGA recording");
+			CAM_DEBUG(" VGA recording common");
 			if (s5k8aay_ctrl->op_mode == CAMERA_MODE_INIT ||
 				s5k8aay_ctrl->op_mode == CAMERA_MODE_PREVIEW ||
 				s5k8aay_ctrl->isHDSize == 1) {
@@ -657,18 +652,25 @@ void s5k8aay_set_preview(void)
 			}
 		}
 		s5k8aay_ctrl->op_mode = CAMERA_MODE_RECORDING;
+		stable_delay = 150;
 	} else {
 		if (s5k8aay_ctrl->op_mode == CAMERA_MODE_INIT ||
 			s5k8aay_ctrl->op_mode == CAMERA_MODE_RECORDING) {
-			if (s5k8aay_ctrl->vtcall_mode == 1)
+			if (s5k8aay_ctrl->vtcall_mode == 1) {
+				CAM_DEBUG(" VT common");
 				S5K8_BURST_WRT_LIST(s5k8aay_skt_vt_common);
-			else if (s5k8aay_ctrl->vtcall_mode == 2)
+				stable_delay = 350;
+			} else if (s5k8aay_ctrl->vtcall_mode == 2) {
+				CAM_DEBUG(" WIFI VT common");
 				S5K8_BURST_WRT_LIST(s5k8aay_wifi_vt_common);
-			else
+				stable_delay = 150;
+			} else {
+				CAM_DEBUG(" Normal common");
 				S5K8_BURST_WRT_LIST(s5k8aay_common);
+				stable_delay = 250;
+			}
 		}
-
-		S5K8_WRT_LIST(s5k8aay_preview);
+		S5K8_WRT_LIST(s5k8aay_preview);  /* add delay 150ms */
 		s5k8aay_ctrl->op_mode = CAMERA_MODE_PREVIEW;
 	}
 
@@ -676,13 +678,13 @@ void s5k8aay_set_preview(void)
 
 	if (!g_bFrontCameraRunning) {
 		g_bFrontCameraRunning = true;
-		msleep(200);
+		msleep(stable_delay);
 	}
 }
 
 void s5k8aay_set_capture(void)
 {
-	CAM_DEBUG("");
+	CAM_DEBUG(" E");
 	S5K8_BURST_WRT_LIST(s5k8aay_capture);
 	s5k8aay_get_exif_shutter_speed();
 	s5k8aay_get_exif_iso_speed_rate();
@@ -696,7 +698,8 @@ static int32_t s5k8aay_sensor_setting(int update_type, int rt)
 	struct msm_camera_csid_params s5k8aay_csid_params;
 	struct msm_camera_csiphy_params s5k8aay_csiphy_params;
 
-	CAM_DEBUG("Start");
+	CAM_DEBUG(" type = %d", update_type);
+
 	switch (update_type) {
 	case REG_INIT:
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE)
@@ -710,7 +713,7 @@ static int32_t s5k8aay_sensor_setting(int update_type, int rt)
 				{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
 			};
 
-			CAM_DEBUG("UPDATE_PERIODIC");
+			CAM_DEBUG(" UPDATE_PERIODIC");
 
 			v4l2_subdev_notify(s5k8aay_ctrl->sensor_dev,
 				NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
@@ -757,7 +760,6 @@ static long s5k8aay_set_sensor_mode(int mode)
 
 	switch (mode) {
 	case SENSOR_PREVIEW_MODE:
-		CAM_DEBUG("SENSOR_PREVIEW_MODE");
 	case SENSOR_VIDEO_MODE:
 		s5k8aay_set_preview();
 		break;
@@ -782,7 +784,7 @@ static int s5k8aay_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("=== Start ===");
+	CAM_DEBUG(" E");
 
 #ifdef CONFIG_LOAD_FILE
 	s5k8aay_regs_table_init();
@@ -790,7 +792,7 @@ static int s5k8aay_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
-		cam_err("%s: request gpio failed\n", __func__);
+		cam_err(" request gpio failed");
 
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
@@ -822,7 +824,7 @@ static int s5k8aay_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
 	if (rc < 0)
-		cam_err("%s: clk enable failed\n", __func__);
+		cam_err(" clk enable failed");
 
 	usleep(15);
 
@@ -840,17 +842,19 @@ static int s5k8aay_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	s5k8aay_set_init_mode();
 
+	CAM_DEBUG(" X");
+
 	return rc;
 }
 
 static void s5k8aay_check_dataline(int val)
 {
 	if (val) {
-		CAM_DEBUG("DTP ON");
+		CAM_DEBUG(" DTP ON");
 		s5k8aay_ctrl->dtpTest = 1;
 
 	} else {
-		CAM_DEBUG("DTP OFF");
+		CAM_DEBUG(" DTP OFF");
 		s5k8aay_ctrl->dtpTest = 0;
 	}
 }
@@ -969,7 +973,7 @@ static void s5k8aay_set_ev(int ev)
 	s5k8aay_ctrl->settings.brightness = ev;
 }
 
-static void s5k8aay_set_frmae_rate(int fps)
+static void s5k8aay_set_frame_rate(int fps)
 {
 	CAM_DEBUG(" %d", fps);
 
@@ -1003,8 +1007,7 @@ void sensor_native_control_front(void __user *arg)
 
 	if (copy_from_user((void *)&ctrl_info,
 		(const void *)arg, sizeof(ctrl_info)))
-		cam_err(
-			"[s5k8aa] %s fail copy_from_user!", __func__);
+		cam_err(" fail copy_from_user!");
 
 	switch (ctrl_info.mode) {
 	case EXT_CAM_EV:
@@ -1024,7 +1027,7 @@ void sensor_native_control_front(void __user *arg)
 		break;
 
 	case  EXT_CAM_MOVIE_MODE:
-		CAM_DEBUG("MOVIE mode : %d", ctrl_info.value_1);
+		CAM_DEBUG(" MOVIE mode : %d", ctrl_info.value_1);
 		s5k8aay_ctrl->cam_mode = ctrl_info.value_1;
 		break;
 
@@ -1037,17 +1040,17 @@ void sensor_native_control_front(void __user *arg)
 		break;
 
 	case EXT_CAM_VT_MODE:
+		CAM_DEBUG(" VT mode : %d", ctrl_info.value_1);
 		s5k8aay_ctrl->vtcall_mode = ctrl_info.value_1;
 		break;
 
 	case EXT_CAM_SET_FPS:
-		s5k8aay_set_frmae_rate(ctrl_info.value_1);
+		s5k8aay_set_frame_rate(ctrl_info.value_1);
 		break;
 
 	case EXT_CAM_SAMSUNG_CAMERA:
+		CAM_DEBUG(" SAMSUNG camera : %d", ctrl_info.value_1);
 		s5k8aay_ctrl->samsungapp = ctrl_info.value_1;
-		CAM_DEBUG("[s5k8aay] samsungapp setting %d",
-			s5k8aay_ctrl->samsungapp);
 		break;
 
 	default:
@@ -1056,7 +1059,7 @@ void sensor_native_control_front(void __user *arg)
 
 	if (copy_to_user((void *)arg,
 		(const void *)&ctrl_info, sizeof(ctrl_info)))
-		cam_err("[s5k8aa] %s fail copy_to_user!", __func__);
+		cam_err(" fail copy_to_user!");
 }
 
 long s5k8aay_sensor_subdev_ioctl(struct v4l2_subdev *sd,
@@ -1067,7 +1070,7 @@ long s5k8aay_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_SENSOR_CFG:
 		return s5k8aay_sensor_config(&s5k8aay_s_ctrl, argp);
 	default:
-		cam_err("Invalid cmd = %d", cmd);
+		cam_err(" Invalid cmd = %d", cmd);
 		return -ENOIOCTLCMD;
 	}
 }
@@ -1107,7 +1110,7 @@ static int s5k8aay_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	int temp = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
-	CAM_DEBUG("=== Start ===");
+	CAM_DEBUG(" E");
 
 #ifdef CONFIG_LOAD_FILE
 	s5k8aay_regs_table_exit();
@@ -1136,7 +1139,11 @@ static int s5k8aay_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 	data->sensor_platform_info->sensor_power_off(1);
 
-	msm_camera_request_gpio_table(data, 0);
+	rc = msm_camera_request_gpio_table(data, 0);
+	if (rc < 0)
+		cam_err(" request gpio failed");
+
+	CAM_DEBUG(" X");
 
 	return rc;
 }
@@ -1182,10 +1189,10 @@ static int s5k8aay_i2c_probe(struct i2c_client *client,
 	int rc = 0;
 	struct msm_sensor_ctrl_t *s_ctrl;
 
-	CAM_DEBUG("E");
+	CAM_DEBUG(" E");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		cam_err("i2c_check_functionality failed\n");
+		cam_err("i2c_check_functionality failed");
 		rc = -ENOTSUPP;
 		goto probe_failure;
 	}
@@ -1197,15 +1204,16 @@ static int s5k8aay_i2c_probe(struct i2c_client *client,
 			s_ctrl->sensor_i2c_client->client->addr =
 				s_ctrl->sensor_i2c_addr;
 	} else {
-		cam_err("s_ctrl->sensor_i2c_client is NULL\n");
+		cam_err("s_ctrl->sensor_i2c_client is NULL");
 		rc = -EFAULT;
-		return rc;
+		goto probe_failure;
 	}
 
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
-		cam_err("%s: NULL sensor data\n", __func__);
-		return -EFAULT;
+		cam_err(" NULL sensor data");
+		rc = -EFAULT;
+		goto probe_failure;
 	}
 
 	s5k8aay_client = client;
@@ -1213,8 +1221,9 @@ static int s5k8aay_i2c_probe(struct i2c_client *client,
 
 	s5k8aay_ctrl = kzalloc(sizeof(struct s5k8aay_ctrl), GFP_KERNEL);
 	if (!s5k8aay_ctrl) {
-		CAM_DEBUG("s5k8aay_ctrl alloc failed!\n");
-		return -ENOMEM;
+		cam_err(" s5k8aay_ctrl alloc failed!");
+		rc = -ENOMEM;
+		goto probe_failure;
 	}
 
 	memset(s5k8aay_ctrl, 0, sizeof(s5k8aay_ctrl));
@@ -1228,12 +1237,19 @@ static int s5k8aay_i2c_probe(struct i2c_client *client,
 	s5k8aay_ctrl->sensor_dev = &s_ctrl->sensor_v4l2_subdev;
 	s5k8aay_ctrl->sensordata = client->dev.platform_data;
 
-	msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
-
+	rc = msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	if (rc < 0) {
+		cam_err(" msm_sensor_register failed!");
+		kfree(s5k8aay_ctrl);
+		goto probe_failure;
+	}
+	CAM_DEBUG(" success!");
+	CAM_DEBUG(" X");
 	return 0;
 
 probe_failure:
-	cam_err("s5k8aay_probe failed!");
+	CAM_DEBUG(" fail!");
+	CAM_DEBUG(" X");
 	return rc;
 }
 

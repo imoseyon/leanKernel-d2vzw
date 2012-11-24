@@ -305,7 +305,8 @@ static void max17040_get_soc(struct i2c_client *client)
 
 	/* calculate adjust soc [[ */
 	if ((chip->batt_type == BATT_TYPE_D2_ACTIVE) ||
-		(chip->batt_type == BATT_TYPE_D2_HIGH)) {
+		(chip->batt_type == BATT_TYPE_D2_HIGH) ||
+		(chip->batt_type == BATT_TYPE_GOGH)) {
 		empty_soc = 150;
 		full_soc = FULL_SOC_DEFAULT;
 	} else if (chip->batt_type == BATT_TYPE_AEGIS2) {
@@ -635,7 +636,8 @@ static void max17040_rcomp_update(struct i2c_client *client,
 
 	if ((chip->batt_type == BATT_TYPE_D2_ACTIVE) ||\
 		(chip->batt_type == BATT_TYPE_JAGUAR) ||\
-		(chip->batt_type == BATT_TYPE_AEGIS2)) {
+		(chip->batt_type == BATT_TYPE_AEGIS2) ||\
+		(chip->batt_type == BATT_TYPE_GOGH)) {
 		temp_cohot = -300;		/* Cohot (-0.3) */
 		temp_cocold = -6075;	/* Cocold (-6.075) */
 	} else { /* Jaguar, D2_HIGH */
@@ -656,6 +658,11 @@ static void max17040_rcomp_update(struct i2c_client *client,
 				chip->pdata->rcomp_value = 0x851c;
 			else
 				chip->pdata->rcomp_value = 0x6d1c;
+		} else if (chip->batt_type == BATT_TYPE_GOGH) {
+			if (chg_state == POWER_SUPPLY_STATUS_CHARGING)
+				chip->pdata->rcomp_value = 0x701c;
+			else
+				chip->pdata->rcomp_value = 0x691c;
 		}
 
 		starting_rcomp = (int)(chip->pdata->rcomp_value >> 8);

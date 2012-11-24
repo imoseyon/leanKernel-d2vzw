@@ -281,7 +281,6 @@ u32 vcd_disable_clock(struct vcd_dev_ctxt *dev_ctxt)
 u32 vcd_set_perf_level(struct vcd_dev_ctxt *dev_ctxt, u32 perf_lvl)
 {
 	u32 rc = VCD_S_SUCCESS;
-	pr_err("NOTE: Inside vcd_set_perf_level, level to : %d\n", perf_lvl);
 	if (!vcd_core_is_busy(dev_ctxt)) {
 		if (res_trk_set_perf_level(perf_lvl,
 			&dev_ctxt->curr_perf_lvl, dev_ctxt)) {

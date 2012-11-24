@@ -86,7 +86,7 @@ ssize_t sec_chg_store_attrs(struct device *dev,
 
 #define SEC_CHARGER_ATTR(_name)				\
 {							\
-	.attr = {.name = #_name, .mode = 0666},	\
+	.attr = {.name = #_name, .mode = 0664},	\
 	.show = sec_chg_show_attrs,			\
 	.store = sec_chg_store_attrs,			\
 }

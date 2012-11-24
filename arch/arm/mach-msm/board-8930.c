@@ -1484,7 +1484,7 @@ static struct attribute_group mxt224e_properties_attr_group = {
 
 static void mxt_init_vkeys_8930(void)
 {
-	int rc;
+	int rc = 0;
 	static struct kobject *mxt224e_properties_kobj;
 
 	mxt224e_vkeys_attr.attr.name = "virtualkeys.atmel_mxt_ts";
@@ -1764,6 +1764,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_8960_q6_mss_sw,
 	&msm_8960_riva,
 	&msm_pil_tzapps,
+	&msm_pil_vidc,
 	&msm8960_device_qup_spi_gsbi1,
 	&msm8960_device_qup_i2c_gsbi3,
 	&msm8960_device_qup_i2c_gsbi4,

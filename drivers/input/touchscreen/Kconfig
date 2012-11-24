@@ -867,4 +867,27 @@ config TOUCHSCREEN_MXT224
 	  To compile this driver as a module, choose M here: the
 	  module will be called mxt224.
 
+config TOUCHSCREEN_MXT224S
+	tristate "Atmel MaxTouch 224S"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Atmel MaxTouch 224 touch
+	  controller.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxt224S.
+
+config TOUCHSCREEN_SYNAPTICS_S7301
+	tristate "SYNAPTICS S7301 Touchscreen Interface"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want support for SYNAPTICS S7301
+	  touchscreen controllers.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called melfas_ts.
 endif

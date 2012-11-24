@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * linux_main.c
@@ -194,7 +194,7 @@ ssh_interceptor_stop(SshInterceptor interceptor)
   /* Set packet_callback to point to our dummy_db */
   rcu_assign_pointer(interceptor->packet_callback,
 		     ssh_interceptor_dummy_packet_cb);
-
+  
   /* Wait for state synchronization. */
   local_bh_enable();
   synchronize_rcu();
@@ -280,8 +280,8 @@ ssh_interceptor_uninit(void)
   local_bh_disable();
   ssh_interceptor_uninit_engine(ssh_interceptor_context);
 
-  /* Uninitialize basic kernel services to the engine and the
-     interceptor. This frees all remaining memory. Note that all locks
+  /* Uninitialize basic kernel services to the engine and the 
+     interceptor. This frees all remaining memory. Note that all locks 
      are also freed here, so none of them can be held. */
   ssh_interceptor_uninit_kernel_services();
   local_bh_enable();
@@ -334,14 +334,14 @@ ssh_interceptor_init_kernel_services(void)
   /* Initialize ipm channel */
   if (!ssh_interceptor_ipm_init(ssh_interceptor_context))
     {
-      printk(KERN_ERR
+      printk(KERN_ERR 
 	     "VPNClient packet processing engine failed to start "
 	     "(proc filesystem initialization error)\n");
       goto error1;
     }
 
   return 0;
-
+  
  error1:
   local_bh_disable();
   ssh_interceptor_packet_freelist_uninit(ssh_interceptor_context);
@@ -462,7 +462,7 @@ int ssh_interceptor_init(void)
     goto error0;
 
   SSH_ASSERT(ssh_interceptor_context != NULL);
-
+  
   ret = ssh_interceptor_hook_magic_init();
   if (ret != 0)
     goto error1;
@@ -528,7 +528,6 @@ ssh_linux_module_inc_use_count()
   return try_module_get(THIS_MODULE);
 }
 
-//#warning "Invalid module license string"
 MODULE_LICENSE("GPL");
 module_init(ssh_init_module);
 module_exit(ssh_cleanup_module);

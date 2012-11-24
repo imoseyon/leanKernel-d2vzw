@@ -21,6 +21,7 @@ struct smb347_platform_data {
 #ifdef CONFIG_WIRELESS_CHARGING
 	void (*smb347_wpc_cb) (void);
 #endif
+	int (*smb347_get_cable) (void);
 };
 
 extern int poweroff_charging;

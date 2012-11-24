@@ -17,6 +17,10 @@
 
 #include "board-8960.h"
 
+#ifdef CONFIG_MFD_MAX77693
+#include <linux/mfd/max77693.h>
+#endif
+
 #define VREG_CONSUMERS(_id) \
 	static struct regulator_consumer_supply vreg_consumers_##_id[]
 
@@ -140,6 +144,7 @@ VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("8921_l23",		NULL),
 	REGULATOR_SUPPLY("dsi_vddio",		"mipi_dsi.1"),
 	REGULATOR_SUPPLY("hdmi_avdd",		"hdmi_msm.0"),
+	REGULATOR_SUPPLY("hdmi_pll_fs",		"mdp.0"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.1"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.2"),
@@ -295,6 +300,70 @@ VREG_CONSUMERS(EXT_OTG_SW) = {
 	REGULATOR_SUPPLY("ext_otg_sw",		NULL),
 	REGULATOR_SUPPLY("vbus_otg",		"msm_otg"),
 };
+
+#ifdef CONFIG_MFD_MAX77693
+static struct regulator_consumer_supply safeout1_supply[] = {
+	REGULATOR_SUPPLY("safeout1", NULL),
+};
+
+static struct regulator_consumer_supply safeout2_supply[] = {
+	REGULATOR_SUPPLY("safeout2", NULL),
+};
+
+static struct regulator_consumer_supply charger_supply[] = {
+	REGULATOR_SUPPLY("vinchg1", "charger-manager.0"),
+	REGULATOR_SUPPLY("vinchg1", NULL),
+};
+
+static struct regulator_init_data safeout1_init_data = {
+	.constraints	= {
+		.name		= "safeout1 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 1,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout1_supply),
+	.consumer_supplies	= safeout1_supply,
+};
+
+static struct regulator_init_data safeout2_init_data = {
+	.constraints	= {
+		.name		= "safeout2 range",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on	= 0,
+		.boot_on	= 0,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout2_supply),
+	.consumer_supplies	= safeout2_supply,
+};
+
+static struct regulator_init_data charger_init_data = {
+	.constraints	= {
+		.name		= "CHARGER",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS |
+		REGULATOR_CHANGE_CURRENT,
+		.boot_on	= 1,
+		.min_uA		= 60000,
+		.max_uA		= 2580000,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(charger_supply),
+	.consumer_supplies	= charger_supply,
+};
+
+struct max77693_regulator_data max77693_regulators[] = {
+	{MAX77693_ESAFEOUT1, &safeout1_init_data,},
+	{MAX77693_ESAFEOUT2, &safeout2_init_data,},
+	{MAX77693_CHARGER, &charger_init_data,},
+};
+#endif /* CONFIG_MFD_MAX77693 */
+
+
 
 #define PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, _modes, _ops, \
 			 _apply_uV, _pull_down, _always_on, _supply_regulator, \
@@ -542,7 +611,10 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	PM8XXX_NLDO1200(L28, "8921_l28", 0, 1, 1050000, 1050000, 200, "8921_s7",
 		0, 3),
 #if defined(CONFIG_MACH_ESPRESSO_ATT) || defined(CONFIG_MACH_ESPRESSO_VZW) \
-	|| defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_ESPRESSO10_VZW)
+	|| defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO_SPR) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
+	|| defined(CONFIG_MACH_ESPRESSO10_ATT)
 	PM8XXX_LDO(L29,      "8921_l29", 0, 1, 1800000, 2050000, 200, "8921_s8",
 		0, 4),
 #else
@@ -558,9 +630,12 @@ static struct rpm_regulator_init_data
 msm_rpm_regulator_init_data[] __devinitdata = {
 	/*	 ID    a_on pd ss min_uV   max_uV  supply sys_uA freq */
 	RPM_SMPS(S1,	 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20),
-#ifdef CONFIG_MACH_M2_ATT
+#if defined(CONFIG_MACH_M2_ATT)
 	RPM_SMPS(S2,	 0, 1, 1, 1350000, 1350000, NULL, 0,	  1p60),
 	RPM_LDO(L22,	 0, 1, 0, 2800000, 2800000, NULL,      0, 0),
+#elif defined(CONFIG_MACH_APEXQ)
+	RPM_SMPS(S2,     0, 1, 1, 1300000, 1300000, NULL, 0,      1p60),
+	RPM_LDO(L22,     0, 1, 0, 2750000, 2750000, NULL,      0, 0),
 #else
 	RPM_SMPS(S2,	 0, 1, 0, 1300000, 1300000, NULL, 0,	  1p60),
 	RPM_LDO(L22,     0, 1, 0, 2750000, 2750000, NULL,      0, 0),

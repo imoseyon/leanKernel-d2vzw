@@ -463,7 +463,8 @@ _kgsl_sharedmem_vmalloc(struct kgsl_memdesc *memdesc,
 	memdesc->priv = KGSL_MEMFLAGS_CACHED;
 	memdesc->ops = &kgsl_vmalloc_ops;
 
-	memdesc->sg = vmalloc(sglen * sizeof(struct scatterlist));
+	memdesc->sg = kgsl_sg_alloc(sglen);
+
 	if (memdesc->sg == NULL) {
 		ret = -ENOMEM;
 		goto done;
@@ -485,6 +486,8 @@ _kgsl_sharedmem_vmalloc(struct kgsl_memdesc *memdesc,
 		flush_dcache_page(page);
 		sg_set_page(&memdesc->sg[i], page, PAGE_SIZE, 0);
 	}
+	outer_cache_range_op_sg(memdesc->sg, memdesc->sglen,
+				KGSL_CACHE_OP_FLUSH);
 
 	ret = kgsl_mmu_map(pagetable, memdesc, protflags);
 
@@ -589,8 +592,7 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 	if (memdesc->ops && memdesc->ops->free)
 		memdesc->ops->free(memdesc);
 
-	if (memdesc->sg)
-		vfree(memdesc->sg);
+	kgsl_sg_free(memdesc->sg, memdesc->sglen);
 
 	memset(memdesc, 0, sizeof(*memdesc));
 }

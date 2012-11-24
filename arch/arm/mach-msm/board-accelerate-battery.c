@@ -35,6 +35,38 @@
 
 #define SEC_BATTERY_PMIC_NAME ""
 
+static int msm_otg_pmic_gpio_config(
+		int gpio, int direction, int pullup, int value)
+{
+	struct pm_gpio param;
+	int rc = 0;
+	int out_strength = 0;
+
+	if (direction == PM_GPIO_DIR_IN)
+		out_strength = PM_GPIO_STRENGTH_NO;
+	else
+		out_strength = PM_GPIO_STRENGTH_HIGH;
+
+	param.direction = direction;
+	param.output_buffer = PM_GPIO_OUT_BUF_CMOS;
+	param.output_value = value;
+	param.pull = pullup;
+	param.vin_sel = PM_GPIO_VIN_S4;
+	param.out_strength = out_strength;
+	param.function = PM_GPIO_FUNC_NORMAL;
+	param.inv_int_pol = 0;
+	param.disable_pin = 0;
+
+	rc = pm8xxx_gpio_config(
+		PM8921_GPIO_PM_TO_SYS(gpio), &param);
+	if (rc < 0) {
+		pr_err("failed to configure vbus_in gpio\n");
+		return rc;
+	}
+
+	return rc;
+}
+
 static bool sec_bat_adc_none_init(
 		struct platform_device *pdev) {return true; }
 static bool sec_bat_adc_none_exit(void) {return true; }
@@ -43,18 +75,31 @@ static int sec_bat_adc_none_read(unsigned int channel) {return 0; }
 static bool sec_bat_adc_ap_init(
 		struct platform_device *pdev) {return true; }
 static bool sec_bat_adc_ap_exit(void) {return true; }
+
 static int sec_bat_adc_ap_read(unsigned int channel)
 {
 	int rc, data;
 	struct pm8xxx_adc_chan_result result;
 
 	switch (channel) {
-	case SEC_BAT_ADC_CHANNEL_FULL_CHECK:
+	case SEC_BAT_ADC_CHANNEL_TEMP:
 		rc = pm8xxx_adc_mpp_config_read(
-			PM8XXX_AMUX_MPP_9, ADC_MPP_1_AMUX6, &result);
+			PM8XXX_AMUX_MPP_7, ADC_MPP_1_AMUX6, &result);
 		if (rc) {
 			pr_err("error reading mpp %d, rc = %d\n",
-				PM8XXX_AMUX_MPP_9, rc);
+				PM8XXX_AMUX_MPP_7, rc);
+			return rc;
+		}
+
+		/* use measurement, no need to scale */
+		data = (int)result.measurement;
+		break;
+	case SEC_BAT_ADC_CHANNEL_TEMP_AMBIENT:
+		rc = pm8xxx_adc_mpp_config_read(
+			PM8XXX_AMUX_MPP_10, ADC_MPP_1_AMUX6, &result);
+		if (rc) {
+			pr_err("error reading mpp %d, rc = %d\n",
+				PM8XXX_AMUX_MPP_10, rc);
 			return rc;
 		}
 
@@ -71,7 +116,16 @@ static bool sec_bat_adc_ic_init(
 static bool sec_bat_adc_ic_exit(void) {return true; }
 static int sec_bat_adc_ic_read(unsigned int channel) {return 0; }
 
-static bool sec_bat_gpio_init(void) {return true; }
+static bool sec_bat_gpio_init(void)
+{
+	msm_otg_pmic_gpio_config(PMIC_GPIO_BATT_INT,
+		PM_GPIO_DIR_IN, PM_GPIO_PULL_NO, 1);
+
+	msm_otg_pmic_gpio_config(PMIC_GPIO_CHG_STAT,
+		PM_GPIO_DIR_IN, PM_GPIO_PULL_UP_30, 1);
+
+	return true;
+}
 
 static bool sec_fg_gpio_init(void)
 {
@@ -97,11 +151,45 @@ static bool sec_chg_gpio_init(void)
 	gpio_set_value(GPIO_FUELGAUGE_I2C_SCL, 1);
 	gpio_set_value(GPIO_FUELGAUGE_I2C_SDA, 1);
 
+	if (system_rev >= BOARD_REV00)
+		msm_otg_pmic_gpio_config(PMIC_GPIO_CHG_EN,
+			PM_GPIO_DIR_OUT, PM_GPIO_PULL_NO, 1);
+
 	return true;
 }
 
 static bool sec_bat_is_lpm(void) {return false; }
-static void sec_bat_initial_check(void) {}
+
+static void sec_bat_initial_check(void)
+{
+	union power_supply_propval value;
+
+	switch (msm8960_get_cable_status()) {
+	case CABLE_TYPE_AC:
+		value.intval = POWER_SUPPLY_TYPE_MAINS;
+		break;
+	case CABLE_TYPE_MISC:
+		value.intval = POWER_SUPPLY_TYPE_MISC;
+		break;
+	case CABLE_TYPE_USB:
+		value.intval = POWER_SUPPLY_TYPE_USB;
+		break;
+	case CABLE_TYPE_CARDOCK:
+		value.intval = POWER_SUPPLY_TYPE_CARDOCK;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("%s: invalid cable :%d\n",
+			__func__, msm8960_get_cable_status());
+		return;
+	}
+
+	psy_do_property("battery", set,
+		POWER_SUPPLY_PROP_ONLINE, value);
+}
+
 static bool sec_bat_check_jig_status(void) {return false; }
 static void sec_bat_switch_to_check(void) {}
 static void sec_bat_switch_to_normal(void) {}
@@ -142,7 +230,24 @@ static bool sec_bat_check_cable_result_callback(
  * return : bool
  * true - battery detected, false battery NOT detected
  */
-static bool sec_bat_check_callback(void) {return true; }
+static bool sec_bat_check_callback(void)
+{
+	pm8921_enable_batt_therm(1);
+	msleep(1000);
+
+	if (gpio_get_value_cansleep(
+		PM8921_GPIO_PM_TO_SYS(
+		PMIC_GPIO_BATT_INT))) {
+		pr_info("%s : CF open, Battery NOT detected\n", __func__);
+
+		pm8921_enable_batt_therm(0);
+		return false;
+	}
+
+	pm8921_enable_batt_therm(0);
+
+	return true;
+}
 static bool sec_bat_check_result_callback(void) {return true; }
 
 /* callback for OVP/UVLO check
@@ -167,6 +272,36 @@ static bool sec_bat_get_temperature_callback(
 		union power_supply_propval *val) {return true; }
 static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 
+static const int temp_table[][2] = {
+	{26587,	800},
+	{26863,	750},
+	{27215,	700},
+	{27652,	650},
+	{27843,	620},
+	{28136,	600},
+	{28427,	580},
+	{28762,	550},
+	{29421,	500},
+	{29789,	470},
+	{30139,	450},
+	{30363,	430},
+	{30961,	400},
+	{31924,	350},
+	{32919,	300},
+	{33943,	250},
+	{35028,	200},
+	{36110,	150},
+	{37161,	100},
+	{38109,	50},
+	{38616,	20},
+	{38958,	0},
+	{39421,	-30},
+	{39732,	-50},
+	{40386,	-100},
+	{41090,	-150},
+	{41575,	-200},
+};
+
 /* ADC region should be exclusive */
 static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
@@ -185,14 +320,14 @@ static sec_bat_adc_region_t cable_adc_value_table[] = {
 static sec_charging_current_t charging_current_table[] = {
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
-	{1000,	1000,	185,	0},
-	{1000,	500,	185,	0},
-	{1000,	500,	185,	0},
-	{1000,	500,	185,	0},
-	{1000,	500,	185,	0},
-	{1000,	700,	185,	0},
+	{1000,	1050,	200,	0},
+	{1000,	500,	200,	0},
+	{1000,	500,	200,	0},
+	{1000,	500,	200,	0},
+	{1000,	500,	200,	0},
+	{1000,	700,	200,	0},
 	{0,	0,	0,	0},
-	{0,	0,	0,	0},
+	{1000,	1050,	200,	0},
 	{0,	0,	0,	0},
 };
 
@@ -285,8 +420,8 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		SEC_BATTERY_CABLE_CHECK_PSY,
 	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC,
 
-	.event_check = false,
-	.event_waiting_time = 60,
+	.event_check = true,
+	.event_waiting_time = 600,
 
 	/* Monitor setting */
 	.polling_type = SEC_BATTERY_MONITOR_ALARM,
@@ -294,16 +429,22 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 
 	/* Battery check */
 	.battery_check_type = SEC_BATTERY_CHECK_NONE,
-	.check_count = 3,
+	.check_count = 0,
 	/* Battery check by ADC */
 	.check_adc_max = 0,
 	.check_adc_min = 0,
 
 	/* OVP/UVLO check */
-	.ovp_uvlo_check_type = SEC_BATTERY_OVP_UVLO_CHGINT,
+	.ovp_uvlo_check_type = SEC_BATTERY_OVP_UVLO_CHGPOLLING,
 
 	/* Temperature check */
-	.thermal_source = SEC_BATTERY_THERMAL_SOURCE_FG,
+	.thermal_source = SEC_BATTERY_THERMAL_SOURCE_ADC,
+	.temp_adc_table = temp_table,
+	.temp_adc_table_size =
+		sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t),
+	.temp_amb_adc_table = temp_table,
+	.temp_amb_adc_table_size =
+		sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t),
 
 	.temp_check_type = SEC_BATTERY_TEMP_CHECK_TEMP,
 	.temp_check_count = 3,
@@ -320,25 +461,19 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_low_threshold_lpm = 2,
 	.temp_low_recovery_lpm = -30,
 
-	.full_check_type = SEC_BATTERY_FULLCHARGED_ADC,
+	.full_check_type = SEC_BATTERY_FULLCHARGED_CHGPSY,
 	.full_check_count = 3,
-	.full_check_adc_1st = 26500,
-	.full_check_adc_2nd = 25800,
-	.chg_gpio_full_check =
-		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_STAT),
+	.full_check_adc_1st = 20000,
+	.full_check_adc_2nd = 20000,
+	.chg_gpio_full_check = 0,
 	.chg_polarity_full_check = 1,
-	.full_condition_type =
-		SEC_BATTERY_FULL_CONDITION_SOC |
-		SEC_BATTERY_FULL_CONDITION_OCV,
-	.full_condition_soc = 99,
-	.full_condition_ocv = 4170,
+	.full_condition_type = 0,
 
 	.recharge_condition_type =
 		SEC_BATTERY_RECHARGE_CONDITION_SOC |
 		SEC_BATTERY_RECHARGE_CONDITION_VCELL,
 	.recharge_condition_soc = 98,
-	.recharge_condition_avgvcell = 4150,
-	.recharge_condition_vcell = 4150,
+	.recharge_condition_vcell = 4280,
 
 	.charging_total_time = 6 * 60 * 60,
 	.recharging_total_time = 90 * 60,
@@ -350,21 +485,20 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.fuel_alert_soc = 1,
 	.repeated_fuelalert = false,
 	.capacity_calculation_type =
-		SEC_FUELGAUGE_CAPACITY_TYPE_RAW,
-		/* SEC_FUELGAUGE_CAPACITY_TYPE_SCALE | */
+		SEC_FUELGAUGE_CAPACITY_TYPE_RAW |
+		SEC_FUELGAUGE_CAPACITY_TYPE_SCALE,
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC, */
 	.capacity_max = 1000,
 	.capacity_min = 0,
 
 	/* Charger */
-	.chg_gpio_en = 0,
+	.chg_gpio_en = PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_EN),
 	.chg_polarity_en = 0,
-	.chg_gpio_status =
-		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_STAT),
+	.chg_gpio_status = 0,
 	.chg_polarity_status = 0,
 	.chg_irq = 0,
 	.chg_irq_attr = 0,
-	.chg_float_voltage = 4200,
+	.chg_float_voltage = 4360,
 };
 
 static struct platform_device sec_device_battery = {

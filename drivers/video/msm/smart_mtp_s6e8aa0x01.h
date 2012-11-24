@@ -42,6 +42,11 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 #include <asm/div64.h>
 
 
+#if defined(CONFIG_MACH_STRETTO) || defined(CONFIG_MACH_SUPERIORLTE_SKT)
+/*
+*	STRETTO/SUPERIORLTE_SKT: 4.65 inch / no AID
+*/
+#else
 /*
 *	4.8 inch model use AID function
 *	CASE#1 is used for now.
@@ -55,6 +60,7 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 */
 #if !defined(AID_CASE_1) && !defined(AID_CASE_2) && !defined(AID_CASE_3)
 #define AID_CASE_1
+#endif
 #endif
 
 #define LUMINANCE_MAX 35
@@ -185,6 +191,44 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 
 #define V255_300CD_B_MSB_60 0x00
 #define V255_300CD_B_LSB_60 0xB7
+
+#if defined(CONFIG_MACH_STRETTO) || defined(CONFIG_MACH_SUPERIORLTE_SKT)
+/*
+*	ID 0xAE
+*/
+#define V1_300CD_R_AE 0x5F
+#define V1_300CD_G_AE 0x2E
+#define V1_300CD_B_AE 0x67
+
+#define V15_300CD_R_AE 0xAA
+#define V15_300CD_G_AE 0xC6
+#define V15_300CD_B_AE 0xAC
+
+#define V35_300CD_R_AE 0xB0
+#define V35_300CD_G_AE 0xC8
+#define V35_300CD_B_AE 0xBB
+
+#define V59_300CD_R_AE 0xBE
+#define V59_300CD_G_AE 0xCB
+#define V59_300CD_B_AE 0xBD
+
+#define V87_300CD_R_AE 0x97
+#define V87_300CD_G_AE 0xA5
+#define V87_300CD_B_AE 0x91
+
+#define V171_300CD_R_AE 0xAF
+#define V171_300CD_G_AE 0xB8
+#define V171_300CD_B_AE 0xAB
+
+#define V255_300CD_R_MSB_AE 0x00
+#define V255_300CD_R_LSB_AE 0xC2
+
+#define V255_300CD_G_MSB_AE 0x00
+#define V255_300CD_G_LSB_AE 0xBA
+
+#define V255_300CD_B_MSB_AE 0x00
+#define V255_300CD_B_LSB_AE 0xE2
+#endif
 
 /* PANEL DEPENDENT THINGS END*/
 

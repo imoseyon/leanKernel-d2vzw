@@ -266,6 +266,12 @@ static struct gpiomux_setting fsa9485_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting nc_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct msm_gpiomux_config msm8960_fsa9485_configs[] __initdata = {
 	{
 		.gpio = 14,
@@ -860,6 +866,66 @@ static struct msm_gpiomux_config msm8960_hdmi_configs[] __initdata = {
 };
 #endif
 
+static struct msm_gpiomux_config rev03_nc_configs[] __initdata = {
+	{
+		.gpio = GPIO_NC_42,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+};
+
+static struct msm_gpiomux_config common_nc_configs[] __initdata = {
+	{
+		.gpio = GPIO_NC_15,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_99,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_100,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_101,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_102,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_71,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_72,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+	{
+		.gpio = GPIO_NC_7,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_cfg,
+		},
+	},
+};
+
 #ifdef CONFIG_I2C
 
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
@@ -976,6 +1042,13 @@ int __init msm8960_init_gpiomux(void)
 	msm_gpiomux_install(msm8960_hdmi_configs,
 			ARRAY_SIZE(msm8960_hdmi_configs));
 #endif
+
+	msm_gpiomux_install(common_nc_configs,
+			ARRAY_SIZE(common_nc_configs));
+
+	if (system_rev > BOARD_REV02)
+		msm_gpiomux_install(rev03_nc_configs,
+				ARRAY_SIZE(rev03_nc_configs));
 
 	msm_gpiomux_install(msm8960_mdp_vsync_configs,
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));

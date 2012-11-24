@@ -25,7 +25,9 @@
 #define GPIO_MHL_RST			1
 #define GPIO_MSM_FLASH_CNTL_EN	3
 #define GPIO_MSM_FLASH_NOW		2
-#define GPIO_MAIN_CAM_STBY		4 /*NC*/
+#define GPIO_CAM_MCLK2				2 /* >= REV07 */
+#define GPIO_MAIN_CAM_STBY		-1 /*NC*/
+#define GPIO_MSM_FLASH_NOW2		4 /* >= REV07 */
 #define GPIO_CAM_MCLK				5
 #define GPIO_CAM_CORE_EN			6
 #define GPIO_CODEC_I2C_SDA              8
@@ -99,6 +101,9 @@
 #define MSM_AUD_A2220_WAKEUP		35
 #define MSM_AUD_A2220_RESET		75
 
+/* PMIC8921 MPP */
+#define PMIC_MPP_FLASH_LED_UNLOCK       4
+
 /* PMIC8921 GPIO */
 #define PMIC_GPIO_VIB_ON		4
 #define PMIC_GPIO_VPS_EN		15 /* NC */
@@ -114,7 +119,9 @@
 #if defined(CONFIG_CHARGER_SMB347)
 #define PMIC_GPIO_CHG_EN		PMIC_GPIO_OTG_EN
 #define PMIC_GPIO_CHG_STAT	17
+#define PMIC_GPIO_BATT_INT		37
 #endif
+#define GPIO_INOK_INT		65
 
 /* gpio for changed list */
 enum {

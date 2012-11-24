@@ -228,9 +228,7 @@ static void bq24157_charger_function_conrol(
 
 	if (charger->cable_type ==
 		POWER_SUPPLY_TYPE_BATTERY) {
-		/* USB100 mode, turn off charger */
-		bq24157_set_command(client,
-			BQ24157_CONTROL, 0x04);
+		/* Do Nothing */
 	} else {
 		data = 0x02;
 		dev_dbg(&client->dev, "%s : float voltage (%dmV)\n",
@@ -259,7 +257,7 @@ static void bq24157_charger_function_conrol(
 		dev_dbg(&client->dev, "%s : input current (%dmA)\n",
 			__func__, charger->pdata->charging_current
 			[charger->cable_type].input_current_limit);
-		data = bq24157_get_input_current_limit_data(
+		data |= bq24157_get_input_current_limit_data(
 			charger->pdata->charging_current
 			[charger->cable_type].input_current_limit);
 		bq24157_set_command(client,
@@ -298,12 +296,14 @@ static void bq24157_charger_otg_conrol(
 
 	if (charger->cable_type ==
 		POWER_SUPPLY_TYPE_BATTERY) {
+		dev_info(&client->dev, "%s : turn off OTG\n", __func__);
 		/* turn off OTG */
 		bq24157_i2c_read(client, BQ24157_VOLTAGE, &data);
 		data &= 0xfe;
 		bq24157_set_command(client,
 			BQ24157_VOLTAGE, data);
 	} else {
+		dev_info(&client->dev, "%s : turn on OTG\n", __func__);
 		/* turn on OTG */
 		bq24157_i2c_read(client, BQ24157_VOLTAGE, &data);
 		data |= 0x01;

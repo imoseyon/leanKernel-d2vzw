@@ -13,10 +13,16 @@
  *
  */
 
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 #include "a2220_firmware_gogh.h"
 #elif defined(CONFIG_MACH_COMANCHE)
 #include "a2220_firmware_comanche.h"
+#elif defined(CONFIG_MACH_EXPRESS)
+#include "a2220_firmware_express.h"
+#elif defined(CONFIG_MACH_AEGIS2)
+#include "a2220_firmware_aegis2.h"
+#elif defined(CONFIG_MACH_JASPER)
+#include "a2220_firmware_jasper.h"
 #elif defined(_d2tmo_)
 #include "a2220_firmware_t999.h"
 #else

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,6 +176,10 @@ static int load_image(struct pil_device *pil)
 #ifdef CONFIG_SEC_DEBUG
 	static int load_count;
 #endif
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+	static int load_count_fwd;
+	static int load_count_auth;
+#endif
 
 	down_read(&pil_pm_rwsem);
 	snprintf(fw_name, sizeof(fw_name), "%s.mdt", pil->desc->name);
@@ -218,16 +222,21 @@ static int load_image(struct pil_device *pil)
 
 	ret = pil->desc->ops->init_image(pil->desc, fw->data, fw->size);
 	if (ret) {
-		dev_err(pil->desc->dev, "Invalid firmware metadata\n");
+		dev_err(pil->desc->dev, "Invalid firmware metadata %d\n",
+				ret);
 #ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
-		release_firmware(fw);
-		up_read(&pil_pm_rwsem);
-		sec_peripheral_secure_check_fail();
+		load_count_fwd++;
+		if (load_count_fwd > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
 #else
 		goto release_fw;
 #endif
 	}
-
 	phdr = (const struct elf32_phdr *)(fw->data + sizeof(struct elf32_hdr));
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
 		if (!segment_is_loadable(phdr))
@@ -243,11 +252,17 @@ static int load_image(struct pil_device *pil)
 
 	ret = pil->desc->ops->auth_and_reset(pil->desc);
 	if (ret) {
-		dev_err(pil->desc->dev, "Failed to bring out of reset\n");
+		dev_err(pil->desc->dev, "Failed to bring out of reset %d\n",
+				ret);
 #ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
-		release_firmware(fw);
-		up_read(&pil_pm_rwsem);
-		sec_peripheral_secure_check_fail();
+		load_count_auth++;
+		if (load_count_auth > 10) {
+			release_firmware(fw);
+			up_read(&pil_pm_rwsem);
+			sec_peripheral_secure_check_fail();
+		} else {
+			goto release_fw;
+		}
 #else
 		goto release_fw;
 #endif
@@ -330,8 +345,13 @@ void pil_put(void *peripheral_handle)
 	mutex_lock(&pil->lock);
 	WARN(!pil->count, "%s: Reference count mismatch\n", __func__);
 	/* TODO: Peripheral shutdown support */
+	
+	printk(KERN_DEBUG "%s: pil->count[%d]", __func__, pil->count);
+	if (!strncmp(pil->desc->name, "modem", 5)) {
+		printk(KERN_DEBUG "%s: modem::pil->count[%d]", __func__, pil->count);
 	if (pil->count == 1)
 		goto unlock;
+	}
 	if (pil->count)
 		pil->count--;
 	if (pil->count == 0)

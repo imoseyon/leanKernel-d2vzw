@@ -122,7 +122,7 @@ static int v255_adjustment(struct SMART_DIM *pSmart)
 	return 0;
 }
 
-static int v255_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v255_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	unsigned long long result_1, result_2, result_3;
 
@@ -150,7 +150,6 @@ static int v255_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 	result_3 = result_2  - V255_COEFF;
 	str[19] = (result_3 & 0xff00) >> 8;
 	str[20] = result_3 & 0xff;
-	return 0;
 }
 
 #define V1_COEFF 5
@@ -196,12 +195,11 @@ static int v1_adjustment(struct SMART_DIM *pSmart)
 
 }
 
-static int v1_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v1_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	str[0] =  pSmart->MTP.R_OFFSET.OFFSET_1 + V1_300CD_R;
 	str[1] =  pSmart->MTP.G_OFFSET.OFFSET_1 + V1_300CD_G;
 	str[2] =  pSmart->MTP.B_OFFSET.OFFSET_1 + V1_300CD_B;
-	return 0;
 }
 
 
@@ -254,7 +252,7 @@ static int v171_adjustment(struct SMART_DIM *pSmart)
 
 }
 
-static int v171_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v171_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	unsigned long long result_1, result_2, result_3;
 
@@ -334,7 +332,7 @@ static int v87_adjustment(struct SMART_DIM *pSmart)
 
 }
 
-static int v87_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v87_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	unsigned long long result_1, result_2, result_3;
 
@@ -361,7 +359,6 @@ static int v87_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 			- (pSmart->GRAY.TABLE[index[V171_INDEX]].B_Gray);
 	do_div(result_2, result_3);
 	str[11] = (result_2  - V87_COEFF) & 0xff;
-	return 0;
 }
 
 #define V43_COEFF 65
@@ -414,7 +411,7 @@ static int v43_adjustment(struct SMART_DIM *pSmart)
 }
 
 
-static int v43_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v43_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	unsigned long long result_1, result_2, result_3;
 
@@ -494,7 +491,7 @@ static int v19_adjustment(struct SMART_DIM *pSmart)
 
 }
 
-static int v19_hexa(int *index, struct SMART_DIM *pSmart, char *str)
+static void v19_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 {
 	unsigned long long result_1, result_2, result_3;
 
@@ -806,32 +803,33 @@ static void gamma_cell_determine(int hw_revision)
 {
 	pr_info("%s HW_revision:%d", __func__, hw_revision);
 
-	if (hw_revision <= 0x3) {
-		V1_300CD_R = V1_300CD_R_LE3;
-		V1_300CD_G = V1_300CD_G_LE3;
-		V1_300CD_B = V1_300CD_B_LE3;
+	if (hw_revision >= 9) {
+		/* HW REVISIOIN >= 9 */
+		V1_300CD_R = V1_300CD_R_GE9;
+		V1_300CD_G = V1_300CD_G_GE9;
+		V1_300CD_B = V1_300CD_B_GE9;
 
-		V19_300CD_R = V19_300CD_R_LE3;
-		V19_300CD_G = V19_300CD_G_LE3;
-		V19_300CD_B = V19_300CD_B_LE3;
+		V19_300CD_R = V19_300CD_R_GE9;
+		V19_300CD_G = V19_300CD_G_GE9;
+		V19_300CD_B = V19_300CD_B_GE9;
 
-		V43_300CD_R = V43_300CD_R_LE3;
-		V43_300CD_G = V43_300CD_G_LE3;
-		V43_300CD_B = V43_300CD_B_LE3;
+		V43_300CD_R = V43_300CD_R_GE9;
+		V43_300CD_G = V43_300CD_G_GE9;
+		V43_300CD_B = V43_300CD_B_GE9;
 
-		V87_300CD_R = V87_300CD_R_LE3;
-		V87_300CD_G = V87_300CD_G_LE3;
-		V87_300CD_B = V87_300CD_B_LE3;
+		V87_300CD_R = V87_300CD_R_GE9;
+		V87_300CD_G = V87_300CD_G_GE9;
+		V87_300CD_B = V87_300CD_B_GE9;
 
-		V171_300CD_R = V171_300CD_R_LE3;
-		V171_300CD_G = V171_300CD_G_LE3;
-		V171_300CD_B = V171_300CD_B_LE3;
+		V171_300CD_R = V171_300CD_R_GE9;
+		V171_300CD_G = V171_300CD_G_GE9;
+		V171_300CD_B = V171_300CD_B_GE9;
 
-		V255_300CD_R = V255_300CD_R_LE3;
-		V255_300CD_G = V255_300CD_G_LE3;
-		V255_300CD_B = V255_300CD_B_LE3;
-
-	} else {
+		V255_300CD_R = V255_300CD_R_GE9;
+		V255_300CD_G = V255_300CD_G_GE9;
+		V255_300CD_B = V255_300CD_B_GE9;
+	} else if (hw_revision >= 4) {
+		/* HW REVISON >= 4*/
 		V1_300CD_R = V1_300CD_R_GE4;
 		V1_300CD_G = V1_300CD_G_GE4;
 		V1_300CD_B = V1_300CD_B_GE4;
@@ -855,6 +853,30 @@ static void gamma_cell_determine(int hw_revision)
 		V255_300CD_R = V255_300CD_R_GE4;
 		V255_300CD_G = V255_300CD_G_GE4;
 		V255_300CD_B = V255_300CD_B_GE4;
+	} else {
+		V1_300CD_R = V1_300CD_R_LE3;
+		V1_300CD_G = V1_300CD_G_LE3;
+		V1_300CD_B = V1_300CD_B_LE3;
+
+		V19_300CD_R = V19_300CD_R_LE3;
+		V19_300CD_G = V19_300CD_G_LE3;
+		V19_300CD_B = V19_300CD_B_LE3;
+
+		V43_300CD_R = V43_300CD_R_LE3;
+		V43_300CD_G = V43_300CD_G_LE3;
+		V43_300CD_B = V43_300CD_B_LE3;
+
+		V87_300CD_R = V87_300CD_R_LE3;
+		V87_300CD_G = V87_300CD_G_LE3;
+		V87_300CD_B = V87_300CD_B_LE3;
+
+		V171_300CD_R = V171_300CD_R_LE3;
+		V171_300CD_G = V171_300CD_G_LE3;
+		V171_300CD_B = V171_300CD_B_LE3;
+
+		V255_300CD_R = V255_300CD_R_LE3;
+		V255_300CD_G = V255_300CD_G_LE3;
+		V255_300CD_B = V255_300CD_B_LE3;
 	}
 }
 #elif defined(CONFIG_MACH_APEXQ)

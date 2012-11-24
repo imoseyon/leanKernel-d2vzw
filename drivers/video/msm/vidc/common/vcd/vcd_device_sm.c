@@ -33,12 +33,7 @@ void vcd_do_device_state_transition(struct vcd_drv_ctxt *drv_ctxt,
 {
 	struct vcd_dev_state_ctxt *state_ctxt;
 
-	if (!drv_ctxt) {
-		VCD_MSG_ERROR("Bad parameters. drv_ctxt error");
-		return;
-	}
-
-	if (to_state >= VCD_DEVICE_STATE_MAX) {
+	if (!drv_ctxt || to_state >= VCD_DEVICE_STATE_MAX) {
 		VCD_MSG_ERROR("Bad parameters. drv_ctxt=%p, to_state=%d",
 				  drv_ctxt, to_state);
 	}
@@ -134,10 +129,16 @@ void vcd_ddl_callback(u32 event, u32 status, void *payload,
 		{
 			transc = (struct vcd_transc *)client_data;
 
-			if (!transc || !transc->in_use
-				|| !transc->cctxt) {
+			if (!transc || !transc->in_use || !transc->cctxt) {
 				VCD_MSG_ERROR("Invalid clientdata "
-							  "received from DDL ");
+					"received from DDL, transc = 0x%x\n",
+					(u32)transc);
+				if (transc) {
+					VCD_MSG_ERROR("transc->in_use = %u, "
+						"transc->cctxt = 0x%x\n",
+						transc->in_use,
+						(u32)transc->cctxt);
+				}
 			} else {
 				cctxt = transc->cctxt;
 
@@ -959,6 +960,9 @@ static void vcd_dev_cb_in_initing
 	u32 rc = VCD_S_SUCCESS;
 	u32 client_inited = false;
 	u32 fail_all_open = false;
+	struct ddl_context *ddl_context;
+
+	ddl_context = ddl_get_context();
 
 	VCD_MSG_LOW("vcd_dev_cb_in_initing:");
 
@@ -1032,6 +1036,8 @@ static void vcd_dev_cb_in_initing
 
 			tmp_client = client;
 			client = client->next;
+			if (tmp_client == dev_ctxt->cctxt_list_head)
+				fail_all_open = true;
 
 			vcd_destroy_client_context(tmp_client);
 		}
@@ -1040,6 +1046,10 @@ static void vcd_dev_cb_in_initing
 	if (!client_inited || fail_all_open) {
 		VCD_MSG_ERROR("All client open requests failed");
 
+		DDL_IDLE(ddl_context);
+
+		vcd_handle_device_init_failed(drv_ctxt,
+			DEVICE_STATE_EVENT_NUMBER(close));
 		dev_ctxt->pending_cmd = VCD_CMD_DEVICE_TERM;
 	} else {
 		if (vcd_power_event(dev_ctxt, NULL,

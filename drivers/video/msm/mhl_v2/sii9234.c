@@ -178,7 +178,6 @@ u8 mhl_onoff_ex(bool onoff)
 		pr_info("mhl_onoff_ex: getting resource is failed\n");
 		return 2;
 	}
-
 	if (sii9234->pdata->power_state == onoff) {
 		pr_info("mhl_onoff_ex: mhl already %s\n", onoff ? "on" : "off");
 		return 2;
@@ -1410,6 +1409,9 @@ void sii9234_process_msc_work(struct work_struct *work)
 	struct sii9234_data *sii9234 = container_of(work,
 						struct sii9234_data,
 						msc_work);
+	/*Do not process msc untill STATE_ESTABLISHED*/
+	if (sii9234->state != STATE_ESTABLISHED)
+		return;
 
 	mutex_lock(&sii9234->cbus_lock);
 	mutex_lock(&sii9234->lock);
@@ -1445,8 +1447,29 @@ void sii9234_process_msc_work(struct work_struct *work)
 		case CBUS_WRITE_STAT:
 			break;
 		case CBUS_SET_INT:
+			if ((p_msc_pkt->offset == MHL_RCHANGE_INT) &&
+				(p_msc_pkt->data_1 == MHL_INT_DSCR_CHG)) {
+				/*
+				*Write burst final step
+				*Req->GRT->Write->DSCR
+				*/
+				pr_debug("sii9234: MHL_RCHANGE_INT &"
+					"MHL_INT_DSCR_CHG\n");
+			} else if ((p_msc_pkt->offset == MHL_RCHANGE_INT) &&
+				(p_msc_pkt->data_1 == MHL_INT_DCAP_CHG)) {
+				pr_debug("sii9234: MHL_RCHANGE_INT &"
+					"MHL_INT_DCAP_CHG\n");
+				sii9234->cbus_pkt.command = CBUS_IDLE;
+				sii9234_enqueue_msc_work(sii9234,
+					CBUS_WRITE_STAT,
+					MHL_STATUS_REG_CONNECTED_RDY,
+					MHL_STATUS_DCAP_READY, 0x0);
+			}
 			break;
 		case CBUS_WRITE_BURST:
+			sii9234_enqueue_msc_work(sii9234, CBUS_SET_INT,
+						MHL_RCHANGE_INT,
+						MHL_INT_DSCR_CHG, 0x0);
 			break;
 		case CBUS_READ_DEVCAP:
 			ret = cbus_read_reg(sii9234,
@@ -1593,8 +1616,6 @@ static int sii9234_msc_req_locked(struct sii9234_data *sii9234,
 	int ret;
 	u8 start_command;
 
-	if (sii9234->state != STATE_ESTABLISHED)
-		return -ENOENT;
 
 	init_completion(&sii9234->msc_complete);
 
@@ -1845,7 +1866,6 @@ static int sii9234_detection_callback(void)
 	ret = sii9234_cbus_init(sii9234);
 	if (ret < 0)
 		goto unhandled;
-
 	ret = mhl_tx_write_reg(sii9234, MHL_TX_DISC_CTRL1_REG, 0x27);
 	if (ret < 0)
 		goto unhandled;
@@ -2465,7 +2485,7 @@ static irqreturn_t sii9234_irq_thread(int irq, void *data)
 	if (intr4 & RGND_READY_INT) {
 #ifdef CONFIG_MHL_D3_SUPPORT
 			if (sii9234_callback_sched == 0) {
-				pr_debug("rgnd interrupt debug\n");
+				pr_info("rgnd interrupt debug\n");
 				INIT_WORK(&sii9234->rgnd_work,
 						sii9234_detection_callback);
 				sii9234_disable_irq();
@@ -2484,11 +2504,11 @@ static irqreturn_t sii9234_irq_thread(int irq, void *data)
 
 		switch (value & RGND_INTP_MASK) {
 		case RGND_INTP_OPEN:
-			pr_debug("sii9234: RGND Open\n");
+			pr_info("sii9234: RGND Open\n");
 			sii9234->rgnd = RGND_OPEN;
 			break;
 		case RGND_INTP_1K:
-			pr_debug("sii9234: RGND 1K\n");
+			pr_info("sii9234: RGND 1K\n");
 			/* After applying RGND patch, there is some issue
 			about discovry failure
 			This point is add to fix that problem*/
@@ -2529,11 +2549,11 @@ static irqreturn_t sii9234_irq_thread(int irq, void *data)
 			break;
 
 		case RGND_INTP_2K:
-			pr_debug("sii9234: RGND 2K\n");
+			pr_info("sii9234: RGND 2K\n");
 			sii9234->rgnd = RGND_2K;
 			break;
 		case RGND_INTP_SHORT:
-			pr_debug("sii9234: RGND Short\n");
+			pr_info("sii9234: RGND Short\n");
 			sii9234->rgnd = RGND_SHORT;
 			break;
 		};

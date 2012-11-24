@@ -35,7 +35,7 @@
 #include "msm_ispif.h"
 #include "msm_sensor.h"
 
-/*#define CONFIG_LOAD_FILE */
+/*#define CONFIG_LOAD_FILE*/
 
 #ifdef CONFIG_LOAD_FILE
 
@@ -58,9 +58,18 @@ static struct test *testBuf;
 static s32 large_file;
 #endif
 static int db8131m_sensor_config(void __user *argp);
+static void db8131m_set_flip(int flip);
 DEFINE_MUTEX(db8131m_mut);
 
-#if defined(CONFIG_MACH_GOGH)
+static struct db8131m_exif_data
+{
+	unsigned short iso;
+	unsigned short shutterspeed;
+};
+
+static struct db8131m_exif_data *db8131m_exif;
+
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 #include "db8131m_reg_v2.h"
 #elif defined(CONFIG_MACH_JASPER)
 #include "db8131m_reg_jasper.h"
@@ -70,6 +79,8 @@ DEFINE_MUTEX(db8131m_mut);
 #include "db8131m_reg_aegis2.h"
 #elif defined(CONFIG_MACH_COMANCHE)
 #include "db8131m_reg_comanche.h"
+#elif defined(CONFIG_MACH_EXPRESS)
+#include "db8131m_reg_express.h"
 #else
 #include "db8131m_reg.h"
 #endif
@@ -102,6 +113,7 @@ struct db8131m_ctrl {
 	int started;
 	int dtpTest;
 	int isCapture;
+	int mirror_mode;
 };
 
 static unsigned int config_csi2;
@@ -659,6 +671,68 @@ static struct device_attribute db8131m_cameraflash_attr = {
 };
 #endif
 
+
+void db8131m_set_exif(void)
+{
+	unsigned char lsb, msb;
+	unsigned short coarse_time, line_length, shutter_speed, exposureValue;
+	CAM_DEBUG("E");
+
+	db8131m_i2c_write_16bit(0xFFD0);
+	db8131m_i2c_read(0x06, &msb);
+	db8131m_i2c_read(0x07, &lsb);
+	coarse_time = (msb << 8) + lsb ;
+
+	db8131m_i2c_read(0x0A, &msb);
+	db8131m_i2c_read(0x0B, &lsb);
+	line_length = (msb << 8) + lsb ;
+
+	shutter_speed = 24000000 / (coarse_time * line_length);
+	db8131m_exif->shutterspeed = shutter_speed;
+	CAM_DEBUG("shutter speed: 1/%d", shutter_speed);
+
+	exposureValue = (coarse_time * line_length) / 2400 ;
+
+	if (exposureValue >= 1000)
+		db8131m_exif->iso = 400;
+	else if (exposureValue >= 500)
+		db8131m_exif->iso = 200;
+	else if (exposureValue >= 333)
+		db8131m_exif->iso = 100;
+	else
+		db8131m_exif->iso = 50;
+
+	CAM_DEBUG("ISO: %d", db8131m_exif->iso);
+	CAM_DEBUG("X");
+	return;
+}
+
+
+
+int db8131m_get_exif(int exif_cmd)
+{
+	unsigned short val;
+	CAM_DEBUG("E");
+
+	switch (exif_cmd) {
+	case EXIF_SHUTTERSPEED:
+		val = db8131m_exif->shutterspeed;
+		break;
+
+	case EXIF_ISO:
+		val = db8131m_exif->iso;
+		break;
+
+	default:
+		CAM_DEBUG("invalid cmd: %d", exif_cmd);
+		break;
+	}
+
+	CAM_DEBUG("X");
+	return val;
+}
+
+
 void db8131m_set_preview_size(int32_t index)
 {
 	CAM_DEBUG("index %d", index);
@@ -679,19 +753,53 @@ void db8131m_set_preview(void)
 				PREVIEW_SIZE_HD) {
 			CAM_DEBUG("720P recording");
 			DB8_WRT_LIST(db8131m_720p_common);
-	} else {
+		} else {
 			CAM_DEBUG("VGA recording");
-			DB8_WRT_LIST(db8131m_common);
-			DB8_WRT_LIST(db8131m_recording_60Hz_common);
+			if (db8131m_ctrl->op_mode == CAMERA_MODE_INIT ||
+				db8131m_ctrl->op_mode == CAMERA_MODE_PREVIEW) {
+#if defined(CONFIG_MACH_JASPER)
+				if (system_rev >= BOARD_REV05) {
+					CAM_DEBUG("VGA recording for S ver");
+					DB8_WRT_LIST(db8131m_common);
+				} else {
+					CAM_DEBUG("VGA recording for M ver");
+					DB8_WRT_LIST(db8131m_common_M);
+				}
+#else
+				DB8_WRT_LIST(db8131m_common);
+#endif
+				DB8_WRT_LIST(db8131m_recording_60Hz_common);
+				if (db8131m_ctrl->mirror_mode == 1)
+					db8131m_set_flip( \
+						db8131m_ctrl->mirror_mode);
+			}
+			msleep(100);
 		}
+		db8131m_ctrl->op_mode = CAMERA_MODE_RECORDING;
 	} else {
 		CAM_DEBUG("Preview_Mode");
-		if (db8131m_ctrl->op_mode == CAMERA_MODE_INIT) {
+		if (db8131m_ctrl->op_mode == CAMERA_MODE_INIT ||
+			db8131m_ctrl->op_mode == CAMERA_MODE_RECORDING) {
+#if defined(CONFIG_MACH_JASPER)
+			if (system_rev >= BOARD_REV05) {
+				CAM_DEBUG("INIT_preview for S ver");
+				DB8_WRT_LIST(db8131m_common);
+			} else {
+				CAM_DEBUG("INIT_preview for M ver");
+				DB8_WRT_LIST(db8131m_common_M);
+			}
+#else
 			DB8_WRT_LIST(db8131m_common);
+#endif
 			CAM_DEBUG("db8131m Common Registers written\n");
+			if (db8131m_ctrl->mirror_mode == 1)
+				db8131m_set_flip(db8131m_ctrl->mirror_mode);
 		}
+#if defined(CONFIG_MACH_JASPER)
 		DB8_WRT_LIST(db8131m_preview);
-
+#else
+		msleep(400);
+#endif
 		CAM_DEBUG(" db8131m Preview Registers written\n");
 
 		db8131m_ctrl->op_mode = CAMERA_MODE_PREVIEW;
@@ -703,6 +811,7 @@ void db8131m_set_capture(void)
 	CAM_DEBUG("db8131m set capture\n");
 	db8131m_ctrl->op_mode = CAMERA_MODE_CAPTURE;
 	DB8_WRT_LIST(db8131m_capture);
+	db8131m_set_exif();
 }
 
 static int32_t db8131m_sensor_setting(int update_type, int rt)
@@ -730,8 +839,9 @@ static int32_t db8131m_sensor_setting(int update_type, int rt)
 
 			/* stop streaming */
 			/*S5K8_WRT_LIST(db8131m_stream_stop);*/
+#if defined(CONFIG_MACH_JASPER)
 			msleep(100);
-
+#endif
 			struct msm_camera_csid_vc_cfg db8131m_vccfg[] = {
 					{0, 0x1E, CSI_DECODE_8BIT},
 					{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
@@ -743,7 +853,7 @@ static int32_t db8131m_sensor_setting(int update_type, int rt)
 			db8131m_csid_params.lut_params.vc_cfg =
 				&db8131m_vccfg[0];
 			db8131m_csiphy_params.lane_cnt = 1;
-				db8131m_csiphy_params.settle_cnt = 0x07;
+				db8131m_csiphy_params.settle_cnt = 0x1B;
 			v4l2_subdev_notify(db8131m_ctrl->sensor_dev,
 					NOTIFY_CSID_CFG, &db8131m_csid_params);
 			v4l2_subdev_notify(db8131m_ctrl->sensor_dev,
@@ -754,7 +864,9 @@ static int32_t db8131m_sensor_setting(int update_type, int rt)
 					&db8131m_csiphy_params);
 			mb();
 				/*db8131m_delay_msecs_stdby*/
+#if defined(CONFIG_MACH_JASPER)
 			msleep(100);
+#endif
 			config_csi2 = 1;
 
 			v4l2_subdev_notify(db8131m_ctrl->sensor_dev,
@@ -795,9 +907,9 @@ static long db8131m_set_sensor_mode(int mode)
 	case SENSOR_PREVIEW_MODE:
 	case SENSOR_VIDEO_MODE:
 		CAM_DEBUG("db8131m sensor mode is SENSOR_PREVIEW_MODE\n");
-		db8131m_set_preview();
 		if (config_csi2 == 0)
 			db8131m_video_config(mode);
+		db8131m_set_preview(); /* fixed camera fail */
 		break;
 	case SENSOR_SNAPSHOT_MODE:
 	case SENSOR_RAW_SNAPSHOT_MODE:
@@ -852,10 +964,11 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	CAM_DEBUG("check VT standby : %d", temp);
 	usleep(1000);
 
-	/*Set Main clock */
-	gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 1,
-		GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-		GPIO_CFG_ENABLE);
+	if (system_rev <= BOARD_REV07) {
+		gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 1,
+			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+	}
 
 	if (s_ctrl->clk_rate != 0)
 		cam_clk_info->clk_rate = s_ctrl->clk_rate;
@@ -883,6 +996,7 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 	config_csi2 = 0;
+	db8131m_ctrl->mirror_mode = 0;
 /*Added */
 	db8131m_ctrl->op_mode = CAMERA_MODE_INIT;
 
@@ -952,6 +1066,7 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 	config_csi2 = 0;
+	db8131m_ctrl->mirror_mode = 0;
 /*Added */
 	db8131m_ctrl->op_mode = CAMERA_MODE_INIT;
 
@@ -1172,6 +1287,41 @@ static void db8131m_set_ev(int ev)
 	}
 }
 
+static void db8131m_set_flip(int flip)
+{
+	unsigned char r_data, checkSubSampling = 0;
+	CAM_DEBUG("[db8131m] %s : H-Flip(mirror) = %d", __func__, flip);
+
+	db8131m_i2c_write_16bit(0xFF87);
+	db8131m_i2c_read(0xD5, &r_data);
+
+	if (r_data & 0x02)
+		checkSubSampling = 1;
+
+	switch (flip) {
+	case 0:
+		if (checkSubSampling) {	/* for other fps */
+			DB8_WRT_LIST(db8131m_flip_off_No15fps);
+		} else {					/* for 15fps */
+			DB8_WRT_LIST(db8131m_flip_off);
+		}
+		break;
+
+	case 1:
+		if (checkSubSampling) {	/* for other fps */
+			DB8_WRT_LIST(db8131m_hflip_No15fps);
+		} else {					/* for 15fps */
+			DB8_WRT_LIST(db8131m_hflip);
+		}
+		break;
+
+	default:
+		CAM_DEBUG("[db8131m] unexpected flip setting %s/%d",
+			__func__, __LINE__);
+		break;
+	}
+}
+
 void sensor_native_control_front(void __user *arg)
 {
 	struct ioctl_native_cmd ctrl_info;
@@ -1205,6 +1355,16 @@ void sensor_native_control_front(void __user *arg)
 
 	case EXT_CAM_PREVIEW_SIZE:
 		db8131m_set_preview_size(ctrl_info.value_1);
+		break;
+
+	case EXT_CAM_EXIF:
+		ctrl_info.value_1 = db8131m_get_exif(ctrl_info.address);
+		CAM_DEBUG("exif call value: %d", ctrl_info.value_1);
+		break;
+
+	case EXT_CAM_SET_FLIP:
+		db8131m_set_flip(ctrl_info.value_1);
+		db8131m_ctrl->mirror_mode = ctrl_info.value_1;
 		break;
 
 	default:
@@ -1286,9 +1446,11 @@ static int db8131m_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 0);
 
-	gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 0,
-		GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-		GPIO_CFG_ENABLE);
+	if (system_rev <= BOARD_REV07) {
+		gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 0,
+			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+	}
 
 	data->sensor_platform_info->sensor_power_off(1);
 
@@ -1434,6 +1596,13 @@ static int db8131m_i2c_probe(struct i2c_client *client,
 
 	cam_err("%s_i2c_probe called", client->name);
 
+	db8131m_exif = kzalloc(sizeof(struct db8131m_exif_data), GFP_KERNEL);
+	if (!db8131m_exif) {
+		CAM_DEBUG("Failed to allocate memory to EXIF structure!\n");
+		rc = -ENOMEM;
+		goto probe_failure;
+	}
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		cam_err("i2c_check_functionality failed\n");
 		rc = -ENOTSUPP;
@@ -1455,7 +1624,9 @@ static int db8131m_i2c_probe(struct i2c_client *client,
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
 		pr_err("%s: NULL sensor data\n", __func__);
-		return -EFAULT;
+		rc = -EFAULT;
+		goto probe_failure;
+
 	}
 	CAM_DEBUG("Sensor name : %s\n", s_ctrl->sensordata->sensor_name);
 	db8131m_client = client;
@@ -1477,7 +1648,11 @@ static int db8131m_i2c_probe(struct i2c_client *client,
 	db8131m_ctrl->sensor_dev = &s_ctrl->sensor_v4l2_subdev;
 	db8131m_ctrl->sensordata = client->dev.platform_data;
 
-	msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	rc = msm_sensor_register(&s_ctrl->sensor_v4l2_subdev);
+	if (rc) {
+		CAM_DEBUG("msm_sensor_register failed\n");
+		goto probe_failure;
+		}
 
 /* To test i2c
 	rc = db8131m_i2c_write_list(db8131m_common,
@@ -1490,6 +1665,7 @@ static int db8131m_i2c_probe(struct i2c_client *client,
 
 probe_failure:
 	cam_err("db8131m_probe failed!");
+	kfree(db8131m_exif);
 	return rc;
 }
 

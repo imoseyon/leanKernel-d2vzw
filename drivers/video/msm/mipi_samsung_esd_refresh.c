@@ -26,6 +26,10 @@ static struct mipi_controls mipi_control;
 static struct esd_data_t *esd_enable;
 static irqreturn_t sec_esd_irq_handler(int irq, void *handle);
 
+#ifdef READ_REGISTER_ESD
+static struct completion esd_completion;
+#endif
+
 #if  LP11_RECOVERY
 static void lcd_LP11_signal(void)
 {
@@ -51,6 +55,7 @@ static void lcd_esd_seq(struct esd_data_t *p_esd_data)
 	lcd_LP11_signal();
 }
 #else
+
 static void lcd_esd_seq(struct esd_data_t *p_esd_data)
 {
 
@@ -65,6 +70,7 @@ static void lcd_esd_seq(struct esd_data_t *p_esd_data)
 		p_esd_data->refresh_ongoing = true;
 		set_esd_refresh(true);
 		p_esd_data->esd_ignore = true;
+
 		mfd->fbi->fbops->fb_blank(FB_BLANK_VSYNC_SUSPEND, mfd->fbi);
 
 		pr_info("Mipi ESD Turn off comple..........\n");
@@ -89,6 +95,11 @@ static void lcd_esd_seq(struct esd_data_t *p_esd_data)
 	} else {
 		 pr_err("Panel is Off Skip ESD Sequence\n");
 	}
+
+#ifdef READ_REGISTER_ESD
+	complete(&esd_completion);
+#endif
+
 }
 #endif
 
@@ -163,6 +174,29 @@ static irqreturn_t sec_esd_irq_handler(int irq, void *handle)
 	return IRQ_HANDLED;
 }
 
+#ifdef READ_REGISTER_ESD
+void esd_execute(void)
+{
+	if (esd_enable->esd_irq_enable) {
+
+		if (work_busy(&esd_enable->det_work))
+			pr_info("%s ESD work queue is working", __func__);
+		else {
+			pr_info("%s start", __func__);
+
+			INIT_COMPLETION(esd_completion);
+
+			schedule_work(&esd_enable->det_work);
+
+			wait_for_completion_timeout(&esd_completion, 10 * HZ);
+
+			pr_info("%s end", __func__);
+		}
+	} else
+		pr_info("%s ESD is armed from ISR", __func__);
+}
+#endif
+
 void register_mipi_dev(struct platform_device *mipi_dev)
 {
 	mipi_control.mipi_dev = mipi_dev;
@@ -204,6 +238,20 @@ void set_esd_disable(void)
 		pr_info("%s cancel_work_sync\n", __func__);
 	}
 }
+
+static void mipi_samsung_esd_early_suspend(struct early_suspend *h)
+{
+	pr_info("Early Suspend:ESD IRQ is disabled\n");
+	disable_irq(esd_enable->pdata->esd_gpio_irq);
+}
+
+static void mipi_samsung_esd_late_resume(struct early_suspend *h)
+{
+	pr_info("Late Resume:ESD IRQ is enabled\n");
+	enable_irq(esd_enable->pdata->esd_gpio_irq);
+
+}
+
 static int __devinit mipi_esd_refresh_probe(struct platform_device *pdev)
 {
 	struct esd_data_t *p_esd_data;
@@ -223,8 +271,14 @@ static int __devinit mipi_esd_refresh_probe(struct platform_device *pdev)
 		return 0;
 	}
 #endif
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	mipi_control.early_suspend.suspend = mipi_samsung_esd_early_suspend;
+	mipi_control.early_suspend.resume = mipi_samsung_esd_late_resume;
+	mipi_control.early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 5;
+	register_early_suspend(&mipi_control.early_suspend);
+#endif
 
-#if defined(CONFIG_MACH_GOGH)
+#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 	if (system_rev > 0x01)
 		irq_type = IRQF_TRIGGER_FALLING;
 	else     {
@@ -235,6 +289,11 @@ static int __devinit mipi_esd_refresh_probe(struct platform_device *pdev)
 #else
 	/* ESD irq through VGH, irq trigger is HIGH....low....HIGH */
 	irq_type = IRQF_TRIGGER_FALLING;
+#endif
+
+
+#ifdef READ_REGISTER_ESD
+		init_completion(&esd_completion);
 #endif
 
 	p_esd_data = kzalloc(sizeof(struct esd_data_t), GFP_KERNEL);

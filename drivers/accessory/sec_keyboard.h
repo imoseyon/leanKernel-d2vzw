@@ -72,6 +72,7 @@ struct sec_keyboard_drvdata {
 	struct device *keyboard_dev;
 	struct delayed_work remap_dwork;
 	struct delayed_work power_dwork;
+	struct delayed_work handledata_dwork;
 	struct sec_keyboard_callbacks callbacks;
 	struct serio *serio;
 	struct serio_driver serio_driver;
@@ -93,6 +94,7 @@ struct sec_keyboard_drvdata {
 	unsigned short keycode[KEYBOARD_SIZE];
 	unsigned long connected_time;
 	unsigned long disconnected_time;
+	unsigned char scan_code;
 };
 
 static const unsigned short sec_keycodes[KEYBOARD_SIZE] = {
@@ -154,7 +156,7 @@ static const unsigned short sec_keycodes[KEYBOARD_SIZE] = {
 	KEY_DOT,
 	KEY_SLASH,
 	KEY_CAPSLOCK,
-	KEY_HOMEPAGE,
+	KEY_TIME,
 	KEY_F3,
 	KEY_WWW,
 	KEY_EMAIL,
@@ -164,7 +166,7 @@ static const unsigned short sec_keycodes[KEYBOARD_SIZE] = {
 	KEY_MUTE,
 	KEY_VOLUMEDOWN,
 	KEY_VOLUMEUP,
-	KEY_PLAYPAUSE,
+	KEY_PLAY,
 	KEY_REWIND,
 	KEY_F15,
 	KEY_RESERVED,

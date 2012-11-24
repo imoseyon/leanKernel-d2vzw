@@ -168,6 +168,8 @@ struct sec_bat_info {
 	unsigned long charging_passed_time;
 	unsigned int iterm;
 	unsigned int abs_time;
+	unsigned int normal_abs_time;
+	unsigned int wpc_abs_time;
 	unsigned int rechg_time;
 	unsigned int vrechg;
 	unsigned int vmax;
@@ -680,9 +682,8 @@ static int sec_bat_set_property(struct power_supply *ps,
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		/* cable is attached or detached. called by usb switch ic */
-		dev_info(info->dev, "%s: cable was changed(%d)\n", __func__,
-			 val->intval);
-		info->prev_cable = info->cable_type;
+		dev_info(info->dev, "%s: cable was changed(%d), prev(%d)\n",
+			__func__, val->intval, info->prev_cable);
 		switch (val->intval) {
 		case POWER_SUPPLY_TYPE_BATTERY:
 			info->cable_type = CABLE_TYPE_NONE;
@@ -727,6 +728,17 @@ static int sec_bat_set_property(struct power_supply *ps,
 			queue_delayed_work(info->monitor_wqueue,
 				&info->cable_work, 0);
 		}
+
+		if (info->cable_type &&
+				!info->charging_enabled &&
+				(info->charging_status
+					!= POWER_SUPPLY_STATUS_FULL) &&
+				(info->batt_health
+					== POWER_SUPPLY_HEALTH_GOOD)) {
+			queue_delayed_work(info->monitor_wqueue,
+				&info->cable_work, 0);
+		}
+		info->prev_cable = info->cable_type;
 		break;
 	case POWER_SUPPLY_PROP_OTG:
 		info->otg_state = val->intval;
@@ -750,7 +762,11 @@ static int sec_usb_get_property(struct power_supply *ps,
 		return -EINVAL;
 
 	/* Set enable=1 only if the USB charger is connected */
-	val->intval = (info->cable_type == CABLE_TYPE_USB);
+	if (info->cable_type == CABLE_TYPE_USB ||
+		info->cable_type == CABLE_TYPE_CDP)
+		val->intval = 1;
+	else
+		val->intval = 0;
 
 	return 0;
 }
@@ -1002,6 +1018,10 @@ static void sec_check_chgcurrent(struct sec_bat_info *info)
 			if (info->batt_current_adc == 0) {
 				if (info->is_top_off == 1 &&
 					info->batt_presoc >= 99) {
+					if (is_full_condition == false)
+						wake_lock_timeout(
+						&info->monitor_wake_lock,
+						10 * HZ);
 					is_full_condition = true;
 					pr_info
 					    ("%s : is_top_off (%d)\n",
@@ -1370,11 +1390,11 @@ static void sec_bat_cable_work(struct work_struct *work)
 			}
 		}
 
-		if (info->batt_int_irq_use) {
+/*		if (info->batt_int_irq_use) {
 			info->present = BATT_STATUS_PRESENT;
 			info->batt_health = POWER_SUPPLY_HEALTH_GOOD;
 			disable_irq_nosync(info->batt_int_irq);
-		}
+		}*/
 		wake_lock_timeout(&info->vbus_wake_lock, 5 * HZ);
 		cancel_delayed_work(&info->measure_work);
 		info->batt_full_status = BATT_NOT_FULL;
@@ -1433,7 +1453,8 @@ static void sec_bat_cable_work(struct work_struct *work)
 			pr_err("%s : failed to get input source(%d)\n",
 				__func__, ret);
 #endif
-		/* TODO : check DCIN state again */
+
+/*
 		if (((info->cable_type == CABLE_TYPE_AC) ||
 			(info->cable_type == CABLE_TYPE_USB)) &&
 			(info->batt_int != 0)) {
@@ -1442,6 +1463,8 @@ static void sec_bat_cable_work(struct work_struct *work)
 			info->present =
 				!gpio_get_value_cansleep(info->batt_int);
 		}
+*/
+
 		wake_lock_timeout(&info->vbus_wake_lock, 5 * HZ);
 		cancel_delayed_work(&info->measure_work);
 		info->charging_status = POWER_SUPPLY_STATUS_CHARGING;
@@ -1541,10 +1564,9 @@ static void sec_bat_monitor_work(struct work_struct *work)
 						 monitor_work);
 	struct power_supply *psy_fg =
 	    power_supply_get_by_name(info->fuel_gauge_name);
-#ifdef CONFIG_WIRELESS_CHARGING
 	struct power_supply *psy_smb =
 	    power_supply_get_by_name(info->charger_name);
-#endif
+
 	union power_supply_propval value;
 	struct timespec ts;
 	int ret = 0;
@@ -1573,6 +1595,24 @@ static void sec_bat_monitor_work(struct work_struct *work)
 		__func__, info->present ? "present" : "absent",
 		i, (i == 1) ? ' ' : 's');
 
+	if ((info->present == BATT_STATUS_MISSING)
+			&& (info->cable_type != CABLE_TYPE_NONE)) {
+		pr_info("[battery] battery is missing, suspend SMB347 charger\n");
+		psy_smb->set_property(psy_smb,
+			POWER_SUPPLY_PROP_PRESENT, &value);
+	}
+
+#ifdef CONFIG_WIRELESS_CHARGING
+	if (info->wpc_abs_time &&
+			(info->cable_type == CABLE_TYPE_WPC)) {
+		info->abs_time = info->wpc_abs_time;
+		pr_debug("[battery] wpc abs time (%d)\n", info->abs_time);
+	} else {
+		info->abs_time = info->normal_abs_time;
+		pr_debug("[battery] normal abs time (%d)\n",
+			info->abs_time);
+	}
+#endif
 
 	sec_bat_charging_time_management(info);
 
@@ -1785,6 +1825,7 @@ static void sec_bat_measure_work(struct work_struct *work)
 	wake_unlock(&info->measure_wake_lock);
 }
 
+/*
 static irqreturn_t batt_removal_handler(int irq, struct sec_bat_info *info)
 {
 	struct power_supply *psy = power_supply_get_by_name(info->charger_name);
@@ -1808,12 +1849,10 @@ static irqreturn_t batt_removal_handler(int irq, struct sec_bat_info *info)
 	info->present = ret ? 0 : 1;
 	if (ret)
 		psy->set_property(psy, POWER_SUPPLY_PROP_PRESENT, &value);
-	/*
-	cancel_work_sync(&info->monitor_work);
-	queue_work(info->monitor_wqueue, &info->monitor_work);*/
 err:
 	return IRQ_HANDLED;
 }
+*/
 
 #define SEC_BATTERY_ATTR(_name)		\
 {									\
@@ -2629,10 +2668,12 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 	else
 		info->measure_interval = MEASURE_DSG_INTERVAL;
 
-	if (pdata->check_batt_type) {
-		if (pdata->check_batt_type()) {
-			pdata->max_voltage = 4350 * 1000;
-			pdata->recharge_voltage = 4280 * 1000;
+	if (!pdata->recharge_voltage) {
+		if (pdata->check_batt_type) {
+			if (pdata->check_batt_type()) {
+				pdata->max_voltage = 4350 * 1000;
+				pdata->recharge_voltage = 4280 * 1000;
+			}
 		}
 	}
 
@@ -2655,11 +2696,18 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 	if (pdata->charge_duration != 0 &&
 		pdata->recharge_duration != 0) {
 		info->abs_time = pdata->charge_duration;
+		info->normal_abs_time = pdata->charge_duration;
 		info->rechg_time = pdata->recharge_duration;
 	} else {
 		info->abs_time = DEFAULT_CHG_TIME;
+		info->normal_abs_time = DEFAULT_CHG_TIME;
 		info->rechg_time = DEFAULT_RECHG_TIME;
 	}
+
+	if (pdata->wpc_charge_duration != 0)
+		info->wpc_abs_time = pdata->wpc_charge_duration;
+	else
+		info->wpc_abs_time = 0;
 
 	if (pdata->iterm != 0)
 		info->iterm = pdata->iterm;
@@ -2687,7 +2735,12 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 	}
 
 	/* create sec detail attributes */
-	sec_bat_create_attrs(info->psy_bat.dev);
+	ret = sec_bat_create_attrs(info->psy_bat.dev);
+	if (ret) {
+		dev_err(info->dev, "%s: failed to create attrs\n",
+			__func__);
+		goto err_supply_unreg_ac;
+	}
 
 	info->entry = create_proc_entry("batt_info_proc", S_IRUGO, NULL);
 	if (!info->entry)
@@ -2722,7 +2775,7 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 				__func__, info->batt_int_irq);
 		}
 
-		ret = request_threaded_irq(
+/*		ret = request_threaded_irq(
 			info->batt_int_irq, NULL,
 			batt_removal_handler,
 			(IRQF_TRIGGER_FALLING|IRQF_TRIGGER_RISING),
@@ -2734,6 +2787,7 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 			goto err_request_irq;
 		}
 		disable_irq(info->batt_int_irq);
+*/
 	}
 
 	info->bat_early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;

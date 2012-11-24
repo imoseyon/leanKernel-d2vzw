@@ -63,14 +63,14 @@ struct stmpe811_adc_data {
 
 static struct stmpe811_adc_data *local_adc_data;
 
-u16 stmpe811_adc_get_value(u8 channel)
+s32 stmpe811_adc_get_value(u8 channel)
 {
 	struct stmpe811_adc_data *adc_data = local_adc_data;
 	struct i2c_client *client = adc_data->client;
 
-	u16 w_data = 0;
+	s32 w_data = 0;
 	int data_channel_addr = 0;
-	u16 ddata;
+	s32 ddata;
 
 	mutex_lock(&adc_data->adc_lock);
 	/* delay stablization time */
@@ -103,7 +103,7 @@ static ssize_t adc_test_show(struct device *dev,
 
 	struct stmpe811_adc_data *adc_data = dev_get_drvdata(dev);
 	struct i2c_client *client = adc_data->client;
-	u16 ret;
+	s32 ret;
 
 	ret = stmpe811_adc_get_value(7);
 	if (ret < 0) {

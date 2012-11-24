@@ -50,6 +50,7 @@ struct fsa9485_platform_data {
 	int	(*dock_init) (void);
 	void (*usb_cdp_cb) (bool attached);
 	void (*smartdock_cb) (bool attached);
+	void (*audio_dock_cb) (bool attached);
 };
 
 enum {

@@ -88,7 +88,7 @@ static int max17048_get_soc(struct i2c_client *client)
 {
 	struct sec_fuelgauge_info *fuelgauge =
 				i2c_get_clientdata(client);
-	u8 data[2];
+	u8 data[2] = {0, 0};
 	int temp, soc;
 	u64 psoc64 = 0;
 	u64 temp64;
@@ -96,7 +96,7 @@ static int max17048_get_soc(struct i2c_client *client)
 
 	temp = max17048_read_word(client, MAX17048_SOC_MSB);
 
-	if (fuelgauge->pdata->chg_float_voltage > 4200) {
+	if (get_battery_data(fuelgauge).is_using_model_data) {
 		/* [ TempSOC = ((SOC1 * 256) + SOC2) * 0.001953125 ] */
 		temp64 = swab16(temp);
 		psoc64 = temp64 * 1953125;
@@ -334,7 +334,8 @@ bool sec_hal_fg_set_property(struct i2c_client *client,
 	case POWER_SUPPLY_PROP_TEMP:
 		/* Target Temperature */
 	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
-		max17048_rcomp_update(client, val->intval);
+		/* temperature is 0.1 degree, should be divide by 10 */
+		max17048_rcomp_update(client, val->intval / 10);
 		break;
 	default:
 		return false;

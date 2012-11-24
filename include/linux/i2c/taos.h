@@ -31,6 +31,8 @@ struct taos_platform_data {
 	int (*led_on)(bool);
 	int prox_thresh_hi;
 	int prox_thresh_low;
+	int prox_th_hi_cal;
+	int prox_th_low_cal;
 	int als_time;
 	int intr_filter;
 	int prox_pulsecnt;

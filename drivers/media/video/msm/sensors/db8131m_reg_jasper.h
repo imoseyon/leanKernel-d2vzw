@@ -21,11 +21,8 @@
 /* fPS      :                                               */
 /* PRVIEW   : 640*480                                       */
 /* Made by  : Dongbu Hitek                                  */
-/* date     : 12/03/23                                      */
-/* date     : 12/03/06                                      */
-/* Model    : Aegis2                                        */
-/* 주의사항 : 0xDD96 셋팅값을 만나면 0xDD96을 I2C write 하지 말고 */
-/*            150ms delay 후 다음 셋팅값을 I2C write해 주면 됨    */
+/* date     : 12/06/15                                      */
+/* Model    : Jasper                                        */
 /* =================================================================*/
 
 static const u16 db8131m_common[] = {
@@ -34,7 +31,8 @@ static const u16 db8131m_common[] = {
 */
 0xFFC0,		/*Page mode*/
 0x1001,
-0xDD96,		/*Wait  150*/
+0xE796,
+
 
 /*
  Format
@@ -43,19 +41,20 @@ static const u16 db8131m_common[] = {
 0x7001,
 0x710D,
 
+
 /*
  SensorCon
 */
-0xFFD0,		/*Page mode*/
+0xFFD0,		/* Page Mode */
 0x0E0A,
 0x0F0D,		/*ABLK_Ctrl_1*/
-0x1300,		/*Gain_Addr*/
+0x1300,		/* Gain        */
 0x1500,		/*IVREFT_REFB*/
 0x1834,		/*ABLK_Ctrl_3*/
 0x1921,		/*ABLK_Ctrl_4*/
 0x1A07,
 0x200F,		/*ABLK_Rsrv*/
-0x2300,		/*IVREFT2_REFB2_Addr*/
+0x2300,		/* IVREFT2_REFB2 */
 0x2400,		/*IPPG_IVCM2*/
 0x399F,		/*RiseSx_CDS_1_L*/
 0x511F,		/*Fallcreset_1_L*/
@@ -63,74 +62,76 @@ static const u16 db8131m_common[] = {
 0x8567,		/*FallTran_Sig_Even_L*/
 0x8765,		/*RiseTran_Sig_Odd_L*/
 0x8967,		/*FallTran_Sig_Odd_L*/
-0x8B27,		/*RiseCNT_EN_1_L_Addr*/
-0x8D6c,		/*FallCNT_EN_1_L_Addr*/
-0x9114,
-0xD740,		/*ABLK_Ctrl_12*/
-0xF840,		/*TestMode*/
+0x8B27,		/* RiseCNT_EN_1_L */
+0x8D6c,		/* FallCNT_EN_1_L */
+0x9115,
 0xC509,
-0xD196,
+0xD19E,
+0xD740,		/*ABLK_Ctrl_12*/
 0xDB9F,		/*FallScanTx_L*/
-0xED01,		/*PLL_P_Addr*/
-0xEE0F,		/*PLL_M_Addr*/
-0xEF00,		/*PLL_S_Addr*/
-0xF900,		/*ABLK_Ctrl_8*/
+0xED01,		/* PLL_P */
+0xEE0F,		/* PLL_M */
+0xEF00,		/* PLL_S */
+0xF840,		/* ABLK_Ctrl_8 */
+0xF900,		/* Vblank Sleep Mode enable */
 0xFB50,		/*PostADC_Gain*/
-
 
 
 /*
  Analog ADF
 */
-0xFF85,		/*Page mode*/
-0x89C2,		/*Th_AP*/
-0x8A0C,		/*u8APClmpThreshold*/
-0x8C07,		/*gAdf_u8APMinVal_ThrClampH*/
-0x8D40,		/*gAdf_u8APMinVal_ThrClampL*/
-0x8F0C,		/*gAdf_u8APMinVal_AMP2_1_SDM*/
+0xFF85,		/* Page Mode */
+0x89C3,		/* Th_AP */
+0x8A0C,		/* Th_Clamp */
+0x8C07,		/* ADF_APMinVal_ThrClampH */
+0x8D40,		/* ADF_APMinVal_ThrClampL */
+0x8E01,		/* ADF_APMinVal_DOFFSET */
+0x8F0C,		/* ADF_APMinVal_AMP2_1_SDM */
 0x9111,		/*ADF_APMinVal_AMP4_3_SDM*/
 0x921F,		/*ADF_APMin_FallIntTx15*/
 0x9378,		/*ADF_APMinVal_CDSxRange_CtrlPre*/
 0x9519,		/*ADF_APMinVal_REFB_IVCM*/
 0x961A,		/*ADF_APMinVal_ref_os_PB*/
 0x970E,		/*ADF_APMinVal_NTx_Range*/
-0x980F,		/*ADF_APMaxVal_Clmp_rst*/
+0x980E,		/* ADF_APMaxVal_Clmp_rst */
 0x9907,		/*ADF_APMaxVal_ThrClampH*/
 0x9A00,		/*ADF_APMaxVal_ThrClampL*/
-0x9C0C,		/*gAdf_u8APMaxVal_AMP2_1_SDM*/
-0x9D7E,		/*ADF_Max_FallintRx*/
+0x9B00,		/* ADF_APMaxVal_DOFFSET */
+0x9C0C,		/* ADF_APMaxVal_AMP2_1_SDM */
+0x9D7E,		/* ADF_APMaxVal_FallIntRx */
 0x9E29,		/*ADF_APMaxVal_AMP4_3_SDM*/
-0x9F7F,		/*ADF_Max_FallintTx*/
+0x9F7F,		/* ADF_APMaxVal_FallIntTx15 */
 0xA079,		/*ADF_APMaxVal_CDSxRange_CtrlPre*/
-0xA175,		/*ADF_Max_FallintLatch*/
+0xA175,		/* ADF_APMaxVal_FallIntLatch */
 0xA218,		/*ADF_APMaxVal_REFB_IVCM*/
 0xA333,		/*ADF_APMaxVal_ref_os_PB*/
 0xA40F,		/*ADF_APMaxVal_NTx_Range*/
 0xFE20,		/*Line-BLC ADF*/
-0x8E01,
-0x9B00,
-0xFF86,		/*Page mode*/
-0x1500,		/*gPT_u8Adf_APThrHys*/
-0x16FA,		/*ADF_APFallIntTxThrLevel*/
-0x1700,		/*gPT_u8Adf_APMinVal_BP2_1_SDM*/
-0x1800,		/*ADF_APMidVal_BP2_1_SDM*/
+
+0xFF86,		/* Page Mode */
+0x1500,		/* ADF_APThrHys */
+0x16EE,		/* ADF_APFallIntTxThrLevel */
+0x1709,		/* ADF_APMinVal_BP2_1_SDM */
+0x1809,		/* ADF_APMidVal_BP2_1_SDM */
 0x1900,		/*ADF_APMaxVal_BP2_1_SDM*/
-0x1D0C,		/*gPT_u8Adf_APMidVal_AMP2_1_SDM*/
-0x1F09,		/*gPT_u8Adf_APMidVal_AMP4_3_SDM*/
-0x203A,		/*ADF_APMidVal_CDSxRange_CtrlPre*/
-0x2218,		/*gPT_u8Adf_APMidVal_REFB_IVCM*/
-0x232A,		/*ADF_APMidVal_ref_os_PB*/
-0x240E,		/*ADF_APMidVal_NTx_Range*/
-0x2577,		/*gPT_u8Adf_APVal_EnSiSoSht_EnSm*/
-0x2DEB,
 0x1BF6,
 0x1C00,
-0xFF87,		/*Page mode*/
+0x1D0C,		/* ADF_APMidVal_AMP2_1_SDM */
+0x1F09,		/* ADF_APMidVal_AMP4_3_SDM */
+0x2078,		/* ADF_APMidVal_CDSxRange_CtrlPre */
+0x2218,		/* ADF_APMidVal_REFB_IVCM */
+0x232A,		/*ADF_APMidVal_ref_os_PB*/
+0x240E,		/*ADF_APMidVal_NTx_Range*/
+0x2577,		/* ADF_APVal_EnSiSoSht_EnSm */
+0x2DEB,
+
+0xFF87,		/* Page Mode */
 0xE120,
-0xEA41,
+0xEA41,		/* RiseIntTx15 */
 0xDDB0,
 0xF139,		/*Count icnt*/
-0xFF83,		/*Page mode*/
+
+0xFF83,		/* Page Mode */
 0x6328,		/*Again Table*/
 0x6410,		/*Again Table*/
 0x65A8,		/*Again Table*/
@@ -144,21 +145,19 @@ static const u16 db8131m_common[] = {
 0xBC80,
 0xBD09,		/*Bgain*/
 0xBE80,
-0xFFD0,		/*Page Mode*/
-0x2011,
 
 0xFFD1,
+0x0301,
 0x0700,
 0x0B00,
-0x0301,
 0xD196,
-0xFFB0,
-0x3C81,
-0x5001,
+
+
 /*
  AE
 */
 0xFF82,		/*Page mode*/
+0x9101,
 0x9555,
 0x9655,
 0x97F5,
@@ -167,7 +166,7 @@ static const u16 db8131m_common[] = {
 0x9A5F,
 0x9B55,
 0x9C55,
-0xA940,		/*42 OTarget	SAT 1 CCM 1 40*/
+0xA93B,     /* 42 OTarget	SAT 1 CCM 1 40 */
 0xAA3C,		/*ITarget*/
 0x9D88,     /*AE Speed*/
 0x9F06,		/* AE HoldBnd*/
@@ -186,7 +185,7 @@ static const u16 db8131m_common[] = {
 0x5E8F,
 0xFF82,		/*Page mode*/
 0xA10A,		/* AnalogGainMax*/
-0xF309,		/* SCLK*/
+0xF309,     /* SCLK		24MHz */
 0xF460,
 0xF900,		/* GainMax*/
 0xFAB0,     /*GainMax B0*/
@@ -213,7 +212,7 @@ static const u16 db8131m_common[] = {
 0x0903,     /*Time2Lut50Hz : 30fps*/
 0x0A03,     /*Time1Lut50Hz : 30fps*/
 0x0B04,
-0x0C76,		/*Frame Rate*/
+0x0C4C,		/* Frame Rate */
 0x1104,
 0x128A,		/*Frame Rate*/
 0xFF85,		/*Page mode*/
@@ -225,217 +224,215 @@ static const u16 db8131m_common[] = {
 /*
  AWB
 */
-0xFF83,		/*Page mode*/
-0x7983,     /* AWB SKIN ON*/
-0x8200,		/*LockRatio*/
-0x8603,		/*MinGrayCnt*/
-0x8700,     /* gAWB_u16MinGrayCnt_rw_1*/
-0x9005,     /* gAWB_u16FinalRGain_ro_0*/
-0x9405,     /* gAWB_u16FinalBGain_ro_0*/
-0x98D4,     /* SkinWinCntTh*/
-0xA228,     /* SkinYTh*/
-0xA300,     /* SkinHoldHitCnt*/
-0xA40F,     /* SkinHoldHitCnt*/
-0xAD65,     /* u8SkinTop2*/
-0xAE80,     /* gAwb_u8SkinTop2LS1Ratio_rw  5zone*/
-0xAF20,		/* gAwb_u8SkinTop2LS2Ratio_rw  6zone*/
-0xB410,     /* u8SkinTop2LSHys_rw*/
-0xB554,     /* gAwb_u8SkinLTx*/
-0xB6BD,		/*SkinLTy*/
-0xB774,     /* gAwb_u8SkinRBx*/
-0xB89D,		/*SkinLBy*/
-0xBA4F,     /* UniCThrY_rw*/
-0xBF0C,     /* u16UniCGrayCntThr_rw_0*/
-0xC080,     /* u16UniCGrayCntThr_rw_1*/
+0xFF83,	/*Page mode*/
+0x7983,	/* AWBCtrl */
+0x8200,	/*LockRatio*/
+0x8601,	/* MinGrayCnt */
+0x8780,	/* MinGrayCnt */
+0x9005,	/* RGain */
+0x9140,	/* RGain */
+0x9404,	/* BGain */
+0x95C0,	/* BGain */
+0x98D4,	/* SkinWinCntTh*/
+0xA228,	/* SkinYTh*/
+0xA300,	/* SkinHoldHitCnt*/
+0xA40F,	/* SkinHoldHitCnt*/
+0xAD65,	/* SkinTop2 */
+0xAE80,	/* SkinTop2LS1Ratio */
+0xAF20,	/* SkinTop2LS2Ratio	*/
+0xB410,	/* SkinTop2LSHys */
+0xB554,	/* SkinLTx */
+0xB6BD,	/*SkinLTy*/
+0xB774,	/* SkinLBx */
+0xB89D,	/*SkinLBy*/
+0xBA4F,	/* UniCThrY */
+0xBF0C,	/* UniCGrayCntThr_0 */
+0xC080,	/* UniCGrayCntThr_1	*/
 
-0xFF84,		/*Page mode */
-0x3D00,		/* gAwb_u32LuxConst1_rw_0*/
-0x3E00,		/* gAwb_u32LuxConst1_rw_1*/
-0x3F06,		/* gAwb_u32LuxConst1_rw_2*/
-0x4020,		/* gAwb_u32LuxConst1_rw_3*/
-0x4107,		/* gAwb_u32LuxConst2_rw_0*/
-0x4253,		/* gAwb_u32LuxConst2_rw_1*/
-0x4300,		/* gAwb_u32LuxConst2_rw_2*/
-0x4400,		/* gAwb_u32LuxConst2_rw_3*/
-0x4901,		/*Threshold_indoor*/
+0xFF84,	/*Page mode */
+0x3D00,	/* AWB_LuxConst1_0 */
+0x3E00,	/* AWB_LuxConst1_1 */
+0x3F06,	/* AWB_LuxConst1_2 */
+0x4020,	/* AWB_LuxConst1_3 */
+0x4107,	/* AWB_LuxConst2_0 */
+0x4253,	/* AWB_LuxConst2_1 */
+0x4300,	/* AWB_LuxConst2_2 */
+0x4400,	/* AWB_LuxConst2_3 */
+0x4901,	/*Threshold_indoor*/
 0x4A00,
-0x4B01,		/*Threshold_outdoor*/
+0x4B01,	/*Threshold_outdoor*/
 0x4C80,
-0x5503,		/* gAwb_u8Weight_Gen_rw_0*/
-0x5610,		/* gAwb_u8Weight_Gen_rw_1*/
-0x5714,		/* gAwb_u8Weight_Gen_rw_2*/
-0x5807,		/* gAwb_u8Weight_Gen_rw_3*/
-0x5904,		/* gAwb_u8Weight_Gen_rw_4*/
-0x5A00,		/*AWB_Weight_Genernal_5*/
-0x5B01,		/*AWB_Weight_Genernal_6*/
-0x5C01,		/*AWB_Weight_Genernal_7*/
-0x5D01,		/* gAwb_u8Weight_Ind_rw_0*/
-0x5E08,		/*AWB_Weight_Indoor_1*/
-0x5F10,		/*AWB_Weight_Indoor_2*/
-0x6010,		/*AWB_Weight_Indoor_3*/
-0x6120,		/*AWB_Weight_Indoor_4*/
-0x6200,		/*12 AWB_Weight_Indoor_5*/
-0x6318,		/*AWB_Weight_Indoor_6*/
-0x6414,		/* gAwb_u8Weight_Ind_rw_7*/
-0x6503,		/* gAwb_u8Weight_Outd_rw_0*/
-0x6620,		/*AWB_Weight_Outdoor_1*/
-0x6720,		/*AWB_Weight_Outdoor_2*/
-0x6810,		/*AWB_Weight_Outdoor_3*/
-0x6901,		/* gAwb_u8Weight_Outd_rw_4*/
-0x6A02,		/* gAwb_u8Weight_Outd_rw_5*/
-0x6B01,		/*AWB_Weight_Outdoor_6*/
-0x6C01,		/*AWB_Weight_Outdoor_7*/
-0xFF85,		/*Page mode*/
-0xE20C,     /* gPT_u8Awb_UnicolorZone_rw*/
-0xFF83,		/*Page mode*/
-0xCB04,		/*Min Rgain*/
-0xCC20,		/*Min Rgain*/
-0xCD06,		/*Max Rgain*/
-0xCEC0,
-0xCF04,		/*Min Bgain*/
-0xD040,
-0xD106,		 /*Max BGain*/
-0xd270,		/*78, /*70 */
+0x5503,	/* AWB_Weight_Genernal_0 */
+0x5610,	/* AWB_Weight_Genernal_1 */
+0x5714,	/* AWB_Weight_Genernal_2 */
+0x5807,	/* AWB_Weight_Genernal_3 */
+0x5904,	/* AWB_Weight_Genernal_4 */
+0x5A00,	/*AWB_Weight_Genernal_5*/
+0x5B01,	/*AWB_Weight_Genernal_6*/
+0x5C01,	/*AWB_Weight_Genernal_7*/
+0x5D01,	/* AWB_Weight_Indoor_0 */
+0x5E08,	/*AWB_Weight_Indoor_1*/
+0x5F12,	/* AWB_Weight_Indoor_2 */
+0x6008,	/* AWB_Weight_Indoor_3 */
+0x6120,	/*AWB_Weight_Indoor_4*/
+0x6200,	/* AWB_Weight_Indoor_5 */
+0x6318,	/*AWB_Weight_Indoor_6*/
+0x6414,	/* AWB_Weight_Indoor_7 */
+0x6503,	/* AWB_Weight_Outdoor_0 */
+0x6601,	/* AWB_Weight_Outdoor_1	*/
+0x6701,	/* AWB_Weight_Outdoor_2	*/
+0x6840,	/* AWB_Weight_Outdoor_3	*/
+0x6901,	/* AWB_Weight_Outdoor_4	*/
+0x6A02,	/* AWB_Weight_Outdoor_5	*/
+0x6B01,	/*AWB_Weight_Outdoor_6*/
+0x6C01,	/*AWB_Weight_Outdoor_7*/
+0xFF85,	/*Page mode*/
+0xE20C,	/* AWB_unicolorzone */
+
+0xFF83,	/*Page mode*/
+0xCB04,	/*Min Rgain*/
+0xCC58,	/* 38 */
+0xCD07, /* Max Rgain */
+0xCE20,
+0xCF04,	/*Min Bgain*/
+0xD020,
+0xD106, /* Max BGain 690 */
+0xd268,	/* 70 */
 
 /*
  AWB STE
 */
-0xFFA1,		/*Page mode*/
-0x9C20,		/*AWBLuThL*/
-0x9DF0,		/*AWBLuThH*/
-/*
-Flash
-*/
-0xA063,		/*AWBZone0LTx*/
-0xA17A,		/*AWBZone0LTy*/
-0xA269,		/*AWBZone0RBx*/
-0xA36F,		/*AWBZone0RBy*/
-/*cloudy*/
-0xA476,		/*AWBZone1LTx*/
-0xA562,		/*AWBZone1LTy*/
-0xA68C,		/*AWBZone1RBx*/
-0xA73C,		/*AWBZone1RBy*/
-/*Daylight*/
-0xA868,		/*AWBZone2LTx*/
-0xA964,		/*AWBZone2LTy*/
-0xAA83,		/*AWBZone2RBx*/
-0xAB3F,		/*AWBZone2RBy*/
-/*Fluorescent*/
-0xAC60,		/*AWBZone3LTx*/
-0xAD5D,		/*AWBZone3LTy*/
-0xAE73,		/*AWBZone3RBx*/
-0xAF4B,		/*AWBZone3RBy*/
-
-/*CWF*/
-0xB04A,		/*AWBZone4LTx*/
-0xB164,		/*AWBZone4LTy*/
-0xB264,		/*AWBZone4RBx*/
-0xB34D,		/*AWBZone4RBy*/
-/*TL84*/
-0xB400,		/*AWBZone5LTx*/
-0xB500,		/*AWBZone5LTy*/
-0xB600,		/*AWBZone5RBx*/
-0xB700,		/*AWBZone5RBy*/
-/*A*/
-0xB841,		/*AWBZone6LTx*/
-0xB97B,		/*AWBZone6LTy*/
-0xBA54,		/*AWBZone6RBx*/
-0xBB6A,		/*AWBZone6RBy*/
-/*Horizon*/
-0xBC3C,		/*AWBZone7LTx*/
-0xBD90,		/*AWBZone7LTy*/
-0xBE4C,		/*AWBZone7RBx*/
-0xBF73,		/*AWBZone7RBy*/
-/*Skin*/
-0xC05B,		/*AWBZone8LTx*/
-0xC185,		/*AWBZone8LTy*/
-0xC260,		/*AWBZone8RBx*/
-0xC37F,		/*AWBZone8RBy*/
+0xFFA1,	/*Page mode*/
+0x9C12, /* AWBLuThL */
+0x9DF0,	/*AWBLuThH*/
+0xA063, /* AWBZone0LTx - Flash */
+0xA17A,	/*AWBZone0LTy*/
+0xA269,	/*AWBZone0RBx*/
+0xA36F,	/*AWBZone0RBy*/
+0xA47C, /* AWBZone1LTx - Cloudy */
+0xA54C, /* AWBZone1LTy */
+0xA68C,	/*AWBZone1RBx*/
+0xA73C,	/*AWBZone1RBy*/
+0xA86C, /* AWBZone2LTx - D65 */
+0xA95E, /* AWBZone2LTy */
+0xAA84, /* AWBZone2RBx */
+0xAB44, /* AWBZone2RBy */
+0xAC60, /* AWBZone3LTx - Fluorecent */
+0xAD64, /* AWBZone3LTy */
+0xAE78, /* AWBZone3RBx */
+0xAF4B,	/*AWBZone3RBy*/
+0xB048, /* AWBZone4LTx - CWF */
+0xB168, /* AWBZone4LTy */
+0xB264,	/*AWBZone4RBx*/
+0xB34D,	/*AWBZone4RBy*/
+0xB400, /* AWBZone5LTx - TL84 */
+0xB500,	/*AWBZone5LTy*/
+0xB600,	/*AWBZone5RBx*/
+0xB700,	/*AWBZone5RBy*/
+0xB841, /* AWBZone6LTx - A */
+0xB97B,	/*AWBZone6LTy*/
+0xBA54,	/*AWBZone6RBx*/
+0xBB6A,	/*AWBZone6RBy*/
+0xBC3C, /* AWBZone7LTx - Horizon */
+0xBD90,	/*AWBZone7LTy*/
+0xBE4C,	/*AWBZone7RBx*/
+0xBF73,	/*AWBZone7RBy*/
+0xC05B, /* AWBZone8LTx - Skin */
+0xC185,	/*AWBZone8LTy*/
+0xC260,	/*AWBZone8RBx*/
+0xC37F,	/*AWBZone8RBy*/
 
 /*
  UR
 */
-0xFF87,		/*Page mode*/
-0xC922,		/*AWBTrim*/
-0xFF86,		/*Page mode*/
-0x143E,		/* CCM sum 1*/
-0xFF85,		/*Page mode*/
-0x0605,		/*Saturation CCM 1*/
-0x8640,		/*saturation level*/
-0x0700,		/* sup hysteresis*/
+0xFF87,	/*Page mode*/
+0xC922,	/*AWBTrim*/
+0xFF86,	/*Page mode*/
+0x143E,	/* CCM sum 1*/
+0xFF85,	/*Page mode*/
+0x0605,	/*Saturation CCM 1*/
+0x8640,	/*saturation level*/
+0x0700,	/* sup hysteresis*/
 
-/*DAY light*/
-0xFF83,		/*Page mode*/
-0xEA00,		/*gAwb_s16AdapCCMTbl_0*/
-0xEB5D,		/*CrcMtx11_Addr0*/
-0xECFF,		/*gAwb_s16AdapCCMTbl_2*/
-0xEDFE,		/*CrcMtx12_Addr0*/
-0xEEFF,		/*CrcMtx13_Addr1*/
-0xEFF5,		/*CrcMtx13_Addr0*/
-0xF0FF,		/*gAwb_s16AdapCCMTbl_6*/
-0xF1F5,		/*CrcMtx21_Addr0*/
-0xF200,		/*gAwb_s16AdapCCMTbl_8*/
-0xF357,		/*CrcMtx22_Addr0*/
-0xF4FF,		/*gAwb_s16AdapCCMTbl_10*/
-0xF5F4,		/*CrcMtx23_Addr0*/
-0xF6FF,		/*gAwb_s16AdapCCMTbl_12*/
-0xF7FC,		/*gAwb_s16AdapCCMTbl_13*/
-0xF8FF,		/*gAwb_s16AdapCCMTbl_14*/
-0xF9CC,		/*gAwb_s16AdapCCMTbl_15*/
-0xFA00,		/*gAwb_s16AdapCCMTbl_16*/
-0xFB78,		/*CrcMtx33_Addr0*/
+/*
+ CCM D65
+*/
+0xFF83,	/* Page Mode */
+0xEA00, /* CrcMtx11_Addr1 */
+0xEB6A, /* CrcMtx11_Addr0 */
+0xECFF, /* CrcMtx12_Addr1 */
+0xEDD7, /* CrcMtx12_Addr0 */
+0xEEFF,	/*CrcMtx13_Addr1*/
+0xEFFF, /* CrcMtx13_Addr0 */
+0xF0FF, /* CrcMtx21_Addr1 */
+0xF1F7,	/* CrcMtx21_Addr0 */
+0xF200, /* CrcMtx22_Addr1 */
+0xF353,	/* CrcMtx22_Addr0 */
+0xF4FF, /* CrcMtx23_Addr1 */
+0xF5F6, /* CrcMtx23_Addr0 */
+0xF6FF, /* CrcMtx31_Addr1 */
+0xF7FF, /* CrcMtx31_Addr0 */
+0xF8FF, /* CrcMtx32_Addr1 */
+0xF9B7,	/* CrcMtx32_Addr0 */
+0xFA00, /* CrcMtx33_Addr1 */
+0xFB81, /* CrcMtx33_Addr0 */
 
-/*CWF lgiht*/
-0xFF83,		/*Page mode*/
-0xFC00,		/* gAwb_s16AdapCCMTbl_18*/
-0xFD6B,		/*CrcMtx11_Addr0*/
-0xFF85,		/*Page mode*/
-0xE0FF,		/* gAwb_s16AdapCCMTbl_20*/
-0xE1DB,		/*CrcMtx12_Addr0*/
-0xFF84,		/*Page mode*/
-0x00FF,		/*CrcMtx13_Addr1*/
-0x01FA,		/*CrcMtx13_Addr0*/
-0x02FF,		/* gAwb_s16AdapCCMTbl_24*/
-0x03F3,		/*CrcMtx21_Addr0*/
-0x0400,		/* gAwb_s16AdapCCMTbl_26*/
-0x0554,		/*CrcMtx22_Addr0*/
-0x06FF,		/* gAwb_s16AdapCCMTbl_28*/
-0x07F9,		/*CrcMtx23_Addr0*/
-0x08FF,		/*CrcMtx31_Addr1*/
-0x09FA,		/*CrcMtx31_Addr0*/
-0x0AFF,		/* gAwb_s16AdapCCMTbl_32*/
-0x0BC4,		/*CrcMtx32_Addr0*/
-0x0C00,		/* gAwb_s16AdapCCMTbl_34*/
-0x0D82,		/*CrcMtx33_Addr0*/
+/*
+ CCM Coolwhite
+*/
+0xFF83,	/* Page Mode */
+0xFC00, /* CrcMtx11_Addr1 */
+0xFD6B,	/*CrcMtx11_Addr0*/
+0xFF85,	/* Page Mode */
+0xE0FF, /* CrcMtx12_Addr1 */
+0xE1DB,	/*CrcMtx12_Addr0*/
+0xFF84,	/* Page Mode */
+0x00FF,	/*CrcMtx13_Addr1*/
+0x01FA,	/*CrcMtx13_Addr0*/
+0x02FF, /* CrcMtx21_Addr1 */
+0x03F3,	/*CrcMtx21_Addr0*/
+0x0400, /* CrcMtx22_Addr1 */
+0x0554,	/*CrcMtx22_Addr0*/
+0x06FF, /* CrcMtx23_Addr1 */
+0x07F9,	/*CrcMtx23_Addr0*/
+0x08FF,	/*CrcMtx31_Addr1*/
+0x09FA,	/*CrcMtx31_Addr0*/
+0x0AFF, /* CrcMtx32_Addr1 */
+0x0BC4,	/*CrcMtx32_Addr0*/
+0x0C00, /* CrcMtx33_Addr1 */
+0x0D82,	/*CrcMtx33_Addr0*/
 
-/*A light*/
+
+/*
+ CCM A
+*/
 0xFF84,		/*Page Mode*/
+0x0E00, /* CrcMtx11_Addr1 */
+0x0F6B, /* CrcMtx11_Addr0 */
+0x10FF, /* CrcMtx12_Addr1 */
+0x11DA, /* CrcMtx12_Addr0 */
+0x12FF,	/*CrcMtx13_Addr1*/
+0x13FC, /* CrcMtx13_Addr0 */
+0x14FF, /* CrcMtx21_Addr1 */
+0x15F5, /* CrcMtx21_Addr0 */
+0x1600, /* CrcMtx22_Addr1 */
+0x175B, /* CrcMtx22_Addr0 */
+0x18FF,	/*CrcMtx23_Addr1*/
+0x19F0,	/*CrcMtx23_Addr0*/
+0x1AFF,	/*CrcMtx31_Addr1*/
+0x1BFA, /* CrcMtx31_Addr0 */
+0x1CFF, /* CrcMtx32_Addr1 */
+0x1DC4, /* CrcMtx32_Addr0 */
+0x1E00, /* CrcMtx33_Addr1 */
+0x1F82, /* CrcMtx33_Addr0 */
 
-0x0E00,		/* gAwb_s16AdapCCMTbl_36*/
-0x0F6E,		/*CrcMtx11_Addr0*/
-0x10FF,		/* gAwb_s16AdapCCMTbl_38*/
-0x11D5,		/*CrcMtx12_Addr0*/
-0x12FF,		/*CrcMtx13_Addr1*/
-0x13FD,		/*CrcMtx13_Addr0*/
-0x14FF,		/* gAwb_s16AdapCCMTbl_42*/
-0x15E3,		/*CrcMtx21_Addr0*/
-0x1600,		/* gAwb_s16AdapCCMTbl_44*/
-0x176D,		/*CrcMtx22_Addr0*/
-0x18FF,		/*CrcMtx23_Addr1*/
-0x19F0,		/*CrcMtx23_Addr0*/
-0x1AFF,		/*CrcMtx31_Addr1*/
-0x1BF8,		/*CrcMtx31_Addr0*/
-0x1CFF,		/* gAwb_s16AdapCCMTbl_50*/
-0x1DBD,		/*CrcMtx32_Addr0*/
-0x1E00,		/* gAwb_s16AdapCCMTbl_52*/
-0x1F8B,		/*CrcMtx33_Addr0*/
 
 /*
 Outdoor D65
 */
 0xFF86,     /*Page mode*/
-0x4501,     /*CCM LuxThreshold*/
-0x4600,     /*CCM LuxThreshold*/
+0x4500,     /* CCM LuxThreshold */
+0x4698,     /* CCM LuxThreshold */
 0xFF85,     /*Page mode*/
 0xFE35,     /*Outdoor CCM On*/
 0xEC00,     /*gAwb_s16AdapCCMTbl_0*/
@@ -457,36 +454,39 @@ Outdoor D65
 0xFC00,     /*gAwb_s16AdapCCMTbl_16*/
 0xFD80,     /*gAwb_s16AdapCCMTbl_17*/
 
-/* ADF */
+
+/*
+ ADF
+*/
 /* ISP setting*/
-0xFFA0,		/*Page mode*/
-0x1080,		/* BLC: ABLC db*/
-0x1109,		 /*BLC Separator*/
-0x6073,		/* CDC: Dark CDC ON*/
-0x611F,		/* Six CDC_Edge En, Slash EN*/
-0x690C,		/* Slash direction Line threshold*/
-0x6A60,		/* Slash direction Pixel threshold*/
-0xC204,		/* NSF: directional smoothing*/
-0xD051,		/* DEM: pattern detection*/
-0xFFA1,		/*Page mode*/
-0x3000,		/*EDE: Luminane adaptation off*/
-0x3200,		/*EDE: Adaptation slope*/
-0x3400,		/* EDE: x1 point*/
-0x3516,		/*EDE: x1 point*/
-0x3600,		/*EDE: x2 point*/
-0x3730,		/*EDE: x2 point*/
-0x3A00,		/* EDE: Adaptation left margin*/
-0x3BC0,		/*EDE: Adaptation right margin*/
-0x3CFF,		/*EDE: rgb edge threshol*/
+0xFFA0,	/*Page mode*/
+0x1080, /* BLC Th */
+0x1109,	/*BLC Separator*/
+0x6073,	/* CDC: Dark CDC ON*/
+0x611F,	/* Six CDC_Edge En, Slash EN*/
+0x690C,	/* Slash direction Line threshold*/
+0x6A60,	/* Slash direction Pixel threshold*/
+0xC204,	/* NSF: directional smoothing*/
+0xD051,	/* DEM: pattern detection*/
+0xFFA1,	/*Page mode*/
+0x3000,	/*EDE: Luminane adaptation off*/
+0x3240, /* EDE: Adaptation slope */
+0x3400,	/* EDE: x1 point*/
+0x3520, /* EDE: x1 point */
+0x3600,	/*EDE: x2 point*/
+0x3740, /* EDE: x2 point */
+0x3A00,	/* EDE: Adaptation left margin*/
+0x3B20, /* EDE: Adaptation right margin */
+0x3CFF,	/*EDE: rgb edge threshol*/
 
 /* Adaptive Setting*/
 0xFF85,		/*Page mode*/
-/* LSC*/
+/* BGT */
 0x1721,		/*BGT lux level threshold*/
 0x260C,     /*MinVal*/
 0x3c00,     /*MaxVal*/
 
-/* BGT*/
+/* BGT2 */
 0xFF86,		/*Page mode*/
 0x680C,		/*BGTLux1*/
 0x690B,		/*BGTLux2*/
@@ -494,12 +494,15 @@ Outdoor D65
 0x6b00,		/*Value1*/
 0x6c00,		/*Value2*/
 0x6d05,		/*Value3*/
-0x6F0A,		/*SATLux1*/
-0x7008,		/*SATLux2*/
-0x7102,		/*SATZone*/
-0x7203,		/*SATZone*/
-0x7301,		/*SATValue1*/
-0x7400,		/*SATValue2*/
+
+/* SAT */
+0x6F0B, /* SATLux1 */
+0x700C, /* SATLux2 */
+0x7102,	/*SATZone*/
+0x7202, /* SATZone */
+0x7302, /* SATValue1 */
+0x7400,	/*SATValue2*/
+
 /* CNT*/
 0xFF85,		/*Page mode*/
 0x1898,		/*CNT lux level threshold*/
@@ -507,42 +510,43 @@ Outdoor D65
 0x3d02,     /*MaxVal*/
 
 /* NSF*/
-0x12A5,		/* NSF lux level threshold*/
-0x221D,		/*u8MinVal_NSF1 /*28*/
-0x2340,		/*u8MinVal_NSF2 /*70*/
-0x3814,     /*u8MaxVal_NSF1*/
-0x3928,     /*u8MaxVal_NSF2*/
-0xFF86,		/*Page mode*/
-0x1206,		/*u8MinVal_NSF3*/
-0x1306,		/*u8MaxVal_NSF3*/
+0x12A5,	/* NSF lux level threshold*/
+0x221A, /* u8MinVal_NSF1 //28 */
+0x2340, /* u8MinVal_NSF2 //70 */
+0x3814, /*u8MaxVal_NSF1*/
+0x3928, /*u8MaxVal_NSF2*/
+0xFF86,	/*Page mode*/
+0x1206,	/*u8MinVal_NSF3*/
+0x1306,	/*u8MaxVal_NSF3*/
+
+/* NSF NEW thresold */
 0xFF85,		/*Page mode*/
 0xE822,
 0xE950,
-0xEA0E,
+0xEA14,
 0xEB18,
-
 /* GDC*/
-0xFF85,		/*Page mode*/
-0x15F4,		/* GDC lux level threshold*/
-0x2D20,		/* u8MinVal_GDC1*/
-0x2E30,		/* u8MinVal_GDC2*/
-0x4340,		/* u8MaxVal_GDC1*/
-0x4480,		/* u8MaxVal_GDC2*/
+0xFF85,	/*Page mode*/
+0x15F4,	/* GDC lux level threshold*/
+0x2D20,	/* u8MinVal_GDC1*/
+0x2E30,	/* u8MinVal_GDC2*/
+0x4320, /* u8MaxVal_GDC1 */
+0x4430, /* u8MaxVal_GDC2 */
 
 /* ISP  Edge*/
-0xFF85,		/*Page mode*/
-0x04FB,		/* EnEDE*/
-0x14A5,		/*u8ThrLevel_EDE*/
-0x2808,		/*u8MinVal_EDE_CP*/
-0x2907,		/*u8MinVal_EDE1*/
-0x2A08,		/*u8MinVal_EDE2*/
-0x2B05,		/*u8MinVal_EDE_OFS*/
-0x2C22,		/* u8MinVal_SG*/
-0x3E02,		/*u8MaxVal_EDE_CP*/
-0x3F08,		/*u8MaxVal_EDE1 Edge*/
-0x4009,		/*u8MaxVal_EDE2*/
-0x4107,		/*u8MaxVal_EDE_OFS*/
-0x4222,		/*u8MaxVal_SG*/
+0xFF85,	/*Page mode*/
+0x04FB, /* FuncCtlr_ADF */
+0x14A5,	/*u8ThrLevel_EDE*/
+0x2808,	/*u8MinVal_EDE_CP*/
+0x2907,	/*u8MinVal_EDE1*/
+0x2A08,	/*u8MinVal_EDE2*/
+0x2B05,	/*u8MinVal_EDE_OFS*/
+0x2C22,	/* u8MinVal_SG*/
+0x3E02,	/*u8MaxVal_EDE_CP*/
+0x3F07, /* u8MaxVal_EDE1 Edge */
+0x4008, /* u8MaxVal_EDE2 */
+0x4106, /* u8MaxVal_EDE_OFS */
+0x4222,	/*u8MaxVal_SG*/
 
 /* Gamma Adaptive*/
 0xFF85,		/*Page mode*/
@@ -564,38 +568,39 @@ Outdoor D65
 0x55EE,		/*Min_Gamma_14*/
 0x56F7,		/*Min_Gamma_15*/
 0x57FF,		/* Min_Gamma_16*/
-0x5800,		/* Max_Gamma_0*/
-0x5908,		/*Max_Gamma_1*/
-0x5a16,		/*Max_Gamma_2*/
-0x5b30,		/* Max_Gamma_3*/
-0x5c46,		/*Max_Gamma_4*/
-0x5d58,		/*Max_Gamma_5*/
-0x5e6E,		/*Max_Gamma_6*/
-0x5f7F,		/*Max_Gamma_7*/
-0x608F,		/*Max_Gamma_8*/
-0x619F,		/*Max_Gamma_9*/
-0x62B7,		/*Max_Gamma_10*/
-0x63CC,		/*Max_Gamma_11*/
-0x64DE,		/*Max_Gamma_12*/
-0x65E7,		/*Max_Gamma_13*/
-0x66F0,		/*Max_Gamma_14*/
-0x67F8,		/*Max_Gamma_15*/
-0x68FF,		/*Max_Gamma_16*/
+
+0x5800,	/* Max_Gamma_0*/
+0x5904, /* Max_Gamma_1 */
+0x5a16,	/*Max_Gamma_2*/
+0x5b30,	/* Max_Gamma_3*/
+0x5c46, /* Max_Gamma_4 // skin */
+0x5d58, /* Max_Gamma_5 // skin */
+0x5e6E, /* Max_Gamma_6 // skin */
+0x5f7F,	/*Max_Gamma_7*/
+0x608F,	/*Max_Gamma_8*/
+0x619F,	/*Max_Gamma_9*/
+0x62B7,	/*Max_Gamma_10*/
+0x63CC,	/*Max_Gamma_11*/
+0x64DE,	/*Max_Gamma_12*/
+0x65E7,	/*Max_Gamma_13*/
+0x66F0,	/*Max_Gamma_14*/
+0x67F8,	/*Max_Gamma_15*/
+0x68FF,	/*Max_Gamma_16*/
 
 
 /*CCM Saturation Level*/
 0xFF85,		/*Page mode*/
 0x1A21,		/*64 SUP Threshold*/
 0x3070,		/*MinSUP*/
+
 /*LSC*/
 0x0F43,		/*LVLSC lux level threshold*/
 0x10E3,		/*LSLSC Light source , threshold lux*/
-/*0x8531F0,	  /*Max LSC*/
-
-
-0xFFA0,		/*Page mode*/
+0x1BA0,		/* MinVal_LVLSC */
+0x31C0,		/* MaxVal_LVLSC */
 
 /* Lens Shading */
+0xFFA0,		/*Page mode*/
 0x4380,		/* RH7 rrhrhh */
 0x4480,		/* RV */
 0x4580,		/* RH */
@@ -626,32 +631,40 @@ Outdoor D65
 0x5900,		/*GGain3*/
 
 /* Min Shading */
-0x48C0,		/*Rgain1*/
-0x4920,		/*Rgain2*/
-0x4A00,		/*Rgain3*/
-0x4B80,		/*Bgain1*/
-0x4C18,		/*Bgain2*/
-0x4D00,		/*Bgain3*/
-0x4E90,		/*GGain1*/
-0x4F20,		/*GGain2*/
-0x5000,		/*GGain3*/
-/* LineLength*/
-0xFF87,		/*Page mode*/
-0xDC05,
-0xDDb0,     /*by Yong In Han 091511*/
-0xD500,		/*Y-Flip*/
-/*
- SensorCon
-*/
+0x48B0, /* Rgain1 */
+0x4920,	/*Rgain2*/
+0x4A00,	/*Rgain3*/
+0x4B90, /* Bgain1 */
+0x4C18,	/*Bgain2*/
+0x4D00,	/*Bgain3*/
+0x4E90,	/*GGain1*/
+0x4F20,	/*GGain2*/
+0x5000,	/*GGain3*/
+
+/* DDC */
+0xFF85,
+0x6910,
+0x6A00,
+0x6B00,
+0x6C00,
+0x6D20,
+
+0xFF87, /* Page Mode */
+0xDC05, /* by Yong In Han 091511 */
+0xDDb0, /*by Yong In Han 091511*/
+0xD500,	/*Y-Flip*/
 
 /*
  MIPI
 */
-0xFFB0,		/*Page mode*/
+0xFFB0,		/* Page Mode */
 0x5402,		/* MIPI PHY_HS_TX_CTRL*/
 0x3805,		/* MIPI DPHY_CTRL_SET*/
 0x3C81,		/*PHY_HS_TX_EN*/
-0x5001,		/*MIPI.PHY_HL_TX_SEL*/
+0x5011,		/* MIPI.PHY_HL_TX_SEL */
+0x5880,		/* PHY_LP_TX_PARA */
+0x5900,
+
 
 /* SXGA PR*/
 0xFF85,		/*Page mode */
@@ -709,7 +722,7 @@ Outdoor D65
 0x4498,		/*gPR_Active_720P_u8AEHistWinBx_Addr*/
 0x4578,		/*gPR_Active_720P_u8AEHistWinBy_Addr*/
 0x4622,		/*gPR_Active_720P_u8AWBTrim_Addr*/
-0x4728,		/*gPR_Active_720P_u8AWBCTWinAx_Addvr*/
+0x4728,		/* gPR_Active_720P_u8AWBCTWinAx_Addr */
 0x4820,		/*gPR_Active_720P_u8AWBCTWinAy_Addr*/
 0x4978,		/*gPR_Active_720P_u8AWBCTWinBx_Addr*/
 0x4A60,		/*gPR_Active_720P_u8AWBCTWinBy_Addr*/
@@ -718,10 +731,10 @@ Outdoor D65
 
 /*VGA PR*/
 0xFF86,		/*Page mode*/
-0x2E1e,		/*gPT_u8PR_Active_VGA_DATA_TYPE_Addr*/
-0x2F05,		/* gPT_u8PR_Active_VGA_WORD_COUNT_Addr0*/
-0x3000,		/* gPT_u8PR_Active_VGA_WORD_COUNT_Addr1*/
-0x3304,		/* gPT_u8PR_Active_VGA_DPHY_CLK_TIME_Addr3*/
+0x2E1e,		/* PT_u8PR_Active_VGA_DATA_TYPE_Addr */
+0x2F05,		/* PT_u8PR_Active_VGA_WORD_COUNT_Addr0 */
+0x3000,		/* PT_u8PR_Active_VGA_WORD_COUNT_Addr1 */
+0x3304,		/* PT_u8PR_Active_VGA_DPHY_CLK_TIME_Addr3 */
 
 0xFF87,		/*Page mode*/
 0x4D00,		/*gPR_Active_VGA_u8SensorCtrl_Addr*/
@@ -753,11 +766,12 @@ Outdoor D65
 0xFF86,
 0x1A01,		/*Update*/
 
-0xFFC0,		/*Page mode*/
+0xFFC0,
 0x1041,
-0xDD96,		/*Delay 150ms*/
+0xE796,		/* Delay 150ms*/
 0xFFD1,
 0x0301,
+
 0xFFD0,		/*Page Mode*/
 0x200E,
 0x200F,
@@ -765,160 +779,87 @@ Outdoor D65
 /* Self-Cam END of Initial*/
 };
 
-/* Set-data based on SKT VT standard ,when using 3G network */
-/* 8fps */
-static const u32 db8131m_vt_common[] = {
-/*
- Command Preview Fixed 8fps
-*/
-0xFF87,
-0xDE7A,
-0xFFC0,
-0x1042,
-
-/*Fixed 8fps Mode*/
-0xFF82,		/*Page mode*/
-0x9102,		/*AeMode*/
-0xFF83,		/*Page mode*/
-0x0D08,		/*Frame Rate*/
-0x0E0D,		/*Frame Rate*/
-0x030f,		/*TimeMax60Hz*/
-0x040A,		/*Time3Lux60Hz*/
-0x0506,		/*Time2Lut60Hz*/
-0x0604,		/*Time1Lut60Hz*/
-0xFF82,		/*Page mode*/
-0x925D,
-};
-
-/* Set-data based on Samsung Reliabilty Group standard */
-/* ,when using WIFI. 15fps*/
-static const u32 db8131m_vt_wifi_common[] = {
-/*
- Command Preview Fixed 15fps
-*/
-0xFF87,
-0xDE7A,
-0xFFC0,
-0x1042,
-
-/*Fixed 15fps Mode*/
-0xFF82,		/*Page mode*/
-0x9102,		/*AeMode*/
-0xFF83,		/*Page mode*/
-0x0D04,		/*Frame Rate*/
-0x0E4C,		/*Frame Rate*/
-0x0308,		/*TimeMax60Hz*/
-0x0407,		/*Time3Lux60Hz*/
-0x0506,		/*Time2Lut60Hz*/
-0x0604,		/*Time1Lut60Hz*/
-0xFF82,		/*Page mode*/
-0x925D,
-};
-
-/*===========================================*/
-/* CAMERA_PREVIEW - 촬영 후 프리뷰 복귀시 셋팅 */
-/*============================================*/
-
-static const u16 db8131m_preview[] = {
-0xDD96,
-};
-
-/*===========================================
-	CAMERA_SNAPSHOT
-============================================*/
-
-static const u16 db8131m_capture[] = {
-0xffC0,
-0x1003,
-0xDD96,
-};
-
-static const u16 db8131m_720p_common[] = {
-/*
- Command Preview 30fps
-*/
+static const u16 db8131m_common_M[] = {
 0xFFC0,
 0x1001,
-0xDD96,		/*Wait  150*/
-
-/*
- Format
-*/
+0xE796,
 0xFFA1,
 0x7001,
 0x710D,
-/*
- SensorCon
-*/
 0xFFD0,
-0x0F0D,
+0x0F0B,
 0x1300,
 0x1501,
-0x2013,
+0x1814,
+0x1921,
+0x200E,
 0x2300,
-0x2401,
+0x2400,
 0x3970,
-0x511D,
+0x511f,
 0x832D,
 0x852F,
 0x872D,
 0x892F,
 0x8B27,
-0x8D6C,
-0xD780,
-0xD962,
+0x8D6c,
+0xD740,
+0xF840,
 0xDBA2,
 0xED01,
-0xEE13,
+0xEE0F,
 0xEF00,
 0xF900,
-0xFBB8,
-/*
- Analog ADF
-*/
+0xFB90,
 0xFF85,
-0x89C2,
-0x8D60,
-0x8E03,
-0x8F14,
-0x9119,
+0x8993,
+0x8A0C,
+0x8C07,
+0x8D40,
+0x8E01,
+0x8F0C,
+0x9109,
 0x920F,
-0x9364,
+0x9347,
 0x9518,
-0x9640,
-0x970A,
+0x9638,
+0x970D,
 0x980D,
 0x9906,
-0x9B02,
-0x9C18,
-0x9E11,
+0x9A9F,
+0x9B01,
+0x9C0C,
+0x9E31,
 0x9F5D,
-0xA074,
+0xA078,
 0xA218,
 0xA340,
 0xA40B,
 0xFF86,
 0x1500,
-0x16B5,
-0x1713,
-0x1824,
-0x191C,
-0x1A07,
-0x1B30,
+0x16F7,
+0x1709,
+0x1809,
+0x1909,
+0x1A06,
+0x1BF0,
 0x1C01,
-0x1D14,
-0x1F31,
-0x2064,
+0x1D0C,
+
+0x1F09,
+0x2068,
+
 0x2218,
-0x2329,
-0x240B,
+0x2338,
+0x240F,
 0x2577,
-0xFFD0,
-0x2011,
+
 0xFF87,
-0xDC05,
-0xDD34,
-0xF139,
+0xEA41,
+
+0xFFD0,
+0x200D,
+
 0xFF83,
 0x6328,
 0x6410,
@@ -926,59 +867,118 @@ static const u16 db8131m_720p_common[] = {
 0x6650,
 0x6728,
 0x6814,
-0xFF87,
-0x2310,
 
-/*
- AE
-*/
-0xFFA1,
-0x99A0,
+0xFFD0,
+0xC509,
+0xDB9f,
+0xFF86,
+0x16f6,
+0xFF85,
+0x9D7E,
+0x9F7F,
+0xA175,
+0xFF82,
+0x9588,
+0x9688,
+0x97F8,
+0x988F,
+0x99F8,
+0x9A8F,
+0x9B88,
+0x9C88,
+0xA940,
+0xAA40,
+0x9D66,
+0x9F06,
+0xA840,
+0xB904,
+0xBB04,
+0xBD04,
+0xC502,
+0xC638,
+0xC724,
+0xC810,
+0xC905,
+0xD560,
 0xFF83,
+0x2F04,
+0x3005,
 0x4F05,
-0x0304,
-0x0404,
-0x0504,
-0x0604,
 0xFF82,
-0xF901,
-0xFA60,
-0xFBB0,
-0xFC70,
-0xFD30,
-0xFE12,
-0xD600,
-0xD7A0,
-0xD801,
-0xD900,
-0xDA02,
-0xDB80,
-0xD318,
-0xD430,
-0xD5D0,
-0xF30B,
-0xF4A9,
 0xA10A,
-0xFF83,
-0x0F02,
-0x10EE,
-0xFF82,
-0x9102,
-0x924F,
+0xF309,
+0xF460,
 
-/*
- AWB
-*/
+0xF900,
+0xFAC8,
+0xFB62,
+0xFC34,
+0xFD24,
+0xFE12,
+
 0xFF83,
-0x79B3,
+0x030F,
+0x040A,
+0x0506,
+0x0604,
+
+0xFF82,
+0xD312,
+0xD436,
+0xD560,
+
+0xD601,
+0xD700,
+0xD801,
+0xD9C0,
+0xDA06,
+0xDB00,
+
+0xFF83,
+0x0B04,
+0x0C4C,
+0xFF82,
+0x925D,
+
+
+
+
+
+0xFF83,
+0x7983,
+0x8607,
+0x8700,
 0x9005,
 0x9405,
 0x98D4,
 0xA228,
 0xA300,
-0xA401,
+0xA40F,
+0xAD65,
+0xAE80,
+0xAF20,
+0xB410,
+0xB554,
+0xB6bd,
+0xB774,
+0xB89d,
+0xBA4F,
+0xBF0C,
+0xC080,
+0xFF87,
+0xC922,
 0xFF84,
-0x5E20,
+0x4902,
+0x4A00,
+0x4B03,
+0x4C80,
+0xFF83,
+0xCB03,
+0xCCC0,
+
+0x8200,
+
+0xFF84,
 0x3D00,
 0x3E00,
 0x3F06,
@@ -987,88 +987,105 @@ static const u16 db8131m_720p_common[] = {
 0x4253,
 0x4300,
 0x4400,
-0xFF83,
-0xAE77,
-0xB554,
-0xB6C3,
-0xB770,
-0xB8A4,
-0xFF87,
-0xC922,
-0xFF84,
-0x4902,
-0x4A00,
-0x4B03,
-0x4C40,
-0xFF83,
-0xCB03,
-0xCCC0,
 
-/*
- AWB STE
-*/
+0x5503,
+0x5610,
+0x5714,
+0x5807,
+0x5904,
+0x5A03,
+0x5B03,
+0x5C15,
+
+0x5D01,
+0x5E0F,
+0x5F07,
+0x6014,
+0x6114,
+0x6212,
+0x6311,
+0x6414,
+
+0x6503,
+0x6605,
+0x6715,
+0x6804,
+0x6903,
+0x6A02,
+0x6B03,
+0x6C15,
+
+0xFF85,
+0xE20C,
+
+
+
+
+
 0xFFA1,
-0xA021,
-0xA16E,
-0xA225,
-0xA36A,
-0xA49C,
-0xA54A,
-0xA6AA,
-0xA73C,
-0xA878,
-0xA96E,
-0xAA8F,
-0xAB42,
-0xAC5A,
-0xAD60,
-0xAE78,
-0xAF4B,
-0xB04D,
-0xB16F,
-0xB263,
-0xB35D,
-0xB401,
-0xB502,
-0xB603,
-0xB704,
-0xB846,
-0xB994,
-0xBA5A,
-0xBB84,
-0xBC48,
-0xBDAC,
-0xBE50,
-0xBFA8,
-0xC049,
-0xC181,
-0xC258,
-0xC378,
+0xA05c,
+0xA17a,
+0xA269,
+0xA36f,
+0xA473,
+0xA559,
+0xA68c,
+0xA740,
+0xA869,
+0xA969,
+0xAA83,
+0xAB52,
+0xAC5b,
+0xAD6a,
+0xAE71,
+0xAF56,
+0xB051,
+0xB171,
+0xB265,
+0xB35b,
+0xB453,
+0xB57f,
+0xB662,
+0xB772,
+0xB84a,
+0xB987,
+0xBA59,
+0xBB78,
+0xBC41,
+0xBD91,
+0xBE4b,
+0xBF89,
+0xC05b,
+0xC185,
+0xC260,
+0xC37b,
 
-/*
- UR
-*/
-0xFF87,
-0xC922,
+
+
+
+
+
 0xFF83,
 0xEA00,
-0xEB72,
+0xEB71,
 0xECFF,
-0xEDCE,
+0xEDB1,
 0xEE00,
-0xEF00,
+0xEF19,
 0xF0FF,
-0xF1F4,
+0xF1F3,
 0xF200,
-0xF350,
+0xF34D,
 0xF4FF,
 0xF5FC,
-0xF600,
-0xF700,
+0xF6FF,
+0xF7FB,
 0xF8FF,
-0xF9C0,
+0xF9BA,
 0xFA00,
-0xFB80,
+0xFB85,
+
+
 0xFC00,
 0xFD6D,
 0xFF85,
@@ -1089,8 +1106,10 @@ static const u16 db8131m_720p_common[] = {
 0x0BBE,
 0x0C00,
 0x0D86,
+
+
 0x0E00,
-0x0F3A,
+0x0F40,
 0x10FF,
 0x11FE,
 0x1200,
@@ -1108,15 +1127,16 @@ static const u16 db8131m_720p_common[] = {
 0x1E00,
 0x1F99,
 
-/*
- ADF
-*/
-0xFF85,
-0x1640,
+
+
+
+
+
+
 0xFFA0,
 0x1080,
-0x60A3,
-0x61CD,
+0x6073,
+0x611F,
 0x690C,
 0x6A60,
 0xC204,
@@ -1131,109 +1151,147 @@ static const u16 db8131m_720p_common[] = {
 0x3A00,
 0x3B30,
 0x3C08,
+
+
+
+
 0xFF85,
 0x0F43,
 0x1043,
+
+
 0x1730,
-0x2613,
-0x3C00,
+0x2610,
+0x3c00,
 0x1843,
 0x2700,
-0x3D00,
-0x12E5,
-0x2240,
+0x3d00,
+
+
+0x12A5,
+0x2228,
 0x2370,
-0x3804,
+0xFF86,
+0x1204,
+
+0xFF85,
+0x3812,
 0x3930,
+0xFF86,
+0x1308,
+
+
+0xFF85,
 0x15F4,
 0x2D20,
 0x2E30,
 0x4340,
 0x4480,
+
+
 0x04FB,
 0x0605,
-0x14A3,
+0x1454,
 0x2800,
 0x2903,
 0x2A20,
-0x2B03,
-0x2C20,
+0x2B00,
+0x2C22,
+
 0x3E00,
-0x3F06,
+0x3F09,
 0x4022,
-0x4101,
-0x4255,
-0x5800,
-0x5904,
-0x5A06,
-0x5B2E,
-0x5C41,
-0x5D4E,
-0x5E6A,
-0x5F7F,
-0x6091,
-0x61A0,
-0x62C1,
-0x63D3,
-0x64E3,
-0x65EB,
-0x66F2,
-0x67F9,
-0x68FF,
+0x4102,
+0x4233,
+
+
+
+0x16A0,
+
 0x4700,
-0x4818,
-0x492D,
-0x4A47,
-0x4B57,
-0x4C63,
-0x4D7A,
-0x4E8C,
-0x4F9A,
-0x50A8,
-0x51C0,
-0x52CE,
-0x53D6,
-0x54EC,
-0x55F4,
-0x56FB,
+0x4803,
+0x4910,
+0x4A25,
+0x4B3B,
+0x4C4F,
+0x4D6D,
+0x4E86,
+0x4F9B,
+0x50AD,
+0x51C2,
+0x52D3,
+0x53E1,
+0x54E9,
+0x55F2,
+0x56FA,
 0x57FF,
+
 0x5800,
-0x590E,
-0x5A15,
-0x5B2E,
-0x5C41,
-0x5D4E,
-0x5E6A,
-0x5F7F,
-0x6091,
-0x61A0,
-0x62C1,
-0x63D3,
-0x64E3,
-0x65EB,
-0x66F2,
-0x67F9,
+0x5908,
+0x5a14,
+0x5b30,
+0x5c4A,
+0x5d5D,
+0x5e75,
+0x5f89,
+0x609A,
+0x61A7,
+0x62BC,
+0x63D0,
+0x64E0,
+0x65E7,
+0x66EE,
+0x67F5,
 0x68FF,
-0xFF87,
-0xD500,
+
+
+
+0xFFA0,
+0xC012,
+0xC130,
+0xC208,
+
+0xFFA1,
+0x3001,
+0x3133,
+0x3250,
+0x3300,
+0x3400,
+0x350B,
+0x3601,
+0x3780,
+0x3809,
+0x3922,
+0x3A00,
+0x3B30,
+0x3C08,
+0x3D02,
+
+
+
 0xFF85,
 0x863C,
+0x1A54,
+
 0xFFA0,
-0x4378,
-0x4498,
-0x458E,
-0x4670,
+0x4380,
+0x4480,
+0x4580,
+0x4680,
 0x4780,
 0x4880,
 0x4980,
 0x4A80,
-0x4B76,
-0x4C90,
-0x4D9C,
-0x4E90,
+0x4B80,
+0x4C80,
+0x4D80,
+0x4E80,
+
 0x52B4,
 0x5320,
 0x5400,
+
+
 0xFF85,
 0x32C0,
 0x3340,
@@ -1241,103 +1299,183 @@ static const u16 db8131m_720p_common[] = {
 0x3590,
 0x3620,
 0x3700,
-0x1CD1,
-0x1D47,
-0x1E00,
-0x1F91,
+
+
+0x1cD1,
+0x1d47,
+0x1e00,
+0x1f91,
 0x201A,
 0x2100,
+
+
+
 0xFF87,
-0xAD01,
-0xABFF,
-0xACFF,
-0xFF82,
-0x78DB,
-0xFFA1,
-0x99A0,
-0xFF83,
-0x4F05,
-0x0304,
-0x0404,
-0x0504,
-0x0604,
-0xFF82,
-0xF901,
-0xFA60,
-0xFBB0,
-0xFC70,
-0xFD30,
-0xFE12,
-0xD600,
-0xD7A0,
-0xD801,
-0xD900,
-0xDA02,
-0xDB80,
-0xD318,
-0xD430,
-0xD5D0,
-0xF30B,
-0xF4A9,
-0xFF83,
-0x0F02,
-0x10EE,
-0xFF82,
-0x9102,
-0x924F,
+0xDC05,
+0xDDB0,
+0xd500,
 
-/* LineLength*/
-0xFF87,         /*Page mode */
-0xDC05,         /* by Yong In Han 091511*/
-0xDD34,         /* by Yong In Han 091511*/
-0xd500,         /* Flip*/
 
-/*
- MIPI
-*/
+
+
 0xFFD0,
-0x2013,
-0x2011,
+0x200E,
+0x200D,
+
+
+
+
+
 0xFFB0,
 0x5402,
 0x3805,
+0x3C81,
+0x5011,		/* MIPI.PHY_HL_TX_SEL */
+0x5880,		/* PHY_LP_TX_PARA	*/
+0x5900,
+
+
 0xFF85,
-0xB401,
-0xB501,
+0xB71e,
+0xB80A,
+0xB900,
+0xBC04,
+0xFF87,
+0x0C00,
+0x0D20,
+0x1003,
+0x11E0,
+
+
 0xFF86,
-0x380A,
+0x371e,
+0x3805,
 0x3900,
 0x3C04,
+
+0xFF87,
+0x2302,
+0x2472,
+0x2501,
+0x260F,
+0x2700,
+0x2800,
+0x2901,
+0x2A00,
+0x2B3F,
+0x2CFF,
+0x2DFF,
+0x2E00,
+0x2F02,
+0x3001,
+0x31FF,
+0x3203,
+0x33FF,
+0x3400,
+0x3500,
+0x3600,
+0x3710,
+0x3802,
+0x3980,
+0x3A01,
+0x3BF0,
+0x3C01,
+0x3D0C,
+0x3E04,
+0x3F04,
+0x4066,
+0x415E,
+0x4204,
+0x4304,
+0x4498,
+0x4578,
+0x4622,
+0x4728,
+0x4820,
+0x4978,
+0x4A60,
+0x4B03,
+0x4C00,
+
+
+0xFF86,
+0x2E1e,
+0x2F05,
+0x3000,
+0x3304,
+
+0xFF87,
+0x4D00,
+0x4E72,
+0x4F01,
+0x500F,
+0x5100,
+0x5200,
+0x5301,
+0x5400,
+0x553F,
+0x56FF,
+0x57FF,
+0x5800,
+0x5902,
+0x5A01,
+0x5BFF,
+0x5C01,
+0x5DFF,
+0x5E00,
+0x5F00,
+0x6000,
+0x6110,
+0x6202,
+0x6380,
+0x6401,
+0x65F0,
+
 0xFFD1,
 0x0700,
-0x0B00,
+0x0b00,
+
 0xFFC0,
-0x1042,
+0x1041,
+0xE796,
 
 };
 
-static const u16 db8131m_vga_common[] = {
-/*
- Command Preview 30fps
-*/
-0xFF87,
-0xDE7A,
-0xFFC0,
-0x1042,
+/* Set-data based on SKT VT standard ,when using 3G network */
+/* 8fps */
+static const u32 db8131m_vt_common[] = {
 
-/*Fixed 30fps Mode*/
-0xFF82,		/*Page mode*/
-0x9102,		/*AeMode*/
-0xFF83,		/*Page mode*/
-0x0D02,		/*Frame Rate*/
-0x0E26,		/*Frame Rate*/
-0x0304,		/*TimeMax60Hz*/
-0x0403,		/*Time3Lux60Hz*/
-0x0502,		/*Time2Lut60Hz*/
-0x0601,		/*Time1Lut60Hz*/
-0xFF82,		/*Page mode*/
-0x925D,
 };
+
+/* Set-data based on Samsung Reliabilty Group standard */
+/* ,when using WIFI. 15fps*/
+static const u32 db8131m_vt_wifi_common[] = {
+/* Fixed 15fps */
+
+};
+
+/*===========================================*/
+/* CAMERA_PREVIEW - ?   ?  */
+/*============================================*/
+
+static const u16 db8131m_preview[] = {
+0xE796,
+};
+
+/*===========================================
+	CAMERA_SNAPSHOT
+============================================*/
+
+static const u16 db8131m_capture[] = {
+0xffC0,
+0x1003,
+0xE796,
+};
+
+static const u16 db8131m_720p_common[] = {
+
+};
+
 /*===========================================*/
 /*	CAMERA_RECORDING WITH 25fps  */
 /*============================================*/
@@ -1350,45 +1488,49 @@ MIPI Interface for Noncontious Clock
 
 /*Recording Anti-Flicker 60Hz END of Initial*/
 
-0xFF87,
-0xDE7A,
-0xFFC0,
-0x1042,
-
 /* Fixed 25fps Mode*/
 0xFF82,		/*Page mode*/
 0x9102,		/*AeMode*/
-0x921D,		/*AeMode*/
+
 0xFF83,		/*Page mode*/
-0x0D02,		/*Frame Rate*/
-0x0E94,		/*Frame Rate*/
-0x0304,		/*TimeMax60Hz*/
-0x0403,		/*Time3Lux60Hz*/
-0x0502,		/*Time2Lut60Hz*/
-0x0601,		/*Time1Lut60Hz*/
+0x0B04,
+0x0C4C,
+0x1104,
+0x1276,
+
+0x0308,
+0x0406,
+0x0504,
+0x0604,
+0x070C,
+0x0807,
+0x0903,
+0x0A03,
+
 0xFF82,		/*Page mode*/
 0x925D,
 };
 
 static const u16 db8131m_recording_50Hz_common[] = {
-0xFF87,
-0xDE7A,
-0xFFC0,
-0x1042,
-
-/* Fixed 25fps Mode*/
 0xFF82,		/*Page mode*/
 0x9102,		/*AeMode*/
-0x9219,		/*AeMode*/
+
 0xFF83,		/*Page mode*/
-0x1302,		/*Frame Rate*/
-0x1494,		/*Frame Rate*/
-0x0703,		/*TimeMax50Hz*/
-0x0803,		/*Time3Lux50Hz*/
-0x0902,		/*Time2Lut50Hz*/
-0x0A01,		/*Time1Lut50Hz*/
+0x0B04,
+0x0C4C,
+0x1104,
+0x1276,
+0x0308,
+0x0406,
+0x0504,
+0x0604,
+0x070C,
+0x0807,
+0x0903,
+0x0A03,
+
 0xFF82,		/*Page mode*/
-0x925D,
+0x9259,
 };
 
 static const u16 db8131m_stream_stop[] = {
@@ -1510,11 +1652,11 @@ static const u16 db8131m_vt_7fps[] = {
 0x9102,		/*AeMode*/
 0xFF83,		/*Page mode*/
 0x0B09,		/*Frame Rate*/
-0x0C33,		/*Frame Rate*/
-0x030F,		/*TimeMax60Hz*/
-0x040A,		/*Time3Lux60Hz*/
-0x0506,		/*Time2Lut60Hz*/
-0x0604,		/*Time1Lut60Hz*/
+0x0C24,		/* Frame Rate */
+0x0311,		/* TimeMax60Hz */
+0x0410,		/* Time3Lux60Hz */
+0x050C,		/* Time2Lut60Hz */
+0x0608,		/* Time1Lut60Hz */
 0xFF82,		/*Page mode*/
 0x925D,
 };
@@ -1525,11 +1667,11 @@ static const u16 db8131m_vt_10fps[] = {
 0x9102,		/*AeMode*/
 0xFF83,		/*Page mode*/
 0x0B06,		/*Frame Rate*/
-0x0C70,		/*Frame Rate*/
-0x030A,		/*TimeMax60Hz*/
-0x0408,		/*Time3Lux60Hz*/
-0x0506,		/*Time2Lut60Hz*/
-0x0604,		/*Time1Lut60Hz*/
+0x0C75,		/* Frame Rate */
+0x030C,		/* TimeMax60Hz */
+0x040B,		/* Time3Lux60Hz */
+0x050A,		/* Time2Lut60Hz */
+0x0608,		/* Time1Lut60Hz */
 0xFF82,		/*Page mode*/
 0x925D,
 };
@@ -1540,11 +1682,11 @@ static const u16 db8131m_vt_12fps[] = {
 0x9102,		/*AeMode*/
 0xFF83,		/*Page mode*/
 0x0B05,		/*Frame Rate*/
-0x0C5E,		/*Frame Rate*/
-0x0309,		/*TimeMax60Hz*/
-0x0408,		/*Time3Lux60Hz*/
-0x0506,		/*Time2Lut60Hz*/
-0x0604,		/*Time1Lut60Hz*/
+0x0C62,		/* Frame Rate */
+0x030A,		/* TimeMax60Hz */
+0x0409,		/* Time3Lux60Hz */
+0x0508,		/* Time2Lut60Hz */
+0x0606,		/* Time1Lut60Hz */
 0xFF82,		/*Page mode*/
 0x925D,
 };
@@ -1555,7 +1697,7 @@ static const u16 db8131m_vt_15fps[] = {
 0x9102,		/*AeMode*/
 0xFF83,		/*Page mode*/
 0x0B04,		/*Frame Rate*/
-0x0C4C,		/*Frame Rate*/
+0x0CB0,		/* Frame Rate */
 0x0308,		/*TimeMax60Hz*/
 0x0406,		/*Time3Lux60Hz*/
 0x0504,		/*Time2Lut60Hz*/
@@ -1573,6 +1715,8 @@ static const u16 db8131m_pattern_on[] = {
 0xAC28,		/*RGBYcFunc*/
 0xFFA0,		/*Page mode*/
 0x0205,		/*TPG Gamma*/
+
+0xE796,
 };
 
 /*******************************************************
@@ -1584,17 +1728,37 @@ static const u16 db8131m_pattern_off[] = {
 0xACFF,		/*RGBYcFunc*/
 0xFFA0,		/*Page mode*/
 0x0200,		/*TPG Disable*/
+
+0xE796,
 };
 
+static const u16 db8131m_flip_off[] = {
+0xFF87,
+0xd500,
+};
 
 static const u16 db8131m_vflip[] = {
-0xFF87,		/*Page mode */
-0xd508,		/*VFlip*/
+0xFF87,
+0xd508,
 };
 
 static const u16 db8131m_hflip[] = {
-0xFF87,		/*Page mode */
-0xd504,		/*HFlip*/
+0xFF87,
+0xd504,
 };
 
+static const u16 db8131m_flip_off_No15fps[] = {
+0xFF87,
+0xd502,
+};
+
+static const u16 db8131m_vflip_No15fps[] = {
+0xFF87,
+0xd50A,
+};
+
+static const u16 db8131m_hflip_No15fps[] = {
+0xFF87,
+0xd506,
+};
 #endif		/* __DB8131M_REG_H */

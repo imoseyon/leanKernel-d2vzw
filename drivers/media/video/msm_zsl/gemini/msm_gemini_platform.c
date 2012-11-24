@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,14 +28,22 @@
 struct ion_client *gemini_client;
 
 void msm_gemini_platform_p2v(struct file  *file,
+#if !defined(CONFIG_MSM_IOMMU)
 				struct msm_mapped_buffer **msm_buffer,
+#endif
 				struct ion_handle **ionhandle)
 {
+#if !defined(CONFIG_MSM_IOMMU)
 	if (msm_subsystem_unmap_buffer(
 		(struct msm_mapped_buffer *)*msm_buffer) < 0)
 		pr_err("%s: umapped stat memory\n",  __func__);
 	*msm_buffer = NULL;
+#endif
+
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#if defined(CONFIG_MSM_IOMMU)
+	ion_unmap_iommu(gemini_client, *ionhandle, CAMERA_DOMAIN, GEN_POOL);
+#endif
 	ion_free(gemini_client, *ionhandle);
 	*ionhandle = NULL;
 #elif CONFIG_ANDROID_PMEM
@@ -44,18 +52,30 @@ void msm_gemini_platform_p2v(struct file  *file,
 }
 
 uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p,
+#if !defined(CONFIG_MSM_IOMMU)
 				struct msm_mapped_buffer **msm_buffer,
 				int *subsys_id, struct ion_handle **ionhandle)
+#else
+				struct ion_handle **ionhandle)
+#endif
 {
 	unsigned long paddr;
 	unsigned long size;
 	int rc;
+#if !defined(CONFIG_MSM_IOMMU)
 	int flags;
+#endif
+
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	*ionhandle = ion_import_fd(gemini_client, fd);
 	if (IS_ERR_OR_NULL(*ionhandle))
 		return 0;
+#if !defined(CONFIG_MSM_IOMMU)
 	rc = ion_phys(gemini_client, *ionhandle, &paddr, (size_t *)&size);
+#else
+	rc = ion_map_iommu(gemini_client, *ionhandle, CAMERA_DOMAIN, GEN_POOL,
+			SZ_4K, 0, &paddr, (unsigned long *)&size, UNCACHED, 0);
+#endif
 #elif CONFIG_ANDROID_PMEM
 	unsigned long kvstart;
 	rc = get_pmem_file(fd, &paddr, &kvstart, &size, file_p);
@@ -67,21 +87,36 @@ uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p,
 	if (rc < 0) {
 		GMN_PR_ERR("%s: get_pmem_file fd %d error %d\n", __func__, fd,
 			rc);
+#if !defined(CONFIG_MSM_IOMMU)
 		return 0;
+#else
+		goto error1;
+#endif
 	}
 
 	/* validate user input */
 	if (len > size) {
 		GMN_PR_ERR("%s: invalid offset + len\n", __func__);
+#if !defined(CONFIG_MSM_IOMMU)
 		return 0;
+#else
+		goto error1;
+#endif
 	}
 
+#if !defined(CONFIG_MSM_IOMMU)
 	flags = MSM_SUBSYSTEM_MAP_IOVA;
 	*subsys_id = MSM_SUBSYSTEM_CAMERA;
 	*msm_buffer = msm_subsystem_map_buffer(paddr, size,
 					flags, subsys_id, 1);
 	if (IS_ERR((void *)*msm_buffer)) {
 		pr_err("%s: msm_subsystem_map_buffer failed\n", __func__);
+#else
+	return paddr;
+error1:
+#endif
+
+#if !defined(CONFIG_MSM_IOMMU)
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 		ion_free(gemini_client, *ionhandle);
 		*ionhandle = NULL;
@@ -92,6 +127,13 @@ uint32_t msm_gemini_platform_v2p(int fd, uint32_t len, struct file **file_p,
 	}
 	paddr = ((struct msm_mapped_buffer *)*msm_buffer)->iova[0];
 	return paddr;
+
+#else /*CONFIG_MSM_IOMMU*/
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	ion_free(gemini_client, *ionhandle);
+	return 0;
+#endif
+#endif
 }
 
 int msm_gemini_platform_init(struct platform_device *pdev,

@@ -28,7 +28,7 @@
 #define GPIO_MAIN_CAM_STBY		4
 #define GPIO_CAM_MCLK				5
 #define GPIO_CAM_CORE_EN			6
-#define GPIO_MAIN_MIC_BIAS		7/* Temp */
+
 #define GPIO_CODEC_I2C_SDA              8
 #define GPIO_CODEC_I2C_SCL              9
 #define GPIO_LCD_22V_EN			10
@@ -51,6 +51,7 @@
 #define GPIO_KEY_HOME			40
 
 #define GPIO_ALS_INT			-1 /* 42 */
+
 #define GPIO_SENSOR_SNS_SDA		44
 #define GPIO_SENSOR_SNS_SCL		45
 #define GPIO_CAM_A_EN			46
@@ -77,6 +78,7 @@
 #define GPIO_TOUCHKEY_SDA		71
 #define GPIO_TOUCHKEY_SCL		72
 #endif
+
 #define GPIO_USB_I2C_SDA		73
 #define GPIO_USB_I2C_SCL		74
 #define GPIO_CAM2_RST_N				76
@@ -97,6 +99,17 @@
 
 #define GPIO_NFC_IRQ			106
 #define GPIO_CAM1_RST_N				107
+
+/*MSM8960 NC GPIOs*/
+#define GPIO_NC_7				7
+#define GPIO_NC_42				42 /* >= REV03 */
+#define GPIO_NC_15				15
+#define GPIO_NC_71				71
+#define GPIO_NC_72				72
+#define GPIO_NC_99				99
+#define GPIO_NC_100				100
+#define GPIO_NC_101				101
+#define GPIO_NC_102				102
 
 /* ES305B GPIO */
 #define MSM_AUD_A2220_WAKEUP		35
@@ -119,6 +132,7 @@
 #define PMIC_GPIO_CODEC_RST		38
 #define PMIC_GPIO_OTG_POWER		42
 #define PMIC_GPIO_LCD_RST		43
+#define PMIC_GPIO_VGH_ESD_DET           44
 
 /* gpio for changed list */
 enum {

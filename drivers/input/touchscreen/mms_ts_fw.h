@@ -5,15 +5,20 @@
 
 #if defined(CONFIG_MACH_JASPER)
 #define SEC_TKEY_FACTORY_TEST
-#define FW_VERSION 0x11
+#define FW_VERSION 0x23
 #include "jasper_fw.h"
 #elif defined(CONFIG_MACH_APEXQ)
 #define FW_VERSION 0x1
 #include "apexq_fw.h"
+#elif defined(CONFIG_MACH_INFINITE)
+#define SEC_TKEY_FACTORY_TEST
+#define FW_VERSION 0x1
+#include "infinite_fw.h"
 #elif defined(CONFIG_MACH_GOGH)
-#define FW_VERSION 0x8
+#define FW_VERSION 0x11
 #include "gogh_fw.h"
-#elif defined(CONFIG_MACH_ESPRESSO_ATT) || defined(CONFIG_MACH_ESPRESSO_VZW)
+#elif defined(CONFIG_MACH_ESPRESSO_ATT) || defined(CONFIG_MACH_ESPRESSO_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO_SPR)
 #define FW_VERSION 0x16
 #include "espresso_fw.h"
 #else
@@ -28,7 +33,9 @@ const  u8 MELFAS_binary[] = {
 
 #if defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT)\
 	|| defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_SKT)\
-	|| defined(CONFIG_MACH_M2_DCM)
+	|| defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_STRETTO)\
+	|| defined(CONFIG_MACH_SUPERIORLTE_SKT)\
+	|| defined(CONFIG_MACH_K2_KDI)
 /* 4.8" OCTA LCD */
 #define FW_VERSION 0xBB
 #include "d2_fw.h"

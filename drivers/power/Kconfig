@@ -393,4 +393,27 @@ config WIRELESS_CHARGING
 	help
 	 Say Y here to enable support for wireless charging
 
+config BATTERY_SAMSUNG_STRETTO
+	tristate "samsung battery driver for STRETTO"
+	help
+	  Say Y here to enable support for batteries
+	  with MAX77693 (I2C) chips.
+	  MAX77693 have Charger,Fuelgauge, MUIC etc.
+	  This is samsung battery driver for STRETTO
+
+config BATTERY_MAX17047_FUELGAUGE
+	tristate "Maxim MAX17047 Fuel Gauge"
+	depends on I2C
+	help
+	  Say Y here to enable support for the MAX17047_FUELGAUGE
+	  MAX17047 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17047 is configured
+	  to operate with a single lithium cell
+
+config BATTERY_MAX77693_CHARGER
+	tristate "MAX77693 battery charger support"
+	depends on MFD_MAX77693 && I2C
+	help
+	 Say Y here to enable support for the MAX77693 charger
+
 endif # POWER_SUPPLY

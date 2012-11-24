@@ -154,9 +154,14 @@ static struct gpiomux_setting wcnss_5wire_active_cfg = {
 static struct gpiomux_setting sdc4_suspend_cfg = {
 	.func = GPIOMUX_FUNC_2,
 	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting sdc4_suspend2_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
 
 static struct gpiomux_setting sdc4_active_cfg = {
 	.func = GPIOMUX_FUNC_2,
@@ -650,7 +655,7 @@ static struct msm_gpiomux_config sdc4_interface[] = {
 		.gpio = 88,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &sdc4_active_cfg,
-			[GPIOMUX_SUSPENDED] = &sdc4_suspend_cfg,
+			[GPIOMUX_SUSPENDED] = &sdc4_suspend2_cfg,
 		},
 	},
 };

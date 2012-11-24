@@ -6,7 +6,7 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
+ */ 
 
 /*
  * linux_virtual_adapter.c
@@ -52,7 +52,7 @@ ssh_virtual_adapter_ifnum_to_adapter(SshInterceptor interceptor,
   for (i = 0; i < SSH_LINUX_MAX_VIRTUAL_ADAPTERS; i++)
     {
       adapter = interceptor->virtual_adapters[i];
-      if (adapter && adapter->dev->ifindex == adapter_ifnum)
+      if (adapter && adapter->dev->ifindex == adapter_ifnum)	
 	return adapter;
     }
   return NULL;
@@ -72,7 +72,7 @@ void ssh_virtual_adapter_get_status(SshInterceptor interceptor,
   unsigned int dev_flags;
   void *adapter_context;
   SshUInt32 i;
-
+  
   if (adapter_ifnum == SSH_INTERCEPTOR_INVALID_IFNUM)
     {
       i = 0;
@@ -84,7 +84,7 @@ void ssh_virtual_adapter_get_status(SshInterceptor interceptor,
 	  adapter = interceptor->virtual_adapters[i];
 	  if (adapter == NULL)
 	    continue;
-
+	  
 	  SSH_ASSERT(adapter->dev != NULL);
 	  adapter_ifnum = (SshInterceptorIfnum) adapter->dev->ifindex;
 	  snprintf(adapter_name, SSH_INTERCEPTOR_IFNAME_SIZE,
@@ -93,16 +93,16 @@ void ssh_virtual_adapter_get_status(SshInterceptor interceptor,
 	  adapter_state = SSH_VIRTUAL_ADAPTER_STATE_DOWN;
 	  if (dev_flags & IFF_UP)
 	    adapter_state = SSH_VIRTUAL_ADAPTER_STATE_UP;
-	  adapter_context = adapter->adapter_context;
-	  ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
+	  adapter_context = adapter->adapter_context;	  
+	  ssh_kernel_mutex_unlock(interceptor->interceptor_lock); 
 	  local_bh_enable();
 	  (*status_cb)(SSH_VIRTUAL_ADAPTER_ERROR_OK_MORE,
-		       adapter_ifnum, adapter_name, adapter_state,
+		       adapter_ifnum, adapter_name, adapter_state, 
 		       adapter_context, context);
 	  i++;
 	  goto restart;
 	}
-      ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
+      ssh_kernel_mutex_unlock(interceptor->interceptor_lock); 
       local_bh_enable();
       (*status_cb)(SSH_VIRTUAL_ADAPTER_ERROR_NONEXISTENT,
 		   SSH_INTERCEPTOR_INVALID_IFNUM, NULL,
@@ -113,15 +113,15 @@ void ssh_virtual_adapter_get_status(SshInterceptor interceptor,
   else
     {
       local_bh_disable();
-      ssh_kernel_mutex_lock(interceptor->interceptor_lock);
-      adapter = ssh_virtual_adapter_ifnum_to_adapter(interceptor,
-						     adapter_ifnum);
+      ssh_kernel_mutex_lock(interceptor->interceptor_lock); 
+      adapter = ssh_virtual_adapter_ifnum_to_adapter(interceptor, 
+						     adapter_ifnum);      
       if (adapter == NULL)
 	{
 	  ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
 	  local_bh_enable();
 	  (*status_cb)(SSH_VIRTUAL_ADAPTER_ERROR_NONEXISTENT,
-		       adapter_ifnum, NULL,
+		       adapter_ifnum, NULL, 
 		       SSH_VIRTUAL_ADAPTER_STATE_UNDEFINED,
 		       NULL, context);
 	  return;
@@ -138,7 +138,7 @@ void ssh_virtual_adapter_get_status(SshInterceptor interceptor,
       ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
       local_bh_enable();
       (*status_cb)(SSH_VIRTUAL_ADAPTER_ERROR_OK,
-		   adapter_ifnum, adapter_name, adapter_state,
+		   adapter_ifnum, adapter_name, adapter_state, 
 		   adapter_context, context);
       return;
     }
@@ -210,7 +210,7 @@ void ssh_virtual_adapter_attach(SshInterceptor interceptor,
 
   if (callback)
     (*callback)(SSH_VIRTUAL_ADAPTER_ERROR_OK,
-		adapter_ifnum, adapter_name, adapter_state,
+		adapter_ifnum, adapter_name, adapter_state, 
 		adapter_context, context);
 }
 
@@ -262,7 +262,7 @@ void ssh_virtual_adapter_detach(SshInterceptor interceptor,
       snprintf(adapter_name, SSH_INTERCEPTOR_IFNAME_SIZE,
 	       "%s", adapter->dev->name);
     }
-
+  
   ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
   local_bh_enable();
 
@@ -273,7 +273,7 @@ void ssh_virtual_adapter_detach(SshInterceptor interceptor,
   if (callback)
     (*callback)(SSH_VIRTUAL_ADAPTER_ERROR_OK,
 		adapter_ifnum, adapter_name,
-		SSH_VIRTUAL_ADAPTER_STATE_UNDEFINED,
+		SSH_VIRTUAL_ADAPTER_STATE_UNDEFINED, 
 		NULL, context);
 }
 
@@ -292,7 +292,7 @@ void ssh_virtual_adapter_detach_all(SshInterceptor interceptor)
       adapter = interceptor->virtual_adapters[i];
       if (adapter == NULL)
 	continue;
-
+      
       detach_cb = NULL;
       adapter_context = NULL;
       if (adapter->detach_cb != NULL)
@@ -308,10 +308,10 @@ void ssh_virtual_adapter_detach_all(SshInterceptor interceptor)
 	{
 	  ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
 	  local_bh_enable();
-
+	  
 	  /* Destroy adapter_context. */
 	  (*detach_cb)(adapter_context);
-
+	  
 	  goto restart;
 	}
     }
@@ -325,9 +325,9 @@ void ssh_virtual_adapter_detach_all(SshInterceptor interceptor)
 static struct net_device_stats *
 ssh_virtual_adapter_get_stats(struct net_device *dev)
 {
-  SshVirtualAdapter adapter =
+  SshVirtualAdapter adapter = 
     (SshVirtualAdapter) SSH_LINUX_NET_DEVICE_PRIV(dev);
-
+  
   if (adapter)
     return &adapter->low_level_stats;
 
@@ -336,7 +336,7 @@ ssh_virtual_adapter_get_stats(struct net_device *dev)
 
 /* Netdevice low level transmit callback function. */
 static int
-ssh_virtual_adapter_xmit(struct sk_buff *skbp,
+ssh_virtual_adapter_xmit(struct sk_buff *skbp, 
 			 struct net_device *dev)
 {
   struct net_device_stats *stats;
@@ -350,14 +350,14 @@ ssh_virtual_adapter_xmit(struct sk_buff *skbp,
   SSH_ASSERT(skbp != NULL && dev != NULL);
 
   interceptor = ssh_interceptor_context;
-
+  
   ssh_kernel_mutex_lock(interceptor->interceptor_lock);
   adapter = (SshVirtualAdapter) SSH_LINUX_NET_DEVICE_PRIV(dev);
   if (adapter == NULL)
     {
       /* Virtual adapter is not attached. */
       ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
-      SSH_DEBUG(SSH_D_NICETOKNOW,
+      SSH_DEBUG(SSH_D_NICETOKNOW, 
 		("Device %d [%s] is not attached to a SshVirtualAdapter",
 		 dev->ifindex, dev->name));
     discard:
@@ -375,7 +375,7 @@ ssh_virtual_adapter_xmit(struct sk_buff *skbp,
     {
       /* This is not very uncommon. Packets end up here if the virtual
 	 adapter is set up when policymanager is not running. We discard
-	 the packets silently, as otherwise the stack will attempt to
+	 the packets silently, as otherwise the stack will attempt to 
 	 transmit IPv6 IGMP messages indefinitely. */
       ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
       SSH_DEBUG(SSH_D_LOWOK,
@@ -390,14 +390,14 @@ ssh_virtual_adapter_xmit(struct sk_buff *skbp,
   /* Pass the packet to the packet callback. */
   ipp = ssh_interceptor_packet_alloc_header(interceptor,
 				 SSH_PACKET_FROMPROTOCOL,
-				 SSH_PROTOCOL_ETHERNET,
+				 SSH_PROTOCOL_ETHERNET, 
 				 ifnum_in,
 				 SSH_INTERCEPTOR_INVALID_IFNUM,
 				 skbp,
                                  FALSE, FALSE, TRUE);
   if (ipp == NULL)
     {
-      SSH_DEBUG(SSH_D_NICETOKNOW,
+      SSH_DEBUG(SSH_D_NICETOKNOW, 
 		("Could not allocate packet header, virtual adapter %d [%s]",
 		 adapter->dev->ifindex, adapter->dev->name));
       stats->tx_errors++;
@@ -412,19 +412,19 @@ ssh_virtual_adapter_xmit(struct sk_buff *skbp,
 
   ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
 
-  SSH_DEBUG(SSH_D_NICETOKNOW,
-	    ("Passing skb %p from virtual adapter %d [%s] to engine",
+  SSH_DEBUG(SSH_D_NICETOKNOW, 
+	    ("Passing skb %p from virtual adapter %d [%s] to engine", 
 	     ipp->skb, (int)ifnum_in, dev->name));
-
+  
   /* Call the callback.  This will eventually free `pp'. */
   (*packet_cb)(interceptor, (SshInterceptorPacket) ipp, adapter_context);
-
+  
   return NET_XMIT_SUCCESS;
 }
 
 #ifdef HAVE_NET_DEVICE_OPS
 static const struct net_device_ops ssh_virtual_adapter_ops = {
-	.ndo_start_xmit		= ssh_virtual_adapter_xmit,
+	.ndo_start_xmit 	= ssh_virtual_adapter_xmit,
         .ndo_get_stats          = ssh_virtual_adapter_get_stats,
 };
 #endif
@@ -434,7 +434,7 @@ static const struct net_device_ops ssh_virtual_adapter_ops = {
 static void
 ssh_virtual_adapter_low_level_setup(struct net_device *dev)
 {
-  /* Empty at the moment, but some netdevice specific settings could be done
+  /* Empty at the moment, but some netdevice specific settings could be done 
      here. */
 }
 
@@ -469,7 +469,7 @@ ssh_virtual_adapter_attach_low_level(SshVirtualAdapter adapter,
 
 
   /* Allocate net_device. */
-  adapter->dev = alloc_netdev(private_data_size, adapter_name,
+  adapter->dev = alloc_netdev(private_data_size, adapter_name, 
 			      ssh_virtual_adapter_low_level_setup);
   if (adapter->dev == NULL)
     {
@@ -495,17 +495,17 @@ ssh_virtual_adapter_attach_low_level(SshVirtualAdapter adapter,
   memset(&adapter->low_level_stats, 0, sizeof(struct net_device_stats));
   adapter->dev->tx_queue_len = 0; /* no transmit queue */
   adapter->dev->destructor = ssh_virtual_adapter_destructor;
-
+  
   /* Fill in the fields of the device structure with ethernet-generic
      values. */
   ether_setup(adapter->dev);
-
+  
   adapter->dev->flags |= IFF_POINTOPOINT;
 
   /* Set default MTU. */
   adapter->dev->mtu -= 100;
 
-  /* Register the network device. This call assigns a valid ifindex to
+  /* Register the network device. This call assigns a valid ifindex to 
      virtual adapter and it triggers an interface event. */
   result = register_netdev(adapter->dev);
 
@@ -529,7 +529,7 @@ static void
 ssh_virtual_adapter_detach_low_level(SshVirtualAdapter adapter)
 {
 #ifdef DEBUG_LIGHT
-  unsigned char adapter_name[SSH_INTERCEPTOR_IFNAME_SIZE];
+  unsigned char adapter_name[SSH_INTERCEPTOR_IFNAME_SIZE];  
   SshInterceptorIfnum adapter_ifnum;
 #endif /* DEBUG_LIGHT */
 
@@ -547,15 +547,15 @@ ssh_virtual_adapter_detach_low_level(SshVirtualAdapter adapter)
 
   /* Unlink netdevice structure, it will be freed in the device destructor. */
   adapter->dev = NULL;
-
+  
   /* All ok. */
-  SSH_DEBUG(SSH_D_NICETOKNOW, ("Virtual adapter %d [%s] detached",
+  SSH_DEBUG(SSH_D_NICETOKNOW, ("Virtual adapter %d [%s] detached", 
 			       (int)adapter_ifnum, adapter_name));
 }
 
 /* *************** Creating and Destroying Virtual Adapters *****************/
 
-/* Workhorse for destroy_all and error handler for create. `adapter' must
+/* Workhorse for destroy_all and error handler for create. `adapter' must 
    not be in the adapter table when this function is called. */
 static Boolean
 ssh_virtual_adapter_destroy(SshInterceptor interceptor,
@@ -564,29 +564,29 @@ ssh_virtual_adapter_destroy(SshInterceptor interceptor,
   SSH_ASSERT(adapter != NULL);
 
   ssh_kernel_mutex_assert_is_locked(interceptor->interceptor_lock);
-
+  
   SSH_DEBUG(SSH_D_HIGHOK,
-	    ("Destroying virtual adapter %d [%s]",
+	    ("Destroying virtual adapter %d [%s]", 
 	     (adapter->dev ? adapter->dev->ifindex : -1),
 	     (adapter->dev ? adapter->dev->name : "unknown")));
-
+  
   if (adapter->dev)
     {
-      /* Detach and destroy net_device. */
+      /* Detach and destroy net_device. */ 
       ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
       local_bh_enable();
-
+      
       /* This call will produce an interface event. */
       ssh_virtual_adapter_detach_low_level(adapter);
-
+      
       local_bh_disable();
       ssh_kernel_mutex_lock(interceptor->interceptor_lock);
       adapter->dev = NULL;
     }
-
+  
   /* Free adapter */
   ssh_free(adapter);
-
+  
   /* All ok. */
   return TRUE;
 }
@@ -605,7 +605,7 @@ ssh_virtual_adapter_create(SshInterceptor interceptor,
   local_bh_disable();
   ssh_kernel_mutex_lock(interceptor->interceptor_lock);
 
-  /* Find a slot for this virtual adapter. Slot index will be used in
+  /* Find a slot for this virtual adapter. Slot index will be used in 
      adapter name and ethernet address creation. */
   for (i = 0; i < SSH_LINUX_MAX_VIRTUAL_ADAPTERS; i++)
     {
@@ -630,26 +630,26 @@ ssh_virtual_adapter_create(SshInterceptor interceptor,
       return FALSE;
     }
   interceptor->virtual_adapters[i] = adapter;
-
+  
   /* Create a name for the virtual adapter. */
   if (adapter_name == NULL)
     {
       snprintf(created_adapter_name, SSH_INTERCEPTOR_IFNAME_SIZE,
-	       "%s%d", SSH_ADAPTER_NAME_PREFIX, (int)i);
+	       "%s%d", SSH_ADAPTER_NAME_PREFIX, (int)i);  
       adapter_name = created_adapter_name;
     }
 
   /* Create ethernet hardware address for virtual adapter. */
   ssh_virtual_adapter_interface_ether_address(i, adapter_enaddr);
 
-  /* We can't have lock when attaching the adapter, as it will create an
-     interface event. It is guaranteed that the adapter will not disappear
+  /* We can't have lock when attaching the adapter, as it will create an 
+     interface event. It is guaranteed that the adapter will not disappear 
      under us, as it not yet marked initialized. */
   ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
   local_bh_enable();
 
   /* Initialize net_device structure and attach it to the system. */
-  if (!ssh_virtual_adapter_attach_low_level(adapter,
+  if (!ssh_virtual_adapter_attach_low_level(adapter, 
 					    adapter_name, adapter_enaddr))
     {
       SSH_DEBUG(SSH_D_ERROR,
@@ -668,11 +668,11 @@ ssh_virtual_adapter_create(SshInterceptor interceptor,
   /* Lock for finalizing adapter creation. */
   local_bh_disable();
   ssh_kernel_mutex_lock(interceptor->interceptor_lock);
-
+  
   /* Mark adapter initialized. */
   adapter->initialized = 1;
-
-  /* Adapter low level attach failed or adapter was destroyed under us.
+  
+  /* Adapter low level attach failed or adapter was destroyed under us. 
      Free it now. */
   if (error || adapter->destroyed)
     {
@@ -715,7 +715,7 @@ ssh_virtual_adapter_destroy_all(SshInterceptor interceptor)
 	  check_again = TRUE;
 	  continue;
 	}
-
+      
       /* Remove adapter from table. */
       interceptor->virtual_adapters[i] = NULL;
 
@@ -747,7 +747,7 @@ int ssh_interceptor_virtual_adapter_init(SshInterceptor interceptor)
 
   if (num_virtual_adapters > SSH_LINUX_MAX_VIRTUAL_ADAPTERS)
     {
-      SSH_DEBUG(SSH_D_NICETOKNOW,
+      SSH_DEBUG(SSH_D_NICETOKNOW, 
 		("Maximum value for num_virtual_adapters is %d",
 		 SSH_LINUX_MAX_VIRTUAL_ADAPTERS));
       return -1;
@@ -797,7 +797,7 @@ ssh_virtual_adapter_param_decode(SshVirtualAdapterParams params,
   SSH_ASSERT(len > 0);
 
   memset(params, 0, sizeof(*params));
-
+  
   if (ssh_decode_array(data, len,
 		       SSH_DECODE_UINT32(&params->mtu),
 		       SSH_DECODE_UINT32(&params->dns_ip_count),
@@ -813,48 +813,48 @@ ssh_virtual_adapter_param_decode(SshVirtualAdapterParams params,
   /* DNS. */
   if (params->dns_ip_count)
     {
-      params->dns_ip = ssh_calloc(params->dns_ip_count,
+      params->dns_ip = ssh_calloc(params->dns_ip_count, 
 				  sizeof(*params->dns_ip));
       if (params->dns_ip == NULL)
 	goto error;
-
+      
       for (i = 0; i < params->dns_ip_count; i++)
 	{
-	  decode_len = ssh_decode_ipaddr_array(dns, dns_len,
+	  decode_len = ssh_decode_ipaddr_array(dns, dns_len, 
 					       &params->dns_ip[i]);
 	  if (decode_len == 0)
-	    goto error;
+	    goto error;	  
 	  dns += decode_len;
 	  dns_len -= decode_len;
 	}
     }
-
+  
       /* WINS. */
   if (params->wins_ip_count)
     {
-      params->wins_ip = ssh_calloc(params->wins_ip_count,
+      params->wins_ip = ssh_calloc(params->wins_ip_count, 
 				   sizeof(*params->wins_ip));
       if (params->wins_ip == NULL)
 	goto error;
-
+      
       for (i = 0; i < params->wins_ip_count; i++)
 	{
-	  decode_len = ssh_decode_ipaddr_array(wins, wins_len,
+	  decode_len = ssh_decode_ipaddr_array(wins, wins_len, 
 					       &params->wins_ip[i]);
 	  if (decode_len == 0)
-	    goto error;
+	    goto error;	  
 	  wins += decode_len;
 	  wins_len -= decode_len;
 	}
     }
-
+  
   if (win_domain_len)
     {
       params->win_domain = ssh_memdup(win_domain, win_domain_len);
       if (params->win_domain == NULL)
 	goto error;
     }
-
+  
   params->netbios_node_type = (SshUInt8) netbios_node_type;
 
   return TRUE;
@@ -966,7 +966,7 @@ ssh_virtual_adapter_send(SshInterceptor interceptor,
 
 	  /* Pullup requests data from the header of a writable skb. */
 	  if (likely(skb_headlen(ipp->skb) >= SSH_IPH4_HDRLEN
-		     && !skb_shared(ipp->skb) &&
+		     && !skb_shared(ipp->skb) && 
 		     SSH_SKB_WRITABLE(ipp->skb, SSH_IPH4_HDRLEN)))
 	    cp = ipp->skb->data;
 
@@ -994,10 +994,10 @@ ssh_virtual_adapter_send(SshInterceptor interceptor,
             }
 
 	  if (likely(skb_headlen(ipp->skb) >= SSH_IPH6_HDRLEN
-		     && !skb_shared(ipp->skb) &&
+		     && !skb_shared(ipp->skb) && 
 		     SSH_SKB_WRITABLE(ipp->skb, SSH_IPH6_HDRLEN)))
 	    cp = ipp->skb->data;
-
+	    
           if (cp == NULL)
 	    {
 	      ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
@@ -1017,7 +1017,7 @@ ssh_virtual_adapter_send(SshInterceptor interceptor,
 
       /* Insert header to the packet. */
       cp = NULL;
-      if (likely((skb_headroom(ipp->skb) >=
+      if (likely((skb_headroom(ipp->skb) >= 
 		  (SSH_ETHERH_HDRLEN + SSH_INTERCEPTOR_PACKET_HARD_HEAD_ROOM))
 		 && !skb_shared(ipp->skb) && SSH_SKB_WRITABLE(ipp->skb, 0)))
 	cp = skb_push(ipp->skb, SSH_ETHERH_HDRLEN);
@@ -1049,7 +1049,7 @@ ssh_virtual_adapter_send(SshInterceptor interceptor,
   skb->protocol = eth_type_trans(skb, adapter->dev);
   skb->dev = adapter->dev;
 
-  /* Update per virtual adapter statistics. */
+  /* Update per virtual adapter statistics. */ 
   stats = &adapter->low_level_stats;
   stats->rx_packets++;
   stats->rx_bytes += skb->len;
@@ -1057,17 +1057,18 @@ ssh_virtual_adapter_send(SshInterceptor interceptor,
   ssh_kernel_mutex_unlock(interceptor->interceptor_lock);
   local_bh_enable();
 
-  /* Send the skb up towards stack. If it is IP (or ARP), it will be
+  /* Send the skb up towards stack. If it is IP (or ARP), it will be 
      intercepted by ssh_interceptor_packet_in. */
   netif_rx(skb);
-
+  
   /* Put the packet header on freelist. */
   ssh_interceptor_packet_free((SshInterceptorPacket) ipp);
   return;
-
+  
  error:
   ssh_interceptor_packet_free(pp);
 
  error_already_freed:
   return;
 }
+

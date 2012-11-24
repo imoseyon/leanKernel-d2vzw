@@ -17,13 +17,13 @@
 #include <linux/bootmem.h>
 #include <asm/mach-types.h>
 #include <asm/mach/mmc.h>
-#include <mach/msm_bus_board.h>
 #include <mach/board.h>
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_bus.h>
 #include "devices.h"
 #include "board-8960.h"
+#include "board-storage-common-a.h"
 
 static struct msm_bus_vectors sdcc_init_vectors[] = {
 	{
@@ -322,7 +322,7 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 };
 
 static unsigned int sdc1_sup_clk_rates[] = {
-	400000, 24000000, 48000000
+	400000, 24000000, 48000000, 96000000
 };
 
 static unsigned int sdc3_sup_clk_rates[] = {
@@ -347,7 +347,9 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 	.pclk_src_dfab	= 1,
 	.nonremovable	= 1,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
+	.uhs_caps   = (MMC_CAP_1_8V_DDR | MMC_CAP_UHS_DDR50),
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
+	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif
 
@@ -372,7 +374,8 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.xpc_cap	= 1,
 	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600),
+			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600 | MMC_CAP_1_8V_DDR),
+			.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif
 
@@ -393,6 +396,7 @@ static struct mmc_platform_data msm8960_sdc4_data = {
 	.register_status_notify	= brcm_wifi_status_register,
 #endif
 	.msm_bus_scale_data = &sdcc_bus_scale_pdata,
+	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif
 

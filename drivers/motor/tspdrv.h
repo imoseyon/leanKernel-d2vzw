@@ -104,9 +104,9 @@ int32_t g_nforce_32;
 #if defined(CONFIG_MACH_JAGUAR)
 #define GP_CLK_N_DEFAULT			211/*About 177hz*/
 #elif defined(CONFIG_MACH_AEGIS2)
-#define GP_CLK_N_DEFAULT			216/*About 174hz*/
+#define GP_CLK_N_DEFAULT			184/*About 204 Hz*/
 #else
-#define GP_CLK_N_DEFAULT			183
+#define GP_CLK_N_DEFAULT			183/*About 205 Hz*/
 #endif
 #define GP_CLK_D_DEFAULT			91/* 50% duty cycle */
 #define IMM_PWM_MULTIPLIER		    181/* Must be integer */
@@ -215,6 +215,10 @@ int32_t g_nlra_gp_clk_pwm_mul = IMM_PWM_MULTIPLIER;
 		#define DbgRecord(_x_)
 	#endif /* defined(VIBE_RECORD) && defined(VIBE_DEBUG) */
 #endif  /* __KERNEL__ */
+
+#if defined(CONFIG_MOTOR_DRV_MAX77693)
+extern void max77693_vibtonz_en(bool en);
+#endif
 
 #endif  /* _TSPDRV_H */
 

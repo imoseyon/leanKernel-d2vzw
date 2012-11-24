@@ -631,7 +631,7 @@ static int yas_acc_core_driver_init(struct yas_acc_private_data *data)
 {
 	struct yas_acc_driver_callback *cbk;
 	struct yas_acc_driver *driver;
-	int err;
+	int err = -ENODEV;
 
 	data->driver = driver =
 		kzalloc(sizeof(struct yas_acc_driver), GFP_KERNEL);
@@ -651,10 +651,14 @@ static int yas_acc_core_driver_init(struct yas_acc_private_data *data)
 	cbk->msleep = yas_acc_msleep;
 
 #ifdef CONFIG_YAS_ACC_MULTI_SUPPORT
-	if (data->used_chip == K3DH_ENABLED)
-		err = yas_acc_driver_lis3dh_init(driver);
-	else if (data->used_chip == BMA25X_ENABLED)
-		err = yas_acc_driver_BMA25X_init(driver);
+	#ifdef CONFIG_YAS_ACC_DRIVER_LIS3DH
+		if (data->used_chip == K3DH_ENABLED)
+			err = yas_acc_driver_lis3dh_init(driver);
+	#endif
+	#ifdef CONFIG_YAS_ACC_DRIVER_BMA250
+		if (data->used_chip == BMA25X_ENABLED)
+			err = yas_acc_driver_BMA25X_init(driver);
+	#endif
 #else
 	err = yas_acc_driver_init(driver);
 #endif
@@ -1436,7 +1440,10 @@ static int yas_acc_probe(struct i2c_client *client,
 
 	if (client->dev.platform_data != NULL)
 		platform_data = client->dev.platform_data;
-
+	else {
+		err = -ENODEV;
+		goto ERR1;
+	}
 #endif
 	/* Setup private data */
 	data = kzalloc(sizeof(struct yas_acc_private_data), GFP_KERNEL);

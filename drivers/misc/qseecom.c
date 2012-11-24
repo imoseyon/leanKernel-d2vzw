@@ -1,3 +1,4 @@
+
 /* Qualcomm Secure Execution Environment Communicator (QSEECOM) driver
  *
  * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
@@ -1164,7 +1165,13 @@ static int qsee_vote_for_clock(void)
 static void qsee_disable_clock_vote(void)
 {
 	if (!qsee_perf_client)
-		return ;
+		return;
+
+	/* Check if the clk is valid */
+	if (IS_ERR_OR_NULL(qseecom_bus_clk)) {
+		pr_warn("qseecom bus clock is null or error");
+		return;
+	}
 
 	/* Check if the clk is valid */
 	if (IS_ERR_OR_NULL(qseecom_bus_clk)) {
@@ -1374,7 +1381,6 @@ static int qseecom_release(struct inode *inode, struct file *file)
 		mutex_unlock(&pil_access_lock);
 	}
 	kfree(data);
-	qsee_disable_clock_vote();
 
 	return ret;
 }

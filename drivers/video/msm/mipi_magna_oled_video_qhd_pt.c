@@ -654,7 +654,7 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 }
 
 static struct mipi_panel_data mipi_pd = {
-	.panel_name = "SMD_AMS429QD02\n",
+	.panel_name = "SMD_AMS452GP32\n",
 	.ready_to_on = {samsung_display_on_cmds
 				, ARRAY_SIZE(samsung_display_on_cmds)},
 	.ready_to_off	= {samsung_panel_ready_to_off_cmds

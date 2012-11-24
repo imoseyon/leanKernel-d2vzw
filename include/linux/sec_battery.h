@@ -30,6 +30,7 @@ struct sec_bat_platform_data {
 	int (*check_batt_type) (void);
 	unsigned int iterm;
 	unsigned int charge_duration;
+	unsigned int wpc_charge_duration;
 	unsigned int recharge_duration;
 	unsigned int max_voltage;
 	unsigned int recharge_voltage;

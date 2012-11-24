@@ -41,7 +41,7 @@ static struct led_classdev msm_kp_bl_led = {
 
 static int msm_tkey_led_probe(struct platform_device *pdev)
 {
-	int rc;
+	int rc = 1;
 
 	rc = led_classdev_register(&pdev->dev, &msm_kp_bl_led);
 	if (rc) {

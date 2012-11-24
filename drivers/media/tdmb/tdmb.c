@@ -49,7 +49,10 @@
 
 #include <linux/io.h>
 #include <mach/gpio.h>
-
+#ifdef CONFIG_MACH_JAGUAR
+#include <linux/wakelock.h>
+static struct wake_lock tdmb_wlock;
+#endif
 #include "tdmb.h"
 #define TDMB_PRE_MALLOC 1
 
@@ -75,20 +78,34 @@ static struct tdmb_drv_func *tdmbdrv_func;
 static bool tdmb_pwr_on;
 static bool tdmb_power_on(void)
 {
-	bool ret;
-
 	if (tdmb_create_databuffer(tdmbdrv_func->get_int_size()) == false) {
-		DPRINTK("%s : tdmb_create_databuffer fail\n", __func__);
-		ret = false;
-	} else if (tdmb_create_workqueue() == true) {
-		DPRINTK("%s : tdmb_create_workqueue ok\n", __func__);
-		ret = tdmbdrv_func->power_on();
-	} else {
-		ret = false;
+		DPRINTK("tdmb_create_databuffer fail\n");
+		goto create_databuffer_fail;
 	}
-	tdmb_pwr_on = ret;
-	DPRINTK("%s : ret(%d)\n", __func__, ret);
-	return ret;
+	if (tdmb_create_workqueue() == false) {
+		DPRINTK("tdmb_create_workqueue fail\n");
+		goto create_workqueue_fail;
+	}
+	if (tdmbdrv_func->power_on() == false) {
+		DPRINTK("power_on fail\n");
+		goto power_on_fail;
+	}
+
+	DPRINTK("power_on success\n");
+#ifdef CONFIG_MACH_JAGUAR
+	wake_lock(&tdmb_wlock);
+#endif
+	tdmb_pwr_on = true;
+	return true;
+
+power_on_fail:
+	tdmb_destroy_workqueue();
+create_workqueue_fail:
+	tdmb_destroy_databuffer();
+create_databuffer_fail:
+	tdmb_pwr_on = false;
+
+	return false;
 }
 static bool tdmb_power_off(void)
 {
@@ -98,10 +115,12 @@ static bool tdmb_power_off(void)
 		tdmbdrv_func->power_off();
 		tdmb_destroy_workqueue();
 		tdmb_destroy_databuffer();
+#ifdef CONFIG_MACH_JAGUAR
+		wake_unlock(&tdmb_wlock);
+#endif
 		tdmb_pwr_on = false;
 	}
 	tdmb_last_ch = 0;
-
 	return true;
 }
 
@@ -368,6 +387,8 @@ static long tdmb_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct ensemble_info_type *ensemble_info;
 	struct tdmb_dm dm_buff;
 
+	DPRINTK("call tdmb_ioctl : 0x%x\n", cmd);
+
 	if (_IOC_TYPE(cmd) != IOCTL_MAGIC) {
 		DPRINTK("tdmb_ioctl : _IOC_TYPE error\n");
 		return -EINVAL;
@@ -475,6 +496,8 @@ static long tdmb_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			, &dm_buff, sizeof(struct tdmb_dm)))
 			DPRINTK("IOCTL_TDMB_GET_DM : copy_to_user failed\n");
 		ret = true;
+		DPRINTK("rssi %d, ber %d, ANT %d\n",
+			dm_buff.rssi, dm_buff.ber, dm_buff.antenna);
 		break;
 	}
 
@@ -552,7 +575,9 @@ static int tdmb_probe(struct platform_device *pdev)
 #if TDMB_PRE_MALLOC
 	tdmb_make_ring_buffer();
 #endif
-
+#ifdef CONFIG_MACH_JAGUAR
+	wake_lock_init(&tdmb_wlock, WAKE_LOCK_IDLE, "tdmb_wlock");
+#endif
 	return 0;
 }
 
@@ -617,6 +642,9 @@ static void __exit tdmb_exit(void)
 	platform_driver_unregister(&tdmb_driver);
 
 	tdmb_exit_bus();
+#ifdef CONFIG_MACH_JAGUAR
+	wake_lock_destroy(&tdmb_wlock);
+#endif
 }
 
 module_init(tdmb_init);

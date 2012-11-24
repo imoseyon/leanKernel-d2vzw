@@ -38,9 +38,12 @@
 #include <mach/socinfo.h>
 #include <../../mm/mm.h>
 #include <linux/fmem.h>
+#include <mach/msm8960-gpio.h>
 
 void *strongly_ordered_page;
 char strongly_ordered_mem[PAGE_SIZE*2-4];
+
+#define MAX_FIXED_AREA_SIZE 0x10000000
 
 void map_page_strongly_ordered(void)
 {
@@ -83,67 +86,29 @@ void write_to_strongly_ordered_memory(void)
 }
 EXPORT_SYMBOL(write_to_strongly_ordered_memory);
 
-void flush_axi_bus_buffer(void)
-{
-#if defined(CONFIG_ARCH_MSM7X27) && !defined(CONFIG_ARCH_MSM7X27A)
-	__asm__ __volatile__ ("mcr p15, 0, %0, c7, c10, 5" \
-				    : : "r" (0) : "memory");
-	write_to_strongly_ordered_memory();
-#endif
-}
-
-#define CACHE_LINE_SIZE 32
-
-/* These cache related routines make the assumption that the associated
- * physical memory is contiguous. They will operate on all (L1
- * and L2 if present) caches.
+/* These cache related routines make the assumption (if outer cache is
+ * available) that the associated physical memory is contiguous.
+ * They will operate on all (L1 and L2 if present) caches.
  */
 void clean_and_invalidate_caches(unsigned long vstart,
 	unsigned long length, unsigned long pstart)
 {
-	unsigned long vaddr;
-
-	for (vaddr = vstart; vaddr < vstart + length; vaddr += CACHE_LINE_SIZE)
-		asm ("mcr p15, 0, %0, c7, c14, 1" : : "r" (vaddr));
-#ifdef CONFIG_OUTER_CACHE
+	dmac_flush_range((void *)vstart, (void *) (vstart + length));
 	outer_flush_range(pstart, pstart + length);
-#endif
-	asm ("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
-	asm ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
-
-	flush_axi_bus_buffer();
 }
 
 void clean_caches(unsigned long vstart,
 	unsigned long length, unsigned long pstart)
 {
-	unsigned long vaddr;
-
-	for (vaddr = vstart; vaddr < vstart + length; vaddr += CACHE_LINE_SIZE)
-		asm ("mcr p15, 0, %0, c7, c10, 1" : : "r" (vaddr));
-#ifdef CONFIG_OUTER_CACHE
+	dmac_clean_range((void *)vstart, (void *) (vstart + length));
 	outer_clean_range(pstart, pstart + length);
-#endif
-	asm ("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
-	asm ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
-
-	flush_axi_bus_buffer();
 }
 
 void invalidate_caches(unsigned long vstart,
 	unsigned long length, unsigned long pstart)
 {
-	unsigned long vaddr;
-
-	for (vaddr = vstart; vaddr < vstart + length; vaddr += CACHE_LINE_SIZE)
-		asm ("mcr p15, 0, %0, c7, c6, 1" : : "r" (vaddr));
-#ifdef CONFIG_OUTER_CACHE
+	dmac_inv_range((void *)vstart, (void *) (vstart + length));
 	outer_inv_range(pstart, pstart + length);
-#endif
-	asm ("mcr p15, 0, %0, c7, c10, 4" : : "r" (0));
-	asm ("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
-
-	flush_axi_bus_buffer();
 }
 
 void *alloc_bootmem_aligned(unsigned long size, unsigned long alignment)
@@ -330,7 +295,8 @@ static void __init reserve_memory_for_mempools(void)
 	}
 }
 
-unsigned long __init reserve_memory_for_fmem(unsigned long fmem_size)
+unsigned long __init reserve_memory_for_fmem(unsigned long fmem_size, 
+						unsigned long align)
 {
 	struct membank *mb;
 	int ret;
@@ -340,12 +306,9 @@ unsigned long __init reserve_memory_for_fmem(unsigned long fmem_size)
 		return 0;
 
 	mb = &meminfo.bank[meminfo.nr_banks - 1];
-	/*
-	 * Placing fmem at the top of memory causes multimedia issues.
-	 * Instead, place it 1 page below the top of memory to prevent
-	 * the issues from occurring.
-	 */
-	fmem_phys = mb->start + (mb->size - fmem_size) - PAGE_SIZE;
+	
+	fmem_phys = mb->start + (mb->size - fmem_size);
+	fmem_phys = ALIGN(fmem_phys-align+1, align);
 	ret = memblock_remove(fmem_phys, fmem_size);
 	BUG_ON(ret);
 
@@ -370,6 +333,24 @@ static void __init initialize_mempools(void)
 	}
 }
 
+static int support_2gb_ddr(void)
+{
+#if defined(CONFIG_MACH_M2_ATT) /* D2_ATT , D2_TMO, D2_CAN */
+	if (system_rev >= BOARD_REV16)
+#elif defined(CONFIG_MACH_M2_SPR) /* D2_SPR, D2_CSPIRE */
+	if (system_rev >= BOARD_REV14)
+#elif defined(CONFIG_MACH_M2_VZW) /* D2_VZW, D2_USCC, D2_MPCS, D2_CRIKET */
+	if (system_rev >= BOARD_REV15)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+	if (system_rev >= BOARD_REV08)
+#else
+	if (false)
+#endif
+		return true;
+	else
+		return false;
+}
+
 void __init msm_reserve(void)
 {
 	unsigned long msm_fixed_area_size;
@@ -380,8 +361,16 @@ void __init msm_reserve(void)
 
 	msm_fixed_area_size = reserve_info->fixed_area_size;
 	msm_fixed_area_start = reserve_info->fixed_area_start;
-	if (msm_fixed_area_size)
-		reserve_info->low_unstable_address = msm_fixed_area_start;
+	if (msm_fixed_area_size) {
+		if (support_2gb_ddr()) {
+			if (msm_fixed_area_start > \
+					reserve_info->low_unstable_address - MAX_FIXED_AREA_SIZE)
+				reserve_info->low_unstable_address \
+					= msm_fixed_area_start;
+		} else {
+			reserve_info->low_unstable_address = msm_fixed_area_start;
+		}
+	}
 
 	calculate_reserve_limits();
 	adjust_reserve_sizes();

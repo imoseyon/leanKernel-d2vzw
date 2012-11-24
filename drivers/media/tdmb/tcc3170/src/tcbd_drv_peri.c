@@ -163,7 +163,7 @@ s32 tcbd_init_peri_gpio(
 		break;
 	}
 
-	tcbd_reg_write_burst_cont(_device, TCBD_GPIO_ALT, cfg_value, 10);
+	tcbd_reg_write_burst_cont(_device, TCBD_GPIO_ALT, cfg_value, 2);
 	/*tcbd_reg_write_burst_cont(_device, TCBD_GPIO_DRV, drv_strength, 2);*/
 	return 0;
 }
@@ -173,7 +173,7 @@ s32 tcbd_select_peri(
 {
 	s32 ret = 0;
 	u8 peri_mode[4] = {0, };
-	u8 interface_speed = tcbd_calc_clock(_device, 3000, 10000);
+	u8 interface_speed = 4; /*tcbd_calc_clock(_device, 3000, 10000);*/
 
 	tcbd_debug(DEBUG_DRV_PERI, "peri type:%d, clock div:%d\n",
 		(s32)(_peri_type), interface_speed);

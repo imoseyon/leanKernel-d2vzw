@@ -17,6 +17,9 @@ typedef struct _sec_param_data {
 #if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_AEGIS2)
 	unsigned int slideCount;
 #endif
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+	unsigned int cp_debuglevel;
+#endif
 } sec_param_data;
 
 typedef enum {
@@ -27,6 +30,9 @@ typedef enum {
 	param_index_movinand_checksum_pass,
 #if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_AEGIS2)
 	param_slideCount,
+#endif
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+	param_cp_debuglevel,
 #endif
 } sec_param_index;
 

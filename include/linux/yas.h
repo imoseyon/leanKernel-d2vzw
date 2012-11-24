@@ -92,6 +92,19 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+
+enum {
+	YAS532_POSITION_0 = 1,
+	YAS532_POSITION_1,
+	YAS532_POSITION_2,
+	YAS532_POSITION_3,
+	YAS532_POSITION_4,
+	YAS532_POSITION_5,
+	YAS532_POSITION_6,
+	YAS532_POSITION_7,
+};
+
+#define YAS532_POSITION_OFFSET	1
 /* -------------------------------------------------------------------------- */
 /*  Structure definition                                                      */
 /* -------------------------------------------------------------------------- */
@@ -405,6 +418,7 @@ struct yas_utility {
 
 struct yas_platform_data {
 	void (*poweron) (int);
+	int mag_orientation;
 };
 
 

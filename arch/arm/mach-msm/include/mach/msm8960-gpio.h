@@ -37,21 +37,35 @@
 #include <mach/m2_skt-gpio.h>
 #elif defined(CONFIG_MACH_M2_DCM)
 #include <mach/m2_dcm-gpio.h>
+#elif defined(CONFIG_MACH_K2_KDI)
+#include <mach/k2_kdi-gpio.h>
 #elif defined(CONFIG_MACH_GOGH)
 #include <mach/gogh-gpio.h>
+#elif defined(CONFIG_MACH_INFINITE)
+#include <mach/infinite-gpio.h>
 #elif defined(CONFIG_MACH_AEGIS2)
 #include <mach/aegis2-gpio.h>
 #elif defined(CONFIG_MACH_ESPRESSO_VZW)
 #include <mach/espresso_vzw-gpio.h>
+#elif defined(CONFIG_MACH_ESPRESSO_SPR)
+#include <mach/espresso_spr-gpio.h>
 #elif defined(CONFIG_MACH_ESPRESSO_ATT)
 #include <mach/espresso_att-gpio.h>
 #elif defined(CONFIG_MACH_ESPRESSO10_VZW)
 #include <mach/espresso10_vzw-gpio.h>
+#elif defined(CONFIG_MACH_ESPRESSO10_SPR)
+#include <mach/espresso10_spr-gpio.h>
+#elif defined(CONFIG_MACH_ESPRESSO10_ATT)
+#include <mach/espresso10_att-gpio.h>
 #elif defined(CONFIG_MACH_COMANCHE)
 #include <mach/comanche-gpio.h>
 #elif defined(CONFIG_MACH_EXPRESS)
 #include <mach/express-gpio.h>
 #elif defined(CONFIG_MACH_ACCELERATE)
 #include <mach/accelerate-gpio.h>
+#elif defined(CONFIG_MACH_STRETTO)
+#include <mach/stretto-gpio.h>
+#elif defined(CONFIG_MACH_SUPERIORLTE_SKT)
+#include <mach/superiorlte_skt-gpio.h>
 
 #endif

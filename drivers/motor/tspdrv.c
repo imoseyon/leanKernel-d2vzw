@@ -107,7 +107,7 @@ static DECLARE_WORK(vibetonz_work, _set_vibetonz_work);
 
 
 static struct hrtimer timer;
-static int max_timeout = 5000;
+static int max_timeout = 10000;
 
 static int vibrator_value = -1;
 static int vibrator_work;
@@ -184,7 +184,7 @@ static void enable_vibetonz_from_user(struct timed_output_dev *dev, int value)
 	vibrator_work = value;
 	schedule_work(&vibetonz_work);
 
-	if (value > 0 && (value != TEST_MODE_TIME)) {
+	if (value > 0) {
 		if (value > max_timeout)
 			value = max_timeout;
 

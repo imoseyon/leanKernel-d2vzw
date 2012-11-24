@@ -55,7 +55,8 @@
 unsigned int mDNIe_data[MAX_LUT_SIZE * 3];
 
 int play_speed_1_5;
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) || \
+	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 boolean camera_mode;
 #endif
 
@@ -408,6 +409,10 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	camera_mode = FALSE;
 #endif
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+	camera_mode = FALSE;
+#endif
+
 	switch (mode) {
 	case mDNIe_UI_MODE:
 		if (isSetDMBMode == 1) {
@@ -437,7 +442,8 @@ void mDNIe_Set_Mode(enum Lcd_mDNIe_UI mode)
 	case mDNIe_CAMERA_MODE:
 		pLut = BYPASS_LUT;
 		sharpvalue = SHARPNESS_BYPASS;
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) || \
+	defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 		camera_mode = TRUE;
 #endif
 		break;
@@ -529,7 +535,6 @@ int is_negativeMode_on(void)
 		return 0;
 	return 1;
 }
-
 void is_play_speed_1_5(int enable)
 {
 	play_speed_1_5 = enable;
@@ -797,7 +802,7 @@ static ssize_t playspeed_store(struct device *dev,
 {
 	int value;
 	sscanf(buf, "%d", &value);
-	
+
 	DPRINT("[Play Speed Set]play speed value = %d\n", value);
 
 	is_play_speed_1_5(value);
@@ -806,6 +811,7 @@ static ssize_t playspeed_store(struct device *dev,
 static DEVICE_ATTR(playspeed, 0664,
 			playspeed_show,
 			playspeed_store);
+
 void init_mdnie_class(void)
 {
 	mdnie_class = class_create(THIS_MODULE, "mdnie");
@@ -860,7 +866,7 @@ void init_mdnie_class(void)
 	if (device_create_file
 		(tune_mdnie_dev, &dev_attr_playspeed) < 0)
 		pr_err("Failed to create device file(%s)!=n",
-		dev_attr_playspeed.attr.name);
+			dev_attr_playspeed.attr.name);
 
 #ifdef MDP4_VIDEO_ENHANCE_TUNING
 	if (device_create_file(tune_mdnie_dev, &dev_attr_tuning) < 0) {

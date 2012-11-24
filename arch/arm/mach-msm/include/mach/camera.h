@@ -27,6 +27,10 @@
 #include <mach/msm_subsystem_map.h>
 #include <linux/ion.h>
 
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+extern int cam_mode;
+#endif
+
 #define CONFIG_MSM_CAMERA_DEBUG
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -199,12 +203,14 @@ struct msm_camera_csi2_params {
 	struct msm_camera_csiphy_params csiphy_params;
 };
 
+#ifndef CONFIG_MSM_CAMERA_V4L2
 #define VFE31_OUTPUT_MODE_PT (0x1 << 0)
 #define VFE31_OUTPUT_MODE_S (0x1 << 1)
 #define VFE31_OUTPUT_MODE_V (0x1 << 2)
 #define VFE31_OUTPUT_MODE_P (0x1 << 3)
 #define VFE31_OUTPUT_MODE_T (0x1 << 4)
 #define VFE31_OUTPUT_MODE_P_ALL_CHNLS (0x1 << 5)
+#endif
 
 #define CSI_EMBED_DATA 0x12
 #define CSI_YUV422_8  0x1E
@@ -492,8 +498,6 @@ struct msm_pmem_region {
 	unsigned long len;
 	struct file *file;
 	struct msm_pmem_info info;
-	struct msm_mapped_buffer *msm_buffer;
-	int subsys_id;
 	struct ion_handle *handle;
 };
 

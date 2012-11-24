@@ -454,6 +454,17 @@ config LEDS_ASIC3
 	  cannot be used. This driver supports hardware blinking with an on+off
 	  period from 62ms to 125s. Say Y to enable LEDs on the HP iPAQ hx4700.
 
+config LEDS_MAX77693
+	bool "LED support for the MAX77693"
+	depends on LEDS_CLASS
+	depends on MFD_MAX77693
+	default n
+	help
+	  This option enables support for the LEDs on the MAX77693.
+	  This driver provides support for the voltage regulators of the MAX77693.
+	  The MAX77693 is a companion power management IC for the smart phones
+	  The Maxim Max 77693 handles PMIC, MUIC, and the flash LED control.
+
 config LEDS_AAT1290A
 	bool "LED support for the AAT1290A"
 	depends on LEDS_CLASS

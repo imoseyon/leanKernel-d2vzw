@@ -174,6 +174,8 @@ from_old_alarm_set:
 		case ANDROID_ALARM_SYSTEMTIME:
 			ktime_get_ts(&tmp_time);
 			break;
+		default:
+			break;
 		}
 		if (copy_to_user((void __user *)arg, &tmp_time,
 		    sizeof(tmp_time))) {

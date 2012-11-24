@@ -817,7 +817,7 @@ int msm_tsens_early_init(struct tsens_platform_data *pdata)
 
 static int __init tsens_tm_init(void)
 {
-	int rc, i;
+	int rc, i, j;
 
 	if (!tmdev) {
 		pr_info("%s : TSENS early init not done.\n", __func__);
@@ -847,8 +847,6 @@ static int __init tsens_tm_init(void)
 		IRQF_TRIGGER_RISING, "tsens_interrupt", tmdev);
 	if (rc < 0) {
 		pr_err("%s: request_irq FAIL: %d\n", __func__, rc);
-		for (i = 0; i < tmdev->tsens_num_sensor; i++)
-			thermal_zone_device_unregister(tmdev->sensor[i].tz_dev);
 		goto fail;
 	}
 
@@ -856,6 +854,9 @@ static int __init tsens_tm_init(void)
 	mb();
 	return 0;
 fail:
+	for (j = 0; j < i; j++)
+		thermal_zone_device_unregister(tmdev->sensor[j].tz_dev);
+
 	tsens_disable_mode();
 	kfree(tmdev);
 	tmdev = NULL;

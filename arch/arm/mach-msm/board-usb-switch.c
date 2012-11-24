@@ -29,7 +29,7 @@ void usb_switch_vcc_on(bool onoff)
 	static struct regulator *reg_l11;
 	static struct regulator *reg_l17;
 
-	if (system_rev < BOARD_REV03) {
+	if (machine_is_ESPRESSO_VZW() && system_rev < BOARD_REV03) {
 		if (!reg_l11) {
 			reg_l11 = regulator_get(NULL, "8921_l11");
 			if (IS_ERR(reg_l11)) {
@@ -109,20 +109,13 @@ void __init usb_switch_init(void)
 	int ret = 0;
 	printk(KERN_ERR "%s: stmpe811 gpio_config\n", __func__);
 
-	if ((machine_is_ESPRESSO_VZW() || machine_is_ESPRESSO10_VZW()) \
-			&& system_rev < BOARD_REV03) {
-
-		ret = gpio_request(GPIO_ADC_INT, "adc_int");
-		if (ret != 0)
-			pr_err("adc_int request failed, ret=%d", ret);
-
+	if (machine_is_ESPRESSO_VZW() && system_rev < BOARD_REV03)
 		gpio_tlmm_config(GPIO_CFG(GPIO_ADC_INT, 0, GPIO_CFG_INPUT,
 			GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);
-	} else if ((machine_is_ESPRESSO_VZW() || machine_is_ESPRESSO10_VZW()) \
-			&& system_rev >= BOARD_REV03) {
+	else
 		gpio_tlmm_config(GPIO_CFG(GPIO_ADC_INT, 0, GPIO_CFG_INPUT,
 			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 0);
-	}
+
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_ADC_SDA, 0, GPIO_CFG_INPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), 1);

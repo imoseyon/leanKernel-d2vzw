@@ -41,6 +41,7 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 #include <linux/ctype.h>
 #include <asm/div64.h>
 
+#define GAMMA_SET_MAX 21
 
 #define BIT_SHIFT 14
 /*
@@ -61,6 +62,7 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 /* PANEL DEPENDET THINGS */
 #if defined(CONFIG_MACH_AEGIS2)
 /*
+*	OLD M2 PANEL
 *	HW Ver <=3,OLD,M2 PANEL, LE3=Less/Equal Than HW 3
 */
 #define V1_300CD_R_LE3  0x18
@@ -88,6 +90,7 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 #define V255_300CD_B_LE3  0xFC
 
 /*
+*	NEW M2 PANEL
 *	HW Ver>=.4,NEW M2 PANEL , GE4 =Greater /Equal HW 4
 */
 #define V1_300CD_R_GE4  0x18
@@ -113,6 +116,35 @@ Copyright (C) 2012, Samsung Electronics. All rights reserved.
 #define V255_300CD_R_GE4  0xB1
 #define V255_300CD_G_GE4  0xAE
 #define V255_300CD_B_GE4  0xF3
+
+
+/*
+*	 SM2 PANEL
+*	 HW ver >= 9, SM2 PANEL, GE9 = Greater /Equal HW 9
+*/
+#define V1_300CD_R_GE9 0x31
+#define V1_300CD_G_GE9 0x00
+#define V1_300CD_B_GE9 0x4F
+
+#define V19_300CD_R_GE9 0x14
+#define V19_300CD_G_GE9 0x6E
+#define V19_300CD_B_GE9 0x00
+
+#define V43_300CD_R_GE9 0xA3
+#define V43_300CD_G_GE9 0xC0
+#define V43_300CD_B_GE9 0x92
+
+#define V87_300CD_R_GE9 0xA4
+#define V87_300CD_G_GE9 0xBA
+#define V87_300CD_B_GE9 0x93
+
+#define V171_300CD_R_GE9 0xBD
+#define V171_300CD_G_GE9 0xC8
+#define V171_300CD_B_GE9 0xAF
+
+#define V255_300CD_R_GE9 0xB0
+#define V255_300CD_G_GE9 0xA2
+#define V255_300CD_B_GE9 0xD1
 
 /* PANEL DEPENDENT THINGS END*/
 #elif defined(CONFIG_MACH_COMANCHE)

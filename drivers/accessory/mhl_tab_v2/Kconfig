@@ -1,0 +1,23 @@
+#
+# Copyright (c) 2012 SAMSUNG INDIA SOFTWARE OPERATIONS
+#
+# Manoj Prabhu B
+#	prabhu.manoj@samsung.com
+
+
+config VIDEO_MHL_TAB_V2
+	bool "Samsung Mobile HD Link Interface"
+	depends on MSM_VIDC && ARCH_MSM
+	default n
+
+config MHL_D3_SUPPORT
+	bool "Support D3 mode in mhl"
+	default n
+
+config MHL_NEW_CBUS_MSC_CMD
+	bool "Read DCAP for distinguish TA and USB"
+	default n
+
+config MHL_SWING_LEVEL
+	bool "Tune mhl drive strength"
+	default n

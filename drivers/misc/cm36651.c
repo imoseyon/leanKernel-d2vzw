@@ -612,6 +612,39 @@ static ssize_t proximity_state_show(struct device *dev,
 	return sprintf(buf, "%d\n", proximity_value);
 }
 
+static ssize_t proximity_thresh_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "prox_threshold = %d\n", ps_reg_setting[1][1]);
+}
+
+static ssize_t proximity_thresh_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cm36651_data *cm36651 = dev_get_drvdata(dev);
+	u8 thresh_value = 0x09;
+	int err = 0;
+
+	err = kstrtou8(buf, 10, &thresh_value);
+	if (err < 0)
+		pr_err("%s, kstrtoint failed.", __func__);
+
+	ps_reg_setting[1][1] = thresh_value;
+	err = cm36651_i2c_write_byte(cm36651, CM36651_PS,
+			PS_THD, ps_reg_setting[1][1]);
+	if (err < 0) {
+		pr_err("%s: cm36651_ps_reg is failed. %d\n", __func__,
+		       err);
+		return err;
+	}
+	pr_info("%s, new threshold = 0x%x\n",
+		__func__, ps_reg_setting[1][1]);
+	msleep(150);
+
+	return size;
+}
+
+
 static ssize_t lightsensor_lux_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
 {
@@ -658,6 +691,10 @@ static DEVICE_ATTR(prox_cal, S_IRUGO | S_IWUSR, proximity_cancel_show,
 	proximity_cancel_store);
 #endif
 static DEVICE_ATTR(state, S_IRUGO | S_IWUSR, proximity_state_show, NULL);
+
+static DEVICE_ATTR(prox_thresh, S_IRUGO | S_IWUSR, proximity_thresh_show,
+	proximity_thresh_store);
+
 static DEVICE_ATTR(lux, S_IRUGO | S_IWUSR, lightsensor_lux_show, NULL);
 
 static DEVICE_ATTR(vendor, S_IRUGO, cm36651_vendor_show, NULL);
@@ -1079,6 +1116,13 @@ static int cm36651_i2c_probe(struct i2c_client *client,
 		goto err_proximity_device_create_file5;
 	}
 
+	if (device_create_file(cm36651->proximity_dev,
+		&dev_attr_prox_thresh) < 0) {
+		pr_err("%s: could not create device file(%s)!\n", __func__,
+			   dev_attr_prox_thresh.attr.name);
+		goto err_proximity_device_create_file6;
+	}
+
 	dev_set_drvdata(cm36651->proximity_dev, cm36651);
 
 
@@ -1114,6 +1158,8 @@ err_light_device_create_file3:
 err_light_device_create_file2:
 	device_remove_file(cm36651->light_dev, &dev_attr_lux);
 err_light_device_create_file1:
+	device_remove_file(cm36651->proximity_dev, &dev_attr_prox_thresh);
+err_proximity_device_create_file6:
 	device_remove_file(cm36651->proximity_dev, &dev_attr_name);
 err_proximity_device_create_file5:
 	device_remove_file(cm36651->proximity_dev, &dev_attr_vendor);

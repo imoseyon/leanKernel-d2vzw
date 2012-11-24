@@ -399,8 +399,10 @@ static int msm_afe_close(struct snd_pcm_substream *substream)
 			dma_buf->area = NULL;
 		}
 	}
+
 	if (dma_buf->addr)
-		free_contiguous_memory_by_paddr(dma_buf->addr);
+		free_contiguous_memory_by_paddr(dma_buf->addr);	
+		
 done:
 	pr_debug("%s: dai->id =%x\n", __func__, dai->id);
 	mutex_unlock(&prtd->lock);
@@ -430,7 +432,7 @@ static int msm_afe_mmap(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pcm_afe_info *prtd = runtime->private_data;
-	int result = 0;
+	int result = 0;	
 
 	pr_debug("%s\n", __func__);
 	prtd->mmap_flag = 1;
@@ -444,7 +446,7 @@ static int msm_afe_mmap(struct snd_pcm_substream *substream,
 		pr_err("Physical address or size of buf is NULL");
 		return -EINVAL;
 	}
-	return result;
+	return result;	
 }
 static int msm_afe_trigger(struct snd_pcm_substream *substream, int cmd)
 {
@@ -478,7 +480,7 @@ static int msm_afe_hw_params(struct snd_pcm_substream *substream,
 	struct snd_dma_buffer *dma_buf = &substream->dma_buffer;
 	struct pcm_afe_info *prtd = runtime->private_data;
 	int rc;
-	unsigned int flags = 0;
+	unsigned int flags = 0;	
 
 	pr_debug("%s:\n", __func__);
 
@@ -514,7 +516,7 @@ static int msm_afe_hw_params(struct snd_pcm_substream *substream,
 
 	pr_debug("%s: dma_buf->area: 0x%p, dma_buf->addr: 0x%x", __func__,
 			(unsigned int *) dma_buf->area, dma_buf->addr);
-
+			
 	if (!dma_buf->area) {
 		pr_err("%s: Invalid Virtual address\n", __func__);
 		if (prtd->mem_buffer) {
@@ -526,7 +528,7 @@ static int msm_afe_hw_params(struct snd_pcm_substream *substream,
 		mutex_unlock(&prtd->lock);
 		return -ENOMEM;
 	}
-
+	
 	dma_buf->bytes = runtime->hw.buffer_bytes_max;
 	memset(dma_buf->area, 0, runtime->hw.buffer_bytes_max);
 	prtd->dma_addr = (u32) dma_buf->addr;

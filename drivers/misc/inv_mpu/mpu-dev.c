@@ -1621,11 +1621,17 @@ static ssize_t accel_calibration_show(struct device *dev,
 {
 
 	int count = 0;
+	int ret = 1;
 
 	printk(buf, "%d %d %d\n",
 		cal_data.x, cal_data.y, cal_data.z);
 
-	count = sprintf(buf, "%d %d %d\n", cal_data.x, cal_data.y, cal_data.z);
+	if (!cal_data.x && !cal_data.y && !cal_data.z)
+		ret = -1;
+
+	count = sprintf(buf, "%d %d %d %d\n", ret, cal_data.x,
+		cal_data.y, cal_data.z);
+
 	return count;
 }
 
@@ -1650,6 +1656,40 @@ static ssize_t accel_calibration_store(struct device *dev,
 	}
 
 	return size;
+}
+
+static int mpu_alert_factory_on(struct i2c_client *client)
+{
+	struct mpu_private_data *mpu =
+	    (struct mpu_private_data *)i2c_get_clientdata(this_client);
+	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
+	int prev_gyro_suspended = 0;
+
+	struct i2c_adapter *slave_adapter[EXT_SLAVE_NUM_TYPES];
+	struct ext_slave_platform_data **pdata_slave = mldl_cfg->pdata_slave;
+	int ii;
+
+	printk(KERN_INFO"@@@@@ %s : %d @@@@@\n", __func__, __LINE__);
+
+	for (ii = 0; ii < EXT_SLAVE_NUM_TYPES; ii++) {
+		if (!pdata_slave[ii])
+			slave_adapter[ii] = NULL;
+		else
+			slave_adapter[ii] =
+				i2c_get_adapter(pdata_slave[ii]->adapt_num);
+	}
+	slave_adapter[EXT_SLAVE_TYPE_GYROSCOPE] = client->adapter;
+
+	mutex_lock(&mpu->mutex);
+	inv_mpu_resume(mldl_cfg,
+				slave_adapter[EXT_SLAVE_TYPE_GYROSCOPE],
+				slave_adapter[EXT_SLAVE_TYPE_ACCEL],
+				slave_adapter[EXT_SLAVE_TYPE_COMPASS],
+				slave_adapter[EXT_SLAVE_TYPE_PRESSURE],
+				INV_THREE_AXIS_ACCEL);
+	mutex_unlock(&mpu->mutex);
+
+	return prev_gyro_suspended;
 }
 
 static ssize_t accel_reactive_alert_store(struct device *dev,
@@ -1678,6 +1718,27 @@ static ssize_t accel_reactive_alert_store(struct device *dev,
 	} else if (sysfs_streq(buf, "2")) {
 		onoff = true;
 		factory_test = true;
+
+		err = inv_serial_read(slave_adapter, 0x68,
+			MPUREG_INT_ENABLE, sizeof(reg_data), &reg_data);
+		if (err)
+			pr_err("%s: read INT failed\n", __func__);
+		reg_data |= BIT_RAW_RDY_EN;
+		err = inv_serial_single_write(slave_adapter, 0x68,
+				 MPUREG_INT_ENABLE,
+				 reg_data);
+		if (err)
+			pr_err("%s: i2c write INT reg failed\n", __func__);
+		err = inv_serial_read(slave_adapter, 0x68,
+				MPUREG_INT_ENABLE, sizeof(reg_data), &reg_data);
+		if (err)
+			pr_err("%s: read INT failed\n", __func__);
+		mpu_alert_factory_on(this_client);
+		err = inv_serial_single_write(slave_adapter, 0x68,
+			MPUREG_SMPLRT_DIV,
+			(unsigned char)19);
+		if (err)
+			pr_err("%s: set_DIV\n", __func__);
 	} else {
 		pr_err("%s: invalid value %d\n", __func__, *buf);
 		return -EINVAL;
@@ -1702,7 +1763,9 @@ static ssize_t accel_reactive_alert_store(struct device *dev,
 			pr_err("%s: i2c write INT reg failed\n", __func__);
 	}
 
+	mldl_cfg->inv_mpu_state->use_accel_reactive = onoff;
 	mldl_cfg->inv_mpu_state->accel_reactive = onoff;
+	mldl_cfg->inv_mpu_state->reactive_factory = factory_test;
 	return count;
 }
 
@@ -1713,7 +1776,12 @@ static ssize_t accel_reactive_alert_show(struct device *dev,
 	struct mpu_private_data *mpu =
 	    (struct mpu_private_data *) i2c_get_clientdata(this_client);
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
-	return sprintf(buf, "%d\n", mldl_cfg->inv_mpu_state->accel_reactive);
+
+	if (mldl_cfg->inv_mpu_state->use_accel_reactive && 
+		!mldl_cfg->inv_mpu_state->accel_reactive)
+		return sprintf(buf, "%d\n", 1);
+	else
+		return sprintf(buf, "%d\n", 0);
 }
 
 static ssize_t mpu_vendor_show(struct device *dev,
@@ -1771,6 +1839,10 @@ static ssize_t ak8975_adc(struct device *dev,
 	struct ext_slave_platform_data **pdata_slave = mldl_cfg->pdata_slave;
 	int ii;
 
+	if (pdata_slave[EXT_SLAVE_TYPE_COMPASS] == NULL)
+		return snprintf(strbuf, PAGE_SIZE, "%s, %d, %d, %d\n",
+			"NG", 0, 0, 0);
+
 	for (ii = 0; ii < EXT_SLAVE_NUM_TYPES; ii++) {
 		if (!pdata_slave[ii])
 			slave_adapter[ii] = NULL;
@@ -1823,7 +1895,7 @@ static ssize_t ak8975_adc(struct device *dev,
 
 	pr_err("%s: raw x = %d, y = %d, z = %d\n", __func__, x, y, z);
 
-	return snprintf(strbuf, PAGE_SIZE, "%s, %d, %d, %d\n",
+	return snprintf(strbuf, PAGE_SIZE, "%s,%d,%d,%d\n",
 		(success ? "OK" : "NG"), x, y, z);
 }
 
@@ -1839,6 +1911,10 @@ static ssize_t ak8975_check_cntl(struct device *dev,
 
 	int ii, err;
 	u8 data;
+
+	if (pdata_slave[EXT_SLAVE_TYPE_COMPASS] == NULL)
+		return snprintf(buf, PAGE_SIZE, "%s\n", "NG");
+
 	for (ii = 0; ii < EXT_SLAVE_NUM_TYPES; ii++) {
 		if (!pdata_slave[ii])
 			slave_adapter[ii] = NULL;
@@ -1962,7 +2038,11 @@ static ssize_t ak8975c_get_status(struct device *dev,
 	struct ext_slave_platform_data **pdata_slave = mldl_cfg->pdata_slave;
 	int success;
 
-	struct ak8975_private_data *private_data =
+	struct ak8975_private_data *private_data;
+	if (pdata_slave[EXT_SLAVE_TYPE_COMPASS] == NULL)
+		return snprintf(buf, PAGE_SIZE, "%s\n", "NG");
+
+	private_data =
 		(struct ak8975_private_data *)
 		pdata_slave[EXT_SLAVE_TYPE_COMPASS]->private_data;
 	if ((private_data->init.asa[0] == 0) |
@@ -2069,12 +2149,19 @@ static ssize_t ak8975c_get_selftest(struct device *dev,
 
 	struct i2c_adapter *slave_adapter[EXT_SLAVE_NUM_TYPES];
 	struct ext_slave_platform_data **pdata_slave = mldl_cfg->pdata_slave;
-	struct ak8975_private_data *private_data =
-		(struct ak8975_private_data *)
-		pdata_slave[EXT_SLAVE_TYPE_COMPASS]->private_data;
+	struct ak8975_private_data *private_data;
+
 	int ii, success;
 	int sf[3] = {0,};
 	int retry = 3;
+
+	if (pdata_slave[EXT_SLAVE_TYPE_COMPASS] == NULL)
+		return snprintf(buf, PAGE_SIZE, "%d, %d, %d, %d\n",
+		0, 0, 0, 0);
+
+	private_data =
+		(struct ak8975_private_data *)
+		pdata_slave[EXT_SLAVE_TYPE_COMPASS]->private_data;
 
 	for (ii = 0; ii < EXT_SLAVE_NUM_TYPES; ii++) {
 		if (!pdata_slave[ii])

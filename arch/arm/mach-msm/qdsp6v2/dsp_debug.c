@@ -254,6 +254,7 @@ static int __init dsp_init(void)
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("%s: platform_driver_register for dspcrashd failed\n",
 			__func__);
+		return rc;
 	}
 	return misc_register(&dsp_misc);
 }

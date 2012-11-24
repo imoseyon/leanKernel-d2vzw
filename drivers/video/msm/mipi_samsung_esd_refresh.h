@@ -45,6 +45,11 @@
 #define WAKE_LOCK_TIME		(10 * HZ)	/* 1 sec */
 #define ESD_EXCEPT_CNT 0
 #define LP11_RECOVERY 0
+
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+#define READ_REGISTER_ESD
+#endif
+
 extern void set_esd_refresh(boolean status);
 extern struct class *sec_class;
 
@@ -61,6 +66,9 @@ struct esd_data_t {
 };
 struct mipi_controls {
 	struct platform_device *mipi_dev;
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	struct early_suspend early_suspend;
+#endif
 };
 #if defined(CONFIG_SAMSUNG_CMC624)
 bool samsung_has_cmc624(void);
@@ -72,4 +80,9 @@ extern void reset_gamma_level(void);
 void register_mipi_dev(struct platform_device *mipi_dev);
 extern void set_esd_enable(void);
 extern void set_esd_disable(void);
+
+#ifdef READ_REGISTER_ESD
+void esd_execute(void);
+#endif
+
 #endif /* __MIPI_SAMSUNG_ESD_REFRESH_H_*/

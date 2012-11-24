@@ -433,6 +433,7 @@ void __ext4_error(struct super_block *sb, const char *function,
 	printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
 	       sb->s_id, function, line, current->comm, &vaf);
 	va_end(args);
+	save_error_info(sb, function, line);
 
 	ext4_handle_error(sb);
 }
@@ -1113,9 +1114,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
 		seq_puts(seq, ",block_validity");
 
 	if (!test_opt(sb, INIT_INODE_TABLE))
-		seq_puts(seq, ",noinit_inode_table");
+		seq_puts(seq, ",noinit_itable");
 	else if (sbi->s_li_wait_mult != EXT4_DEF_LI_WAIT_MULT)
-		seq_printf(seq, ",init_inode_table=%u",
+		seq_printf(seq, ",init_itable=%u",
 			   (unsigned) sbi->s_li_wait_mult);
 
 	ext4_show_quota_options(seq, sb);
@@ -1291,8 +1292,7 @@ enum {
 	Opt_nomblk_io_submit, Opt_block_validity, Opt_noblock_validity,
 	Opt_inode_readahead_blks, Opt_journal_ioprio,
 	Opt_dioread_nolock, Opt_dioread_lock,
-	Opt_discard, Opt_nodiscard,
-	Opt_init_inode_table, Opt_noinit_inode_table,
+	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
 };
 
 static const match_table_t tokens = {
@@ -1365,9 +1365,9 @@ static const match_table_t tokens = {
 	{Opt_dioread_lock, "dioread_lock"},
 	{Opt_discard, "discard"},
 	{Opt_nodiscard, "nodiscard"},
-	{Opt_init_inode_table, "init_itable=%u"},
-	{Opt_init_inode_table, "init_itable"},
-	{Opt_noinit_inode_table, "noinit_itable"},
+	{Opt_init_itable, "init_itable=%u"},
+	{Opt_init_itable, "init_itable"},
+	{Opt_noinit_itable, "noinit_itable"},
 	{Opt_err, NULL},
 };
 
@@ -1844,7 +1844,7 @@ set_qf_format:
 		case Opt_dioread_lock:
 			clear_opt(sb, DIOREAD_NOLOCK);
 			break;
-		case Opt_init_inode_table:
+		case Opt_init_itable:
 			set_opt(sb, INIT_INODE_TABLE);
 			if (args[0].from) {
 				if (match_int(&args[0], &option))
@@ -1855,7 +1855,7 @@ set_qf_format:
 				return 0;
 			sbi->s_li_wait_mult = option;
 			break;
-		case Opt_noinit_inode_table:
+		case Opt_noinit_itable:
 			clear_opt(sb, INIT_INODE_TABLE);
 			break;
 		default:
@@ -1958,17 +1958,16 @@ static int ext4_fill_flex_info(struct super_block *sb)
 	struct ext4_group_desc *gdp = NULL;
 	ext4_group_t flex_group_count;
 	ext4_group_t flex_group;
-	int groups_per_flex = 0;
+	unsigned int groups_per_flex = 0;
 	size_t size;
 	int i;
 
 	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
-	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
-
-	if (groups_per_flex < 2) {
+	if (sbi->s_log_groups_per_flex < 1 || sbi->s_log_groups_per_flex > 31) {
 		sbi->s_log_groups_per_flex = 0;
 		return 1;
 	}
+	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
 
 	/* We allocate both existing and potentially added groups */
 	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
@@ -3723,8 +3722,16 @@ no_journal:
 	return 0;
 
 cantfind_ext4:
+
+	/* for debugging, sangwoo2.lee */
+	/* If you wanna use the flag 'MS_SILENT', call 'print_bh' function within below 'if'. */
+	printk("printing data of superblock-bh\n");
+	print_bh(sb, bh, 0, EXT4_BLOCK_SIZE(sb));
+	/* for debugging */
+
 	if (!silent)
 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
+
 	goto failed_mount;
 
 failed_mount4:
@@ -4822,6 +4829,55 @@ out:
 }
 
 #endif
+
+/* for debugging, sangwoo2.lee */
+void print_bh(struct super_block *sb, struct buffer_head *bh, int start, int len)
+{
+	print_block_data(sb, bh->b_blocknr, bh->b_data, start, len);
+}
+
+void print_block_data(struct super_block *sb, sector_t blocknr, unsigned char *data_to_dump, int start, int len)
+{
+	int i, j;
+	int bh_offset = (start / 16) * 16;
+	char row_data[17] = { 0, };
+	char row_hex[50] = { 0, };
+	char ch;
+
+	printk(KERN_ERR "As EXT4-fs error, printing data in hex\n"); 
+	printk(KERN_ERR " [partition info] s_id : %s, start block# : %llu\n", sb->s_id, sb->s_bdev->bd_part->start_sect);
+	printk(KERN_ERR " dump block# : %llu, start offset(byte) : %d, length(byte) : %d\n", blocknr, start, len);
+	printk(KERN_ERR "-----------------------------------------------------------------------------\n");
+
+	for (i = 0; i < (len + 15) / 16; i++)
+	{
+		for (j = 0; j < 16; j++)
+		{
+			ch = *(data_to_dump + bh_offset + j);
+			if (start <= bh_offset + j && start + len > bh_offset + j)
+			{
+				if (isascii(ch) && isprint(ch))
+					sprintf(row_data + j, "%c", ch);
+				else
+					sprintf(row_data + j, ".");
+
+				sprintf(row_hex + (j * 3), "%2.2x ", ch); 
+			}
+			else
+			{
+				sprintf(row_data + j, " ");
+				sprintf(row_hex + (j * 3), "-- ");
+			}
+		}
+
+		printk(KERN_ERR "0x%4.4x : %s | %s\n", bh_offset, row_hex, row_data);
+		bh_offset += 16;
+
+	}
+	printk(KERN_ERR "-----------------------------------------------------------------------------\n");
+}
+/* for debugging */
+
 
 static struct dentry *ext4_mount(struct file_system_type *fs_type, int flags,
 		       const char *dev_name, void *data)

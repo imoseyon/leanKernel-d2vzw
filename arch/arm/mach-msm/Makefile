@@ -1,3 +1,5 @@
+CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
+
 obj-y += io.o dma.o memory.o
 ifndef CONFIG_ARM_ARCH_TIMER
 obj-y += timer.o
@@ -70,6 +72,7 @@ obj-$(CONFIG_MSM_PIL_QDSP6V3) += pil-q6v3.o
 obj-$(CONFIG_MSM_PIL_QDSP6V4) += pil-q6v4.o
 obj-$(CONFIG_MSM_PIL_RIVA) += pil-riva.o
 obj-$(CONFIG_MSM_PIL_TZAPPS) += pil-tzapps.o
+obj-$(CONFIG_MSM_PIL_VIDC) += pil-vidc.o
 obj-$(CONFIG_MSM_PIL_MODEM) += pil-modem.o
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
 obj-$(CONFIG_ARCH_FSM9XXX) += sirc-fsm9xxx.o
@@ -189,6 +192,9 @@ ifdef CONFIG_CPU_IDLE
 	obj-$(CONFIG_ARCH_MSM9615) += cpuidle.o
 endif
 
+ifdef CONFIG_MSM_CAMERA_V4L2
+	obj-$(CONFIG_ARCH_MSM8X60) += board-msm8x60-camera.o
+endif
 obj-$(CONFIG_ARCH_FSM9XXX) += devices-fsm9xxx.o
 obj-$(CONFIG_ARCH_FSM9XXX) += clock-fsm9xxx.o clock-local.o acpuclock-fsm9xxx.o
 obj-$(CONFIG_ARCH_FSM9XXX) += dfe-fsm9xxx.o rfic-fsm9xxx.o
@@ -241,19 +247,26 @@ obj-$(CONFIG_MACH_T_PROJECT) += board-t-project.o
 obj-$(CONFIG_MACH_JAGUAR) += board-jaguar.o board-jaguar-gpiomux.o
 obj-$(CONFIG_MACH_JASPER) += board-jasper.o board-jasper-gpiomux.o
 obj-$(CONFIG_MACH_GOGH)   += board-gogh.o board-gogh-gpiomux.o
+obj-$(CONFIG_MACH_INFINITE)   += board-infinite.o board-infinite-gpiomux.o
 obj-$(CONFIG_MACH_APEXQ)  += board-apexq.o board-apexq-gpiomux.o
 obj-$(CONFIG_MACH_ESPRESSO_VZW) += board-espresso_vzw.o board-espresso_vzw-gpiomux.o
+obj-$(CONFIG_MACH_ESPRESSO_SPR) += board-espresso_spr.o board-espresso_spr-gpiomux.o
 obj-$(CONFIG_MACH_ESPRESSO_ATT) += board-espresso_att.o board-espresso_att-gpiomux.o
 obj-$(CONFIG_MACH_ESPRESSO10_VZW) += board-espresso10_vzw.o board-espresso10_vzw-gpiomux.o
+obj-$(CONFIG_MACH_ESPRESSO10_SPR) += board-espresso10_spr.o board-espresso10_spr-gpiomux.o
+obj-$(CONFIG_MACH_ESPRESSO10_ATT) += board-espresso10_att.o board-espresso10_att-gpiomux.o
 obj-$(CONFIG_MACH_M2_VZW) += board-m2_vzw.o board-m2_vzw-gpiomux.o
 obj-$(CONFIG_MACH_M2_SPR) += board-m2_spr.o board-m2_spr-gpiomux.o
 obj-$(CONFIG_MACH_M2_ATT) += board-m2_att.o board-m2_att-gpiomux.o
 obj-$(CONFIG_MACH_M2_SKT) += board-m2_skt.o board-m2_skt-gpiomux.o
 obj-$(CONFIG_MACH_M2_DCM) += board-m2_dcm.o board-m2_dcm-gpiomux.o
+obj-$(CONFIG_MACH_K2_KDI) += board-k2_kdi.o board-k2_kdi-gpiomux.o
 obj-$(CONFIG_MACH_AEGIS2) += board-aegis2.o board-aegis2-gpiomux.o
 obj-$(CONFIG_MACH_ACCELERATE) += board-accelerate.o board-accelerate-gpiomux.o
 obj-$(CONFIG_MACH_COMANCHE) += board-comanche.o board-comanche-gpiomux.o
 obj-$(CONFIG_MACH_EXPRESS) += board-express.o board-express-gpiomux.o
+obj-$(CONFIG_MACH_STRETTO) += board-stretto.o board-stretto-gpiomux.o
+obj-$(CONFIG_MACH_SUPERIORLTE_SKT) += board-superiorlte_skt.o board-superiorlte_skt-gpiomux.o
 board-msm8960-common-all-objs += board-8960-camera.o board-8960-display.o board-8960-pmic.o board-8960-storage.o board-8960-regulator.o
 ifdef CONFIG_BCM4334
 board-msm8960-common-all-objs += board-8960-wifi.o
@@ -261,9 +274,13 @@ endif
 obj-$(CONFIG_MACH_JAGUAR) += board-msm8960-common-all.o
 obj-$(CONFIG_MACH_JASPER) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_ESPRESSO_VZW) += board-msm8960-common-all.o board-mms-tsp.o board-usb-switch.o
+obj-$(CONFIG_MACH_ESPRESSO_SPR) += board-msm8960-common-all.o board-mms-tsp.o board-usb-switch.o
 obj-$(CONFIG_MACH_ESPRESSO_ATT) += board-msm8960-common-all.o board-mms-tsp.o board-usb-switch.o
-obj-$(CONFIG_MACH_ESPRESSO10_VZW) += board-msm8960-common-all.o board-mms-tsp.o board-usb-switch.o
+obj-$(CONFIG_MACH_ESPRESSO10_VZW) += board-msm8960-common-all.o board-usb-switch.o
+obj-$(CONFIG_MACH_ESPRESSO10_SPR) += board-msm8960-common-all.o board-usb-switch.o
+obj-$(CONFIG_MACH_ESPRESSO10_ATT) += board-msm8960-common-all.o board-usb-switch.o
 obj-$(CONFIG_MACH_GOGH)   += board-msm8960-common-all.o board-gogh-tsp.o
+obj-$(CONFIG_MACH_INFINITE)   += board-msm8960-common-all.o board-gogh-tsp.o
 obj-$(CONFIG_MACH_APEXQ)  += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_AEGIS2) += board-msm8960-common-all.o
 obj-$(CONFIG_MACH_ACCELERATE) += board-msm8960-common-all.o board-mms-tsp.o
@@ -274,12 +291,18 @@ obj-$(CONFIG_MACH_M2_SPR) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_ATT) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_SKT) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_DCM) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_K2_KDI) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_STRETTO) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_SUPERIORLTE_SKT) += board-msm8960-common-all.o board-mms-tsp.o
 
 obj-$(CONFIG_MACH_APEXQ) += board-apexq-battery.o
 obj-$(CONFIG_MACH_ACCELERATE) += board-accelerate-battery.o
 obj-$(CONFIG_MACH_ESPRESSO_VZW) += board-espresso-battery.o
+obj-$(CONFIG_MACH_ESPRESSO_SPR) += board-espresso-battery.o
 obj-$(CONFIG_MACH_ESPRESSO_ATT) += board-espresso-battery.o
-obj-$(CONFIG_MACH_ESPRESSO10_VZW) += board-espresso-battery.o
+obj-$(CONFIG_MACH_ESPRESSO10_VZW) += board-espresso10-battery.o
+obj-$(CONFIG_MACH_ESPRESSO10_SPR) += board-espresso10-battery.o
+obj-$(CONFIG_MACH_ESPRESSO10_ATT) += board-espresso10-battery.o
 obj-$(CONFIG_MACH_COMANCHE) += board-comanche-battery.o
 obj-$(CONFIG_MACH_EXPRESS) += board-express-battery.o
 
@@ -361,3 +384,4 @@ obj-$(CONFIG_BT_BCM4334) += board-bluetooth-bcm4334.o
 obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
 obj-$(CONFIG_MSM_CACHE_DUMP) += msm_cache_dump.o
+obj-$(CONFIG_MFD_MAX77693)		+= sec-switch.o

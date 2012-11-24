@@ -16,6 +16,11 @@
 #include "mipi_tc358764_dsi2lvds.h"
 
 static struct msm_panel_info pinfo;
+
+static struct dsi2lvds_panel_data dsi2lvds_pd = {
+	.panel_name = "BOEOT-HV070WSA-100\n",
+};
+
 static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* DSIPHY_REGULATOR_CTRL */
 	.regulator = {0x03, 0x0a, 0x04, 0x00, 0x20}, /* common 8960 */
@@ -31,7 +36,7 @@ static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 	/* DSIPHY_PLL_CTRL */
 	.pll = { 0x00, /* common 8960 */
 	/* VCO */
-	0x40, 0x01, 0x19, /* panel specific */
+	0x0E, 0x30, 0xC0, /* panel specific */
 	0x00, 0x50, 0x48, 0x63,
 	0x77, 0x88, 0x99, /* Auto update by dsi-mipi driver */
 	0x00, 0x14, 0x03, 0x00, 0x02, /* common 8960 */
@@ -56,18 +61,18 @@ static int __init mipi_video_novatek_qhd_pt_init(void)
 	pinfo.fb_num = 2; /* using two frame buffers */
 
 	/* bitclk */
-	pinfo.clk_rate = 333350000;
+	pinfo.clk_rate = 380000000;
 
 	/*
 	 * this panel is operated by DE,
 	 * vsycn and hsync are ignored
 	 */
 
-	pinfo.lcdc.h_front_porch = 50;/* thfp */
-	pinfo.lcdc.h_back_porch = 50;	/* thb */
-	pinfo.lcdc.h_pulse_width = 570;	/* thpw */
+	pinfo.lcdc.h_front_porch = 25;/* thfp */
+	pinfo.lcdc.h_back_porch = 25;	/* thb */
+	pinfo.lcdc.h_pulse_width = 470;	/* thpw */
 
-	pinfo.lcdc.v_front_porch = 8;	/* tvfp */
+	pinfo.lcdc.v_front_porch = 58;	/* tvfp */
 	pinfo.lcdc.v_back_porch = 7;	/* tvb */
 	pinfo.lcdc.v_pulse_width = 30;	/* tvpw */
 
@@ -88,6 +93,7 @@ static int __init mipi_video_novatek_qhd_pt_init(void)
 	pinfo.mipi.t_clk_pre = 16;		/* Calculated */
 
 	pinfo.mipi.dsi_phy_db = &dsi_video_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;
 
 	/* Four lanes are recomended for 1366x768 at 60 frames per second */
 	pinfo.mipi.frame_rate = 60; /* 60 frames per second */
@@ -134,7 +140,7 @@ static int __init mipi_video_novatek_qhd_pt_init(void)
 
 
 	ret = mipi_tc358764_dsi2lvds_register(&pinfo, MIPI_DSI_PRIM,
-						MIPI_DSI_PANEL_QHD_PT);
+				MIPI_DSI_PANEL_QHD_PT, &dsi2lvds_pd);
 	if (ret)
 		pr_err("%s: failed to register device!\n", __func__);
 

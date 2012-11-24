@@ -791,7 +791,7 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 				chunk_pa = get_phys_addr(sg);
 				if (chunk_pa == 0) {
 					pr_debug("No dma address for sg %p\n",
-							sg);
+						 sg);
 					ret = -EINVAL;
 					goto fail;
 				}

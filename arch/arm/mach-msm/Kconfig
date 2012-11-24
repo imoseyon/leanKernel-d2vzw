@@ -168,6 +168,7 @@ config ARCH_MSM8960
 	select MULTI_IRQ_HANDLER
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
+	select MSM_KRAIT_WFE_FIXUP
 
 config ARCH_MSM8930
 	bool "MSM8930"
@@ -205,6 +206,7 @@ config ARCH_MSM8930
 	select MULTI_IRQ_HANDLER
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
+	select MSM_KRAIT_WFE_FIXUP
 
 config ARCH_APQ8064
 	bool "APQ8064"
@@ -222,6 +224,7 @@ config ARCH_APQ8064
 	select MULTI_IRQ_HANDLER
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
+	select MSM_KRAIT_WFE_FIXUP
 
 config ARCH_MSMCOPPER
 	bool "MSM Copper"
@@ -306,6 +309,9 @@ config  ARCH_MSM_SCORPIONMP
 config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
+	bool
+
+config  MSM_KRAIT_WFE_FIXUP
 	bool
 
 config  ARCH_MSM_CORTEX_A5
@@ -651,6 +657,13 @@ config MACH_GOGH
         help
           Support for the Samsung Gogh device.
 
+config MACH_INFINITE
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung INFINITE"
+        help
+          Support for the Samsung Infinite device.
+
 config MACH_ACCELERATE
         depends on ARCH_MSM8960
         default n
@@ -683,6 +696,21 @@ config MACH_ESPRESSO10_VZW
         depends on ARCH_MSM8960
         default n
         bool "MSM8960 Samsung ESPRESSO10_VZW"
+
+config MACH_ESPRESSO10_SPR
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung ESPRESSO10_SPR"
+
+config MACH_ESPRESSO10_ATT
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung ESPRESSO10_ATT"
+
+config MACH_ESPRESSO_SPR
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung ESPRESSO_SPR"
 
 config MACH_ESPRESSO_ATT
         depends on ARCH_MSM8960
@@ -747,11 +775,38 @@ config MACH_M2_DCM
 	help
           Support for the Samsung M2 DCM device.
 
+config MACH_K2_KDI
+	depends on ARCH_MSM8960
+	default n
+	bool "MSM8960 Samsung K2_KDI"
+	help
+          Support for the Samsung K2 KDI device.
+
+config MACH_STRETTO
+	depends on ARCH_MSM8960
+	default n
+	bool "MSM8960 Samsung STRETTO"
+
+config MACH_SUPERIORLTE_SKT
+	depends on ARCH_MSM8960
+	default n
+	bool "MSM8960 Samsung SUPERIORLTE_SKT"
+
 config MACH_MSM8960_LIQUID
 	depends on ARCH_MSM8960
 	bool "MSM8960 LIQUID"
 	help
 	  Support for the Qualcomm MSM8960 LIQUID device.
+
+config DMUX_LA1_5
+	depends on ARCH_MSM8960
+	default n
+	bool "BAM_DMUX LA1_5"
+	help
+          Support for the LA1.5 Modem device.
+	  Samsung should get rid of this feature after the verification.
+	  Because this feature is for preventing modem crash.
+	  This feature is used in bam_dmux.c
 
 config MACH_MSM8930_CDP
 	depends on ARCH_MSM8930
@@ -1788,6 +1843,12 @@ config MSM_PIL_TZAPPS
 	  used to decrypt data and perform secure operations on the behalf of
 	  the kernel.
 
+config MSM_PIL_VIDC
+	tristate "Video Core Boot Support"
+	depends on MSM_PIL
+	help
+	  Support for authenticating the video core image.
+
 config MSM_SCM
 	bool "Secure Channel Manager (SCM) support"
 	default n
@@ -1832,6 +1893,14 @@ config MSM_WCNSS_SSR_8960
 	 This option enables the WCNSS restart module for MSM8960, which
 	 monitors WCNSS hardware watchdog interrupt lines and plugs WCNSS
 	 into the subsystem restart framework.
+
+config SEC_SSR_DUMP
+	bool "MSM 8960 ramdump during silent restart module"
+	help
+	This option enables SSR debug feature. SSR debug dump collection
+	feature is to be enabled only during debug level MID through respective
+	def_config files. This should be enabled only when Subsystem Restart
+	is enabled.
 
 config SCORPION_Uni_45nm_BUG
 	bool "Scorpion Uni 45nm(SC45U): Workaround for ICIMVAU and BPIMVA"
@@ -2183,10 +2252,32 @@ config MSM_L1_ERR_PANIC
 
 	  For production builds, you should probably say 'N' here.
 
+config MSM_L2_ERP_PRINT_ACCESS_ERRORS
+	bool "Report L2 master port slave/decode errors in kernel log"
+	depends on MSM_CACHE_ERP
+	help
+	  Master port errors can occur when a memory request is not properly
+	  handled by the destination slave. This can occur if the destination
+	  register does not exist or is inaccessible due to security
+	  restrictions or (in some cases) clock configuration. Enabling this
+	  option will cause a backtrace to be printed to the kernel log whenever
+	  such an error is encountered. Note that the error is reported as an
+	  interrupt rather than as an exception, meaning that the backtrace may
+	  have some skid. This option may help with debugging, though production
+	  builds should probably say 'N' here.
+config MSM_L1_ERR_LOG
+	bool "Log CPU ERP events to system memory"
+	depends on MSM_CACHE_ERP
+	help
+	  Enable logging CPU ERP events to an area of memory that will be
+	  preserved across a system reset. This may be useful for detecting and
+	  troubleshooting ERP-related system crashes in the field.
+
+	  For production builds, you may want to say 'Y' here.
 
 config MSM_L2_ERP_PORT_PANIC
 	bool "Panic on L2 master port errors"
-	depends on MSM_CACHE_ERP
+	depends on MSM_CACHE_ERP && MSM_L2_ERP_PRINT_ACCESS_ERRORS
 	help
 	  Master port errors can occur when a memory request is not properly
 	  handled by the destination slave. Enable this option to catch drivers
@@ -2239,6 +2330,11 @@ config SEC_PERIPHERAL_SECURE_CHK
 	bool "PERIPHERAL SECURE check"
 	help
 	  To check the authentication of peripheral image.
+
+config SEC_L1_DCACHE_PANIC_CHK
+	bool "L1 Dcache Panic check"
+	help
+	  To check the L1 Dcache Panic on MSM8960.
 
 config SEC_SSR_DEBUG_LEVEL_CHK
 	bool "SSR DEBUG LEVEL check"

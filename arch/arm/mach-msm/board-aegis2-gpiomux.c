@@ -200,7 +200,7 @@ static struct gpiomux_setting ap2mdm_kpdpwr_n_cfg = {
 static struct gpiomux_setting kpd_slide_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_NONE,
 };
 static struct gpiomux_setting kpd_slide_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -290,7 +290,7 @@ static struct gpiomux_setting fsa9485_active_cfg = {
 static struct gpiomux_setting gpio_key_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting gpio_key_suspend_cfg = {
@@ -446,21 +446,21 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 	},
 #ifdef CONFIG_S5C73M3
 	{
-		.gpio	   = GPIO_CAM_SPI_MOSI,		/* GSBI11 QUP SPI_DATA_MOSI */
+		.gpio	   = GPIO_CAM_SPI_MOSI,	/* GSBI11 QUP SPI_DATA_MOSI */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
 			[GPIOMUX_ACTIVE] = &spi_active,
 		},
 	},
 	{
-		.gpio	   = GPIO_CAM_SPI_MISO,		/* GSBI11 QUP SPI_DATA_MISO */
+		.gpio	   = GPIO_CAM_SPI_MISO,	/* GSBI11 QUP SPI_DATA_MISO */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
 			[GPIOMUX_ACTIVE] = &spi_active,
 		},
 	},
 	{
-		.gpio	   = GPIO_CAM_SPI_SSN,		/* GSBI11 QUP SPI_CS_N */
+		.gpio	   = GPIO_CAM_SPI_SSN,/* GSBI11 QUP SPI_CS_N */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
 			[GPIOMUX_ACTIVE] = &spi_active,
@@ -540,7 +540,7 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
@@ -874,14 +874,12 @@ static struct msm_gpiomux_config msm8960_mhl_configs[] __initdata = {
 	{
 		.gpio = GPIO_MHL_SDA,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &mhl_active_2_cfg,
 			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
 		},
 	},
 	{
 		.gpio = GPIO_MHL_SCL,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &mhl_active_2_cfg,
 			[GPIOMUX_SUSPENDED] = &mhl_suspend_cfg,
 		},
 	},

@@ -1,0 +1,9 @@
+show_progress(0.500000, 0);
+mount("ext4", "EMMC", "/dev/block/mmcblk0p14", "/system");
+package_extract_dir("system", "/system");
+set_perm(0, 0, 0777, "/system/etc/init.d/00leanKernel");
+unmount("/system");
+assert(package_extract_file("boot.img", "/cache/boot.img"),
+       write_raw_image("/cache/boot.img", "/dev/block/mmcblk0p7"),
+       delete("/cache/boot.img"));
+show_progress(0.100000, 0);

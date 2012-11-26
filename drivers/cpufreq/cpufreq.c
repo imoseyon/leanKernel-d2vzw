@@ -580,6 +580,9 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	   will be wrongly overridden */
 	ret = __cpufreq_set_policy(policy, &new_policy);
 
+	// imoseyon - don't go above 1.5ghz when adding device
+	if (policy->max > 1512000) policy->max = 1512000;
+ 
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
 

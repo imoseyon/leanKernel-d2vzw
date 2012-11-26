@@ -47,6 +47,7 @@ static int update_cpu_max_freq(struct cpufreq_policy *cpu_policy,
 
 	cpufreq_verify_within_limits(cpu_policy,
 				cpu_policy->min, max_freq);
+	if (max_freq > 1512000) max_freq = 1512000;
 	cpu_policy->user_policy.max = max_freq;
 
 	ret = cpufreq_update_policy(cpu);
@@ -93,8 +94,8 @@ static void check_temp(struct work_struct *work)
 		} else if (temp < allowed_max_low) {
 #ifdef CONFIG_SEC_DVFS
 			if (cpufreq_get_dvfs_state() != 1) {
-				if (cpu_policy->max
-					< cpu_policy->cpuinfo.max_freq) {
+				if (cpu_policy->max < 1512000) {
+					max_freq = 1512000;
 					max_freq = cpu_policy->cpuinfo.max_freq;
 					update_policy = 1;
 				}

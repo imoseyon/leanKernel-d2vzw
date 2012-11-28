@@ -703,7 +703,6 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	if (!dma_buf->area)
 		return -ENOMEM;
-	}
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	return 0;

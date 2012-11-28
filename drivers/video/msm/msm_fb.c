@@ -861,7 +861,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 	if (!op_enable)
 		return -EPERM;
-	pr_info("entering %s blank_mode %d\n", __func__, blank_mode);
 
 	msm_fb_pan_idle(mfd);
 
@@ -930,7 +929,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 		break;
 	}
-	pr_info("exiting %s blank_mode %d\n", __func__, blank_mode);
 
 	return ret;
 }
@@ -1048,8 +1046,6 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 		blank_mode == FB_BLANK_POWERDOWN)
 		return 0;
 #endif
-	printk(KERN_INFO "%s blank_mode : %d mfd->op_enable : %d",
-			__func__ , blank_mode, mfd->op_enable);
 
 	mutex_lock(&mfd->entry_mutex);
 	msm_fb_pan_idle(mfd);
@@ -1809,7 +1805,6 @@ static int msm_fb_open(struct fb_info *info, int user)
 
 	if (result < 0) {
 		printk(KERN_ERR "pm_runtime: fail to wake up\n");
-		return -ENODEV;
 	}
 	result = 0;
 	if (info->node == 0 && !(mfd->cont_splash_done)) {	/* primary */
@@ -1831,7 +1826,6 @@ static int msm_fb_open(struct fb_info *info, int user)
 			result = -1;
 			goto msm_fb_open_exit;
 		}
-	}
 	}
 
 	mfd->ref_cnt++;

@@ -96,7 +96,6 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 			pr_info("%s: format2type failed\n", __func__);
 
 		writeback_pipe = pipe; /* keep it */
-			}
 
 	} else {
 		pipe = writeback_pipe;

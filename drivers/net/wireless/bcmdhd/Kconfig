@@ -1,33 +1,24 @@
-config BCM4330
-	tristate "Broadcom 4330 wireless cards support"
-	depends on WLAN
+config BCMDHD
+	tristate "Broadcom 4329/30 wireless cards support"
+	depends on MMC
 	---help---
 	  This module adds support for wireless adapters based on
-	  Broadcom 4330 chipset.
+	  Broadcom 4329/30 chipset.
 
-config BCM4334
-	tristate "Broadcom 4334 wireless cards support"
-	depends on WLAN
-	---help---
-	  This module adds support for wireless adapters based on
-	  Broadcom 4334 chipset.
+	  This driver uses the kernel's wireless extensions subsystem.
 
-config BCM43241
-	tristate "Broadcom 43241 wireless cards support"
-	depends on WLAN
-	---help---
-	  This module adds support for wireless adapters based on
-	  Broadcom 43241 chipset.
+	  If you choose to build a module, it'll be called dhd. Say M if
+	  unsure.
 
 config BCMDHD_FW_PATH
-	depends on WLAN
+	depends on BCMDHD
 	string "Firmware path"
 	default "/system/etc/firmware/fw_bcmdhd.bin"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_PATH
-	depends on WLAN
+	depends on BCMDHD
 	string "NVRAM path"
 	default "/system/etc/wifi/bcmdhd.cal"
 	---help---
@@ -55,22 +46,9 @@ config DHD_USE_SCHED_SCAN
 	---help---
 	  Use CFG80211 sched scan
 
-config BROADCOM_WIFI_RESERVED_MEM
-	bool "BROADCOM Reserved memory for wifi device"
-	depends on (BCM4330 || BCM4334 || BCM43241)
+config DHD_ENABLE_P2P
+	bool "Enable Wifi Direct"
+	depends on BCMDHD && CFG80211
+	default n
 	---help---
-	  This is a configuration for broadcom WLAN driver.
-
-config WLAN_REGION_CODE
-	int "---Region codes for Broadcom WiFi Driver"
-	depends on (BCM4330 || BCM4334 || BCM43241)
-	default 100
-	---help---
-		This is a region code for Broadcom Wi-Fi featured functions.
-		- 100 : EUR OPEN
-		- 101 : EUR ORG
-		- 200 : KOR OPEN
-		- 201 : KOR SKT
-		- 202 : KOR KTT
-		- 203 : KOR LGT
-		- 300 : CHN OPEN
+	  Use Enable Wifi Direct

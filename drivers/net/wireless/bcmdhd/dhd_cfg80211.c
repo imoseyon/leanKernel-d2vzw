@@ -1,9 +1,9 @@
 /*
  * Linux cfg80211 driver - Dongle Host Driver (DHD) related
  *
- * Copyright (C) 1999-2012, Broadcom Corporation
+ * Copyright (C) 1999-2011, Broadcom Corporation
  * 
- *      Unless you and Broadcom execute a separate written software license
+ *         Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
@@ -30,20 +30,7 @@
 #include <wldev_common.h>
 #include <wl_cfg80211.h>
 #include <dhd_cfg80211.h>
-
-#ifdef PKT_FILTER_SUPPORT
-#include <dngl_stats.h>
-#include <dhd.h>
-#endif
-
 extern struct wl_priv *wlcfg_drv_priv;
-
-#ifdef PKT_FILTER_SUPPORT
-extern uint dhd_pkt_filter_enable;
-extern uint dhd_master_mode;
-extern void dhd_pktfilter_offload_enable(dhd_pub_t * dhd, char *arg, int enable, int master_mode);
-#endif
-
 static int dhd_dongle_up = FALSE;
 
 #include <dngl_stats.h>
@@ -70,6 +57,12 @@ s32 dhd_cfg80211_deinit(struct wl_priv *wl)
 	return 0;
 }
 
+s32 dhd_cfg80211_get_opmode(struct wl_priv *wl)
+{
+	dhd_pub_t *dhd =  (dhd_pub_t *)(wl->pub);
+	return dhd->op_mode;
+}
+
 s32 dhd_cfg80211_down(struct wl_priv *wl)
 {
 	dhd_dongle_up = FALSE;
@@ -79,16 +72,24 @@ s32 dhd_cfg80211_down(struct wl_priv *wl)
 s32 dhd_cfg80211_set_p2p_info(struct wl_priv *wl, int val)
 {
 	dhd_pub_t *dhd =  (dhd_pub_t *)(wl->pub);
+	int bcn_timeout = DHD_BEACON_TIMEOUT_HIGH;
+	char iovbuf[30];
+
 	dhd->op_mode |= val;
 	WL_ERR(("Set : op_mode=%d\n", dhd->op_mode));
-#if defined(ARP_OFFLOAD_SUPPORT)
-	if ((dhd->op_mode & CONCURRENT_MULTI_CHAN) !=
-		CONCURRENT_MULTI_CHAN) {
-		/* IF P2P is enabled, disable arpoe */
-		dhd_arp_offload_set(dhd, 0);
-		dhd_arp_offload_enable(dhd, false);
-	}
+
+#ifdef ARP_OFFLOAD_SUPPORT
+	/* IF P2P is enabled, disable arpoe */
+	dhd_arp_offload_set(dhd, 0);
+	dhd_arp_offload_enable(dhd, false);
 #endif /* ARP_OFFLOAD_SUPPORT */
+
+	dhd_os_set_packet_filter(dhd, 0);
+
+	/* Setup timeout if Beacons are lost and roam is off to report link down */
+	bcm_mkiovar("bcn_timeout", (char *)&bcn_timeout, 4, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
 
 	return 0;
 }
@@ -96,14 +97,23 @@ s32 dhd_cfg80211_set_p2p_info(struct wl_priv *wl, int val)
 s32 dhd_cfg80211_clean_p2p_info(struct wl_priv *wl)
 {
 	dhd_pub_t *dhd =  (dhd_pub_t *)(wl->pub);
+	int bcn_timeout = DHD_BEACON_TIMEOUT_NORMAL;
+	char iovbuf[30];
+
 	dhd->op_mode &= ~CONCURENT_MASK;
 	WL_ERR(("Clean : op_mode=%d\n", dhd->op_mode));
 
-#if defined(ARP_OFFLOAD_SUPPORT)
+#ifdef ARP_OFFLOAD_SUPPORT
 	/* IF P2P is disabled, enable arpoe back for STA mode. */
 	dhd_arp_offload_set(dhd, dhd_arp_mode);
 	dhd_arp_offload_enable(dhd, true);
 #endif /* ARP_OFFLOAD_SUPPORT */
+
+	dhd_os_set_packet_filter(dhd, 1);
+
+	/* Setup timeout if Beacons are lost and roam is off to report link down */
+	bcm_mkiovar("bcn_timeout", (char *)&bcn_timeout, 4, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 
 	return 0;
 }
@@ -118,6 +128,7 @@ static s32 wl_dongle_up(struct net_device *ndev, u32 up)
 	}
 	return err;
 }
+
 s32 dhd_config_dongle(struct wl_priv *wl, bool need_lock)
 {
 #ifndef DHD_SDALIGN
@@ -518,7 +529,6 @@ void wl_cfg80211_btcoex_deinit(struct wl_priv *wl)
 	kfree(wl->btcoex_info);
 	wl->btcoex_info = NULL;
 }
-#endif 
 
 int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command)
 {
@@ -540,24 +550,12 @@ int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command)
 	struct btcoex_info *btco_inf = wl->btcoex_info;
 #endif /* COEX_DHCP */
 
-#ifdef PKT_FILTER_SUPPORT
-	dhd_pub_t *dhd =  (dhd_pub_t *)(wl->pub);
-#endif
-
 	/* Figure out powermode 1 or o command */
 	strncpy((char *)&powermode_val, command + strlen("BTCOEXMODE") +1, 1);
 
 	if (strnicmp((char *)&powermode_val, "1", strlen("1")) == 0) {
-		WL_TRACE_HW4(("%s: DHCP session starts\n", __FUNCTION__));
 
-#ifdef PKT_FILTER_SUPPORT
-		dhd->dhcp_in_progress = 1;
-
-		if (dhd->early_suspended) {
-			WL_TRACE_HW4(("DHCP in progressing , disable packet filter!!!\n"));
-			dhd_enable_packet_filter(0, dhd);
-		}
-#endif
+		WL_TRACE(("%s: DHCP session starts\n", __FUNCTION__));
 
 		/* Retrieve and saved orig regs value */
 		if ((saved_status == FALSE) &&
@@ -602,17 +600,6 @@ int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command)
 	}
 	else if (strnicmp((char *)&powermode_val, "2", strlen("2")) == 0) {
 
-
-#ifdef PKT_FILTER_SUPPORT
-		dhd->dhcp_in_progress = 0;
-		WL_TRACE_HW4(("%s: DHCP is complete \n", __FUNCTION__));
-
-		/* Enable packet filtering */
-		if (dhd->early_suspended) {
-			WL_TRACE_HW4(("DHCP is complete , enable packet filter!!!\n"));
-			dhd_enable_packet_filter(1, dhd);
-		}
-#endif
 
 		/* Restoring PM mode */
 
@@ -665,3 +652,4 @@ int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command)
 
 	return (strlen("OK"));
 }
+#endif 

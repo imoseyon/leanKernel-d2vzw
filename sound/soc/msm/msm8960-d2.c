@@ -1916,6 +1916,20 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.dsp_link = &lpa_fe_media,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA4,
 	},
+#if 0
+	{
+		.name = "MSM8960 LowLatency",
+		.stream_name = "MultiMedia5",
+		.cpu_dai_name   = "MultiMedia5",
+		.platform_name  = "msm-lowlatency-pcm-dsp",
+		.dynamic = 1,
+		.codec_dai_name = "msm-stub-rx",
+		.codec_name = "msm-stub-codec.1",
+		.ignore_suspend = 1,
+		.dsp_link = &lpa_fe_media,
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA5,
+	},
+#endif
 	/* Backend BT/FM DAI Links */
 	{
 		.name = LPASS_BE_INT_BT_SCO_RX,

@@ -33,6 +33,8 @@
 #include <trace/events/power.h>
 #include <linux/semaphore.h>
 
+unsigned int thermal_max = 1512000;
+
 #if !defined(__MP_DECISION_PATCH__)
 #error "__MP_DECISION_PATCH__ must be defined in cpufreq.c"
 #endif
@@ -454,7 +456,7 @@ show_one(scaling_cur_freq, cur);
 
 static ssize_t show_thermal_max_freq(struct cpufreq_policy *policy, char *buf)
 {
-	return sprintf(buf, "%u\n", findmax(policy->max, 1512000));
+	return sprintf(buf, "%u\n", thermal_max);
 }
 
 #if defined(__MP_DECISION_PATCH__)
@@ -526,12 +528,27 @@ static ssize_t store_scaling_max_freq
 			cpufreq_set_limit_defered(USER_MAX_START, value);
 	}
 
+	thermal_max = findmax(policy->max, thermal_max);
+
 	return count;
 }
 #else
 store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
 #endif
+static ssize_t store_thermal_max_freq
+        (struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+        unsigned int ret = -EINVAL;
+        unsigned int value = 0;
+
+        ret = sscanf(buf, "%u", &value);
+        if (ret != 1)
+                return -EINVAL;
+
+        thermal_max = value;
+	return count;
+}
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -726,7 +743,6 @@ static ssize_t store_UV_mV_table
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
 cpufreq_freq_attr_ro(cpuinfo_max_freq);
-cpufreq_freq_attr_ro(thermal_max_freq);
 cpufreq_freq_attr_ro(cpuinfo_transition_latency);
 cpufreq_freq_attr_ro(scaling_available_governors);
 cpufreq_freq_attr_ro(scaling_driver);
@@ -742,6 +758,7 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
+cpufreq_freq_attr_rw(thermal_max_freq);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,

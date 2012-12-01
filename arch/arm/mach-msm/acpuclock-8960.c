@@ -356,6 +356,7 @@ static struct l2_level *l2_freq_tbl;
 static struct acpu_level *acpu_freq_tbl;
 static int l2_freq_tbl_size;
 uint32_t global_pvs; /*  This code is temporary code */
+extern int allow_vmin; /* apply krait v2 vmin? */
 
 /* Instantaneous bandwidth requests in MB/s. */
 #define BW_MBPS(_bw) \
@@ -1589,12 +1590,25 @@ ssize_t vc_get_vdd(char *buf)
 	return len;
 }
 
+static const int krait_needs_vmin(void)
+{
+	if (allow_vmin) {
+		switch (read_cpuid_id()) {
+		case 0x511F04D0:
+		case 0x511F04D1:
+		case 0x510F06F0:
+			return 1;
+		default:
+			return 0;
+		};
+	} else return 0;
+}
+
 void vc_set_vdd(const char *buf)
 {
 	int ret, i = 0;
 	char size_cur[16];
 	unsigned int volt;
-//	pr_info("[imoseyon]: store request: %s\n", buf); 
 
 	while(acpu_freq_tbl[i].speed.khz != 0) i++;
 	mutex_lock(&driver_lock);
@@ -1603,7 +1617,9 @@ void vc_set_vdd(const char *buf)
 	  if (acpu_freq_tbl[i].use_for_scaling) {
 	    pr_info("[imoseyon]: voltage for %d changed to %d\n", 
 		acpu_freq_tbl[i].speed.khz, volt*1000);
-	    acpu_freq_tbl[i].vdd_core = min(max((unsigned int)volt*1000,
+	    if (krait_needs_vmin() && volt < 1150) 
+		acpu_freq_tbl[i].vdd_core = 1150000;
+	    else acpu_freq_tbl[i].vdd_core = min(max((unsigned int)volt*1000,
 		(unsigned int)HFPLL_LOW_VDD), (unsigned int)HFPLL_MAX_VDD);
 	    ret = sscanf(buf, "%s", size_cur);
 	    buf += (strlen(size_cur)+1);
@@ -1699,18 +1715,6 @@ static struct notifier_block __cpuinitdata acpuclock_cpu_notifier = {
 	.notifier_call = acpuclock_cpu_callback,
 };
 
-static const int krait_needs_vmin(void)
-{
-	switch (read_cpuid_id()) {
-	case 0x511F04D0:
-	case 0x511F04D1:
-	case 0x510F06F0:
-		return 1;
-	default:
-		return 0;
-	};
-}
-
 static void kraitv2_apply_vmin(struct acpu_level *tbl)
 {
 	for (; tbl->speed.khz != 0; tbl++)
@@ -1739,6 +1743,10 @@ static void boost_vdd_core(struct acpu_level *tbl)
 		tbl->vdd_core += 25000;
 }
 #endif
+void override_vmin_all(void)
+{
+	if (krait_needs_vmin()) kraitv2_apply_vmin(acpu_freq_tbl);
+}
 
 static struct acpu_level * __init select_freq_plan(void)
 {

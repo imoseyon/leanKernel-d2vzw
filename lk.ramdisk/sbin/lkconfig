@@ -1,0 +1,37 @@
+#!/system/bin/sh
+BB="/system/xbin/busybox"
+SCRIPT="/system/etc/init.d/00leanKernel"
+
+echo
+echo "leanKernel configurator"
+echo
+echo "---"
+echo "1) Stock behavior of keeping voltage minimum at 1150mV if CPU needs it (leanKernel default)."
+echo "2) Remove the above vmin override."
+echo "3) Revert /system/bin/thermald to stock."
+echo 
+echo -n "Please enter a number between 1 and 3 (or press enter to exit): "
+
+read option
+
+$BB mount -o rw,remount /system /system
+
+case $option in
+  1) 
+	$BB sed -i s/^VMIN=.*$/VMIN=1/ $SCRIPT
+	$SCRIPT
+	echo "vmin override re-enabled."
+	;;
+  2) 
+	$BB sed -i s/^VMIN=.*$/VMIN=0/ $SCRIPT
+	$SCRIPT
+	echo "vmin override bypassed."
+	;;
+  3) 
+	$BB cp -f /sbin/thermald /system/bin/thermald
+	pkill thermald
+	echo "thermald reverted to stock."
+	;;
+esac
+$BB mount -r /system /system
+echo

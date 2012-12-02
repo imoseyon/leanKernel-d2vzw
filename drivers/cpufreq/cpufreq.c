@@ -730,7 +730,7 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 
 extern ssize_t vc_get_vdd(char *buf);
 extern void vc_set_vdd(const char *buf);
-extern void override_vmin_all();
+extern void override_vmin_all(void);
 
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf)
 {
@@ -749,8 +749,6 @@ static ssize_t show_override_vmin(struct cpufreq_policy *policy, char *buf)
 static ssize_t store_override_vmin
 (struct cpufreq_policy *policy, const char *buf, size_t count)
 {  
-	int i;
-	char *vtable;
 	sscanf(buf, "%du", &allow_vmin);
 	if (allow_vmin) override_vmin_all();
 	return count;

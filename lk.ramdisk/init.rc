@@ -708,25 +708,21 @@ service sysinit /system/bin/logwrapper /system/xbin/busybox run-parts /system/et
     disabled
     oneshot
 
+on property:sys.boot_completed=1
+	setprop service.bootanim.exit 1
+	stop bootanim		
+
 service media /system/bin/mediaserver
     class main
     user media
     group system audio camera inet net_bt net_bt_admin net_bw_acct drmrpc sdcard_rw sdcard_r qcom_diag
     ioprio rt 4
 
-service powersnd /system/bin/samsungpowersoundplay
-    class main
-    user media
-    group system
-    disabled
-    oneshot
-
-service samsungani /system/bin/samsungani
+service bootanim /system/bin/bootanimation
     class main
     user graphics
     group graphics
-    disabled
-    oneshot
+    oneshot	
 
 service dbus /system/bin/dbus-daemon --system --nofork
     class main

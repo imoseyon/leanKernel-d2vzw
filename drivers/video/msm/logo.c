@@ -96,7 +96,7 @@ int load_565rle_image(char *filename, bool bf_supported)
 		return -ENODEV;
 	}
 
-#if 0
+#ifndef CONFIG_FRAMEBUFFER_CONSOLE
 	owner = info->fbops->owner;
 	if (!try_module_get(owner))
 		return -ENODEV;
@@ -167,7 +167,7 @@ err_logo_free_data:
 err_logo_close_file:
 	sys_close(fd);
 
-#if 0
+#ifndef CONFIG_FRAMEBUFFER_CONSOLE
 	err = fb_pan_display(info, &info->var);
 	if (err < 0) {
 		printk(KERN_WARNING "%s: Can not update framebuffer\n",

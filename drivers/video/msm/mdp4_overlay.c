@@ -1708,9 +1708,6 @@ void mdp4_mixer_stage_commit(int mixer)
 	u32 data, stage;
 	int off;
 	unsigned long flags;
-	int skip_pipe_num = -1;
-	static bool backup_mdp_no_video_on_primary_flag = false;
-	bool mdp_no_video_on_primary_flag = false;
 
 	data = 0;
 	for (i = MDP4_MIXER_STAGE_BASE; i < MDP4_MIXER_STAGE_MAX; i++) {
@@ -1731,19 +1728,7 @@ void mdp4_mixer_stage_commit(int mixer)
 	mdp4_mixer_blend_setup(mixer);
 
 	off = 0;
-	for (i = MDP4_MIXER_STAGE_BASE; i < MDP4_MIXER_STAGE_MAX; i++) {
-		pipe = ctrl->stage[mixer][i];
-		if (pipe == NULL)
-			continue;
-
-		if (mdp4_overlay_format2type(pipe->src_format) == OVERLAY_TYPE_VIDEO && (pipe->flags & MDP_WFD_NO_VIDEO_ON_PRIMARY))
-		{
-			skip_pipe_num = pipe->pipe_num;
-			mdp_no_video_on_primary_flag = true;
-		}
-	}
-
-	if (data != ctrl->mixer_cfg[mixer] || (mixer == MDP4_MIXER0 && backup_mdp_no_video_on_primary_flag != mdp_no_video_on_primary_flag)) { 
+	if (data != ctrl->mixer_cfg[mixer]) {
 		ctrl->mixer_cfg[mixer] = data;
 		if (mixer >= MDP4_MIXER2) {
 			/* MDP_LAYERMIXER2_IN_CFG */
@@ -1754,26 +1739,11 @@ void mdp4_mixer_stage_commit(int mixer)
 			num &= 0x01;
 			data |= ctrl->mixer_cfg[num];
 			off = 0x10100;
-			if(num == 1 && skip_pipe_num != -1)
-			{
-				switch(skip_pipe_num)
-				{
-					case OVERLAY_PIPE_VG1:
-						data &= ~0x0f;
-						break;
-					case OVERLAY_PIPE_VG2:
-						data &= ~0xf0;
-						break;
-					default:
-					break;
-				}
-			}
 		}
 		pr_err("%s: mixer=%d data=%x flush=%x pid=%d\n", __func__,
 				mixer, data, ctrl->flush[mixer], current->pid);
 	}
 
-	backup_mdp_no_video_on_primary_flag = mdp_no_video_on_primary_flag;
 	local_irq_save(flags);
 	if (off)
 		outpdw(MDP_BASE + off, data);

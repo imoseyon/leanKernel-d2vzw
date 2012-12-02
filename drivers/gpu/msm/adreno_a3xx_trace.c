@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,11 +11,10 @@
  *
  */
 
-#ifndef __ADRENO_POSTMORTEM_H
-#define __ADRENO_POSTMORTEM_H
+#include "kgsl.h"
+#include "adreno.h"
 
-struct kgsl_device;
-
-int adreno_postmortem_dump(struct kgsl_device *device, int manual);
-
-#endif /* __ADRENO_POSTMORTEM_H */
+/* Instantiate tracepoints */
+#define CREATE_TRACE_POINTS
+#include "a3xx_reg.h"
+#include "adreno_a3xx_trace.h"

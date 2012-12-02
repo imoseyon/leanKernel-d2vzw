@@ -2826,8 +2826,6 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table = &grp3d_bus_scale_pdata,
 #endif
-	.iommu_user_ctx_name = "gfx3d_user",
-	.iommu_priv_ctx_name = NULL,
 };
 
 struct platform_device msm_kgsl_3d0 = {
@@ -2879,8 +2877,6 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table = &grp2d0_bus_scale_pdata,
 #endif
-	.iommu_user_ctx_name = "gfx2d0_2d0",
-	.iommu_priv_ctx_name = NULL,
 };
 
 struct platform_device msm_kgsl_2d0 = {
@@ -2932,8 +2928,6 @@ static struct kgsl_device_platform_data kgsl_2d1_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table = &grp2d1_bus_scale_pdata,
 #endif
-	.iommu_user_ctx_name = "gfx2d1_2d1",
-	.iommu_priv_ctx_name = NULL,
 };
 
 struct platform_device msm_kgsl_2d1 = {

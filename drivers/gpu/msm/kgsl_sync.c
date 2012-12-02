@@ -82,10 +82,11 @@ struct kgsl_fence_event_priv {
  */
 
 static inline void kgsl_fence_event_cb(struct kgsl_device *device,
-	void *priv, u32 timestamp)
+	void *priv, u32 context_id, u32 timestamp)
 {
 	struct kgsl_fence_event_priv *ev = priv;
 	kgsl_sync_timeline_signal(ev->context->timeline, timestamp);
+	kgsl_context_put(ev->context);
 	kfree(ev);
 }
 
@@ -124,6 +125,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (event == NULL)
 		return -ENOMEM;
 	event->context = context;
+	kgsl_context_get(context);
 
 	pt = kgsl_sync_pt_create(context->timeline, timestamp);
 	if (pt == NULL) {
@@ -154,7 +156,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		goto fail_copy_fd;
 	}
 
-	ret = kgsl_add_event(device, timestamp,
+	ret = kgsl_add_event(device, context_id, timestamp,
 			kgsl_fence_event_cb, event, owner);
 	if (ret)
 		goto fail_event;
@@ -171,6 +173,7 @@ fail_fd:
 	sync_fence_put(fence);
 fail_fence:
 fail_pt:
+	kgsl_context_put(context);
 	kfree(event);
 	return ret;
 }

@@ -3,3 +3,8 @@
 VMIN=1
 
 echo $VMIN > /sys/devices/system/cpu/cpu0/cpufreq/override_vmin
+
+# restart thermald to use new max freq set by cpu app
+# should handle this better in the future
+sleep 45
+pkill thermald

@@ -1794,10 +1794,10 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			*/
 			((athost_wl_status_info_t*)dhdp->wlfc_state)->stats.wlfc_header_only_pkt++;
 #ifdef CUSTOMER_HW4
-			if (numpkt == 1 && pkt_free && (free_ptr == pktbuf)) {
+			/*if (numpkt == 1 && pkt_free && (free_ptr == pktbuf)) {
 				DHD_ERROR(("DHD TRACE2(FREE):%d %d %p\n",
 					pkt_free, caller, free_ptr));
-			}
+			}*/
 #endif
 			PKTFREE(dhdp->osh, pktbuf, TRUE);
 			continue;

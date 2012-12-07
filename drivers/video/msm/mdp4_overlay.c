@@ -2932,7 +2932,10 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			perf_cur->mdp_clk_rate =
 				perf_req->mdp_clk_rate;
 		}
-		if (perf_req->mdp_bw < perf_cur->mdp_bw) {
+		if (perf_req->mdp_bw == OVERLAY_PERF_LEVEL_MAX) {
+			mdp_bus_scale_update_request(OVERLAY_PERF_LEVEL_MAX);
+		}	
+		else if (perf_req->mdp_bw < perf_cur->mdp_bw) {
 			mdp_bus_scale_update_request
 				(OVERLAY_BUS_SCALE_TABLE_BASE -
 				 perf_req->mdp_bw);
@@ -2970,7 +2973,7 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			perf_cur->mdp_clk_rate =
 				perf_req->mdp_clk_rate;
 		}
-		if (perf_req->mdp_bw > perf_cur->mdp_bw) {
+		if (perf_req->mdp_bw > perf_cur->mdp_bw || perf_cur->mdp_bw == OVERLAY_PERF_LEVEL_MAX) {
 			pr_info("%s mdp bw is changed [%d] from %d to %d\n",
 				__func__,
 				flag,

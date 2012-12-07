@@ -106,7 +106,11 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 	{
 		.func = GPIOMUX_FUNC_1, /* drive strength for D2*/
+#if defined(CONFIG_MACH_M2_VZW)
+		.drv = GPIOMUX_DRV_2MA,
+#else
 		.drv = GPIOMUX_DRV_4MA,
+#endif
 		.pull = GPIOMUX_PULL_NONE,
 	},
 	{

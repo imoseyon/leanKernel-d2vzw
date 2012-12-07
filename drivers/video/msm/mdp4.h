@@ -44,7 +44,6 @@ extern u32 mdp_max_clk;
 #define CS_CONTROLLER_1 0x03073f3f
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
-#define BLT_MODE_CHANGE_ISSUE
 #define MDP4_ERROR
 #endif
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) \
@@ -594,9 +593,6 @@ void mdp4_dsi_video_fxn_register(cmd_fxn_t fxn);
 void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd);
 void mdp4_lcdc_vsync_ctrl(struct fb_info *info, int enable);
 void mdp4_overlay0_done_dsi_video(int cndx);
-#ifdef BLT_MODE_CHANGE_ISSUE
-void mdp4_overlay0_done_blt_mode_change_recovery(int cndx);
-#endif
 void mdp4_overlay0_done_dsi_cmd(int cndx);
 void mdp4_primary_rdptr(void);
 void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd);

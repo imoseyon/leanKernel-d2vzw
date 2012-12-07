@@ -121,10 +121,6 @@ struct mdp4_overlay_perf perf_current = {
 
 static struct ion_client *display_iclient;
 
-#ifdef BLT_MODE_CHANGE_ISSUE
-extern int middle_of_blt_change;
-#endif
-
 /*
  * mdp4_overlay_iommu_unmap_freelist()
  * mdp4_overlay_iommu_2freelist()
@@ -2914,11 +2910,6 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 {
 	struct mdp4_overlay_perf *perf_req = &perf_request;
 	struct mdp4_overlay_perf *perf_cur = &perf_current;
-#ifdef BLT_MODE_CHANGE_ISSUE /*Performance level upgrade temporarily*/
-	bool blt_mode_perf_backup = false; 
-	u32 mdp_bw_backup = 0; 
-	u32 mdp_clk_backup = 0; 
-#endif
 
 
 	pr_debug("%s %d: req mdp clk %d, cur mdp clk %d flag %d\n",
@@ -2958,35 +2949,7 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			    mfd->panel_info.type == LVDS_PANEL)
 				mdp4_lcdc_overlay_blt_start(mfd);
 			else if (mfd->panel_info.type == MIPI_VIDEO_PANEL)
-#ifdef BLT_MODE_CHANGE_ISSUE
-                       {
-                                blt_mode_perf_backup = true; 
-                                mdp_bw_backup = perf_request.mdp_bw; 
-			        mdp_clk_backup = perf_request.mdp_clk_rate; 
-			        perf_request.mdp_bw = OVERLAY_PERF_LEVEL1; 
-			        perf_request.mdp_clk_rate = mdp_max_clk; 
-
-			        mdp_set_core_clk(perf_request.mdp_clk_rate);
-  	                        mdp_bus_scale_update_request
-		  		        (OVERLAY_BUS_SCALE_TABLE_BASE -
-						 perf_request.mdp_bw);
-#endif
-                        
 				mdp4_dsi_video_blt_start(mfd);
-#ifdef BLT_MODE_CHANGE_ISSUE
-			        if(blt_mode_perf_backup == true) 
-			        { 
-			   	     blt_mode_perf_backup = false;
-				     perf_request.mdp_bw = mdp_bw_backup; 
-				     perf_request.mdp_clk_rate = mdp_clk_backup; 
-
-				     mdp_set_core_clk(perf_request.mdp_clk_rate);
-  	         	            mdp_bus_scale_update_request
-			             		(OVERLAY_BUS_SCALE_TABLE_BASE -
-			                     		 perf_request.mdp_bw);
-			        } 
-                        }
-#endif
 			else if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD)
 				mdp4_dsi_cmd_blt_start(mfd);
 			pr_info("%s mixer0 start blt [%d] from %d to %d.\n",
@@ -3024,34 +2987,7 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			    mfd->panel_info.type == LVDS_PANEL)
 				mdp4_lcdc_overlay_blt_stop(mfd);
 			else if (mfd->panel_info.type == MIPI_VIDEO_PANEL)
-#ifdef BLT_MODE_CHANGE_ISSUE
-                       {
-                                blt_mode_perf_backup = true; 
-                                mdp_bw_backup = perf_request.mdp_bw; 
-			        mdp_clk_backup = perf_request.mdp_clk_rate; 
-			        perf_request.mdp_bw = OVERLAY_PERF_LEVEL1; 
-			        perf_request.mdp_clk_rate = mdp_max_clk; 
-
-			        mdp_set_core_clk(perf_request.mdp_clk_rate);
-  	                        mdp_bus_scale_update_request
-		  		        (OVERLAY_BUS_SCALE_TABLE_BASE -
-						 perf_request.mdp_bw);
-#endif
 				mdp4_dsi_video_blt_stop(mfd);
-#ifdef BLT_MODE_CHANGE_ISSUE
-			        if(blt_mode_perf_backup == true) 
-			        { 
-			   	     blt_mode_perf_backup = false;
-				     perf_request.mdp_bw = mdp_bw_backup; 
-				     perf_request.mdp_clk_rate = mdp_clk_backup; 
-
-				     mdp_set_core_clk(perf_request.mdp_clk_rate);
-  	         	            mdp_bus_scale_update_request
-			             		(OVERLAY_BUS_SCALE_TABLE_BASE -
-			                     		 perf_request.mdp_bw);
-			        } 
-                        }
-#endif
 			else if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD)
 				mdp4_dsi_cmd_blt_stop(mfd);
 			pr_info("%s mixer0 stop blt [%d] from %d to %d.\n",

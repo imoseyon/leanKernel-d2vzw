@@ -33,10 +33,6 @@
 #include "msm_fb.h"
 #include "mdp4.h"
 
-#ifdef BLT_MODE_CHANGE_ISSUE
-int middle_of_blt_change = 0;
-#endif
-
 struct mdp4_statistic mdp4_stat;
 
 unsigned is_mdp4_hw_reset(void)
@@ -398,13 +394,6 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	if (isr & INTR_PRIMARY_INTF_UDERRUN) {
 		pr_debug("%s: UNDERRUN -- primary\n", __func__);
 		mdp4_stat.intr_underrun_p++;
-#ifdef BLT_MODE_CHANGE_ISSUE
-		if(middle_of_blt_change)
-		{
-			mdp4_overlay0_done_blt_mode_change_recovery(0);
-			middle_of_blt_change = 3;
-		}
-#endif
 
 #ifdef MDP_HANG_DEBUG
 		pr_info("-=-=-=-=-=-=-=-=-=- UNDER RUN -=-=-=\n");

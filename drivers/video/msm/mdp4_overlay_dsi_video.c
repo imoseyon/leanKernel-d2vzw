@@ -45,12 +45,6 @@ static int dsi_video_enabled;
 
 #define MAX_CONTROLLER	1
 
-#ifdef BLT_MODE_CHANGE_ISSUE
-static struct wake_lock blt_mode_perf_up;
-static int blt_wake_lock_init = 0;
-extern int middle_of_blt_change;
-#endif
-
 static struct vsycn_ctrl {
 	struct device *dev;
 	int inited;
@@ -671,14 +665,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	mdp_histogram_ctrl_all(TRUE);
 
-#ifdef BLT_MODE_CHANGE_ISSUE
-	 if(!blt_wake_lock_init) 
-	 { 
-	     wake_lock_init(&blt_mode_perf_up, WAKE_LOCK_IDLE, "blt_mode_wakelock"); 
-	     blt_wake_lock_init = true; 
-	 } 
-#endif
-
 	mdp4_overlay_dsi_video_start();
 	return ret;
 }
@@ -980,26 +966,6 @@ void mdp4_dmap_done_dsi_video(int cndx)
 	spin_unlock(&vctrl->spin_lock);
 }
 
-
-#ifdef BLT_MODE_CHANGE_ISSUE
-void mdp4_overlay0_done_blt_mode_change_recovery(int cndx)
-{
-	struct vsycn_ctrl *vctrl;
-	struct mdp4_overlay_pipe *pipe;
-
-	vctrl = &vsync_ctrl_db[cndx];
-	pipe = vctrl->base_pipe;
-
-	spin_lock(&vctrl->spin_lock);
-	vsync_irq_disable(INTR_OVERLAY0_DONE, MDP_OVERLAY0_TERM);
-	vctrl->ov_done++;
-	complete_all(&vctrl->ov_comp);
-	spin_unlock(&vctrl->spin_lock);
-
-	return;
-}
-#endif
-
 /*
  * mdp4_overlay0_done_dsi: called from isr
  */
@@ -1041,9 +1007,6 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 	int cndx = 0;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
-#ifdef BLT_MODE_CHANGE_ISSUE
-	int tg_enabled;
-#endif
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
 
@@ -1053,9 +1016,6 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 		pr_info("%s: no blt_base assigned\n", __func__);
 		return;
 	}
-#ifdef BLT_MODE_CHANGE_ISSUE
-	wake_lock(&blt_mode_perf_up);
-#endif
 	spin_lock_irqsave(&vctrl->spin_lock, flag);
 	if (enable && pipe->ov_blt_addr == 0) {
 		pipe->ov_blt_addr = mfd->ov0_wb_buf->write_addr;
@@ -1079,27 +1039,10 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 
 	if (!vctrl->blt_change) {
 		spin_unlock_irqrestore(&vctrl->spin_lock, flag);
-#ifdef BLT_MODE_CHANGE_ISSUE
-		wake_unlock(&blt_mode_perf_up); 
-#endif
 		return;
 	}
 
 	spin_unlock_irqrestore(&vctrl->spin_lock, flag);
- #ifdef BLT_MODE_CHANGE_ISSUE
-	tg_enabled = inpdw(MDP_BASE + DSI_VIDEO_BASE) & 0x01;
-	if(middle_of_blt_change != 3)
-		middle_of_blt_change = TRUE; 
-		if (tg_enabled) {
-			mdp4_dsi_video_wait4dmap_done(0);
-			if (pipe->ov_blt_addr)
-				mdp4_dsi_video_wait4ov(0);
-			vctrl->blt_change = 0;
-		}
-		vctrl->blt_change = 0;
-		middle_of_blt_change = FALSE;
-		wake_unlock(&blt_mode_perf_up); 
-#endif
 }
 
 void mdp4_dsi_video_overlay_blt(struct msm_fb_data_type *mfd,

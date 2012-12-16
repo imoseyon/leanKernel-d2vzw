@@ -473,7 +473,7 @@ static void release_all_fingers(struct mms_ts_info *info)
 	for (i = 0; i < MAX_FINGERS; i++) {
 #ifdef SEC_TSP_DEBUG
 		if (info->finger_state[i] == 1) {
-			dev_notice(&client->dev, "finger %d up(force)\n", i);
+			dev_dbg(&client->dev, "finger %d up(force)\n", i);
 		}
 #endif
 		info->finger_state[i] = 0;
@@ -663,8 +663,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 				"finger id[%d]: x=%d y=%d p=%d w=%d major=%d minor=%d angle=%d palm=%d\n"
 				, id, x, y, tmp[5], tmp[4], tmp[6], tmp[7]
 				, angle, palm);
-#else
-			dev_notice(&client->dev, "finger [%d] up\n", id);
 #endif
 			input_mt_slot(info->input_dev, id);
 			input_mt_report_slot_state(info->input_dev,
@@ -704,7 +702,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 #else
 		if (info->finger_state[id] == 0) {
 			info->finger_state[id] = 1;
-			dev_notice(&client->dev, "finger [%d] down\n", id);
 		}
 #endif
 	}

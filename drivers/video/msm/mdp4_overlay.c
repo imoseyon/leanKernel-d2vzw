@@ -3220,6 +3220,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	}
 
 	/* if blt mode is required when bypass mode, it returns error */
+    /*
 	if ((pipe->flags & MDP_BACKEND_COMPOSITION) &&
 		mdp4_calc_pipe_mdp_clk(mfd, pipe) == 0 &&
 		pipe->req_clk > mdp_max_clk)
@@ -3229,6 +3230,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		mutex_unlock(&mfd->dma->ov_mutex);
 		return -EINVAL;
 	}
+    */
 
 	/* return id back to user */
 	req->id = pipe->pipe_ndx;	/* pipe_ndx start from 1 */

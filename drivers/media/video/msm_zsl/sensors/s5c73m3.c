@@ -131,8 +131,8 @@ static char FW_buf[409600] = {0}; /*static QCTK 400KB*/
 				return x; \
 			}
 
-char fw_path[40] = {0};
-char fw_path_in_data[40] = {0};
+static char fw_path[40] = {0};
+static char fw_path_in_data[40] = {0};
 struct s5c73m3_fw_version camfw_info[S5C73M3_PATH_MAX];
 
 static int s5c73m3_i2c_write(unsigned short addr, unsigned short data)

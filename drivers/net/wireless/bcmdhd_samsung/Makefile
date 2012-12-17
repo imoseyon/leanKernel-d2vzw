@@ -208,17 +208,6 @@ DHDOFILES :=$(filter-out bcmsdh_sdmmc.o,$(DHDOFILES))
 DHDOFILES :=$(filter-out bcmsdh_sdmmc_linux.o,$(DHDOFILES))
 endif
 
-dhd-y := $(DHDOFILES)
-obj-m   += dhd.o
+obj-$(CONFIG_BCMDHD_SAMSUNG) += dhd.o
+dhd-objs += $(DHDOFILES)
 
-all:
-	@echo "$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules"
-	@$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules
-
-clean:
-	rm -rf *.o *.ko *.mod.c *~ .*.cmd *.o.cmd .*.o.cmd \
-	Module.symvers modules.order .tmp_versions modules.builtin
-
-install:
-	@$(MAKE) --no-print-directory -C $(KDIR) \
-		SUBDIRS=$(CURDIR) modules_install

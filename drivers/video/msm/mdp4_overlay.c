@@ -323,19 +323,6 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 	}
 }
 
-/* static array with index 0 for unset status and 1 for set status */
-static bool overlay_status[MDP4_OVERLAY_TYPE_MAX];
-
-void mdp4_overlay_status_write(enum mdp4_overlay_status type, bool val)
-{
-	overlay_status[type] = val;
-}
-
-bool mdp4_overlay_status_read(enum mdp4_overlay_status type)
-{
-	return overlay_status[type];
-}
-
 int mdp4_overlay_mixer_play(int mixer_num)
 {
 	if (mixer_num == MDP4_MIXER2)
@@ -2543,19 +2530,6 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 	 */
 	if (req->id == MSMFB_NEW_REQUEST) {  /* new request */
 		pipe->pipe_used++;
-		if (pipe->mixer_num != mixer) { /* mixer changed */
-			/*
-			 * since stage_down does not do stage_commit,
-			 * stage_commit is need to unstage pipe from
-			 * previous mixer to avoid this pipe be
-			 * staged up into two mixers at same time
-			 */
-			msleep(20);
-			mdp4_mixer_stage_commit(pipe->mixer_num);
-			pr_err("%s: unstaged pipe=%d from mixer=%d\n",
-				__func__, pipe->pipe_ndx, pipe->mixer_num);
-			msleep(20);			
-		}
 		pipe->mixer_num = mixer;
 		pr_debug("%s: zorder=%d pipe ndx=%d num=%d\n", __func__,
 			req->z_order, pipe->pipe_ndx, pipe->pipe_num);
@@ -2988,10 +2962,7 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			perf_cur->mdp_clk_rate =
 				perf_req->mdp_clk_rate;
 		}
-		if (perf_req->mdp_bw == OVERLAY_PERF_LEVEL_MAX) {
-			mdp_bus_scale_update_request(OVERLAY_PERF_LEVEL_MAX);
-		}	
-		else if (perf_req->mdp_bw < perf_cur->mdp_bw) {
+		if (perf_req->mdp_bw < perf_cur->mdp_bw) {
 			mdp_bus_scale_update_request
 				(OVERLAY_BUS_SCALE_TABLE_BASE -
 				 perf_req->mdp_bw);
@@ -3031,7 +3002,7 @@ void mdp4_overlay_mdp_perf_upd(struct msm_fb_data_type *mfd,
 			perf_cur->mdp_clk_rate =
 				perf_req->mdp_clk_rate;
 		}
-		if (perf_req->mdp_bw > perf_cur->mdp_bw || perf_cur->mdp_bw == OVERLAY_PERF_LEVEL_MAX) {
+		if (perf_req->mdp_bw > perf_cur->mdp_bw) {
 			pr_info("%s mdp bw is changed [%d] from %d to %d\n",
 				__func__,
 				flag,
@@ -3217,19 +3188,6 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 		pr_err("%s: mdp4_overlay_req2pipe, ret=%d\n", __func__, ret);
 		return ret;
 	}
-
-	/* if blt mode is required when bypass mode, it returns error */
-    /*
-	if ((pipe->flags & MDP_BACKEND_COMPOSITION) &&
-		mdp4_calc_pipe_mdp_clk(mfd, pipe) == 0 &&
-		pipe->req_clk > mdp_max_clk)
-	{
-		if (req->id == MSMFB_NEW_REQUEST)
-			mdp4_overlay_pipe_free(pipe);
-		mutex_unlock(&mfd->dma->ov_mutex);
-		return -EINVAL;
-	}
-    */
 
 	/* return id back to user */
 	req->id = pipe->pipe_ndx;	/* pipe_ndx start from 1 */

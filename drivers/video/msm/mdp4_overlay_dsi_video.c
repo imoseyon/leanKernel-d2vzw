@@ -206,10 +206,10 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 
 	if(vctrl->blt_change) {
 		blt_mode_perf_backup = true; 
-		mdp_bw_backup = perf_request.mdp_bw; 
-		mdp_clk_backup = perf_request.mdp_clk_rate; 
-		perf_request.mdp_bw = OVERLAY_PERF_LEVEL_MAX; 
-		perf_request.mdp_clk_rate = mdp_max_clk; 
+		mdp_bw_backup = perf_request.mdp_bw;
+		mdp_clk_backup = perf_request.mdp_clk_rate;
+		perf_request.mdp_bw = OVERLAY_PERF_LEVEL4;
+		perf_request.mdp_clk_rate = mdp_max_clk;
 	}
 
     mdp4_overlay_mdp_perf_upd(vctrl->mfd, 1);

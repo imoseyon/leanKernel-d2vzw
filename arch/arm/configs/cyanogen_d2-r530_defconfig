@@ -1359,8 +1359,8 @@ CONFIG_BCMDHD_SAMSUNG=m
 # CONFIG_BCM4330 is not set
 CONFIG_BCM4334=y
 # CONFIG_BCM43241 is not set
-CONFIG_BCMDHD_FW_PATH="/system/etc/firmware/fw_bcmdhd.bin"
-CONFIG_BCMDHD_NVRAM_PATH="/system/etc/wifi/bcmdhd.cal"
+CONFIG_BCMDHD_FW_PATH="/system/etc/wifi/bcmdhd_sta.bin_b2"
+CONFIG_BCMDHD_NVRAM_PATH="/system/etc/wifi/nvram_net.txt"
 # CONFIG_DHD_USE_STATIC_BUF is not set
 # CONFIG_DHD_USE_SCHED_SCAN is not set
 CONFIG_BROADCOM_WIFI_RESERVED_MEM=y

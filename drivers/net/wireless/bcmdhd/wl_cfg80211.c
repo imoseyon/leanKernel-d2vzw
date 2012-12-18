@@ -1893,6 +1893,7 @@ wl_run_escan(struct wl_priv *wl, struct net_device *ndev,
 
 			/* Allocate space for populating ssids in wl_iscan_params struct */
 			params_size += sizeof(struct wlc_ssid) * n_ssids;
+        }
 		params = (wl_escan_params_t *) kzalloc(params_size, GFP_KERNEL);
 		if (params == NULL) {
 			err = -ENOMEM;

@@ -2082,7 +2082,7 @@ void mdp4_mixer_blend_setup(int mixer)
 			s_pipe->alpha_enable &&
 			((s_pipe->op_mode & MDP4_OP_SCALEY_EN) ||
 			(s_pipe->op_mode & MDP4_OP_SCALEX_EN)) &&
-			!(s_pipe->op_mode & (MDP4_OP_SCALEX_PIXEL_RPT | MDP4_OP_SCALEY_PIXEL_RPT)))
+			!(s_pipe->op_mode & MDP4_OP_SCALEY_PIXEL_RPT))
 			alpha_drop = 1;
 
 
@@ -3234,9 +3234,6 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
-
-	if (mfd->backlight_ctrl_ongoing)
-		usleep(5000);
 
 	return 0;
 }

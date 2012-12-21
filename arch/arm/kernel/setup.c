@@ -957,7 +957,6 @@ void __init setup_arch(char **cmdline_p)
 	*cmdline_p = cmd_line;
 
 	parse_early_param();
-
 	if (mdesc->init_very_early)
 		mdesc->init_very_early();
 
@@ -966,7 +965,9 @@ void __init setup_arch(char **cmdline_p)
 	arm_memblock_init(&meminfo, mdesc);
 
 	paging_init(mdesc);
+
 	request_standard_resources(mdesc);
+
 
 	if (mdesc->restart)
 		arm_pm_restart = mdesc->restart;

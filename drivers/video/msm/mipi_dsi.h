@@ -15,6 +15,8 @@
 #define MIPI_DSI_H
 
 #include <mach/scm-io.h>
+#include "msm_fb_def.h"
+#include "msm_fb.h"
 #include <linux/list.h>
 
 #ifdef BIT

@@ -145,6 +145,7 @@ enum pm8921_chg_led_src_config {
  */
 struct pm8921_charger_platform_data {
 	struct pm8xxx_charger_core_data	charger_cdata;
+	unsigned int			safety_time;
 	unsigned int			ttrkl_time;
 	unsigned int			update_time;
 	unsigned int			max_voltage;
@@ -181,6 +182,7 @@ struct pm8921_charger_platform_data {
 	enum pm8921_chg_hot_thr		hot_thr;
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
+	int				eoc_check_soc;
 	int				battery_less_hardware;
 	int				btc_override;
 	int				btc_override_cold_degc;
@@ -189,6 +191,9 @@ struct pm8921_charger_platform_data {
 	int				btc_panic_if_cant_stop_chg;
 	int				stop_chg_upon_expiry;
 	bool				disable_chg_rmvl_wrkarnd;
+#ifdef CONFIG_PM8921_SEC_CHARGER
+	int             (*get_cable_type)(void);
+#endif
 };
 
 enum pm8921_charger_source {

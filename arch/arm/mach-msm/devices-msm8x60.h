@@ -23,6 +23,24 @@
 #define MSM_SSBI2_I2C_BUS_ID     7
 #define MSM_SSBI3_I2C_BUS_ID     8
 
+/* add more I2C BUS */
+#define MSM_8960_GSBI1_QUP_I2C_BUS_ID 1
+#define MSM_8960_GSBI4_QUP_I2C_BUS_ID 4
+#define MSM_8960_GSBI7_QUP_I2C_BUS_ID 7
+
+#define MSM_MHL_I2C_BUS_ID             9
+#define MSM_FSA9485_I2C_BUS_ID  11
+#define MSM_SNS_I2C_BUS_ID     12
+#define MSM_FUELGAUGE_I2C_BUS_ID             13
+#define MSM_OPT_I2C_BUS_ID     14
+#define MSM_TOUCHKEY_I2C_BUS_ID         16
+#define MSM_NFC_I2C_BUS_ID              17
+#define MSM_A2220_I2C_BUS_ID            18
+#ifdef CONFIG_SAMSUNG_CMC624
+#define MSM_CMC624_I2C_BUS_ID   19
+#endif
+
+
 #ifdef CONFIG_SND_SOC_MSM8660_APQ
 extern struct platform_device msm_pcm;
 extern struct platform_device msm_pcm_routing;

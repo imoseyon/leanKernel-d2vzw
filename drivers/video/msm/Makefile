@@ -1,3 +1,4 @@
+#EXTRA_CFLAGS += -DDEBUG
 ifeq ($(CONFIG_FB_MSM_MDSS),y)
 obj-y += mdss/
 else
@@ -14,6 +15,10 @@ obj-$(CONFIG_DEBUG_FS) += mdp_debugfs.o
 
 ifeq ($(CONFIG_FB_MSM_MDP40),y)
 obj-y += mdp4_util.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) += mdp4_video_enhance.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) += mdp4_video_enhance.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) += mdp4_video_enhance.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT) += mdp4_video_enhance.o
 else
 obj-y += mdp_hw_init.o
 obj-y += mdp_ppp.o
@@ -79,6 +84,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA) += mipi_toshiba.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_SAMSUNG_OLED) += mipi_samsung_oled.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TRULY) += mipi_truly.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NT35510) += mipi_NT35510.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NT35516) += mipi_truly_tft540960_1_e.o
@@ -118,6 +124,9 @@ obj-$(CONFIG_FB_MSM_MDDI_ORISE) += mddi_orise.o
 obj-$(CONFIG_FB_MSM_MDDI_QUICKVX) += mddi_quickvx.o
 endif
 
+# ESD Recovery
+obj-$(CONFIG_MIPI_SAMSUNG_ESD_REFRESH) += mipi_samsung_esd_refresh.o
+
 ifeq ($(CONFIG_FB_MSM_MIPI_PANEL_DETECT),y)
 obj-y += mipi_toshiba_video_wvga_pt.o mipi_toshiba_video_wsvga_pt.o mipi_toshiba_video_wuxga.o
 obj-y += mipi_novatek_video_qhd_pt.o mipi_novatek_cmd_qhd_pt.o
@@ -139,6 +148,7 @@ obj-$(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_QHD_PT) += mipi_novatek_cmd_qhd_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT) += mipi_renesas_video_fwvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT) += mipi_renesas_cmd_fwvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT) += mipi_renesas_video_fwvga_pt.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) += mipi_samsung_oled_cmd_qhd_pt.o smart_mtp_s6e39a0x02.o
 obj-$(CONFIG_FB_MSM_MIPI_TRULY_VIDEO_WVGA_PT) += mipi_truly_video_wvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_NT35510_CMD_WVGA_PT) += mipi_NT35510_cmd_wvga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT) += mipi_NT35510_video_wvga_pt.o
@@ -147,6 +157,10 @@ obj-$(CONFIG_FB_MSM_MIPI_NT35516_VIDEO_QHD_PT) += mipi_truly_tft540960_1_e_video
 obj-$(CONFIG_FB_MSM_MIPI_SIMULATOR_VIDEO) += mipi_simulator_video.o
 obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WXGA) += mipi_chimei_wxga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WUXGA) += mipi_chimei_wuxga.o
+obj-$(CONFIG_SAMSUNG_CMC624) += samsung_cmc624.o cmc624_sysfs.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) += mipi_samsung_oled_video_hd_pt.o smart_mtp_s6e8aa0x01.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) += mipi_samsung_oled_video_wvga_pt.o smart_mtp_s6e63m0.o
+obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT) += mipi_samsung_tft_video_wxga_pt.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o
@@ -173,7 +187,7 @@ obj-$(CONFIG_FB_MSM_LCDC_TRULY_HVGA_IPS3P2335) += lcdc_truly_ips3p2335.o
 
 obj-$(CONFIG_FB_MSM_TVOUT) += tvout_msm.o
 
-ccflags-y := -I$(src)/mhl
+ccflags-y := -I$(src)
 obj-$(CONFIG_FB_MSM_HDMI_MHL_8334) += mhl-8334.o
 mhl-8334-objs  += mhl/mhl_8334.o
 mhl-8334-objs  += mhl/mhl_i2c_utils.o
@@ -193,5 +207,6 @@ endif
 
 obj-$(CONFIG_MSM_VIDC_1080P) += vidc/
 obj-$(CONFIG_MSM_VIDC_720P) += vidc/
+obj-$(CONFIG_VIDEO_MHL_V2) += mhl_v2/
 clean:
 	rm *.o .*cmd

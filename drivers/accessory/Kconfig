@@ -1,0 +1,26 @@
+#
+# Accessory Configuration
+#
+source "drivers/accessory/mhl_tab_v2/Kconfig"
+
+menuconfig ACCESSORY
+	bool "Accessory devices"
+	default n
+	---help---
+	Provides support for detecting Accessory such as TA, Keyboard, OTG
+
+	Say Y here to get to see options for Samsung Accessories
+	If you say N, all options in this submenu will be skipped and disabled.
+
+if ACCESSORY
+
+config 30PIN_CONN
+        tristate "Accessory detection driver"
+
+config SEC_KEYBOARD_DOCK
+	tristate "sec keyboard dock support"
+
+config CAMERON_HEALTH
+	bool "Cameron Health device support"
+	default n
+endif # ACCESSORY

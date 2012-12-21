@@ -91,6 +91,7 @@ static void hdmi_msm_turn_on(void);
 static int hdmi_msm_audio_off(void);
 static int hdmi_msm_read_edid(void);
 static void hdmi_msm_hpd_off(void);
+static int hdmi_msm_hpd_on(void);
 static boolean hdmi_msm_is_dvi_mode(void);
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT
@@ -771,6 +772,28 @@ static void hdmi_msm_turn_on(void);
 static int hdmi_msm_audio_off(void);
 static int hdmi_msm_read_edid(void);
 static void hdmi_msm_hpd_off(void);
+#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) \
+                || defined(CONFIG_VIDEO_MHL_TAB_V2)
+void mhl_hpd_handler(bool state)
+{
+	pr_info("mhl_hpd_handler with state as %d\n", state);
+	hdmi_msm_state->mhl_hpd_state = state;
+//	hdmi_msm_state->hpd_cable_chg_detected = TRUE;
+//	hdmi_msm_state->hpd_on_offline = state;
+
+//	if (state && hdmi_msm_state->boot_completion) {
+		/*To make sure that the previous
+ 			disconnect event handling  is completed.*/
+	if (state) {
+		msleep(20);
+		hdmi_msm_hpd_on();
+	}
+//	} else if (!hdmi_msm_state->boot_completion) {
+//		pr_err("hdmi_msm_state->boot_completion = %d\n",
+//			hdmi_msm_state->boot_completion);
+//	}
+}
+#endif
 
 static bool hdmi_ready(void)
 {
@@ -4515,6 +4538,12 @@ error:
 	/* Set HPD cable sense polarity */
 	hdmi_msm_hpd_polarity_setup();
 
+#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) \
+                || defined(CONFIG_VIDEO_MHL_TAB_V2)
+	if (hdmi_msm_state->mhl_hpd_state)
+		hdmi_msm_hpd_on();
+
+#endif
 	return ret;
 }
 
@@ -4647,6 +4676,10 @@ static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 		goto error;
 	}
 
+#ifdef CONFIG_SAMSUNG_HDMI_ENABLE_POWER
+	if (hdmi_msm_state->pd->hdmi_enable)
+		hdmi_msm_state->pd->hdmi_enable();
+#endif
 	if (!hdmi_msm_state->pd->cec_power) {
 		DEV_ERR("Init FAILED: cec_power function missing\n");
 		rc = -ENODEV;
@@ -4785,7 +4818,11 @@ static int hdmi_msm_hpd_feature(int on)
 
 	DEV_INFO("%s: %d\n", __func__, on);
 	if (on) {
-		rc = hdmi_msm_hpd_on();
+#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) \
+                || defined(CONFIG_VIDEO_MHL_TAB_V2)
+		if (hdmi_msm_state->mhl_hpd_state)
+#endif
+			rc = hdmi_msm_hpd_on();
 	} else {
 		if (external_common_state->hpd_state) {
 			external_common_state->hpd_state = 0;

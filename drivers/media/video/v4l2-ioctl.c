@@ -27,7 +27,6 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-chip-ident.h>
-
 #define dbgarg(cmd, fmt, arg...) \
 		do {							\
 		    if (vfd->debug & V4L2_DEBUG_IOCTL_ARG) {		\
@@ -2209,7 +2208,7 @@ static long __video_do_ioctl(struct file *file,
 
 		if (!ops->vidioc_subscribe_event)
 			break;
-
+		ev->id = 0;
 		ret = v4l2_event_dequeue(fh, ev, file->f_flags & O_NONBLOCK);
 		if (ret < 0) {
 			dbgarg(cmd, "no pending events?");
@@ -2293,11 +2292,11 @@ static long __video_do_ioctl(struct file *file,
 		break;
 	} /* switch */
 
-	if (vfd->debug & V4L2_DEBUG_IOCTL_ARG) {
+//	if (vfd->debug & V4L2_DEBUG_IOCTL_ARG) {
 		if (ret < 0) {
 			v4l_print_ioctl(vfd->name, cmd);
 			printk(KERN_CONT " error %ld\n", ret);
-		}
+//		}
 	}
 
 	return ret;

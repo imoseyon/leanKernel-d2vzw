@@ -62,7 +62,41 @@ obj-$(CONFIG_SND_SOC_VOICE) += msm-pcm-voice.o msm-pcm-voip.o
 snd-soc-qdsp6-objs += msm-pcm-lpa.o msm-pcm-afe.o
 obj-$(CONFIG_SND_SOC_QDSP6) += snd-soc-qdsp6.o
 
-snd-soc-msm8960-objs := msm8960.o apq8064.o msm8930.o mpq8064.o apq8064-i2s.o
+ifdef CONFIG_MACH_M2_ATT
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_M2_SKT
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_M2_SPR
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_M2_VZW
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_M2_DCM
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_K2_KDI
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_GOGH
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_INFINITE
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_JASPER
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_AEGIS2
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_COMANCHE
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_EXPRESS
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_STRETTO
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_APEXQ
+snd-soc-msm8960-objs := msm8960-jaguar.o
+else ifdef CONFIG_MACH_SUPERIORLTE_SKT
+snd-soc-msm8960-objs := msm8960-d2.o
+else ifdef CONFIG_MACH_JAGUAR
+snd-soc-msm8960-objs := msm8960-jaguar.o
+else
+snd-soc-msm8960-objs := msm8960-jaguar.o
+endif
 obj-$(CONFIG_SND_SOC_MSM8960) += snd-soc-msm8960.o
 
 # Generic MSM drivers

@@ -1695,10 +1695,17 @@ static const char *crypto_algo_names[] = {
 	"AES_CCM",
 	"AES_OCB_MSDU",
 	"AES_OCB_MPDU",
+#ifdef BCMCCX
+	"CKIP",
+	"CKIP_MMH",
+	"WEP_MMH",
+	"NALG"
+#else
 	"NALG"
 	"UNDEF",
 	"UNDEF",
 	"UNDEF",
+#endif /* BCMCCX */
 #ifdef BCMWAPI_WPI
 	"WAPI",
 #endif /* BCMWAPI_WPI */

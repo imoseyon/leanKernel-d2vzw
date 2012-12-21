@@ -36,6 +36,7 @@
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
 #include <mach/clk-provider.h>
+#include <mach/msm8960-gpio.h>
 #include <sound/msm-dai-q6.h>
 #include <sound/apr_audio.h>
 #include <mach/msm_tsif.h>
@@ -1081,7 +1082,7 @@ struct msm_vidc_platform_data vidc_platform_data = {
 	.disable_dmx = 0,
 	.disable_fullhd = 0,
 	.cont_mode_dpb_count = 18,
-	.fw_addr = 0x9fe00000,
+	.fw_addr = 0xafe00000,
 	.enable_sec_metadata = 0,
 };
 
@@ -1705,7 +1706,46 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	pdev->dev.platform_data = plat;
 	return platform_device_register(pdev);
 }
-
+#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+static struct resource resources_qup_i2c_gsbi1[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI1_PHYS,
+		.end	= MSM_GSBI1_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI1_QUP_PHYS,
+		.end	= MSM_GSBI1_QUP_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= MSM8960_GSBI1_QUP_IRQ,
+		.end	= MSM8960_GSBI1_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "i2c_clk",
+		.start	= GPIO_CODEC_I2C_SCL,
+		.end	= GPIO_CODEC_I2C_SCL,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "i2c_sda",
+		.start	= GPIO_CODEC_I2C_SDA,
+		.end	= GPIO_CODEC_I2C_SDA,
+		.flags	= IORESOURCE_IO,
+	},
+};
+struct platform_device msm8960_device_qup_i2c_gsbi1 = {
+	.name		= "qup_i2c",
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi1),
+	.resource	= resources_qup_i2c_gsbi1,
+};
+#endif
 static struct resource resources_qup_i2c_gsbi4[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
@@ -1760,6 +1800,62 @@ struct platform_device msm8960_device_qup_i2c_gsbi3 = {
 	.id		= 3,
 	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi3),
 	.resource	= resources_qup_i2c_gsbi3,
+};
+
+static struct resource resources_qup_i2c_gsbi7[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI7_PHYS,
+		.end	= MSM_GSBI7_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI7_QUP_PHYS,
+		.end	= MSM_GSBI7_QUP_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= GSBI7_QUP_IRQ,
+		.end	= GSBI7_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi7 = {
+	.name		= "qup_i2c",
+	.id		= 7,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi7),
+	.resource	= resources_qup_i2c_gsbi7,
+};
+
+static struct resource resources_qup_i2c_gsbi8[] = {
+	{
+		.name	= "gsbi_qup_i2c_addr",
+		.start	= MSM_GSBI8_PHYS,
+		.end	= MSM_GSBI8_PHYS + 4 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_phys_addr",
+		.start	= MSM_GSBI8_QUP_PHYS,
+		.end	= MSM_GSBI8_QUP_PHYS + MSM_QUP_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "qup_err_intr",
+		.start	= GSBI8_QUP_IRQ,
+		.end	= GSBI8_QUP_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_i2c_gsbi8 = {
+	.name		= "qup_i2c",
+	.id		= 8,
+	.num_resources	= ARRAY_SIZE(resources_qup_i2c_gsbi8),
+	.resource	= resources_qup_i2c_gsbi8,
 };
 
 static struct resource resources_qup_i2c_gsbi9[] = {
@@ -2246,6 +2342,88 @@ struct platform_device msm8960_device_qup_spi_gsbi1 = {
 	.resource	= resources_qup_spi_gsbi1,
 };
 
+#ifdef CONFIG_S5C73M3
+static struct resource resources_qup_spi_gsbi11[] = {
+	{
+		.name   = "spi_base",
+		.start  = MSM_GSBI11_QUP_PHYS,
+		.end    = MSM_GSBI11_QUP_PHYS + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "gsbi_base",
+		.start  = MSM_GSBI11_PHYS,
+		.end    = MSM_GSBI11_PHYS + 4 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "spi_irq_in",
+		.start  = GSBI11_QUP_IRQ,
+		.end    = GSBI11_QUP_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+	/*test: Qualcomm, DMA SPI, start */
+	{
+		.name	= "spidm_channels",
+		.start	= 9,
+		.end	= 10,
+		.flags	= IORESOURCE_DMA,
+	},
+	{
+		.name	= "spidm_crci",
+		.start	= 12,
+		.end	= 13,
+		.flags	= IORESOURCE_DMA,
+	},
+	/*test: Qualcomm, DMA SPI, end */
+	{
+		.name   = "spi_clk",
+		.start  = GPIO_CAM_SPI_SCLK,
+		.end    = GPIO_CAM_SPI_SCLK,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_miso",
+		.start  = GPIO_CAM_SPI_MISO,
+		.end    = GPIO_CAM_SPI_MISO,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_mosi",
+		.start  = GPIO_CAM_SPI_MOSI,
+		.end    = GPIO_CAM_SPI_MOSI,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "spi_cs",
+		.start  = GPIO_CAM_SPI_SSN,
+		.end    = GPIO_CAM_SPI_SSN,
+		.flags  = IORESOURCE_IO,
+	},
+#ifdef CONFIG_VP_A2220
+	{
+		.name   = "a2220_sda",
+		.start  = GPIO_A2220_I2C_SDA,
+		.end    = GPIO_A2220_I2C_SDA,
+		.flags  = IORESOURCE_IO,
+	},
+	{
+		.name   = "a2220_sck",
+		.start  = GPIO_A2220_I2C_SCL,
+		.end    = GPIO_A2220_I2C_SCL,
+		.flags  = IORESOURCE_IO,
+	},
+#endif
+};
+
+struct platform_device msm8960_device_qup_spi_gsbi11 = {
+	.name	= "spi_qsd",
+	.id	= 0,
+	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi11),
+	.resource	= resources_qup_spi_gsbi11,
+};
+#endif
+
 struct platform_device msm_pcm = {
 	.name	= "msm-pcm-dsp",
 	.id	= -1,
@@ -2274,6 +2452,16 @@ struct platform_device msm_cpudai0 = {
 struct platform_device msm_cpudai1 = {
 	.name	= "msm-dai-q6",
 	.id	= 0x4001,
+};
+
+struct platform_device msm_i2s_cpudai0 = {
+	.name   = "msm-dai-q6",
+	.id     = PRIMARY_I2S_RX,
+};
+
+struct platform_device msm_i2s_cpudai1 = {
+	.name   = "msm-dai-q6",
+	.id     = PRIMARY_I2S_TX,
 };
 
 struct platform_device msm8960_cpudai_slimbus_2_rx = {
@@ -2335,20 +2523,21 @@ struct msm_dai_auxpcm_pdata auxpcm_pdata = {
 	.mode_8k = {
 		.mode = AFE_PCM_CFG_MODE_PCM,
 		.sync = AFE_PCM_CFG_SYNC_INT,
-		.frame = AFE_PCM_CFG_FRM_32BPF,
+		.frame = AFE_PCM_CFG_FRM_256BPF,
 		.quant = AFE_PCM_CFG_QUANT_LINEAR_NOPAD,
 		.slot = 0,
 		.data = AFE_PCM_CFG_CDATAOE_MASTER,
-		.pcm_clk_rate = 256000,
+		.pcm_clk_rate = 2048000,
 	},
 	.mode_16k = {
 		.mode = AFE_PCM_CFG_MODE_PCM,
 		.sync = AFE_PCM_CFG_SYNC_INT,
-		.frame = AFE_PCM_CFG_FRM_32BPF,
+		.frame = AFE_PCM_CFG_FRM_256BPF,
 		.quant = AFE_PCM_CFG_QUANT_LINEAR_NOPAD,
 		.slot = 0,
 		.data = AFE_PCM_CFG_CDATAOE_MASTER,
-		.pcm_clk_rate = 512000,
+		.pcm_clk_rate = 2048000,
+
 	}
 };
 
@@ -2546,7 +2735,7 @@ static struct fs_driver_data vpe_fs_data = {
 };
 
 struct platform_device *msm8960_footswitch[] __initdata = {
-	FS_8X60(FS_MDP,    "vdd",	"mdp.0",	&mdp_fs_data),
+//	FS_8X60(FS_MDP,    "vdd",	"mdp.0",	&mdp_fs_data),
 	FS_8X60(FS_ROT,    "vdd",	"msm_rotator.0", &rot_fs_data),
 	FS_8X60(FS_IJPEG,  "vdd",	"msm_gemini.0",	&ijpeg_fs_data),
 	FS_8X60(FS_VFE,    "vdd",	"msm_vfe.0",	&vfe_fs_data),

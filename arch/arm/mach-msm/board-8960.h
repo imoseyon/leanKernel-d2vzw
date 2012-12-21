@@ -49,6 +49,20 @@ extern struct regulator_init_data msm_saw_regulator_pdata_s6;
 extern struct rpm_regulator_platform_data msm_rpm_regulator_pdata __devinitdata;
 
 /* GPIO SX150X */
+#if defined(CONFIG_TOUCHSCREEN_MMS144) || \
+	defined(CONFIG_TOUCHSCREEN_MMS136) || \
+	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)
+extern void __init mms_tsp_input_init(void);
+#endif
+
+#define PLATFORM_IS_CHARM25() \
+	(machine_is_msm8960_cdp() && \
+		(socinfo_get_platform_subtype() == 1) \
+	)
+extern int gpio_rev(unsigned int);
+extern int samsung_cmc624_on(int enable);
+extern int samsung_has_cmc624(void);
+#if defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)
 enum {
 	GPIO_EXPANDER_IRQ_BASE = (PM8921_IRQ_BASE + PM8921_NR_IRQS),
 	GPIO_EXPANDER_GPIO_BASE = (PM8921_MPP_BASE + PM8921_NR_MPPS),
@@ -64,7 +78,7 @@ enum {
 	GPIO_CAM_GP_LED_EN2,
 	GPIO_LIQUID_EXPANDER_BASE = GPIO_CAM_EXPANDER_BASE + 8,
 };
-
+#endif
 enum {
 	SX150X_CAM,
 	SX150X_LIQUID,
@@ -75,6 +89,7 @@ enum {
 extern struct sx150x_platform_data msm8960_sx150x_data[];
 extern struct msm_camera_board_info msm8960_camera_board_info;
 
+int msm8960_get_cable_type(void);
 void msm8960_init_cam(void);
 void msm8960_init_fb(void);
 void msm8960_init_pmic(void);
@@ -88,9 +103,19 @@ void msm8960_pm8921_gpio_mpp_init(void);
 void msm8960_mdp_writeback(struct memtype_reserve *reserve_table);
 #define MSM_8960_GSBI4_QUP_I2C_BUS_ID 4
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
+#define MSM_8960_GSBI8_QUP_I2C_BUS_ID 8
 #define MSM_8960_GSBI10_QUP_I2C_BUS_ID 10
 
 extern struct msm_rtb_platform_data msm8960_rtb_pdata;
 extern struct msm_cache_dump_platform_data msm8960_cache_dump_pdata;
 extern void msm8960_add_vidc_device(void);
+extern void msm_otg_set_vbus_state(int);
+extern void msm_otg_set_charging_state(bool);
+extern void msm_otg_set_id_state(bool);
+
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+int brcm_wlan_init(void);
+int brcm_wifi_status_register(
+        void (*callback)(int card_present, void *dev_id), void *dev_id);
+#endif
 #endif

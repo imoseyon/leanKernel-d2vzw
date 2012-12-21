@@ -17,7 +17,7 @@
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
  */
-
+#include <linux/regulator/driver.h>
 #ifndef __REGULATOR_GPIO_H
 #define __REGULATOR_GPIO_H
 

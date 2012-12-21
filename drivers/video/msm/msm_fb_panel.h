@@ -153,6 +153,10 @@ struct lvds_panel_info {
 struct msm_panel_info {
 	__u32 xres;
 	__u32 yres;
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
+	__u32 height;
+	__u32 width;
+#endif
 	__u32 bpp;
 	__u32 mode2_xres;
 	__u32 mode2_yres;

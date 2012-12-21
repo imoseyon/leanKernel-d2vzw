@@ -612,5 +612,5 @@ config KEYBOARD_W90P910
 	  module will be called w90p910_keypad.
 
 endif
-
+source "drivers/input/keyboard/cypress_touchkey_236/Kconfig"
 

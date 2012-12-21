@@ -154,6 +154,7 @@ struct mmc_platform_data {
         unsigned int sdiowakeup_irq;
         unsigned long irq_flags;
         unsigned long mmc_bus_width;
+	unsigned long mmc_erase_caps;
         int (*wpswitch) (struct device *);
 	unsigned int msmsdcc_fmin;
 	unsigned int msmsdcc_fmid;
@@ -172,6 +173,7 @@ struct mmc_platform_data {
 	bool disable_cmd23;
 	u32 cpu_dma_latency;
 	struct msm_mmc_bus_voting_data *msm_bus_voting_data;
+	struct msm_bus_scale_pdata *msm_bus_scale_data;
 };
 
 #endif

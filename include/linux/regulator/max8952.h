@@ -23,6 +23,9 @@
 #define REGULATOR_MAX8952
 
 #include <linux/regulator/machine.h>
+#define MAX8952_DCDC_VMIN        770000         /* uV */
+#define MAX8952_DCDC_STEP         10000         /* uV */
+#define MAX8952_DCDC_VMAX       1400000         /* uV */
 
 enum {
 	MAX8952_DVS_MODE0,

@@ -98,6 +98,42 @@ config TOUCHSCREEN_AD7879_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879-spi.
 
+config TOUCHSCREEN_MMS144
+	tristate "Melfas MMS144 Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Melfas MMS144 series I2C touchscreen,
+	   connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mms_ts.
+
+config TOUCHSCREEN_MMS136
+	tristate "Melfas MMS136 Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Melfas MMS136 series I2C touchscreen,
+	   connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mms_ts.
+
+config TOUCHSCREEN_MMS136_TABLET
+	tristate "Melfas MMS136 Touchscreen at table model"
+	depends on I2C
+	help
+	  Say Y here if you have Melfas MMS136 series I2C touchscreen at tablet,
+	   connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called mms_ts.
+
 config TOUCHSCREEN_ATMEL_MXT
 	tristate "Atmel mXT I2C Touchscreen"
 	depends on I2C

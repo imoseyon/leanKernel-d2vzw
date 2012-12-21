@@ -178,7 +178,7 @@ __do_user_fault(struct task_struct *tsk, unsigned long addr,
 
 	trace_user_fault(tsk, addr, fsr);
 
-#ifdef CONFIG_DEBUG_USER
+#if 0 /*CONFIG_DEBUG_USER*/
 	if (((user_debug & UDBG_SEGV) && (sig == SIGSEGV)) ||
 	    ((user_debug & UDBG_BUS)  && (sig == SIGBUS))) {
 		printk(KERN_DEBUG "%s: unhandled page fault (%d) at 0x%08lx, code 0x%03x\n",

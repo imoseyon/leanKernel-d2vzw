@@ -215,6 +215,9 @@ extern const int		bcmevent_names_size;
 #define WLC_E_STATUS_11HQUIET		11	
 #define WLC_E_STATUS_SUPPRESS		12	
 #define WLC_E_STATUS_NOCHANS		13	
+#ifdef BCMCCX
+#define WLC_E_STATUS_CCXFASTRM		14
+#endif
 #define WLC_E_STATUS_CS_ABORT		15	
 #define WLC_E_STATUS_ERROR		16	
 
@@ -247,11 +250,21 @@ extern const int		bcmevent_names_size;
 #define WLC_E_RSN_MISMATCH		8	
 #define WLC_E_PRUNE_NO_COMMON_RATES	9	
 #define WLC_E_PRUNE_BASIC_RATES		10	
+#ifdef BCMCCX
+#define WLC_E_PRUNE_CCXFAST_PREVAP	11
+#endif
 #define WLC_E_PRUNE_CIPHER_NA		12	
 #define WLC_E_PRUNE_KNOWN_STA		13	
+#ifdef BCMCCX
+#define WLC_E_PRUNE_CCXFAST_DROAM	14
+#endif
 #define WLC_E_PRUNE_WDS_PEER		15	
 #define WLC_E_PRUNE_QBSS_LOAD		16	
 #define WLC_E_PRUNE_HOME_AP		17	
+#ifdef BCMCCX
+#define WLC_E_PRUNE_AP_BLOCKED		18
+#define WLC_E_PRUNE_NO_DIAG_SUPPORT	19
+#endif
 
 
 #define WLC_E_SUP_OTHER			0	

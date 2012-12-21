@@ -173,7 +173,45 @@ static struct pm8xxx_adc_scale_fn adc_scale_fn[] = {
 	[ADC_SCALE_PA_THERM] = {pm8xxx_adc_scale_pa_therm},
 	[ADC_SCALE_PMIC_THERM] = {pm8xxx_adc_scale_pmic_therm},
 	[ADC_SCALE_XOTHERM] = {pm8xxx_adc_tdkntcg_therm},
+#ifdef CONFIG_PM8921_SEC_CHARGER
+	[ADC_SCALE_SEC_BOARD_THERM] = {pm8xxx_adc_sec_board_therm_default},
+#endif
 };
+
+#define CHG_CNTRL_2                                    0x212
+#define EN_BATT_THERM_MASK1                    0xEF
+#define EN_BATT_THERM_MASK2                    0x10
+int pm8921_enable_batt_therm(u8 en)
+{
+	int rc;
+	u8 reg;
+	struct pm8xxx_adc *adc_pmic = pmic_adc;
+
+	rc = pm8xxx_readb(adc_pmic->dev->parent, CHG_CNTRL_2, &reg);
+	if (rc) {
+		pr_err("pm8xxx_readb failed: addr=%03X, rc=%d\n",
+		CHG_CNTRL_2, rc);
+		return rc;
+	}
+
+	if (en == 0) { 
+		reg &= EN_BATT_THERM_MASK1;
+		pr_info("[pm8921] disable Vref_batt_therm\n");
+	} else {
+		reg |= EN_BATT_THERM_MASK2;
+		pr_info("[pm8921] enable Vref_batt_therm\n");
+	}
+
+	rc = pm8xxx_writeb(adc_pmic->dev->parent, CHG_CNTRL_2, reg);
+	if (rc) {
+		pr_err("pm8xxx_writeb failed: addr=%03X, rc=%d\n",
+			CHG_CNTRL_2, rc);
+		return rc;
+	}
+	return rc;
+
+}
+
 
 /* On PM8921 ADC the MPP needs to first be configured
 as an analog input to the AMUX pre-mux channel before
@@ -730,6 +768,14 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 		adc_pmic->conv->amux_channel = channel %
 				PM8XXX_CHANNEL_MPP_SCALE3_IDX;
 	}
+
+#ifdef CONFIG_SAMSUNG_JACK
+	if (channel == ADC_MPP_1_AMUX6_SCALE_DEFAULT) {
+		mpp_scale = PREMUX_MPP_SCALE_1;
+		adc_pmic->conv->amux_channel =
+			ADC_MPP_1_AMUX6 % PM8XXX_CHANNEL_MPP_SCALE1_IDX;
+	}
+#endif
 
 	adc_pmic->conv->amux_mpp_channel = mpp_scale;
 	adc_pmic->conv->amux_ip_rsv = adc_pmic->adc_channel[i].adc_rsv;

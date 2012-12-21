@@ -5441,7 +5441,8 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 	struct mmc_platform_data *pdata;
 	struct device_node *np = dev->of_node;
 	u32 bus_width = 0, current_limit = 0;
-	u32 *clk_table, *sup_voltages;
+	u32 *clk_table =NULL;
+	u32 *sup_voltages=NULL;
 	int clk_table_len, sup_volt_len, len;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
@@ -6330,6 +6331,11 @@ msmsdcc_runtime_suspend(struct device *dev)
 		goto out;
 	}
 
+	if (host->pdev_id == 4) {
+		host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
+		printk(KERN_INFO "%s: Enter WIFI suspend\n", __func__);
+	}
+
 	pr_debug("%s: %s: start\n", mmc_hostname(mmc), __func__);
 	if (mmc) {
 		host->sdcc_suspending = 1;
@@ -6392,6 +6398,10 @@ msmsdcc_runtime_resume(struct device *dev)
 
 	if (host->plat->is_sdio_al_client)
 		return 0;
+
+	if (host->pdev_id == 4) {
+		printk(KERN_INFO "%s: Enter WIFI resume\n", __func__);
+	}
 
 	pr_debug("%s: %s: start\n", mmc_hostname(mmc), __func__);
 	if (mmc) {

@@ -342,13 +342,20 @@ static int __fill_v4l2_buffer(struct vb2_buffer *vb, struct v4l2_buffer *b)
 		ret = __verify_planes_array(vb, b);
 		if (ret)
 			return ret;
-
+#if 0
 		/*
 		 * Fill in plane-related data if userspace provided an array
 		 * for it. The memory and size is verified above.
 		 */
 		memcpy(b->m.planes, vb->v4l2_planes,
 			b->length * sizeof(struct v4l2_plane));
+		for (i=0; i<b->length;i++) {
+			pr_info("%s returning offsets for buffer index %d, plane %d as"
+				"addr offset %d, data offset %d",
+				__func__, b->index, i, b->m.planes[i].reserved[0],
+				b->m.planes[i].data_offset);
+		}
+#endif
 	} else {
 		/*
 		 * We use length and offset in v4l2_planes array even for
@@ -896,13 +903,17 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 
 		dprintk(3, "qbuf: userspace address for plane %d changed, "
 				"reacquiring memory\n", plane);
-
+/* HACK: detule: This fails for us, and is not present in 3.0.  I
+ * backported it there and it fails there as well, so remove for now.
+ * Need to know why it fails though.
+ */
+#if 0 
 		/* Check if the provided plane buffer is large enough */
 		if (planes[plane].length < q->plane_sizes[plane]) {
 			ret = -EINVAL;
 			goto err;
 		}
-
+#endif
 		/* Release previously acquired memory if present */
 		if (vb->planes[plane].mem_priv)
 			call_memop(q, put_userptr, vb->planes[plane].mem_priv);

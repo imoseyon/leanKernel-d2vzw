@@ -2412,7 +2412,7 @@ struct v4l2_event {
 	struct timespec			timestamp;
 	__u32				id;
 	__u32				reserved[8];
-};
+} __attribute__((packed));
 
 #define V4L2_EVENT_SUB_FL_SEND_INITIAL		(1 << 0)
 #define V4L2_EVENT_SUB_FL_ALLOW_FEEDBACK	(1 << 1)

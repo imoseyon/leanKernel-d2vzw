@@ -176,7 +176,6 @@ config ARCH_MSM8960
 	select MSM_RUN_QUEUE_STATS
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
-	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
 
 config ARCH_MSM8930
@@ -210,7 +209,6 @@ config ARCH_MSM8930
 	select HOLES_IN_ZONE if SPARSEMEM
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
-	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
 
 config ARCH_APQ8064
@@ -239,7 +237,6 @@ config ARCH_APQ8064
 	select ARCH_SUPPORTS_MSI
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
-	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
 
 config ARCH_MSM8974
@@ -911,6 +908,38 @@ config MACH_FSM9XXX_SURF
 config MACH_MSM_DUMMY
 	bool "NONE (No device)"
 
+config MACH_M2
+	depends on ARCH_MSM8960
+	default n
+	select REGULATOR_MSM_GPIO
+	select HAVE_MEMBLOCK_NODE_MAP
+	select ARCH_SPARSEMEM_ENABLE
+	select HOLES_IN_ZONE if SPARSEMEMP
+	select MSM_MERCURY
+        bool "MSM8960 Samsung M2"
+        help
+          Support for Samsung M2 devices.
+
+config MACH_M2_ATT
+	depends on MACH_M2
+	default n
+        bool "MSM8960 Samsung M2_ATT"
+        help
+          Support for the Samsung M2 AT&T device.
+
+config MACH_M2_SPR
+	depends on MACH_M2
+	default n
+        bool "MSM8960 Samsung M2_SPR"
+        help
+          Support for the Samsung M2 Sprint device.
+
+config MACH_M2_VZW
+	depends on MACH_M2
+	default n
+        bool "MSM8960 Samsung M2_VZW"
+        help
+          Support for the Samsung M2 Verizon device.
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"
@@ -940,6 +969,13 @@ config PHYS_OFFSET
 	default "0x40200000" if ARCH_MSM8X60
 	default "0x10000000"
 
+config HAVE_END_MEM
+	bool "Specify highest physical RAM address at compile time"
+
+config END_MEM
+	hex "Highest physical address where system RAM resides"
+	depends on HAVE_END_MEM
+
 config KERNEL_MSM_CONTIG_MEM_REGION
 	bool "Enable in-kernel contiguous memory region"
 	default y if ARCH_MSM8X60
@@ -956,6 +992,14 @@ config KERNEL_PMEM_SMI_REGION
 	depends on ANDROID_PMEM && ((ARCH_QSD8X50 && !PMEM_GPU0) || (ARCH_MSM8X60 && !VCM))
 	help
 	   Enable the in-kernel PMEM allocator to use SMI memory.
+
+config KERNEL_PMEM_EBI_REGION
+	bool "Enable in-kernel PMEM region for EBI"
+	default y if ARCH_MSM8X60
+	depends on ANDROID_PMEM && (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSMCOPPER)
+	help
+	  Enable the in-kernel PMEM allocator to use EBI memory.
+
 
 config PMEM_GPU0
 	bool "Enable PMEM GPU0 region"
@@ -2256,6 +2300,12 @@ config BT_MSM_PINTEST
 	  Bluetooth MSM Pin Connectivity test module.
 	  This driver provides support for verifying the MSM to BT pin
 	  connectivity.
+
+config BT_BCM4334
+        bool "Enable BCM4334 driver"
+        default n
+        help
+          Adds BCM4334 RFKILL driver for Broadcom BCM4334 chipset
 
 config MSM_FAKE_BATTERY
 		depends on POWER_SUPPLY

@@ -459,6 +459,7 @@ uint32_t msm_bus_scale_register_client(struct msm_bus_scale_pdata *pdata)
 	int src, dest, nfab;
 	struct msm_bus_fabric_device *deffab;
 
+	pr_err("%s: name: %s ", __func__, pdata->name);
 	deffab = msm_bus_get_fabric_device(MSM_BUS_FAB_DEFAULT);
 	if (!deffab) {
 		MSM_BUS_ERR("Error finding default fabric\n");

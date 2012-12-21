@@ -107,6 +107,9 @@ bool early_boot_irqs_disabled __read_mostly;
 enum system_states system_state __read_mostly;
 EXPORT_SYMBOL(system_state);
 
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+int poweroff_charging;
+#endif /* CONFIG_SAMSUNG_LPM_MODE */
 /*
  * Boot command-line arguments
  */
@@ -402,6 +405,15 @@ static int __init do_early_param(char *param, char *val)
 		}
 	}
 	/* We accept everything at this stage. */
+
+#ifdef CONFIG_SAMSUNG_LPM_MODE
+	/* check power off charging */
+	if ((strncmp(param, "androidboot.bootchg", 19) == 0)) {
+		if (strncmp(val, "true", 4) == 0)
+			poweroff_charging = 1;
+	}
+#endif
+
 	return 0;
 }
 
@@ -491,6 +503,7 @@ asmlinkage void __init start_kernel(void)
  * Interrupts are still disabled. Do necessary setups, then
  * enable them
  */
+
 	tick_init();
 	boot_cpu_init();
 	page_address_init();

@@ -681,6 +681,111 @@ config BU52031NVX_POUCHDETECT
 	help
 	  depends on BU52031NVX
 
+config NFC_PN544
+        bool "NXP PN544 NFC Controller Driver"
+        default n
+        help
+          NXP PN544 Near Field Communication controller support.
+
+config SEC_MISC
+	bool "Samsung P series miscellaneous driver"
+	default n
+	---help---
+	  Samsung P series miscellaneous driver
+
+config USB_SWITCH_FSA9485
+	tristate "FSA9480 USB Switch"
+	depends on I2C
+	help
+	  The FSA9480 is a USB port accessory detector and switch.
+	  The FSA9480 is fully controlled using I2C and enables USB data,
+	  stereo and mono audio, video, microphone and UART data to use
+	  a common connector port.
+
+config MPU_411_ENABLE
+	bool "mpu gyro sensor MPL 4.1.1"
+	depends on I2C
+	default n
+
+config YAS_532_ENABLE
+	bool "yas 532 sensor YAS 4.2.602"
+	depends on I2C
+	default n
+
+config OPTICAL_GP2A
+	depends on I2C
+	tristate "GP2A driver"
+	default n
+	help
+	  This option enables proximity & light sensors using gp2a driver.
+
+config OPTICAL_GP2AP020A00F
+	depends on I2C
+	tristate "GP2AP020A00F driver"
+	default n
+	help
+	  This option enables proximity & light sensors using gp2ap020a00f driver.
+
+config OPTICAL_TAOS_TRITON
+	depends on I2C
+	tristate "TAOS ambient light and proximity input device"
+	default n
+
+config OPTICAL_TAOS_TMD2672X
+        depends on I2C
+        tristate "TAOS ambient proximity input device without light sensor"
+        default n
+
+config SENSORS_AL3201
+	depends on I2C
+	tristate "LITEON AL3201 ambient light sensor"
+	default n
+
+config SENSORS_CM36651
+	depends on I2C
+	tristate "CM36651 driver"
+	default n
+	help
+	  The CM36651 is a RGB sensor.
+	  The CM36651 is fully controlled using I2C.
+	  This option enables proximity sensor and RGB sensor
+	  using cm36651 driver.
+
+config VP_A2220
+	tristate "VP driver"
+	default n
+	help
+	  This option enables voice processing audience chip.Please enable this chip
+	  if you want to enable voice processing during call.
+
+config ADC_STMPE811
+	tristate "ADC stmpe811 driver"
+	default n
+	depends on I2C
+	help
+	  This option enables ADC checking driver. stmpe811.
+
+config SAMSUNG_JACK
+	bool "3.5 PI JACK driver for Samsung devices"
+	depends on INPUT
+	default n
+	help
+	  This is 3.5 PI JACK driver for Samsung devices.
+
+config SAMSUNG_JACK_GNDLDET
+	bool "GND plus L Detection for Earjack"
+	depends on INPUT
+	default n
+	help
+	  This is gnd plus l detection for earjack.
+	  The gnd gpio is added for the detection of earjack.
+	  This is added to decide the earjack properly
+	  in case of the insertion of water.
+
+config OPTICAL_BH1721
+	tristate "Rohm bh1721 Optical Sensor"
+	default n
+	depends on I2C
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -688,6 +793,7 @@ source "drivers/misc/iwmc3200top/Kconfig"
 source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
+source "drivers/misc/inv_mpu/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/slimport_anx7808/Kconfig"
 

@@ -98,6 +98,21 @@ config MT9P012
 	default y
 	---help---
 	  MICRON 5M Bayer Sensor with Autofocus
+config S5C73M3
+        bool "Sensor S5C73M3 (8M)"
+        default n
+        ---help---
+        LSI 8 MP CMOS Sensor
+config S5K6A3YX
+        bool "Sensor S5K6A3YX (BAYER 2M)"
+        default n
+        ---help---
+        Samsung 2 MP Bayer Sensor
+config S5K8AAY
+        bool "Sensor S5K8AAY (1.3M)"
+        default n
+        ---help---
+        LSI 1.3 MP CMOS Sensor
 
 choice
 	prompt "AF module"

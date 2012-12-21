@@ -19,6 +19,7 @@
 #include <linux/ratelimit.h>
 #include <linux/debugfs.h>
 #include <linux/wait.h>
+#include <linux/switch.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/wcd9xxx_registers.h>
 #include <linux/mfd/wcd9xxx/wcd9310_registers.h>
@@ -365,6 +366,16 @@ struct tabla_priv {
 	struct dentry *debugfs_poke;
 	struct dentry *debugfs_mbhc;
 #endif
+};
+
+/*Add headset detect,sendend key sysfs for Samsung factorytest*/
+struct switch_dev switch_jack_detection = {
+	.name = "h2w",     /* /sys/class/switch/h2w/state */
+};
+
+/* To support samsung factory test */
+struct switch_dev switch_sendend = {
+	.name = "send_end", /* /sys/class/switch/send_end/state */
 };
 
 static const u32 comp_shift[] = {
@@ -1992,6 +2003,24 @@ static void tabla_enable_rx_bias(struct snd_soc_codec *codec, u32  enable)
 	}
 }
 
+static int tabla_codec_enable_ear_rx_bias(struct snd_soc_dapm_widget *w,
+        struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	pr_debug("%s %d\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		tabla_enable_rx_bias(codec, 1);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		msleep(40);
+		tabla_enable_rx_bias(codec, 0);
+		break;
+	}
+	return 0;
+}
+
 static int tabla_codec_enable_config_mode(struct snd_soc_codec *codec,
 	int enable)
 {
@@ -3478,7 +3507,8 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"RX1 MIX2", NULL, "ANC1 MUX"},
 	{"RX2 MIX2", NULL, "ANC2 MUX"},
 
-	{"CP", NULL, "RX_BIAS"},
+	{"CP", NULL, "EAR_RX_BIAS"},
+//	{"CP", NULL, "RX_BIAS"},
 	{"LINEOUT1 DAC", NULL, "RX_BIAS"},
 	{"LINEOUT2 DAC", NULL, "RX_BIAS"},
 	{"LINEOUT3 DAC", NULL, "RX_BIAS"},
@@ -3782,6 +3812,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"MIC BIAS3 Internal2", NULL, "LDO_H"},
 	{"MIC BIAS3 External", NULL, "LDO_H"},
 	{"MIC BIAS4 External", NULL, "LDO_H"},
+	{"Main Mic Bias", NULL, "LDO_H"},
 };
 
 static const struct snd_soc_dapm_route tabla_1_x_lineout_2_to_4_map[] = {
@@ -4510,7 +4541,7 @@ static int tabla_hw_params(struct snd_pcm_substream *substream,
 	u32 compander_fs;
 	int ret;
 
-	pr_debug("%s: dai_name = %s DAI-ID %x rate %d num_ch %d\n", __func__,
+	pr_info("%s: dai_name = %s DAI-ID %x rate %d num_ch %d\n", __func__,
 			dai->name, dai->id, params_rate(params),
 			params_channels(params));
 
@@ -5130,6 +5161,10 @@ static const struct snd_soc_dapm_widget tabla_dapm_widgets[] = {
 		tabla_codec_enable_rx_bias, SND_SOC_DAPM_PRE_PMU |
 		SND_SOC_DAPM_POST_PMD),
 
+	SND_SOC_DAPM_SUPPLY("EAR_RX_BIAS", SND_SOC_NOPM, 0, 0,
+		tabla_codec_enable_ear_rx_bias, SND_SOC_DAPM_PRE_PMU |
+		SND_SOC_DAPM_POST_PMD),
+
 	/* TX */
 
 	SND_SOC_DAPM_SUPPLY("CDC_CONN", TABLA_A_CDC_CLK_OTHR_CTL, 2, 0, NULL,
@@ -5148,6 +5183,9 @@ static const struct snd_soc_dapm_widget tabla_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("AMIC1"),
 	SND_SOC_DAPM_MICBIAS_E("MIC BIAS1 External", TABLA_A_MICB_1_CTL, 7, 0,
 		tabla_codec_enable_micbias, SND_SOC_DAPM_PRE_PMU |
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_MICBIAS_E("Main Mic Bias", 0, 0, 0,
+		0, SND_SOC_DAPM_PRE_PMU |
 		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_MICBIAS_E("MIC BIAS1 Internal1", TABLA_A_MICB_1_CTL, 7, 0,
 		tabla_codec_enable_micbias, SND_SOC_DAPM_PRE_PMU |
@@ -8377,7 +8415,7 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 
 	codec->control_data = dev_get_drvdata(codec->dev->parent);
 	control = codec->control_data;
-
+	pr_info("%s", __func__);
 	tabla = kzalloc(sizeof(struct tabla_priv), GFP_KERNEL);
 	if (!tabla) {
 		dev_err(codec->dev, "Failed to allocate private data\n");
@@ -8710,7 +8748,7 @@ static const struct dev_pm_ops tabla_pm_ops = {
 static int __devinit tabla_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	pr_err("tabla_probe\n");
+	pr_info("tabla_probe\n");
 	if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_SLIMBUS)
 		ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_tabla,
 			tabla_dai, ARRAY_SIZE(tabla_dai));

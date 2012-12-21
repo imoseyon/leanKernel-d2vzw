@@ -92,6 +92,7 @@ obj-$(CONFIG_WATCHDOG)		+= watchdog/
 obj-$(CONFIG_MD)		+= md/
 obj-$(CONFIG_BT)		+= bluetooth/
 obj-$(CONFIG_ACCESSIBILITY)	+= accessibility/
+obj-$(CONFIG_ACCESSORY)         += accessory/
 obj-$(CONFIG_ISDN)		+= isdn/
 obj-$(CONFIG_EDAC)		+= edac/
 obj-$(CONFIG_MCA)		+= mca/
@@ -125,7 +126,9 @@ obj-y				+= platform/
 obj-y				+= ieee802154/
 #common clk code
 obj-y				+= clk/
-
+obj-$(CONFIG_NEW_SENSORS)       += sensors/
+obj-$(CONFIG_BATTERY_SAMSUNG)   += battery/
+obj-$(CONFIG_VIBETONZ)		+= motor/
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/
 obj-$(CONFIG_NFC)		+= nfc/
 obj-$(CONFIG_IOMMU_SUPPORT)	+= iommu/

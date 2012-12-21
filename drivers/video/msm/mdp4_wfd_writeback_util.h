@@ -13,9 +13,9 @@
 
 #ifndef _WRITEBACK_UTIL_H_
 #define _WRITEBACK_UTIL_H_
-
+#ifndef DEBUG
 #define DEBUG
-
+#endif
 #ifdef DEBUG
 	#define WRITEBACK_MSG_INFO(fmt...) pr_info(fmt)
 	#define WRITEBACK_MSG_WARN(fmt...) pr_warning(fmt)

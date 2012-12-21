@@ -43,6 +43,9 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+#include "../host/msm_sdcc.h"
+#endif
 
 /*
  * Background operations can take a long time, depending on the housekeeping
@@ -2764,6 +2767,9 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	struct mmc_host *host = container_of(
 		notify_block, struct mmc_host, pm_notify);
 	unsigned long flags;
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+	struct msmsdcc_host *msmhost = mmc_priv(host); 
+#endif
 	int err = 0;
 
 	switch (mode) {
@@ -2815,7 +2821,13 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		}
 		host->rescan_disable = 0;
 		spin_unlock_irqrestore(&host->lock, flags);
-		mmc_detect_change(host, 0);
+#if defined(CONFIG_BCM4334) || defined(CONFIG_BCM4334_MODULE)
+		if (msmhost->pdev_id == 4)
+			printk(KERN_INFO"%s(): WLAN SKIP DETECT CHANGE\n",
+				__func__);
+		else
+#endif
+			mmc_detect_change(host, 0);
 
 	}
 

@@ -5712,8 +5712,8 @@ static int nl80211_register_beacons(struct sk_buff *skb, struct genl_info *info)
 {
 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
 
-	if (!(rdev->wiphy.flags & WIPHY_FLAG_REPORTS_OBSS))
-		return -EOPNOTSUPP;
+//	if (!(rdev->wiphy.flags & WIPHY_FLAG_REPORTS_OBSS))
+//		return -EOPNOTSUPP;
 
 	if (rdev->ap_beacons_nlpid)
 		return -EBUSY;

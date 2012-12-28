@@ -869,7 +869,7 @@ static int __devinit max17040_probe(struct i2c_client *client,
 	chip->rcomp = max17040_get_rcomp(client);
 
 	chip->battery.name		= "fuelgauge",
-	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY,
+	chip->battery.type		= POWER_SUPPLY_TYPE_UNKNOWN,
 	chip->battery.get_property	= max17040_get_property,
 	chip->battery.set_property	= max17040_set_property,
 	chip->battery.properties	= max17040_battery_props,

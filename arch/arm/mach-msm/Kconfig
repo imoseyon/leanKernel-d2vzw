@@ -2414,4 +2414,9 @@ config MSM_CPU_PWRCTL
 	  stand alone power collapse operation. Selecting this option
 	  ensures that they are always off.
 
+config S5C73M3_DMA_TYPE2
+	bool "Use alternative DMA support for SPI camera interface"
+	depends on S5C73M3
+	help
+	  for use on d2cri and future devices
 endif

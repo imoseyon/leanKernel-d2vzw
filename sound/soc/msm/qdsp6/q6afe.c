@@ -1530,14 +1530,14 @@ static int __init afe_init(void)
 	this_afe.apr = NULL;
 #ifdef CONFIG_DEBUG_FS
 	debugfs_afelb = debugfs_create_file("afe_loopback",
-	S_IFREG | S_IWUGO, NULL, (void *) "afe_loopback",
+	S_IFREG | S_IWUSR | S_IWGRP, NULL, (void *) "afe_loopback",
 	&afe_debug_fops);
 
 	if (IS_ERR(debugfs_afelb))
 		return PTR_ERR(debugfs_afelb);
 
 	debugfs_afelb_gain = debugfs_create_file("afe_loopback_gain",
-	S_IFREG | S_IWUGO, NULL, (void *) "afe_loopback_gain",
+	S_IFREG | S_IWUSR | S_IWGRP, NULL, (void *) "afe_loopback_gain",
 	&afe_debug_fops);
 
 

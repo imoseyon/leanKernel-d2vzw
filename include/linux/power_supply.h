@@ -138,7 +138,8 @@ enum power_supply_property {
 };
 
 enum power_supply_type {
-	POWER_SUPPLY_TYPE_BATTERY = 0,
+	POWER_SUPPLY_TYPE_UNKNOWN = 0,
+    POWER_SUPPLY_TYPE_BATTERY,
 	POWER_SUPPLY_TYPE_UPS,
 	POWER_SUPPLY_TYPE_MAINS,
 	POWER_SUPPLY_TYPE_USB,		/* Standard Downstream Port */
@@ -147,13 +148,13 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_ACA,	/* Accessory Charger Adapters */
 	POWER_SUPPLY_TYPE_MISC,
 	POWER_SUPPLY_TYPE_CARDOCK,
-	POWER_SUPPLY_TYPE_UARTOFF,
 #ifdef CONFIG_WIRELESS_CHARGING
 	POWER_SUPPLY_TYPE_WPC,		/* Wireless Charging should be 10 */
 #else
 	POWER_SUPPLY_TYPE_DUMMY,	/* # 10 is assigned for wireless */
 #endif
 	POWER_SUPPLY_TYPE_OTG,
+    POWER_SUPPLY_TYPE_UARTOFF,
 };
 
 union power_supply_propval {

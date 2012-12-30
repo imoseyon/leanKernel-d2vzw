@@ -66,6 +66,7 @@ static DEFINE_MUTEX(hdcp_auth_state_mutex);
 static void hdmi_msm_dump_regs(const char *prefix);
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
+static void hdcp_deauthenticate(void);
 static void hdmi_msm_hdcp_enable(void);
 #else
 static inline void hdmi_msm_hdcp_enable(void) {}
@@ -807,6 +808,9 @@ static void hdmi_msm_send_event(boolean on)
 
 	if (on) {
 		/* Build EDID table */
+        cancel_work_sync(&hdmi_msm_state->hdcp_reauth_work);
+        if (hdmi_msm_state->full_auth_done)
+            hdcp_deauthenticate();
 		hdmi_msm_read_edid();
 
 		hdmi_msm_set_mode(FALSE);
@@ -924,7 +928,6 @@ static void hdmi_msm_cec_latch_work(struct work_struct *work)
 #endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
-static void hdcp_deauthenticate(void);
 static void hdmi_msm_hdcp_reauth_work(struct work_struct *work)
 {
 

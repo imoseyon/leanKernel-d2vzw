@@ -60,6 +60,7 @@
 #define TOTAL_EVENT_TIME  (10 * 60)	/* 10 minites */
 
 static int is_charging_disabled;
+static unsigned int sec_bat_recovery_mode;
 
 enum cable_type_t {
 	CABLE_TYPE_NONE = 0,
@@ -1578,22 +1579,41 @@ static void sec_bat_monitor_work(struct work_struct *work)
 		goto monitoring_skip;
 	}
 
-	pm8921_enable_batt_therm(1);
-	/* check battery 5 times */
-	for (i = 0; i < 5; i++) {
-		msleep(500);
-		info->present = !gpio_get_value_cansleep(info->batt_int);
+    if (sec_bat_recovery_mode == 1
+            || system_state == SYSTEM_RESTART) {
+            pm8921_enable_batt_therm(0);
+        	info->present = 1;
+        	pr_info("%s : recovery/restart, skip batt check(1)\n",
+                        __func__);
+        } else {
+                pm8921_enable_batt_therm(1);
+                /* check battery 5 times */
+            	for (i = 0; i < 5; i++) {
+                        msleep(500);
+                        if (sec_bat_recovery_mode == 1
+                                || system_state == SYSTEM_RESTART) {
+                                pm8921_enable_batt_therm(0);
+                    			info->present = 1;
+                    			pr_info("%s : recovery/restart, skip batt check(2)\n",
+                                            __func__);
+                                break;
+                        }
 
-		/* If the battery is missing, then check more */
-		if (info->present) {
-			i++;
-			break;
+                	info->present = !gpio_get_value_cansleep(
+                            info->batt_int);
+
+                    /* If the battery is missing, then check more */
+                    if (info->present) {
+                            i++;
+                    		break;
+                    }
+
 		}
+        pm8921_enable_batt_therm(0);
+        pr_info("%s: battery check is %s (%d time%c)\n",
+                __func__, info->present ? "present" : "absent",
+                i, (i == 1) ? ' ' : 's');
 	}
-	pm8921_enable_batt_therm(0);
-	pr_info("%s: battery check is %s (%d time%c)\n",
-		__func__, info->present ? "present" : "absent",
-		i, (i == 1) ? ' ' : 's');
 
 	if ((info->present == BATT_STATUS_MISSING)
 			&& (info->cable_type != CABLE_TYPE_NONE)) {
@@ -2529,6 +2549,25 @@ static void sec_bat_late_resume(struct early_suspend *handle)
 
 	return;
 }
+
+static int __init sec_bat_current_boot_mode(char *mode)
+{
+    /*
+    *	1 is recovery booting
+    *	0 is normal booting
+    */
+
+    if (strncmp(mode, "1", 1) == 0)
+            sec_bat_recovery_mode = 1;
+    else
+            sec_bat_recovery_mode = 0;
+
+    pr_info("%s : %s", __func__, sec_bat_recovery_mode == 1 ?
+				"recovery" : "normal");
+
+    return 1;
+}
+__setup("androidboot.batt_check_recovery=", sec_bat_current_boot_mode);
 
 static __devinit int sec_bat_probe(struct platform_device *pdev)
 {

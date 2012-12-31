@@ -925,4 +925,3 @@ on property:ro.yas_softiron.enable=true
 on property:ro.yas.enable=true
 start orientationd
 start geomagneticd
-

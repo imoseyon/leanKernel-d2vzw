@@ -155,6 +155,13 @@ service usf-post-boot /system/bin/sh /system/etc/usf_post_boot.sh
     user root
     disabled
     oneshot
+
+service lk-post-boot /sbin/lk-post-boot.sh
+    class late_start
+    user root
+    disabled
+    oneshot
+
 # TVout
 service TvoutService_C /system/bin/bintvoutservice
      class main
@@ -163,4 +170,4 @@ service TvoutService_C /system/bin/bintvoutservice
 
 on property:init.svc.bootanim=stopped
     start usf-post-boot
-
+    start lk-post-boot

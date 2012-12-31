@@ -1,6 +1,6 @@
 #!/system/xbin/busybox ash
 
-check="qmiproxy gsiff"
+check=""
 
 for i in $check; do
   etime=`busybox ps -o pid,time,args | grep $i | grep -v grep | awk '{ print $2 }' | awk -F: '{ print $2 }'`

@@ -424,7 +424,7 @@ static void set_dvfs_off(struct work_struct *work)
 	info->dvfs_lock_status = false;
 	mutex_unlock(&info->dvfs_lock);
 
-	pr_info("[TSP] DVFS Off!");
+	pr_debug("[TSP] DVFS Off!");
 }
 
 static void set_dvfs_lock(struct mms_ts_info *info, uint32_t on)
@@ -450,7 +450,7 @@ static void set_dvfs_lock(struct mms_ts_info *info, uint32_t on)
 			schedule_delayed_work(&info->work_dvfs_chg,
 				msecs_to_jiffies(TOUCH_BOOSTER_CHG_TIME));
 			info->dvfs_lock_status = true;
-			pr_info("[TSP] DVFS On!");
+			pr_debug("[TSP] DVFS On!");
 		}
 	} else if (on == 2) {
 		cancel_delayed_work(&info->work_dvfs_off);

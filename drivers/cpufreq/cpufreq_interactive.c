@@ -984,12 +984,12 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (rc)
 			return rc;
 
+                register_early_suspend(&interactive_power_suspend);
+                pr_info("[imoseyon] interactive start\n");
+
 		idle_notifier_register(&cpufreq_interactive_idle_nb);
 		cpufreq_register_notifier(
 			&cpufreq_notifier_block, CPUFREQ_TRANSITION_NOTIFIER);
-
-                register_early_suspend(&interactive_power_suspend);
-                pr_info("[imoseyon] interactive start\n");
 
 		break;
 

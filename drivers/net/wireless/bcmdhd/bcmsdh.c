@@ -45,8 +45,6 @@
 
 #include <sdio.h>	/* SDIO Device and Protocol Specs */
 
-#include <dhd_sec_feature.h>
-
 #define SDIOH_API_ACCESS_RETRY_LIMIT	2
 const uint bcmsdh_msglevel = BCMSDH_ERROR_VAL;
 

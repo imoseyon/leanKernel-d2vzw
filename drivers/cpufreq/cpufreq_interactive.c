@@ -38,6 +38,7 @@
 static unsigned int suspended = 0;
 
 static atomic_t active_count = ATOMIC_INIT(0);
+static int active_count;
 
 struct cpufreq_interactive_cpuinfo {
 	struct timer_list cpu_timer;
@@ -63,6 +64,7 @@ static DEFINE_PER_CPU(struct cpufreq_interactive_cpuinfo, cpuinfo);
 static struct task_struct *speedchange_task;
 static cpumask_t speedchange_cpumask;
 static spinlock_t speedchange_cpumask_lock;
+static struct mutex gov_lock;
 
 /* Hi speed to bump to from lo speed when load burst (default max) */
 static unsigned int hispeed_freq;
@@ -972,6 +974,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		if (!cpu_online(policy->cpu))
 			return -EINVAL;
 
+		mutex_lock(&gov_lock);
+
 		freq_table =
 			cpufreq_frequency_get_table(policy->cpu);
 		if (!hispeed_freq)
@@ -1006,13 +1010,17 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		 * Do not register the idle hook and create sysfs
 		 * entries if we have already done so.
 		 */
-		if (atomic_inc_return(&active_count) > 1)
+		if (++active_count > 1) {
+			mutex_unlock(&gov_lock);
 			return 0;
+		}
 
 		rc = sysfs_create_group(cpufreq_global_kobject,
 				&interactive_attr_group);
-		if (rc)
+		if (rc) {
+			mutex_unlock(&gov_lock);
 			return rc;
+		}
 
 		idle_notifier_register(&cpufreq_interactive_idle_nb);
 
@@ -1020,10 +1028,12 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			&cpufreq_notifier_block, CPUFREQ_TRANSITION_NOTIFIER);
 
                 register_early_suspend(&interactive_power_suspend);
+		mutex_unlock(&gov_lock);
                 pr_info("[imoseyon] interactive start\n");
 		break;
 
 	case CPUFREQ_GOV_STOP:
+		mutex_lock(&gov_lock);
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
 			down_write(&pcpu->enable_sem);
@@ -1033,8 +1043,10 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			up_write(&pcpu->enable_sem);
 		}
 
-		if (atomic_dec_return(&active_count) > 0)
+		if (--active_count > 0) {
+			mutex_unlock(&gov_lock);
 			return 0;
+		}
 
 		cpufreq_unregister_notifier(
 			&cpufreq_notifier_block, CPUFREQ_TRANSITION_NOTIFIER);
@@ -1043,6 +1055,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 				&interactive_attr_group);
 
                 unregister_early_suspend(&interactive_power_suspend);
+		mutex_unlock(&gov_lock);
                 pr_info("[imoseyon] interactive inactive\n");
 
 		break;
@@ -1085,6 +1098,7 @@ static int __init cpufreq_interactive_init(void)
 
 	spin_lock_init(&target_loads_lock);
 	spin_lock_init(&speedchange_cpumask_lock);
+	mutex_init(&gov_lock);
 	speedchange_task =
 		kthread_create(cpufreq_interactive_speedchange_task, NULL,
 			       "cfinteractive");

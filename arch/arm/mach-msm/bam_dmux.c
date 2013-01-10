@@ -807,6 +807,17 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 		DBG_INC_WRITE_CPY(skb->len);
 	}
 
+	if(skb_headroom(skb) < sizeof(struct bam_mux_hdr)) {
+		new_skb = skb_realloc_headroom(skb, sizeof(struct bam_mux_hdr));
+                if(new_skb == NULL) {
+			pr_err("%s: skb_realloc_headroom failed\n", __func__);
+                        goto write_fail;
+                }
+                dev_kfree_skb_any(skb);
+                skb = new_skb;
+                DBG_INC_WRITE_CPY(skb->len);
+	}
+
 	hdr = (struct bam_mux_hdr *)skb_push(skb, sizeof(struct bam_mux_hdr));
 
 	/* caller should allocate for hdr and padding

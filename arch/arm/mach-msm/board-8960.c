@@ -366,7 +366,6 @@ static struct ion_cp_heap_pdata cp_mm_msm8960_ion_pdata = {
 	.iommu_map_all = 1,
 	.iommu_2x_map_domain = VIDEO_DOMAIN,
 	.is_cma = 1,
-	.no_nonsecure_alloc = 1,
 };
 
 static struct ion_cp_heap_pdata cp_mfc_msm8960_ion_pdata = {
@@ -375,7 +374,6 @@ static struct ion_cp_heap_pdata cp_mfc_msm8960_ion_pdata = {
 	.reusable = 0,
 	.mem_is_fmem = FMEM_ENABLED,
 	.fixed_position = FIXED_HIGH,
-	.no_nonsecure_alloc = 1,
 };
 
 static struct ion_co_heap_pdata co_msm8960_ion_pdata = {
@@ -783,8 +781,8 @@ static void ion_adjust_secure_allocation(void)
 			case ION_HEAP_TYPE_CP:
 				if (cpu_is_msm8960()) {
 					((struct ion_cp_heap_pdata *)
-					heap->extra_data)->no_nonsecure_alloc =
-						0;
+					heap->extra_data)->allow_nonsecure_alloc
+						= 1;
 				}
 
 			}

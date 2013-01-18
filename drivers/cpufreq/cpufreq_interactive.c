@@ -37,7 +37,6 @@
 
 static unsigned int suspended = 0;
 
-static atomic_t active_count = ATOMIC_INIT(0);
 static int active_count;
 
 struct cpufreq_interactive_cpuinfo {

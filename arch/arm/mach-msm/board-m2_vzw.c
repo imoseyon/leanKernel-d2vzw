@@ -4508,16 +4508,22 @@ static struct msm_cpuidle_state msm_cstates[] __initdata = {
 	{0, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
 
-	{0, 1, "C1", "STANDALONE_POWER_COLLAPSE",
+       {0, 1, "C1", "RETENTION",
+               MSM_PM_SLEEP_MODE_RETENTION},
+
+       {0, 2, "C2", "STANDALONE_POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 
-	{0, 2, "C2", "POWER_COLLAPSE",
+       {0, 3, "C3", "POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
 
 	{1, 0, "C0", "WFI",
 		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
 
-	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
+       {1, 1, "C1", "RETENTION",
+               MSM_PM_SLEEP_MODE_RETENTION},
+
+       {1, 2, "C2", "STANDALONE_POWER_COLLAPSE",
 		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
 };
 
@@ -4535,6 +4541,13 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 		.idle_enabled = 0,
 		.suspend_enabled = 0,
 	},
+
+        [MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_RETENTION)] = {
+                .idle_supported = 1,
+                .suspend_supported = 1,
+                .idle_enabled = 0,
+                .suspend_enabled = 0,
+        },
 
 	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
 		.idle_supported = 1,
@@ -4556,6 +4569,13 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
 		.idle_enabled = 0,
 		.suspend_enabled = 0,
 	},
+
+        [MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_RETENTION)] = {
+                .idle_supported = 1,
+                .suspend_supported = 1,
+                .idle_enabled = 0,
+                .suspend_enabled = 0,
+        },
 
 	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
 		.idle_supported = 1,

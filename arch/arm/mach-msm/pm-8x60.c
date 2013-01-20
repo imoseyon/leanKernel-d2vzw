@@ -1179,10 +1179,11 @@ static int msm_pm_enter(suspend_state_t state)
 		if ((MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask) &&
 				rs_limits)
 			pr_info("%s: limit %p: pxo %d, l2_cache %d, "
-				"vdd_mem %d, vdd_dig %d\n",
+				"vdd_mem %d, vdd_dig %d, power %d\n",
 				__func__, rs_limits,
 				rs_limits->pxo, rs_limits->l2_cache,
-				rs_limits->vdd_mem, rs_limits->vdd_dig);
+				rs_limits->vdd_mem, rs_limits->vdd_dig, 
+				rs_limits->power[smp_processor_id()]);
 
 		if (rs_limits) {
 			ret = msm_rpmrs_enter_sleep(
@@ -1222,7 +1223,7 @@ static int msm_pm_enter(suspend_state_t state)
 		if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 			pr_info("%s: swfi\n", __func__);
 		msm_pm_swfi();
-	}
+	} else pr_info("%s: [imoseyon] unknown pm sleep mode\n", __func__);
 
 
 enter_exit:

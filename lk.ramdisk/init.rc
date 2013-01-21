@@ -14,6 +14,10 @@ import /init.carrier.rc
 import /init.container.rc
 
 on early-init
+    write /sys/module/pm_8x60/modes/cpu0/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/retention/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/retention/suspend_enabled 1
     # Set init and its forked children's oom_adj.
     write /proc/1/oom_adj -16
 

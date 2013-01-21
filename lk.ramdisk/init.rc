@@ -14,6 +14,10 @@ on early-init
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 1512000
     write /sys/devices/system/cpu/cpu0/cpufreq/thermal_max_freq 1512000
     write /sys/devices/system/cpu/cpu1/cpufreq/thermal_max_freq 1512000
+    write /sys/module/pm_8x60/modes/cpu0/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/retention/idle_enabled 1
+    write /sys/module/pm_8x60/modes/cpu0/retention/suspend_enabled 1
+    write /sys/module/pm_8x60/modes/cpu1/retention/suspend_enabled 1
     # Set init and its forked children's oom_adj.
     write /proc/1/oom_adj -16
 

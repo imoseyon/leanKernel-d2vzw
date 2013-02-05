@@ -244,7 +244,6 @@ extern bool ap_fw_loaded;
 extern char iface_name[IFNAMSIZ];
 #endif
 
-#define WIFI_TURNOFF_DELAY	0
 /**
  * Local (static) functions and variables
  */
@@ -2076,7 +2075,7 @@ static int wifi_remove(struct platform_device *pdev)
 	DHD_ERROR(("## %s\n", __FUNCTION__));
 	wifi_control_data = wifi_ctrl;
 
-	wifi_set_power(0, WIFI_TURNOFF_DELAY);	/* Power Off */
+	wifi_set_power(0, 0);	/* Power Off */
 	wifi_set_carddetect(0);	/* CardDetect (1->0) */
 
 	up(&wifi_control_sem);

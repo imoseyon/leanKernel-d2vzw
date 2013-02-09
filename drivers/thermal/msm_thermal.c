@@ -40,6 +40,8 @@ static struct delayed_work check_temp_work;
 static int update_cpu_max_freq(struct cpufreq_policy *cpu_policy,
 			       int cpu, int max_freq)
 {
+	return 0;
+/*
 	int ret = 0;
 
 	if (!cpu_policy)
@@ -56,6 +58,7 @@ static int update_cpu_max_freq(struct cpufreq_policy *cpu_policy,
 			cpu, max_freq);
 
 	return ret;
+*/
 }
 
 static void check_temp(struct work_struct *work)

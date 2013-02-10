@@ -6,11 +6,13 @@ echo
 echo "leanKernel configurator"
 echo
 echo "---"
-echo "1) Stock behavior of keeping voltage minimum at 1150mV if CPU needs it (leanKernel default)."
-echo "2) Remove the above vmin override."
-echo "3) Revert /system/bin/thermald to stock."
+echo "1) Keep voltage minimum at 1150mV if CPU needs it (stock & leanKernel default)."
+echo "2) Remove the above vmin override (allow UV below 1.24Ghz)."
+echo "3) Revert thermald to stock."
+echo "4) interactiveX: set screen-off max freq to 1.1Ghz."
+echo "5) interactiveX: set screen-off max freq to 810Mhz (leanKernel default)."
 echo 
-echo -n "Please enter a number between 1 and 3 (or press enter to exit): "
+echo -n "Please enter a number between 1 and 5 (or press enter to exit): "
 
 read option
 
@@ -31,6 +33,16 @@ case $option in
 	$BB cp -f /sbin/thermald /system/bin/thermald
 	pkill thermald
 	echo "thermald reverted to stock."
+	;;
+  4) 
+	$BB sed -i s/^SO_MAX=.*$/SO_MAX=1134000/ $SCRIPT
+	$SCRIPT
+	echo "interactiveX: screen off max freq set to 1134000."
+	;;
+  5) 
+	$BB sed -i s/^SO_MAX=.*$/SO_MAX=810000/ $SCRIPT
+	$SCRIPT
+	echo "interactiveX: screen off max freq set to 810000 (default)."
 	;;
 esac
 $BB mount -r /system /system

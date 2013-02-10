@@ -290,8 +290,6 @@ static int tabla_reset(struct tabla *tabla)
 		if (ret)
 			pr_err("%s: Failed to configure gpio\n", __func__);
 
-		gpio_direction_output(tabla->reset_gpio, 1);
-		msleep(20);
 		gpio_direction_output(tabla->reset_gpio, 0);
 		msleep(20);
 		gpio_direction_output(tabla->reset_gpio, 1);
@@ -896,11 +894,8 @@ static int tabla_slim_probe(struct slim_device *slim)
 	tabla->irq_base = pdata->irq_base;
 	tabla_pgd_la = tabla->slim->laddr;
 
-	if (pdata->num_irqs < TABLA_NUM_IRQS) {
-		pr_err("%s: Error, not enough interrupt lines allocated\n",
-			__func__);
-		goto err_reset;
-	}
+	if (pdata->num_irqs < TABLA_NUM_IRQS) 
+		pr_warn("%s: not enough interrupt lines allocated\n", __func__);
 
 	tabla->slim_slave = &pdata->slimbus_slave_device;
 
@@ -1020,11 +1015,8 @@ static int tabla_slim_resume(struct slim_device *sldev)
 static int tabla_i2c_resume(struct i2c_client *i2cdev)
 {
 	struct tabla *tabla = dev_get_drvdata(&i2cdev->dev);
-	if (tabla == NULL) {
-		pr_err("tabla is NULL\n");
-		return 0;
-	}
-	return tabla_resume(tabla);
+	if (tabla) return tabla_resume(tabla);
+	else return 0;
 }
 
 static int tabla_suspend(struct tabla *tabla, pm_message_t pmesg)
@@ -1078,11 +1070,8 @@ static int tabla_slim_suspend(struct slim_device *sldev, pm_message_t pmesg)
 static int tabla_i2c_suspend(struct i2c_client *i2cdev, pm_message_t pmesg)
 {
 	struct tabla *tabla = dev_get_drvdata(&i2cdev->dev);
-	if (tabla == NULL) {
-		pr_err("tabla is NULL\n");
-		return 0;
-	}
-	return tabla_suspend(tabla, pmesg);
+	if (tabla) return tabla_suspend(tabla, pmesg);
+	else return 0;
 }
 
 static const struct slim_device_id slimtest_id[] = {

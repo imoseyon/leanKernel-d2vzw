@@ -1617,9 +1617,7 @@ void vc_set_vdd(const char *buf)
 	  if (acpu_freq_tbl[i].use_for_scaling) {
 	    pr_info("[imoseyon]: voltage for %d changed to %d\n", 
 		acpu_freq_tbl[i].speed.khz, volt*1000);
-	    if (krait_needs_vmin() && volt < 1150) 
-		acpu_freq_tbl[i].vdd_core = 1150000;
-	    else acpu_freq_tbl[i].vdd_core = min(max((unsigned int)volt*1000,
+	    acpu_freq_tbl[i].vdd_core = min(max((unsigned int)volt*1000,
 		(unsigned int)HFPLL_LOW_VDD), (unsigned int)HFPLL_MAX_VDD);
 	    ret = sscanf(buf, "%s", size_cur);
 	    buf += (strlen(size_cur)+1);

@@ -598,7 +598,6 @@ int mdp4_dtv_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	vctrl->dev = mfd->fbi->dev;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
 		defined(CONFIG_VIDEO_MHL_TAB_V2)
 	if (!hdmi_msm_state->hpd_on_offline) {
@@ -606,6 +605,9 @@ int mdp4_dtv_on(struct platform_device *pdev)
 		return -ENODEV;
 	}
 #endif
+
+	vctrl->dev = mfd->fbi->dev;
+	vctrl->vsync_irq_enabled = 0;
 
 	mdp_footswitch_ctrl(TRUE);
 	/* Mdp clock enable */

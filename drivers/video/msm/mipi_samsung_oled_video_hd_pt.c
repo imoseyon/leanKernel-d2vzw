@@ -1620,7 +1620,6 @@ static int __init mipi_cmd_samsung_oled_qhd_pt_init(void)
 	pinfo.bl_max = 255;
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;
-	pinfo.lcd.blt_ctrl = 1;
 
 	if (samsung_has_cmc624())
 		pinfo.clk_rate = 483000000;

@@ -270,6 +270,12 @@ void msm_restart(char mode, const char *cmd)
 			__raw_writel(0x77665500, restart_reason);
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			__raw_writel(0x77665502, restart_reason);
+		} else if (!strncmp(cmd, "download", 8)) {
+			__raw_writel(0x12345671, restart_reason);
+		} else if (!strncmp(cmd, "nvbackup", 8)) {
+			__raw_writel(0x77665511, restart_reason);
+		} else if (!strncmp(cmd, "nvrestore", 9)) {
+			__raw_writel(0x77665512, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;

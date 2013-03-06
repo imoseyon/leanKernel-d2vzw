@@ -24,6 +24,7 @@
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
@@ -120,6 +121,8 @@ static char *msm_pm_sleep_mode_labels[MSM_PM_SLEEP_MODE_NR] = {
 
 static struct hrtimer pm_hrtimer;
 static struct msm_pm_sleep_ops pm_sleep_ops;
+static struct msm_pm_sleep_status_data *msm_pm_slp_sts;
+
 /*
  * Write out the attribute.
  */
@@ -956,6 +959,32 @@ cpuidle_enter_bail:
 	return 0;
 }
 
+int msm_pm_wait_cpu_shutdown(unsigned int cpu)
+{
+	int timeout = 10;
+
+	if (!msm_pm_slp_sts)
+		return 0;
+	if (!msm_pm_slp_sts[cpu].base_addr)
+		return 0;
+	while (timeout--) {
+		/*
+ 		 * Check for the SPM of the core being hotplugged to set
+		 * its sleep state.The SPM sleep state indicates that the
+		 * core has been power collapsed.
+		*/
+		int acc_sts = __raw_readl(msm_pm_slp_sts[cpu].base_addr);
+
+		if (acc_sts & msm_pm_slp_sts[cpu].mask)
+			return 0;
+		udelay(100);
+	}
+
+	pr_info("%s(): Timed out waiting for CPU %u SPM to enter sleep state",
+			__func__, cpu);
+	return -EBUSY;
+}
+
 void msm_pm_cpu_enter_lowpower(unsigned int cpu)
 {
 	int i;
@@ -1074,6 +1103,46 @@ enter_exit:
 static struct platform_suspend_ops msm_pm_ops = {
 	.enter = msm_pm_enter,
 	.valid = suspend_valid_only_mem,
+};
+
+static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
+{
+	struct msm_pm_sleep_status_data *pdata;
+	char *key;
+	u32 cpu;
+
+	if (!pdev)
+		return -EFAULT;
+
+	msm_pm_slp_sts =
+			kzalloc(sizeof(*msm_pm_slp_sts) * num_possible_cpus(),
+			GFP_KERNEL);
+
+	if (!msm_pm_slp_sts)
+		return -ENOMEM;
+	pdata = pdev->dev.platform_data;
+	if (!pdev->dev.platform_data)
+		goto fail_free_mem;
+
+	for_each_possible_cpu(cpu) {
+		msm_pm_slp_sts[cpu].base_addr =
+				pdata->base_addr + cpu * pdata->cpu_offset;
+		msm_pm_slp_sts[cpu].mask = pdata->mask;
+	}
+
+	return 0;
+
+fail_free_mem:
+	kfree(msm_pm_slp_sts);
+	return -EINVAL;
+};
+
+static struct platform_driver msm_cpu_status_driver = {
+	.probe = msm_cpu_status_probe,
+	.driver = {
+		.name = "cpu_slp_status",
+		.owner = THIS_MODULE,
+	},
 };
 
 /******************************************************************************
@@ -1196,6 +1265,7 @@ static int __init msm_pm_init(void)
 	msm_pm_target_init();
 	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
 	msm_cpuidle_init();
+	platform_driver_register(&msm_cpu_status_driver);
 	platform_driver_register(&msm_pc_counter_driver);
 
 	return 0;

@@ -394,3 +394,9 @@ config SND_SOC_WM9090
 
 config SND_SOC_MSM_STUB
 	tristate
+
+config SOUND_CONTROL_HAX_GPL
+	tristate "wcd93xx sound control hax"
+	default y
+	help
+	  FauxSound WCD93xx chipset sound control hacks

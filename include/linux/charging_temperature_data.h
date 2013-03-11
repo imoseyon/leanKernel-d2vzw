@@ -29,7 +29,7 @@
 #define DEFAULT_LOW_RECOVER_TEMP	0
 
 #if defined(CONFIG_MACH_JAGUAR)
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{26250,	 800},
 	{26583,	 750},
 	{26979,	 700},
@@ -54,7 +54,7 @@ static const int temp_table[][2] = {
 };
 
 #elif defined(CONFIG_MACH_M2_ATT)
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{26465,	 800},
 	{26749,	 750},
 	{27017,	 700},
@@ -104,7 +104,7 @@ static const struct pm8xxx_adc_map_pt temp_table[] = {
 };
 
 #elif defined(CONFIG_MACH_M2_VZW)
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{26537,	 800},
 	{26849,	 750},
 	{27211,	 700},
@@ -129,7 +129,7 @@ static const int temp_table[][2] = {
 };
 
 #elif defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{26478,	 800},
 	{27123,	 700},
 	{27985,	 600},
@@ -144,7 +144,7 @@ static const int temp_table[][2] = {
 };
 
 #elif defined(CONFIG_MACH_AEGIS2)
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{27401,	 650},
 	{27790,	 600},
 	{28378,	 550},
@@ -167,7 +167,7 @@ static const int temp_table[][2] = {
 };
 
 #else
-static const int temp_table[][2] = {
+static const struct pm8xxx_adc_map_pt temp_table[] = {
 	{26250,	 800},
 	{26583,	 750},
 	{26979,	 700},

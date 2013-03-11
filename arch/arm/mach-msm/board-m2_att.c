@@ -2177,12 +2177,14 @@ static struct platform_device opt_gp2a = {
 			0, 0, 1},
 	};
 
+#if 0
 	static struct ext_slave_platform_data inv_mpu_ak8963_data_03 = {
 	.bus		= EXT_SLAVE_BUS_PRIMARY,
 	.orientation = {-1, 0, 0,
 			0, 1, 0,
 			0, 0, -1},
 	};
+#endif
 
 	struct mpu_platform_data mpu6050_data_01 = {
 	.int_config = 0x10,

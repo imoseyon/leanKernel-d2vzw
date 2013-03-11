@@ -28,9 +28,10 @@ extern struct snd_kcontrol_new *gpl_faux_snd_controls_ptr;
 #define SOUND_CONTROL_MAJOR_VERSION	2
 #define SOUND_CONTROL_MINOR_VERSION	0
 
-#define CAMCORDER_MIC_OFFSET    20
+#define CAMCORDER_MIC_L_OFFSET	17
+#define CAMCORDER_MIC_R_OFFSET	18
 #define HANDSET_MIC_OFFSET      21
-#define SPEAKER_OFFSET          10
+#define SPEAKER_OFFSET          12
 #define HEADPHONE_L_OFFSET      8
 #define HEADPHONE_R_OFFSET      9
 
@@ -39,8 +40,8 @@ static ssize_t cam_mic_gain_show(struct kobject *kobj, struct kobj_attribute *at
 	struct soc_mixer_control *l_mixer_ptr;
 
 	l_mixer_ptr =
-		(struct soc_mixer_control *)gpl_faux_snd_controls_ptr[CAMCORDER_MIC_OFFSET].
-			private_value;
+		(struct soc_mixer_control *)
+		gpl_faux_snd_controls_ptr[CAMCORDER_MIC_L_OFFSET].private_value;
 
 	return sprintf(buf, "%d", l_mixer_ptr->max);
 }
@@ -49,19 +50,26 @@ static ssize_t cam_mic_gain_store(struct kobject *kobj, struct kobj_attribute *a
 {
 	int l_max;
 	int l_delta;
-	struct soc_mixer_control *l_mixer_ptr;
+	struct soc_mixer_control *l_mixer_ptr, *r_mixer_ptr;
 
 	l_mixer_ptr =
-		(struct soc_mixer_control *)gpl_faux_snd_controls_ptr[CAMCORDER_MIC_OFFSET].
-			private_value;
+		(struct soc_mixer_control *)
+		gpl_faux_snd_controls_ptr[CAMCORDER_MIC_L_OFFSET].private_value;
+
+	r_mixer_ptr =
+		(struct soc_mixer_control *)
+		gpl_faux_snd_controls_ptr[CAMCORDER_MIC_R_OFFSET].private_value;
 
 	sscanf(buf, "%d", &l_max);
  
-	// limit the max gain
 	l_delta = l_max - l_mixer_ptr->platform_max;
 	l_mixer_ptr->platform_max = l_max;
 	l_mixer_ptr->max = l_max;
 	l_mixer_ptr->min += l_delta;
+
+	r_mixer_ptr->platform_max = l_max;
+	r_mixer_ptr->max = l_max;
+	r_mixer_ptr->min += l_delta;
 
 	return (count);
 }

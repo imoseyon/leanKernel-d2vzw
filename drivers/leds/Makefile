@@ -48,6 +48,7 @@ obj-$(CONFIG_LEDS_NS2)			+= leds-ns2.o
 obj-$(CONFIG_LEDS_NETXBIG)		+= leds-netxbig.o
 obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
 obj-$(CONFIG_LEDS_RENESAS_TPU)		+= leds-renesas-tpu.o
+obj-$(CONFIG_LEDS_AAT1290A)		+= leds-aat1290a.o
 obj-$(CONFIG_LEDS_MAX8997)		+= leds-max8997.o
 obj-$(CONFIG_LEDS_PMIC8058)		+= leds-pmic8058.o
 obj-$(CONFIG_LEDS_PMIC_MPP)		+= leds-pmic-mpp.o

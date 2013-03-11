@@ -1001,7 +1001,6 @@ static int aat1290a_freeGpio(void)
 
 static void aat1290a_torch_en(int onoff)
 {
-	int ret;
 	int temp = 0;
 
 	printk(KERN_DEBUG "[%s : %d] %s!!\n",
@@ -1015,7 +1014,6 @@ static void aat1290a_torch_en(int onoff)
 
 static void aat1290a_torch_set(int onoff)
 {
-	int ret;
 	int temp = 0;
 
 	printk(KERN_DEBUG "[%s : %d] %s!!\n",

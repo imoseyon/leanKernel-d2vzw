@@ -74,7 +74,6 @@ void  melfas_vdd_on(bool onoff)
 	static struct regulator *reg_l17;
 	/* 1.8V */
 #ifdef CONFIG_MACH_M2_VZW
-	static struct regulator *reg_l11;
 	if (system_rev < BOARD_REV02) {
 		if (onoff)
 			gpio_direction_output(10, 1);

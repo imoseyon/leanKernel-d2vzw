@@ -901,9 +901,15 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 	if (pinfo->data_lane0)
 		dsi_ctrl |= BIT(4);
 
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) ||\
+	defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
+	/* send commands in High Speed Mode */
+	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
+#else
 	/* from frame buffer, low power mode */
 	/* DSI_COMMAND_MODE_DMA_CTRL */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
+#endif
 
 	data = 0;
 	if (pinfo->te_sel)
@@ -1432,7 +1438,8 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 {
 	unsigned long flags;
-
+	ktime_t tx_start;
+	unsigned int tx_time;
 #ifdef DSI_HOST_DEBUG
 	int i;
 	char *bp;
@@ -1468,9 +1475,12 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	wmb();
 	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 
+	tx_start = ktime_get_real();
 	if (!wait_for_completion_timeout(&dsi_dma_comp,
-					msecs_to_jiffies(200))) {
-		pr_err("%s: dma timeout error\n", __func__);
+					msecs_to_jiffies(40))) {
+		tx_time = (unsigned int)(ktime_to_ms(ktime_sub(ktime_get_real(), tx_start)));
+		if (tx_time == 0)
+			msleep(1);
 	}
 
 	dma_unmap_single(&dsi_dev, tp->dmap, tp->len, DMA_TO_DEVICE);

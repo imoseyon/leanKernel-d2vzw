@@ -34,6 +34,9 @@
 #include "mipi_dsi.h"
 #include "mdp.h"
 #include "mdp4.h"
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
+#include "mipi_samsung_esd_refresh.h"
+#endif
 
 u32 dsi_irq;
 u32 esc_byte_ratio;
@@ -603,7 +606,11 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	pdev_list[pdev_list_cnt++] = pdev;
 
-return 0;
+#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
+	register_mipi_dev(pdev);
+#endif
+
+	return 0;
 
 mipi_dsi_probe_err:
 	platform_device_put(mdp_dev);

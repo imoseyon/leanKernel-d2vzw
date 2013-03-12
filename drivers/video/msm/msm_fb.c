@@ -983,9 +983,12 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			bl_updated = 0;
 
-			/* clean fb to prevent displaying old fb */
-			memset((void *)info->screen_base, 0,
-					info->fix.smem_len);
+#ifdef CONFIG_MIPI_SAMSUNG_ESD_REFRESH
+			if (!get_esd_refresh_stat())
+#endif
+				/* clean fb to prevent displaying old fb */
+				memset((void *)info->screen_base, 0,
+						info->fix.smem_len);
 
 			ret = pdata->off(mfd->pdev);
 			if (ret)

@@ -2080,6 +2080,8 @@ static long msm_v4l2_evt_notify(struct msm_cam_media_controller *mctl,
 		return -EFAULT;
 	}
 
+	v4l2_ev.id = 0;
+
 	pcam = mctl->sync.pcam_sync;
 	ktime_get_ts(&v4l2_ev.timestamp);
 	v4l2_event_queue(pcam->pvdev, &v4l2_ev);

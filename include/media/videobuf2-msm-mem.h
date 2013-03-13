@@ -19,6 +19,8 @@
 #include <mach/iommu_domains.h>
 #include <linux/msm_ion.h>
 
+#define CACHABLE_MEMORY
+
 struct videobuf2_mapping {
 	unsigned int count;
 };
@@ -57,6 +59,8 @@ struct videobuf2_contig_pmem {
 	unsigned int count;
 	void *alloc_ctx;
 	unsigned long mapped_phyaddr;
+	void *kernel_vaddr;
+	unsigned long ion_flags;
 	struct ion_handle *ion_handle;
 	struct ion_client *client;
 };

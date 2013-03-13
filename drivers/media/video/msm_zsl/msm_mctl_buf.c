@@ -580,7 +580,7 @@ int msm_mctl_reserve_free_buf(
 		/* CACHABLE_MEMORY */
 		/*invalidate cache if required*/
 #if defined(CACHABLE_MEMORY)
-		if (mem && (ION_IS_CACHED(mem->ion_flags) == CACHED))
+		if (mem && (ION_IS_CACHED(mem->ion_flags)))
 			invalidate_caches((unsigned long)mem->kernel_vaddr,
 			mem->size, (unsigned long)mem->phyaddr);
 #endif

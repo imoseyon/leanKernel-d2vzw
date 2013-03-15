@@ -524,4 +524,8 @@ extern void sec_debug_set_qc_dload_magic(int on);
 extern uint32_t global_pvs;
 #endif
 
+#ifdef CONFIG_SEC_DEBUG_DOUBLE_FREE
+extern void *kfree_hook(void *p, void *caller);
+#endif
+
 #endif	/* SEC_DEBUG_H */

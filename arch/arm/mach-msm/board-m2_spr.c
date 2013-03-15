@@ -1774,10 +1774,23 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.iterm = 100,
 	.charge_duration = 8 * 60 * 60,
 	.recharge_duration = 2 * 60 * 60,
 	.max_voltage = 4350 * 1000,
+#if defined(_d2spi_)
+	.iterm = 150,
+	.recharge_voltage = 4300 * 1000,
+	.event_block = 580,
+	.high_block = 580,
+	.high_recovery = 440,
+	.low_block = -40,
+	.low_recovery = -5,
+	.lpm_high_block = 580,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -40,
+	.lpm_low_recovery = -5,
+#else
+	.iterm = 100,
 	.recharge_voltage = 4280 * 1000,
 	.event_block = 600,
 	.high_block = 450,
@@ -1788,6 +1801,7 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.lpm_high_recovery = 435,
 	.lpm_low_block = 0,
 	.lpm_low_recovery = 15,
+#endif
 	.wpc_charging_current = 500,
 };
 

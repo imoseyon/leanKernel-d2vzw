@@ -1095,6 +1095,11 @@ static int s5c73m3_set_effect(int effect)
 			S5C73M3_IMAGE_EFFECT_POINT_COLOR_4);
 		break;
 
+	case CAMERA_EFFECT_CARTOONIZE:
+		rc = s5c73m3_writeb(S5C73M3_IMAGE_EFFECT,
+				    S5C73M3_IMAGE_EFFECT_CARTOONIZE);
+		break;
+
 	default:
 		CAM_DBG_M("default effect\n");
 		rc = s5c73m3_writeb(S5C73M3_IMAGE_EFFECT,

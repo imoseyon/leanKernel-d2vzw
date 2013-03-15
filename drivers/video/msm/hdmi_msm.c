@@ -66,6 +66,7 @@ static DEFINE_MUTEX(hdcp_auth_state_mutex);
 static void hdmi_msm_dump_regs(const char *prefix);
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
+static void hdcp_deauthenticate(void);
 static void hdmi_msm_hdcp_enable(void);
 #else
 static inline void hdmi_msm_hdcp_enable(void) {}
@@ -807,6 +808,9 @@ static void hdmi_msm_send_event(boolean on)
 
 	if (on) {
 		/* Build EDID table */
+		cancel_work_sync(&hdmi_msm_state->hdcp_reauth_work);
+		if (hdmi_msm_state->full_auth_done)
+			hdcp_deauthenticate();
 		hdmi_msm_read_edid();
 
 		hdmi_msm_set_mode(FALSE);
@@ -924,7 +928,6 @@ static void hdmi_msm_cec_latch_work(struct work_struct *work)
 #endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
-static void hdcp_deauthenticate(void);
 static void hdmi_msm_hdcp_reauth_work(struct work_struct *work)
 {
 
@@ -3991,6 +3994,7 @@ static void hdmi_msm_avi_info_frame(void)
 	uint32 regVal;
 	int i;
 	int mode = 0;
+	boolean use_ce_scan_info = TRUE;
 
 	switch (external_common_state->video_resolution) {
 	case HDMI_VFRMT_720x480p60_4_3:
@@ -4056,6 +4060,48 @@ static void hdmi_msm_avi_info_frame(void)
 
 	/* Data Byte 01: 0 Y1 Y0 A0 B1 B0 S1 S0 */
 	aviInfoFrame[3]  = hdmi_msm_avi_iframe_lut[0][mode];
+
+	/*
+	 * If the sink specified support for both underscan/overscan
+	 * then, by default, set the underscan bit.
+	 * Only checking underscan support for preferred format and cea formats
+	 */
+	if ((external_common_state->video_resolution ==
+			external_common_state->preferred_video_format)) {
+		use_ce_scan_info = FALSE;
+		switch (external_common_state->pt_scan_info) {
+		case 0:
+			/*
+			 * Need to use the info specified for the corresponding
+			 * IT or CE format
+			 */
+			DEV_DBG("%s: No underscan information specified for the"
+				" preferred video format\n", __func__);
+			use_ce_scan_info = TRUE;
+			break;
+		case 3:
+			DEV_DBG("%s: Setting underscan bit for the preferred"
+				" video format\n", __func__);
+			aviInfoFrame[3] |= 0x02;
+			break;
+		default:
+			DEV_DBG("%s: Underscan information not set for the"
+				" preferred video format\n", __func__);
+			break;
+		}
+	}
+
+	if (use_ce_scan_info) {
+		if (3 == external_common_state->ce_scan_info) {
+			DEV_DBG("%s: Setting underscan bit for the CE video"
+					" format\n", __func__);
+			aviInfoFrame[3] |= 0x02;
+		} else {
+			DEV_DBG("%s: Not setting underscan bit for the CE video"
+				       " format\n", __func__);
+		}
+	}
+
 	/* Data Byte 02: C1 C0 M1 M0 R3 R2 R1 R0 */
 	aviInfoFrame[4]  = hdmi_msm_avi_iframe_lut[1][mode];
 	/* Data Byte 03: ITC EC2 EC1 EC0 Q1 Q0 SC1 SC0 */
@@ -4211,6 +4257,137 @@ static void hdmi_msm_switch_3d(boolean on)
 }
 #endif
 
+#define IFRAME_CHECKSUM_32(d) \
+	((d & 0xff) + ((d >> 8) & 0xff) + \
+	((d >> 16) & 0xff) + ((d >> 24) & 0xff))
+
+static void hdmi_msm_spd_infoframe_packetsetup(void)
+{
+	uint32 packet_header  = 0;
+	uint32 check_sum      = 0;
+	uint32 packet_payload = 0;
+	uint32 packet_control = 0;
+
+	uint8 *vendor_name = external_common_state->spd_vendor_name;
+	uint8 *product_description =
+		external_common_state->spd_product_description;
+
+	/* 0x00A4 GENERIC1_HDR
+	 *   HB0             7:0  NUM
+	 *   HB1            15:8  NUM
+	 *   HB2           23:16  NUM */
+	/* Setup Packet header and payload */
+	/* 0x83 InfoFrame Type Code
+	   0x01 InfoFrame Version Number
+	   0x19 Length of Source Product Description InfoFrame
+	*/
+	packet_header  = 0x83 | (0x01 << 8) | (0x19 << 16);
+	HDMI_OUTP(0x00A4, packet_header);
+	check_sum += IFRAME_CHECKSUM_32(packet_header);
+
+	/* 0x00AC GENERIC1_1
+	 *   BYTE4           7:0  VENDOR_NAME[3]
+	 *   BYTE5          15:8  VENDOR_NAME[4]
+	 *   BYTE6         23:16  VENDOR_NAME[5]
+	 *   BYTE7         31:24  VENDOR_NAME[6] */
+	packet_payload = (vendor_name[3] & 0x7f)
+		| ((vendor_name[4] & 0x7f) << 8)
+		| ((vendor_name[5] & 0x7f) << 16)
+		| ((vendor_name[6] & 0x7f) << 24);
+	HDMI_OUTP(0x00AC, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* Product Description (7-bit ASCII code) */
+	/* 0x00B0 GENERIC1_2
+	 *   BYTE8           7:0  VENDOR_NAME[7]
+	 *   BYTE9          15:8  PRODUCT_NAME[ 0]
+	 *   BYTE10        23:16  PRODUCT_NAME[ 1]
+	 *   BYTE11        31:24  PRODUCT_NAME[ 2] */
+	packet_payload = (vendor_name[7] & 0x7f)
+		| ((product_description[0] & 0x7f) << 8)
+		| ((product_description[1] & 0x7f) << 16)
+		| ((product_description[2] & 0x7f) << 24);
+	HDMI_OUTP(0x00B0, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* 0x00B4 GENERIC1_3
+	 *   BYTE12          7:0  PRODUCT_NAME[ 3]
+	 *   BYTE13         15:8  PRODUCT_NAME[ 4]
+	 *   BYTE14        23:16  PRODUCT_NAME[ 5]
+	 *   BYTE15        31:24  PRODUCT_NAME[ 6] */
+	packet_payload = (product_description[3] & 0x7f)
+		| ((product_description[4] & 0x7f) << 8)
+		| ((product_description[5] & 0x7f) << 16)
+		| ((product_description[6] & 0x7f) << 24);
+	HDMI_OUTP(0x00B4, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* 0x00B8 GENERIC1_4
+	 *   BYTE16          7:0  PRODUCT_NAME[ 7]
+	 *   BYTE17         15:8  PRODUCT_NAME[ 8]
+	 *   BYTE18        23:16  PRODUCT_NAME[ 9]
+	 *   BYTE19        31:24  PRODUCT_NAME[10] */
+	packet_payload = (product_description[7] & 0x7f)
+		| ((product_description[8] & 0x7f) << 8)
+		| ((product_description[9] & 0x7f) << 16)
+		| ((product_description[10] & 0x7f) << 24);
+	HDMI_OUTP(0x00B8, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* 0x00BC GENERIC1_5
+	 *   BYTE20          7:0  PRODUCT_NAME[11]
+	 *   BYTE21         15:8  PRODUCT_NAME[12]
+	 *   BYTE22        23:16  PRODUCT_NAME[13]
+	 *   BYTE23        31:24  PRODUCT_NAME[14] */
+	packet_payload = (product_description[11] & 0x7f)
+		| ((product_description[12] & 0x7f) << 8)
+		| ((product_description[13] & 0x7f) << 16)
+		| ((product_description[14] & 0x7f) << 24);
+	HDMI_OUTP(0x00BC, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* 0x00C0 GENERIC1_6
+	 *   BYTE24          7:0  PRODUCT_NAME[15]
+	 *   BYTE25         15:8  Source Device Information
+	 *   BYTE26        23:16  NUM
+	 *   BYTE27        31:24  NUM */
+	/* Source Device Information
+	 * 00h unknown
+	 * 01h Digital STB
+	 * 02h DVD
+	 * 03h D-VHS
+	 * 04h HDD Video
+	 * 05h DVC
+	 * 06h DSC
+	 * 07h Video CD
+	 * 08h Game
+	 * 09h PC general */
+	packet_payload = (product_description[15] & 0x7f) | 0x00 << 8;
+	HDMI_OUTP(0x00C0, packet_payload);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+
+	/* Vendor Name (7bit ASCII code) */
+	/* 0x00A8 GENERIC1_0
+	 *   BYTE0           7:0  CheckSum
+	 *   BYTE1          15:8  VENDOR_NAME[0]
+	 *   BYTE2         23:16  VENDOR_NAME[1]
+	 *   BYTE3         31:24  VENDOR_NAME[2] */
+	packet_payload = ((vendor_name[0] & 0x7f) << 8)
+		| ((vendor_name[1] & 0x7f) << 16)
+		| ((vendor_name[2] & 0x7f) << 24);
+	check_sum += IFRAME_CHECKSUM_32(packet_payload);
+	packet_payload |= ((0x100 - (0xff & check_sum)) & 0xff);
+	HDMI_OUTP(0x00A8, packet_payload);
+
+	/* GENERIC1_LINE | GENERIC1_CONT | GENERIC1_SEND
+	 * Setup HDMI TX generic packet control
+	 * Enable this packet to transmit every frame
+	 * Enable HDMI TX engine to transmit Generic packet 1 */
+	packet_control = HDMI_INP_ND(0x0034);
+	packet_control |= ((0x1 << 24) | (1 << 5) | (1 << 4));
+	HDMI_OUTP(0x0034, packet_control);
+}
+
 int hdmi_msm_clk(int on)
 {
 	int rc;
@@ -4288,6 +4465,7 @@ static void hdmi_msm_turn_on(void)
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	hdmi_msm_vendor_infoframe_packetsetup();
 #endif
+	hdmi_msm_spd_infoframe_packetsetup();
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 	if (hdmi_msm_state->reauth) {
@@ -4424,7 +4602,6 @@ static int hdmi_msm_hpd_on(void)
 
 		/* Set up HPD state variables */
 		mutex_lock(&external_common_state_hpd_mutex);
-		external_common_state->hpd_state = 0;
 		hdmi_msm_state->hpd_state_in_isr = 0;
 		mutex_unlock(&external_common_state_hpd_mutex);
 		mutex_lock(&hdmi_msm_state_mutex);
@@ -4899,6 +5076,10 @@ static int __init hdmi_msm_init(void)
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	external_common_state->switch_3d = hdmi_msm_switch_3d;
 #endif
+	memset(external_common_state->spd_vendor_name, 0,
+			sizeof(external_common_state->spd_vendor_name));
+	memset(external_common_state->spd_product_description, 0,
+			sizeof(external_common_state->spd_product_description));
 
 	/*
 	 * Create your work queue

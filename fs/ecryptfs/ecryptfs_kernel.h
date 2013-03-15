@@ -279,6 +279,10 @@ struct ecryptfs_crypt_stat {
 #define ECRYPTFS_ENCFN_USE_FEK        0x00001000
 #define ECRYPTFS_UNLINK_SIGS          0x00002000
 #define ECRYPTFS_I_SIZE_INITIALIZED   0x00004000
+#ifdef CONFIG_WTL_ENCRYPTION_FILTER
+#define ECRYPTFS_ENCRYPTED_OTHER_DEVICE 0x00008000
+#endif
+
 	u32 flags;
 	unsigned int file_version;
 	size_t iv_bytes;

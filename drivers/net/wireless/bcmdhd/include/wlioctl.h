@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wlioctl.h 357629 2012-09-19 12:51:08Z $
+ * $Id: wlioctl.h 362236 2012-10-11 13:29:56Z $
  */
 
 #ifndef _wlioctl_h_
@@ -42,8 +42,6 @@
 #include <bcm_mpool_pub.h>
 #include <bcmcdc.h>
 #endif /* LINUX_POSTMOGRIFY_REMOVAL */
-
-#include <dhd_sec_feature.h>
 
 /*  LINUX_POSTMOGRIFY_REMOVAL: undefined during compile phase, so its
  *  a no-op for most cases. For hybrid and other open source releases,
@@ -881,14 +879,14 @@ typedef enum sup_auth_status {
 #define CRYPTO_ALGO_AES_CCM		4
 #define CRYPTO_ALGO_AES_OCB_MSDU	5
 #define CRYPTO_ALGO_AES_OCB_MPDU	6
-#if !defined(BCMCCX)
+#if !defined(BCMCCX) && !defined(BCMEXTCCX)
 #define CRYPTO_ALGO_NALG		7
 #else
 #define CRYPTO_ALGO_CKIP		7
 #define CRYPTO_ALGO_CKIP_MMH		8
 #define CRYPTO_ALGO_WEP_MMH		9
 #define CRYPTO_ALGO_NALG		10
-#endif
+#endif /* !BCMCCX && !BCMEXTCCX */
 #ifdef BCMWAPI_WPI
 #define CRYPTO_ALGO_SMS4		11
 #endif /* BCMWAPI_WPI */
@@ -903,13 +901,13 @@ typedef enum sup_auth_status {
 
 #define WL_SOFT_KEY	(1 << 0)	/* Indicates this key is using soft encrypt */
 #define WL_PRIMARY_KEY	(1 << 1)	/* Indicates this key is the primary (ie tx) key */
-#if defined(BCMCCX)
+#if defined(BCMCCX) || defined(BCMEXTCCX)
 #define WL_CKIP_KP	(1 << 4)	/* CMIC */
 #define WL_CKIP_MMH	(1 << 5)	/* CKIP */
 #else
 #define WL_KF_RES_4	(1 << 4)	/* Reserved for backward compat */
 #define WL_KF_RES_5	(1 << 5)	/* Reserved for backward compat */
-#endif
+#endif /* BCMCCX || BCMEXTCCX */
 #define WL_IBSS_PEER_GROUP_KEY	(1 << 6)	/* Indicates a group key for a IBSS PEER */
 
 typedef struct wl_wsec_key {
@@ -1001,10 +999,10 @@ typedef struct {
 #define WPA_AUTH_NONE		0x0001	/* none (IBSS) */
 #define WPA_AUTH_UNSPECIFIED	0x0002	/* over 802.1x */
 #define WPA_AUTH_PSK		0x0004	/* Pre-shared key */
-#if defined(BCMCCX)
+#if defined(BCMCCX) || defined(BCMEXTCCX)
 #define WPA_AUTH_CCKM		0x0008	/* CCKM */
 #define WPA2_AUTH_CCKM		0x0010	/* CCKM2 */
-#endif
+#endif	/* BCMCCX || BCMEXTCCX */
 /* #define WPA_AUTH_8021X 0x0020 */	/* 802.1x, reserved */
 #define WPA2_AUTH_UNSPECIFIED	0x0040	/* over 802.1x */
 #define WPA2_AUTH_PSK		0x0080	/* Pre-shared key */
@@ -1782,9 +1780,6 @@ typedef struct {
 /* BCM4334(Phoenex branch) value changed to 3 */
 #define WL_AUTH_OPEN_SHARED		3	/* try open, then shared if open failed w/rc 13 */
 #endif
-#ifdef USE_WEP_AUTH_SHARED_OPEN
-#define WL_AUTH_SHARED_OPEN		4	/* try shared, then open if shared failed w/rc 13 */
-#endif /* USE_WEP_AUTH_SHARED_OPEN */
 #endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
 /* Bit masks for radio disabled status - returned by WL_GET_RADIO */
@@ -1981,10 +1976,6 @@ typedef struct wl_po {
 
 /* when sgi_tx==WLC_SGI_ALL, bypass rate selection, enable sgi for all mcs */
 #define WLC_SGI_ALL				0x02
-
-#define DHD_SCAN_ACTIVE_TIME		40 /* ms : Embedded default Active setting from DHD */
-#define DHD_SCAN_UNASSOC_ACTIVE_TIME	80 /* ms : def. Unassoc Active setting from DHD */
-#define DHD_SCAN_PASSIVE_TIME		130 /* ms: Embedded default Passive setting from DHD */
 
 #define LISTEN_INTERVAL			10
 /* interference mitigation options */

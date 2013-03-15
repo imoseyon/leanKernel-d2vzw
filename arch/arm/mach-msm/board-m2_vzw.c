@@ -1802,26 +1802,49 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.iterm = 100,
 	.charge_duration = 8 * 60 * 60,
 	.recharge_duration = 2 * 60 * 60,
 	.max_voltage = 4350 * 1000,
-	.recharge_voltage = 4280 * 1000,
-	.event_block = 600,
-#if defined(_d2usc_)
-	.high_block = 600,
-	.lpm_high_block = 600,
+#if defined(_d2mtr_) || defined(_d2cri_)
+	.iterm = 150,
+	.recharge_voltage = 4300 * 1000,
 #else
-	.high_block = 510,
-	.lpm_high_block = 470,
+	.iterm = 100,
+	.recharge_voltage = 4280 * 1000,
 #endif
+
+#if defined(_d2usc_)
+	.event_block = 600,
+	.high_block = 600,
+	.high_recovery = 440,
+	.low_block = -50,
+	.low_recovery = -10,
+	.lpm_high_block = 600,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -40,
+	.lpm_low_recovery = -10,
+#elif defined(_d2mtr_) || defined(_d2cri_)
+	.event_block = 610,
+	.high_block = 610,
+	.high_recovery = 440,
+	.low_block = -40,
+	.low_recovery = -5,
+	.lpm_high_block = 610,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -40,
+	.lpm_low_recovery = -5,
+#else /* _d2vzw_ */
+	.event_block = 600,
+	.high_block = 510,
 	.high_recovery = 440,
 	.high_recovery_wpc = 490,
 	.low_block = -50,
 	.low_recovery = -10,
+	.lpm_high_block = 470,
 	.lpm_high_recovery = 440,
 	.lpm_low_block = -40,
 	.lpm_low_recovery = -10,
+#endif
 	.wpc_charging_current = 700,
 };
 

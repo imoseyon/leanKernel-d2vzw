@@ -23,7 +23,7 @@
 #include "a2220_firmware_aegis2.h"
 #elif defined(CONFIG_MACH_JASPER)
 #include "a2220_firmware_jasper.h"
-#elif defined(_d2tmo_)
+#elif defined(_d2tmo_) || defined(_d2ltetmo_)
 #include "a2220_firmware_t999.h"
 #else
 #include "a2220_firmware_i747.h"

@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfg80211.h 357867 2012-09-20 06:57:44Z $
+ * $Id: wl_cfg80211.h 366811 2012-11-05 13:49:17Z $
  */
 
 #ifndef _wl_cfg80211_h_
@@ -62,6 +62,12 @@ struct wl_ibss;
 /* 0 invalidates all debug messages.  default is 1 */
 #define WL_DBG_LEVEL 0xFF
 
+#ifdef CUSTOMER_HW4
+#define CFG80211_ERROR_TEXT		"CFG80211-INFO2) "
+#else
+#define CFG80211_ERROR_TEXT		"CFG80211-ERROR) "
+#endif
+
 #if defined(DHD_DEBUG)
 #define	WL_ERR(args)									\
 do {										\
@@ -76,7 +82,7 @@ do {										\
 	if ((wl_dbg_level & WL_DBG_ERR) && net_ratelimit()) {				\
 			printk(KERN_INFO "CFG80211-INFO2) %s : ", __func__);	\
 			printk args;						\
-		}								\
+		} 								\
 } while (0)
 #endif /* defined(DHD_DEBUG) */
 
@@ -119,7 +125,7 @@ do {										\
 	if (wl_dbg_level & WL_DBG_ERR) {				\
 			printk(KERN_INFO "CFG80211-TRACE) %s : ", __func__);	\
 			printk args;						\
-		}								\
+		} 								\
 } while (0)
 #else
 #define	WL_TRACE_HW4			WL_TRACE
@@ -135,6 +141,7 @@ do {									\
 #else				/* !(WL_DBG_LEVEL > 0) */
 #define	WL_DBG(args)
 #endif				/* (WL_DBG_LEVEL > 0) */
+#define WL_PNO(x)
 
 
 #define WL_SCAN_RETRY_MAX	3
@@ -156,9 +163,11 @@ do {									\
 #define WL_MIN_DWELL_TIME	100
 #define WL_LONG_DWELL_TIME 	1000
 #define IFACE_MAX_CNT 		2
-#define WL_SCAN_CONNECT_DWELL_TIME_MS 200
-#define WL_SCAN_JOIN_PROBE_INTERVAL_MS 20
-#define WL_AF_TX_MAX_RETRY	5
+#define WL_SCAN_CONNECT_DWELL_TIME_MS 		200
+#define WL_SCAN_JOIN_PROBE_INTERVAL_MS 		20
+#define WL_SCAN_JOIN_ACTIVE_DWELL_TIME_MS 	320
+#define WL_SCAN_JOIN_PASSIVE_DWELL_TIME_MS 	400
+#define WL_AF_TX_MAX_RETRY 	5
 
 #define WL_SCAN_TIMER_INTERVAL_MS	8000 /* Scan timeout */
 #define WL_CHANNEL_SYNC_RETRY 	5
@@ -340,7 +349,9 @@ struct net_info {
 	s32 mode;
 	s32 roam_off;
 	unsigned long sme_state;
+	bool pm_restore;
 	bool pm_block;
+	s32 pm;
 	struct list_head list; /* list of all net_info structure */
 };
 typedef s32(*ISCAN_HANDLER) (struct wl_priv *wl);
@@ -475,6 +486,7 @@ struct parsed_ies {
 	u32 wpa2_ie_len;
 };
 
+
 #ifdef WL11U
 /* Max length of Interworking element */
 #define IW_IES_MAX_BUF_LEN 		9
@@ -577,6 +589,13 @@ struct wl_priv {
 	u8 iw_ie[IW_IES_MAX_BUF_LEN];
 	u32 iw_ie_len;
 #endif /* WL11U */
+	bool sched_scan_running;	/* scheduled scan req status */
+#ifdef WL_SCHED_SCAN
+	struct cfg80211_sched_scan_request *sched_scan_req;	/* scheduled scan req */
+#endif /* WL_SCHED_SCAN */
+#ifdef WL_HOST_BAND_MGMT
+	u8 curr_band;
+#endif /* WL_HOST_BAND_MGMT */
 };
 
 
@@ -600,6 +619,8 @@ wl_alloc_netinfo(struct wl_priv *wl, struct net_device *ndev,
 		_net_info->mode = mode;
 		_net_info->ndev = ndev;
 		_net_info->wdev = wdev;
+		_net_info->pm_restore = 0;
+		_net_info->pm = 0;
 		_net_info->pm_block = pm_block;
 		_net_info->roam_off = WL_INVALID;
 		wl->iface_cnt++;
@@ -839,4 +860,6 @@ extern s32 wl_cfg80211_if_is_group_owner(void);
 extern chanspec_t wl_ch_host_to_driver(u16 channel);
 extern s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add);
 extern void wl_stop_wait_next_action_frame(struct wl_priv *wl, struct net_device *ndev);
+extern s32 wl_cfg80211_set_band(struct net_device *ndev, int band);
+extern int wl_cfg80211_update_power_mode(struct net_device *dev);
 #endif				/* _wl_cfg80211_h_ */

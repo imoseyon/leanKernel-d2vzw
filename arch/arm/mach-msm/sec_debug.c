@@ -46,6 +46,9 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 #endif
+#ifdef CONFIG_SEC_DEBUG_DOUBLE_FREE
+#include <linux/circ_buf.h>
+#endif
 
 enum sec_debug_upload_cause_t {
 	UPLOAD_CAUSE_INIT = 0xCAFEBABE,
@@ -230,6 +233,125 @@ static int rwsem_debug_init;
 static spinlock_t rwsem_debug_lock;
 #endif	/* CONFIG_SEC_DEBUG_SEMAPHORE_LOG */
 
+#ifdef CONFIG_SEC_DEBUG_DOUBLE_FREE
+#define KFREE_HOOK_BYPASS_MASK 0x1
+#define KFREE_CIRC_BUF_SIZE (1<<15)
+#define KFREE_FREE_MAGIC 0xf4eef4ee
+static DEFINE_SPINLOCK(circ_buf_lock);
+struct kfree_info_entry {
+	void *addr;
+	void *caller;
+};
+
+struct kfree_circ_buf {
+	int head;
+	int tail;
+	struct kfree_info_entry entry[KFREE_CIRC_BUF_SIZE];
+};
+
+struct kfree_circ_buf kfree_circ_buf;
+
+static void *circ_buf_lookup(struct kfree_circ_buf *circ_buf, void *addr)
+{
+	int i;
+	for (i = circ_buf->tail; i != circ_buf->head ;
+		i = (i + 1) & (KFREE_CIRC_BUF_SIZE - 1)) {
+		if (circ_buf->entry[i].addr == addr)
+			return &circ_buf->entry[i];
+	}
+
+	return NULL;
+	}
+
+static void *circ_buf_get(struct kfree_circ_buf *circ_buf)
+{
+	void *entry;
+	entry = &circ_buf->entry[circ_buf->tail];
+	smp_rmb();
+	circ_buf->tail = (circ_buf->tail + 1) &
+		(KFREE_CIRC_BUF_SIZE - 1);
+	return entry;
+}
+
+static void *circ_buf_put(struct kfree_circ_buf *circ_buf,
+				struct kfree_info_entry *entry)
+{
+	memcpy(&circ_buf->entry[circ_buf->head], entry, sizeof(*entry));
+	smp_wmb();
+	circ_buf->head = (circ_buf->head + 1) &
+		(KFREE_CIRC_BUF_SIZE - 1);
+	return entry;
+}
+
+void *kfree_hook(void *p, void *caller)
+{
+	unsigned int flags;
+	struct kfree_info_entry *match = NULL;
+	void *tofree = NULL;
+	unsigned int addr = (unsigned int)p;
+
+	if (!virt_addr_valid(addr)) {
+		/* there are too many NULL pointers so don't print for NULL */
+		if (addr)
+			pr_debug("%s: trying to free an invalid addr %x from %pS\n",
+				__func__, addr, caller);
+		return NULL;
+	}
+	if (addr&0x1) {
+		/* return original address to free */
+		return (void *)(addr&~(KFREE_HOOK_BYPASS_MASK));
+	}
+
+	spin_lock_irqsave(&circ_buf_lock, flags);
+
+	if (kfree_circ_buf.head == 0)
+		pr_debug("%s: circular buffer head rounded to zero.", __func__);
+
+	if (*(unsigned int *)p == KFREE_FREE_MAGIC) {
+		/* memory that is to be freed may originally have had magic
+		 * value, so search the whole circ buf for an actual match */
+		match = circ_buf_lookup(&kfree_circ_buf, p);
+	}
+
+	if (match) {
+		pr_err("%s: 0x%08x was already freed by %pS()\n",
+			__func__, p, match->caller);
+		spin_unlock_irqrestore(&circ_buf_lock, flags);
+		panic("double free detected!");
+		return NULL;
+	} else {
+		struct kfree_info_entry entry;
+
+		/* mark free magic on the freeing node */
+		*(unsigned int *)p = KFREE_FREE_MAGIC;
+
+		/* do an actual kfree for the oldest entry
+		 * if the circular buffer is full */
+		if (CIRC_SPACE(kfree_circ_buf.head, kfree_circ_buf.tail,
+			KFREE_CIRC_BUF_SIZE) == 0) {
+			struct kfree_info_entry *pentry;
+			pentry = circ_buf_get(&kfree_circ_buf);
+			if (pentry)
+				tofree = pentry->addr;
+		}
+
+		/* add the new entry to the circular buffer */
+		entry.addr = p;
+		entry.caller = caller;
+		circ_buf_put(&kfree_circ_buf, &entry);
+		if (tofree) {
+			spin_unlock_irqrestore(&circ_buf_lock, flags);
+			kfree((void *)((unsigned int)tofree |
+				KFREE_HOOK_BYPASS_MASK));
+			return NULL;
+		}
+	}
+
+	spin_unlock_irqrestore(&circ_buf_lock, flags);
+	return NULL;
+}
+#endif
+
 /* onlyjazz.ed26 : make the restart_reason global to enable it early
    in sec_debug_init and share with restart functions */
 void *restart_reason;
@@ -270,6 +392,17 @@ static int force_error(const char *val, struct kernel_param *kp)
 		mb();
 		pr_info("*p = %x\n", *(unsigned int *)p);
 		pr_emerg("Clk may be enabled.Try again if it reaches here!\n");
+	} else if (!strncmp(val, "dblfree", 7)) {
+		void *p = kmalloc(sizeof(int), GFP_KERNEL);
+		kfree(p);
+		msleep(1000);
+		kfree(p);
+	} else if (!strncmp(val, "lowmem", 6)) {
+		int i = 0;
+		pr_emerg("Allocating memory until failure!\n");
+		while (kmalloc(128*1024, GFP_KERNEL))
+			i++;
+		pr_emerg("Allocated %d KB!\n", i*128);
 	} else {
 		pr_emerg("No such error defined for now!\n");
 	}

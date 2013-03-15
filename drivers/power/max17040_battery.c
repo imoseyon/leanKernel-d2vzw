@@ -655,7 +655,11 @@ static void max17040_rcomp_update(struct i2c_client *client,
 				chip->pdata->rcomp_value = 0xa01d;
 		} else if (chip->batt_type == BATT_TYPE_D2_ACTIVE) {
 			if (chg_state == POWER_SUPPLY_STATUS_CHARGING)
+#if defined(_d2ltetmo_)
+				chip->pdata->rcomp_value = 0x6d1c;
+#else
 				chip->pdata->rcomp_value = 0x851c;
+#endif
 			else
 				chip->pdata->rcomp_value = 0x6d1c;
 		} else if (chip->batt_type == BATT_TYPE_GOGH) {
@@ -869,7 +873,7 @@ static int __devinit max17040_probe(struct i2c_client *client,
 	chip->rcomp = max17040_get_rcomp(client);
 
 	chip->battery.name		= "fuelgauge",
-	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY,
+	chip->battery.type		= POWER_SUPPLY_TYPE_UNKNOWN,
 	chip->battery.get_property	= max17040_get_property,
 	chip->battery.set_property	= max17040_set_property,
 	chip->battery.properties	= max17040_battery_props,

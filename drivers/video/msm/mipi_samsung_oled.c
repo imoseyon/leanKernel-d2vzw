@@ -1034,7 +1034,8 @@ static void mipi_samsung_disp_late_resume(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd;
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) \
-	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) \
+	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
 	is_negativeMode_on();
 #endif
 	mfd = platform_get_drvdata(msd.msm_pdev);

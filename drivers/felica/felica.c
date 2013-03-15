@@ -20,6 +20,11 @@
 #include <linux/termios.h>
 #include <linux/serial_core.h>
 #include <linux/uaccess.h>
+#define F_WAKE_LOCK
+#ifdef F_WAKE_LOCK
+#include <linux/wakelock.h>
+#endif
+#include <linux/types.h>
 #include <mach/scm.h>
 /******************************************************************************
  * log
@@ -35,6 +40,11 @@
 /******************************************************************************
  * global variable
  ******************************************************************************/
+
+#ifdef F_WAKE_LOCK
+struct wake_lock felica_wake_1;
+struct wake_lock felica_wake_2;
+#endif
 
 static struct class *felica_class;
 
@@ -96,6 +106,10 @@ static struct i2c_msg gwrite_msgs[] = {
 		.buf	= NULL,
 	},
 };
+#ifdef F_WAKE_LOCK
+static int tmout_1 = 3*1000;
+#endif
+
 
 /******************************************************************************
  * /dev/felica
@@ -191,6 +205,7 @@ static void felica_uart_exit(void)
 static int felica_uart_open(struct inode *inode, struct file *file)
 {
 	uid_t uid;
+	int ret;
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	uid = __task_cred(current)->uid;
@@ -212,13 +227,25 @@ static int felica_uart_open(struct inode *inode, struct file *file)
 		memset(gfa_send_str, 0, FELICA_NL_MSG_SIZE);
 		memset(gfa_rcv_str, 0, FELICA_NL_MSG_SIZE);
 		gfa_send_str[0] = FELICA_NL_REQ_OPEN;
-		felica_nl_send_msg(1);
-		felica_nl_wait_ret_msg();
-		if (gfa_rcv_str[1] == FELICA_NL_EFAILED) {
-			FELICA_LOG_ERR("[MFDD] %s Open Fail", __func__);
+		
+		ret = felica_nl_send_msg(1);
+		if (ret == 0) {
+			felica_nl_wait_ret_msg();
+			if (gfa_rcv_str[1] == FELICA_NL_EFAILED) {
+				FELICA_LOG_ERR("[MFDD] %s Open Fail", __func__);
+				up(&dev_sem->felica_sem);
+				return -EFAULT;
+			}
+		} else {
+			FELICA_LOG_ERR("[MFDD] %s felica_nl_send_msg Fail", \
+					__func__);
 			up(&dev_sem->felica_sem);
 			return -EFAULT;
 		}
+#ifdef F_WAKE_LOCK
+		wake_lock(&felica_wake_2);
+		FELICA_LOG_DEBUG("[MFDD] %s Wake Lock(2)", __func__);
+#endif
 	}
 	gfa_open_cnt++;
 
@@ -233,6 +260,7 @@ static int felica_uart_open(struct inode *inode, struct file *file)
  */
 static int felica_uart_close(struct inode *inode, struct file *file)
 {
+	int ret;
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	if (down_interruptible(&dev_sem->felica_sem)) {
@@ -246,14 +274,27 @@ static int felica_uart_close(struct inode *inode, struct file *file)
 		memset(gfa_send_str, 0, FELICA_NL_MSG_SIZE);
 		memset(gfa_rcv_str, 0, FELICA_NL_MSG_SIZE);
 		gfa_send_str[0] = FELICA_NL_REQ_CLOSE;
-		felica_nl_send_msg(1);
-		felica_nl_wait_ret_msg();
-		if (gfa_rcv_str[1] == FELICA_NL_EFAILED) {
-			FELICA_LOG_ERR("[MFDD] %s Close Fail", __func__);
+		ret = felica_nl_send_msg(1);
+		if (ret == 0) {
+			felica_nl_wait_ret_msg();
+			if (gfa_rcv_str[1] == FELICA_NL_EFAILED) {
+				FELICA_LOG_ERR("[MFDD] %s Close Fail",\
+						 __func__);
+				gfa_open_cnt++;
+				up(&dev_sem->felica_sem);
+				return -EFAULT;
+			}
+		} else {
+			FELICA_LOG_ERR("[MFDD] %s felica_nl_send_msg Fail", \
+					__func__);
 			gfa_open_cnt++;
 			up(&dev_sem->felica_sem);
 			return -EFAULT;
 		}
+#ifdef F_WAKE_LOCK
+		wake_unlock(&felica_wake_2);
+		FELICA_LOG_DEBUG("[MFDD] %s Wake UnLock(2)", __func__);
+#endif
 	}
 
 	up(&dev_sem->felica_sem);
@@ -269,7 +310,9 @@ static ssize_t felica_uart_read(struct file *file, char __user *buf,
 				size_t len, loff_t *ppos)
 {
 	int ret = 0;
+	int nlret;
 	size_t wk_len = 0;
+
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	if (down_interruptible(&dev_sem->felica_sem)) {
@@ -290,9 +333,10 @@ static ssize_t felica_uart_read(struct file *file, char __user *buf,
 	gfa_send_str[0] = FELICA_NL_REQ_READ;
 	gfa_send_str[1] = (char)(wk_len >> 8);
 	gfa_send_str[2] = (char)wk_len;
-	felica_nl_send_msg(3);
+	nlret = felica_nl_send_msg(3);
 
 	wk_len = 0;
+	if (nlret == 0) {
 	felica_nl_wait_ret_msg();
 	if (gfa_rcv_str[1] == FELICA_NL_SUCCESS) {
 		wk_len =
@@ -302,10 +346,15 @@ static ssize_t felica_uart_read(struct file *file, char __user *buf,
 			FELICA_LOG_ERR
 			    ("[MFDD] %s ERROR(copy_from_user), ret=[%d]",
 			     __func__, ret);
+				up(&dev_sem->felica_sem);
+				return -EFAULT;
+			}
+			*ppos = *ppos + wk_len;
+		} else {
+			FELICA_LOG_DEBUG(" %s FAIL", __func__);
 			up(&dev_sem->felica_sem);
 			return -EFAULT;
 		}
-		*ppos = *ppos + wk_len;
 	} else {
 		FELICA_LOG_DEBUG(" %s FAIL", __func__);
 		up(&dev_sem->felica_sem);
@@ -325,7 +374,9 @@ static ssize_t felica_uart_write(struct file *file, const char __user *data,
 				 size_t len, loff_t *ppos)
 {
 	int ret = 0;
+	int nlret;
 	size_t wk_len = 0;
+
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	if (down_interruptible(&dev_sem->felica_sem)) {
@@ -353,17 +404,21 @@ static ssize_t felica_uart_write(struct file *file, const char __user *data,
 		up(&dev_sem->felica_sem);
 		return -EFAULT;
 	}
-	felica_nl_send_msg(3 + len);
-
+	nlret = felica_nl_send_msg(3 + len);
+	if (nlret == 0) {
 	wk_len = 0;
 	felica_nl_wait_ret_msg();
 	wk_len = (((int)gfa_rcv_str[2] << 8) & 0xFF00) | (int)gfa_rcv_str[3];
 	if (gfa_rcv_str[1] == FELICA_NL_EFAILED) {
 		FELICA_LOG_ERR("[MFDD] %s Write Fail", __func__);
 		up(&dev_sem->felica_sem);
+			return -EINVAL;
+		}
+	} else {
+		FELICA_LOG_ERR("[MFDD] %s felica_nl_send_msg Fail", __func__);
+		up(&dev_sem->felica_sem);
 		return -EINVAL;
 	}
-
 	up(&dev_sem->felica_sem);
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
@@ -387,6 +442,7 @@ static long felica_uart_ioctl(struct file *file, unsigned int cmd,
 			      unsigned long arg)
 {
 	unsigned int ret_str = 0;
+	int ret;
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
 	if (down_interruptible(&dev_sem->felica_sem)) {
@@ -399,18 +455,22 @@ static long felica_uart_ioctl(struct file *file, unsigned int cmd,
 	memset(gfa_rcv_str, 0, FELICA_NL_MSG_SIZE);
 
 	gfa_send_str[0] = FELICA_NL_REQ_AVAIABLE;
-	felica_nl_send_msg(1);
+	ret = felica_nl_send_msg(1);
 
+	if (ret == 0) {
 	felica_nl_wait_ret_msg();
 	if (gfa_rcv_str[1] == FELICA_NL_SUCCESS) {
 		/* create response data */
 		ret_str =
-		    (((unsigned int)gfa_rcv_str[2] << 8) & 0xFF00) | (unsigned
-								      int)
-		    gfa_rcv_str[3];
+		    (((unsigned int)gfa_rcv_str[2] << 8) & 0xFF00) | (unsigned int)gfa_rcv_str[3];
 		FELICA_LOG_DEBUG("Available Success data size [%d]", ret_str);
 	} else {
 		FELICA_LOG_ERR("[MFDD] %s Available Fail", __func__);
+		up(&dev_sem->felica_sem);
+		return -EINVAL;
+		}
+	} else {
+		FELICA_LOG_ERR("[MFDD] %s felica_nl_send_msg Fail", __func__);
 		up(&dev_sem->felica_sem);
 		return -EINVAL;
 	}
@@ -459,7 +519,7 @@ static void felica_nl_exit(void)
 /*
  * send message to FeliCa-Serial-Connector
  */
-static void felica_nl_send_msg(int len)
+static int felica_nl_send_msg(int len)
 {
 	struct nlmsghdr *nlh;
 	struct sk_buff *skb_out;
@@ -469,12 +529,12 @@ static void felica_nl_send_msg(int len)
 	if (!gfanl_sk) {
 		FELICA_LOG_ERR("[MFDD]Error Not creating socket. %s\n",
 			       __func__);
-		return;
+		return 1;
 	}
 	if (gfa_pid == 0) {
 		FELICA_LOG_ERR("[MFDD]Error Not Rcv Connect Msg %s\n",
 			       __func__);
-		return;
+		return 1;
 	}
 
 	msg_size = len;
@@ -482,7 +542,7 @@ static void felica_nl_send_msg(int len)
 
 	if (!skb_out) {
 		FELICA_LOG_ERR("Failed to allocate new skb_out %s\n", __func__);
-		return;
+		return 1;
 	}
 	nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
 	NETLINK_CB(skb_out).dst_group = 0;
@@ -492,6 +552,7 @@ static void felica_nl_send_msg(int len)
 	nlmsg_unicast(gfanl_sk, skb_out, gfa_pid);
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
+	return 0;
 }
 
 /*
@@ -1008,6 +1069,10 @@ static ssize_t felica_cen_read(struct file *file, char __user *buf, \
 	gread_msgs[1].buf = &read_buff;
 
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
+	if (felica_i2c_client == NULL) {
+		FELICA_LOG_DEBUG("felica_i2c_client is NULL");
+		return -EIO;
+	}
 
 	ret = i2c_transfer(felica_i2c_client->adapter, &gread_msgs[0], 1);
 	if (ret < 0) {
@@ -1049,6 +1114,11 @@ static ssize_t felica_cen_write(struct file *file, const char __user *data,
 	unsigned char write_buff[2];
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
+	if (felica_i2c_client == NULL) {
+		FELICA_LOG_DEBUG("felica_i2c_client is NULL");
+		return -EIO;
+	}
+
 	gwrite_msgs[0].buf = &write_buff[0];
 	gwrite_msgs[0].addr = gi2c_address;
 	write_buff[0] = gi2c_lockaddress;
@@ -1072,7 +1142,6 @@ static ssize_t felica_cen_write(struct file *file, const char __user *data,
 			       __func__, cen);
 		return -EINVAL;
 	}
-
 	ret = i2c_transfer(felica_i2c_client->adapter, gwrite_msgs, 1);
 	if (ret < 0) {
 		FELICA_LOG_ERR("[MFDD] %s ERROR(i2c_transfer), ret=[%d]",
@@ -1446,6 +1515,11 @@ static void felica_int_irq_work(struct work_struct *work)
 
 	enable_irq(gpio_to_irq(GPIO_PINID_FELICA_INT));
 	pgint_irq->irq_done = 1;
+
+#ifdef F_WAKE_LOCK
+	wake_lock_timeout(&felica_wake_1, msecs_to_jiffies(tmout_1));
+	FELICA_LOG_DEBUG("[MFDD] %s Wake Lock(1)[%d]", __func__, tmout_1);
+#endif
 	wake_up_interruptible(&pgint_irq->read_wait);
 
 	FELICA_LOG_DEBUG("[MFDD] %s END", __func__);
@@ -1726,7 +1800,7 @@ static int felica_uid_open(struct inode *inode, struct file *file)
 	cmdline[leng] = '\0';
 
 	if (strncmp(cmdline, gdiag_name, leng) != 0) {
-		FELICA_LOG_DEBUG("[MFDD] %s ERROR, %s", __func__, cmdline);
+		FELICA_LOG_DEBUG("[MFDD] %s ERROR, %s gdiag %s", __func__, cmdline,gdiag_name);
 		return -EACCES;
 	}
 
@@ -1887,6 +1961,11 @@ static ssize_t felica_ant_read(struct file *file, char __user *buf, \
 	gread_msgs[1].buf = &read_buff;
 
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
+	if (felica_i2c_client == NULL) {
+		FELICA_LOG_DEBUG("[MFDD] %s felica_i2c_client is NULL", \
+			__func__);
+		return -EIO;
+	}
 
 	ret = i2c_transfer(felica_i2c_client->adapter, &gread_msgs[0], 1);
 	if (ret < 0) {
@@ -1925,9 +2004,16 @@ static ssize_t felica_ant_write(struct file *file, const char __user *data,
 	unsigned char write_buff[2];
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
+	if (felica_i2c_client == NULL) {
+		FELICA_LOG_DEBUG("[MFDD] %s felica_i2c_client is NULL", \
+			__func__);
+		return -EIO;
+	}
+
 	gwrite_msgs[0].buf = &write_buff[0];
 	gwrite_msgs[0].addr = gi2c_address;
 	write_buff[0] = gi2c_antaddress;
+
 
 	ret = copy_from_user(&ant, data, FELICA_ANT_DATA_LEN);
 	if (ret != 0) {
@@ -2022,6 +2108,10 @@ static int __init felica_init(void)
 		FELICA_LOG_ERR("[MFDD] %s ERROR(class_create)", __func__);
 		return PTR_ERR(felica_class);
 	}
+#ifdef F_WAKE_LOCK
+	wake_lock_init(&felica_wake_1, WAKE_LOCK_SUSPEND, "felica-int-1");
+	wake_lock_init(&felica_wake_2, WAKE_LOCK_SUSPEND, "felica-int-2");
+#endif
 	felica_initialize_pin();
 	felica_register_device();
 	felica_nl_init();
@@ -2040,6 +2130,10 @@ static void __exit felica_exit(void)
 {
 	FELICA_LOG_DEBUG("[MFDD] %s START", __func__);
 
+#ifdef F_WAKE_LOCK
+	wake_lock_destroy(&felica_wake_1);
+	wake_lock_destroy(&felica_wake_2);
+#endif
 	felica_i2c_exit();
 	felica_nl_exit();
 	felica_deregister_device();

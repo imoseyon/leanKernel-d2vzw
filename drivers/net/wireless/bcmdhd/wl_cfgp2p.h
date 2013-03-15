@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgp2p.h 354184 2012-08-30 08:08:08Z $
+ * $Id: wl_cfgp2p.h 368090 2012-11-12 04:28:13Z $
  */
 #ifndef _wl_cfgp2p_h_
 #define _wl_cfgp2p_h_
@@ -46,7 +46,7 @@ typedef enum {
 /* vendor ies max buffer length for probe response or beacon */
 #define VNDR_IES_MAX_BUF_LEN	1400
 /* normal vendor ies buffer length */
-#define VNDR_IES_BUF_LEN		512
+#define VNDR_IES_BUF_LEN 		512
 
 /* Structure to hold all saved P2P and WPS IEs for a BSSCFG */
 struct p2p_saved_ie {
@@ -110,15 +110,16 @@ enum wl_cfgp2p_status {
 	WLP2P_STATUS_ACTION_TX_COMPLETED,
 	WLP2P_STATUS_ACTION_TX_NOACK,
 	WLP2P_STATUS_SCANNING,
-	WLP2P_STATUS_GO_NEG_PHASE
+	WLP2P_STATUS_GO_NEG_PHASE,
+	WLP2P_STATUS_DISC_IN_PROGRESS
 };
 
 
-#define wl_to_p2p_bss_ndev(w, type) 	((wl)->p2p->bss_idx[type].dev)
-#define wl_to_p2p_bss_bssidx(w, type) 	((wl)->p2p->bss_idx[type].bssidx)
-#define wl_to_p2p_bss_saved_ie(w, type) 	((wl)->p2p->bss_idx[type].saved_ie)
-#define wl_to_p2p_bss_private(w, type) 	((wl)->p2p->bss_idx[type].private_data)
-#define wl_to_p2p_bss(wl, type) ((wl)->p2p->bss_idx[type])
+#define wl_to_p2p_bss_ndev(wl, type)		((wl)->p2p->bss_idx[type].dev)
+#define wl_to_p2p_bss_bssidx(wl, type)		((wl)->p2p->bss_idx[type].bssidx)
+#define wl_to_p2p_bss_saved_ie(wl, type)	((wl)->p2p->bss_idx[type].saved_ie)
+#define wl_to_p2p_bss_private(wl, type)		((wl)->p2p->bss_idx[type].private_data)
+#define wl_to_p2p_bss(wl, type)			((wl)->p2p->bss_idx[type])
 #define wl_get_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : test_bit(WLP2P_STATUS_ ## stat, \
 									&(wl)->p2p->status))
 #define wl_set_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : set_bit(WLP2P_STATUS_ ## stat, \
@@ -133,6 +134,13 @@ enum wl_cfgp2p_status {
 
 /* dword align allocation */
 #define WLC_IOCTL_MAXLEN 8192
+
+#ifdef CUSTOMER_HW4
+#define CFGP2P_ERROR_TEXT		"CFGP2P-INFO2) "
+#else
+#define CFGP2P_ERROR_TEXT		"CFGP2P-ERROR) "
+#endif
+
 
 #define CFGP2P_ERR(args)									\
 	do {										\
@@ -237,6 +245,8 @@ wl_cfgp2p_clear_management_ie(struct wl_priv *wl, s32 bssidx);
 
 extern s32
 wl_cfgp2p_find_idx(struct wl_priv *wl, struct net_device *ndev);
+extern struct net_device *
+wl_cfgp2p_find_ndev(struct wl_priv *wl, s32 bssidx);
 
 
 extern s32
@@ -295,10 +305,16 @@ wl_cfgp2p_register_ndev(struct wl_priv *wl);
 extern s32
 wl_cfgp2p_unregister_ndev(struct wl_priv *wl);
 
+extern bool
+wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops);
+
 /* WiFi Direct */
 #define SOCIAL_CHAN_1 1
 #define SOCIAL_CHAN_2 6
 #define SOCIAL_CHAN_3 11
+#define IS_P2P_SOCIAL_CHANNEL(channel) ((channel == SOCIAL_CHAN_1) || \
+					(channel == SOCIAL_CHAN_2) || \
+					(channel == SOCIAL_CHAN_3))
 #define SOCIAL_CHAN_CNT 3
 #define AF_PEER_SEARCH_CNT 2
 #define WL_P2P_WILDCARD_SSID "DIRECT-"

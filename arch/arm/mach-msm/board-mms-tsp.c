@@ -337,7 +337,7 @@ static struct mms_ts_platform_data mms_ts_pdata = {
 	.max_x		= 720,
 	.max_y		= 1280,
 	.gpio_lcd_type = GPIO_LCD_TYPE,
-	.config_fw_version = "I747_Me_0507",
+	.config_fw_version = "I747_Me_0924",
 	.register_cb = melfas_register_callback,
 #endif
 	.mux_fw_flash	= melfas_mux_fw_flash,

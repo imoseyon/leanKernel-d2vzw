@@ -262,6 +262,8 @@ static void check_smb347_version(void)
 		smb347_verA5 = 1;
 #elif defined(CONFIG_MACH_SUPERIORLTE_SKT)
 	smb347_verA5 = 1;
+#elif defined(CONFIG_MACH_INFINITE)
+	smb347_verA5 = 1;
 #else
 	smb347_verA5 = 0;
 #endif
@@ -450,8 +452,13 @@ static void smb347_charger_function_conrol(struct i2c_client *client)
 			pr_err("%s : error!\n", __func__);
 	}
 
-	/* Float voltage : 4.36V Vprechg : 2.4V */
+#if defined(CONFIG_MACH_JASPER) || defined(_d2ltetmo_) || defined(_d2mtr_)
+	/* Float voltage : 4.35V Vprechg : 2.4V   */
+	smb347_write_reg(client, SMB347_FLOAT_VOLTAGE, 0x2A);
+#else
+	/* Float voltage : 4.36V Vprechg : 2.4V  */
 	smb347_write_reg(client, SMB347_FLOAT_VOLTAGE, 0x2B);
+#endif
 
 	/* Charge control (Auto Recharge)
 	 * Automatic Recharge Disabled , Current Termination Enabled,
@@ -1685,7 +1692,7 @@ static int __devinit smb347_probe(struct i2c_client *client,
 	mutex_init(&chip->mutex);
 
 	chip->psy_bat.name = "sec-charger",
-	chip->psy_bat.type = POWER_SUPPLY_TYPE_BATTERY,
+	chip->psy_bat.type = POWER_SUPPLY_TYPE_UNKNOWN,
 	chip->psy_bat.properties = smb347_battery_props,
 	chip->psy_bat.num_properties = ARRAY_SIZE(smb347_battery_props),
 	chip->psy_bat.get_property = smb347_chg_get_property,

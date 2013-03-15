@@ -30,6 +30,7 @@
 #include "msm_ispif.h"		/*aswoogi_zsl */
 
 atomic_t irq_cnt;
+extern unsigned int open_fail_flag;
 
 #define QC_TEST
 
@@ -1445,7 +1446,7 @@ static int vfe32_proc_general(struct msm_isp_cmd *cmd)
 	CDBG("vfe32_proc_general: cmdID = %s, length = %d\n",
 	     vfe32_general_cmd[cmd->id], cmd->length);
 
-	if (vfe32_ctrl->vfebase == NULL) {
+	if (vfe32_ctrl->vfebase == NULL || open_fail_flag) {
 	    pr_err("Error : vfe32_ctrl->vfebase is NULL!!\n");
 	    pr_err("vfe32_proc_general: cmdID = %s, length = %d\n",
 		 vfe32_general_cmd[cmd->id], cmd->length);

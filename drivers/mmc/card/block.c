@@ -47,11 +47,8 @@
 #include "queue.h"
 
 MODULE_ALIAS("mmc:block");
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
-#define MMC_ENABLE_CPRM
-#endif
 
-#ifdef MMC_ENABLE_CPRM
+#if defined(CONFIG_MMC_CPRM)
 #include "cprmdrv_samsung.h"
 #include <linux/ioctl.h>
 #define MMC_IOCTL_BASE		0xB3 /* Same as MMC block device major number */
@@ -423,7 +420,7 @@ cmd_done:
 static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 	unsigned int cmd, unsigned long arg)
 {
-#ifdef MMC_ENABLE_CPRM
+#if defined(CONFIG_MMC_CPRM)
 	struct mmc_blk_data *md = bdev->bd_disk->private_data;
 	struct mmc_card *card = md->queue.card;
 
@@ -434,7 +431,7 @@ static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 	if (cmd == MMC_IOC_CMD)
 		ret = mmc_blk_ioctl_cmd(bdev, (struct mmc_ioc_cmd __user *)arg);
 
-#ifdef MMC_ENABLE_CPRM
+#if defined(CONFIG_MMC_CPRM)
 	printk(KERN_DEBUG " %s ], %x ", __func__, cmd);
 
 	switch (cmd) {
@@ -447,7 +444,7 @@ static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 			int size = 0;
 
 			size = (int)get_capacity(md->disk) << 9;
-			printk(KERN_DEBUG "%s:GET_SECTOR_COUNT size = %d\n",
+		printk(KERN_DEBUG "[%s]:MMC_IOCTL_GET_SECTOR_COUNT size = %d\n",
 				__func__, size);
 
 			return copy_to_user((void *)arg, &size, sizeof(u64));
@@ -461,25 +458,22 @@ static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 	case ACMD45:
 	case ACMD46:
 	case ACMD47:
-	case ACMD48:
-		{
-			struct cprm_request *req = (struct cprm_request *)arg;
+	case ACMD48: {
+		struct cprm_request *req = (struct cprm_request *)arg;
 
-			printk(KERN_DEBUG "%s:cmd [%x]\n",
-				__func__, cmd);
+		printk(KERN_DEBUG "%s:cmd [%x]\n",
+			__func__, cmd);
 
-			if (cmd == ACMD43) {
-				printk(KERN_DEBUG"storing acmd43 arg[%d] = %ul\n"
-					, i, req->arg);
-				temp_arg[i] = req->arg;
-				i++;
-				if (i >= 16) {
-					printk(KERN_DEBUG"reset acmd43 i = %d\n",
-						i);
+		if (cmd == ACMD43) {
+			printk(KERN_DEBUG"storing acmd43 arg[%d] = %ul\n",
+				i, (unsigned int)req->arg);
+			temp_arg[i] = req->arg;
+			i++;
+			if (i >= 16) {
+				printk(KERN_DEBUG"reset acmd43 i = %d\n", i);
 					i = 0;
-				}
 			}
-
+		}
 
 			if (cmd == ACMD45 && cprm_ake_retry_flag == 1) {
 				cprm_ake_retry_flag = 0;
@@ -487,21 +481,17 @@ static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 
 				for (i = 0; i < 16; i++) {
 					printk(KERN_DEBUG"calling ACMD43 with arg[%d] = %ul\n",
-						i, temp_arg[i]);
-					if (stub_sendcmd(card,
-						ACMD43, temp_arg[i],
-						 512, NULL) < 0) {
-
-						printk(KERN_DEBUG"error ACMD43 %d\n",
-							i);
-						return -EINVAL;
-					}
+					i, (unsigned int)temp_arg[i]);
+				if (stub_sendcmd(card, ACMD43, temp_arg[i],
+					512, NULL) < 0) {
+					printk(KERN_DEBUG"error ACMD43 %d\n",
+						 i);
+					return -EINVAL;
 				}
+			}
 
-
-				printk(KERN_DEBUG"calling ACMD44\n");
-				if (stub_sendcmd(card, ACMD44, NULL,
-					8, NULL) < 0) {
+			printk(KERN_DEBUG"calling ACMD44\n");
+			if (stub_sendcmd(card, ACMD44, 0, 8, NULL) < 0) {
 
 					printk(KERN_DEBUG"error in ACMD44 %d\n",
 						i);
@@ -1580,9 +1570,6 @@ static int mmc_blk_probe(struct mmc_card *card)
 	printk(KERN_INFO "%s: %s %s %s %s\n",
 		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
 		cap_str, md->read_only ? "(ro)" : "");
-
-	if (mmc_blk_alloc_parts(card, md))
-		goto out;
 
 	mmc_set_drvdata(card, md);
 	mmc_fixup_device(card, blk_fixups);

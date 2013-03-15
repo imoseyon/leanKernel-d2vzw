@@ -1528,7 +1528,7 @@ static int is_sec_battery_using(void)
 
 int check_battery_type(void)
 {
-	return BATT_TYPE_INFINITE;
+	return BATT_TYPE_GOGH;
 }
 
 static struct sec_bat_platform_data sec_bat_pdata = {
@@ -1537,20 +1537,20 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.iterm = 100,
+	.iterm = 150,
 	.charge_duration = 8 * 60 * 60,
 	.recharge_duration = 2 * 60 * 60,
 	.max_voltage = 4350 * 1000,
-	.recharge_voltage = 4280 * 1000,
+	.recharge_voltage = 4300 * 1000,
 	.event_block = 620,
-	.high_block = 470,
-	.high_recovery = 440,
-	.low_block = -40,
-	.low_recovery = 0,
-	.lpm_high_block = 450,
-	.lpm_high_recovery = 445,
-	.lpm_low_block = -30,
-	.lpm_low_recovery = -15,
+	.high_block = 620,
+	.high_recovery = 430,
+	.low_block = -60,
+	.low_recovery = -10,
+	.lpm_high_block = 455,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -60,
+	.lpm_low_recovery = -30,
 };
 
 static struct platform_device sec_device_battery = {

@@ -81,7 +81,9 @@ struct cprm_request {
 };
 
 int stub_sendcmd(struct mmc_card *card,
-	unsigned int cmd, unsigned long arg,
-	unsigned int len, unsigned char *buff);
+	unsigned int cmd,
+	unsigned long arg,
+	unsigned int len,
+	unsigned char *buff);
 
 #endif /* __CPRM_API_SAMSUNG */

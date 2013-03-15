@@ -665,6 +665,8 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
+	unsigned long flags;
+	int need_wait = 0;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 	vctrl = &vsync_ctrl_db[cndx];
@@ -675,7 +677,14 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 
 		msleep(20);	/* >= 17 ms */
 
-	complete_all(&vctrl->vsync_comp);
+	if (pipe->ov_blt_addr) {
+		spin_lock_irqsave(&vctrl->spin_lock, flags);
+		if (vctrl->ov_koff != vctrl->ov_done)
+			need_wait = 1;
+		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+		if (need_wait)
+			mdp4_lcdc_wait4ov(0);
+	}
 
 	MDP_OUTP(MDP_BASE + LCDC_BASE, 0);
 
@@ -938,7 +947,6 @@ void mdp4_lcdc_overlay(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
-	mutex_lock(&mfd->dma->ov_mutex);
 	mdp4_lcdc_pipe_commit(0, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
 

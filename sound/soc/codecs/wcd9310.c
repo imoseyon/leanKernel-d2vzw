@@ -3210,8 +3210,8 @@ static int tabla_codec_enable_clock_block(struct snd_soc_codec *codec,
 			tabla_codec_enable_config_mode(codec, 0);
 		}
 	}
-
-	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN1, 0x01, 0x01);
+       /* Modifed 0x1 => 0x5, because ss don't use MBHC, so for using bangap mode */
+	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN1, 0x05, 0x05);
 	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN2, 0x02, 0x00);
 	/* on MCLK */
 	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN2, 0x04, 0x04);

@@ -696,9 +696,8 @@ static ssize_t mdnieset_init_file_cmd_show(struct device *dev,
 					   struct device_attribute *attr,
 					   char *buf)
 {
-	char temp[15];
+	char temp[]="mdnieset_init_file_cmd_show\n\0";
 	DPRINT("called %s\n", __func__);
-	sprintf(temp, "mdnieset_init_file_cmd_show\n");
 	strcat(buf, temp);
 	return strlen(buf);
 }

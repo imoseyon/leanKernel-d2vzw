@@ -55,9 +55,12 @@ static int mmc_wait_busy(struct mmc_card *card)
 }
 
 static int CPRM_CMD_SecureRW(struct mmc_card *card,
-	unsigned int command, unsigned int dir,
-	unsigned long arg , unsigned char *buff, unsigned int length)
-{
+	unsigned int command,
+	unsigned int dir,
+	unsigned long arg,
+	unsigned char *buff,
+	unsigned int length) {
+
 	int err;
 	int i = 0;
 	struct mmc_request mrq;
@@ -98,8 +101,8 @@ static int CPRM_CMD_SecureRW(struct mmc_card *card,
 
 	memset(&data, 0, sizeof(struct mmc_data));
 
-		data.timeout_ns = 100000000;
-		data.timeout_clks = 0;
+	data.timeout_ns = 100000000;
+	data.timeout_clks = 0;
 	data.blksz = length;
 	data.blocks = 1;
 	data.flags = dir;
@@ -139,15 +142,12 @@ static int CPRM_CMD_SecureRW(struct mmc_card *card,
 	printk(KERN_DEBUG"\n");
 
 	if (cmd.error) {
-		printk(KERN_ERR
-			"%s ] :: cmd.error = [ %d ]\n ",
-			__func__, cmd.error);
+		printk(KERN_DEBUG "%s]cmd.error=%d\n ", __func__, cmd.error);
 		return cmd.error;
 	}
-	if (data.error)	{
-		printk(KERN_ERR
-			"%s ] :: data.error = [ %d ]\n ",
-			__func__, data.error);
+
+	if (data.error) {
+		printk(KERN_DEBUG "%s]data.error=%d\n ", __func__, data.error);
 		return data.error;
 	}
 
@@ -161,9 +161,12 @@ static int CPRM_CMD_SecureRW(struct mmc_card *card,
 }
 
 static int CPRM_CMD_SecureMultiRW(struct mmc_card *card,
-	unsigned int command, unsigned int dir,
-	unsigned long arg , unsigned char *buff, unsigned int length)
-{
+	unsigned int command,
+	unsigned int dir,
+	unsigned long arg,
+	unsigned char *buff,
+	unsigned int length) {
+
 	int err;
 
 	struct mmc_request mrq;
@@ -222,7 +225,7 @@ static int CPRM_CMD_SecureMultiRW(struct mmc_card *card,
 	mrq.stop = &stop;
 
 
-	printk(KERN_INFO"CPRM_CMD_SecureRW: 2\n");
+	printk(KERN_DEBUG "CPRM_CMD_SecureRW: 2\n");
 
 	sg_init_one(&sg, buff, length);
 
@@ -231,26 +234,24 @@ static int CPRM_CMD_SecureMultiRW(struct mmc_card *card,
 		sg_copy_from_buffer(&sg, data.sg_len, buff, length);
 		local_irq_restore(flags);
 	}
-	printk(KERN_INFO"CPRM_CMD_SecureRW: 3\n");
-
+	printk(KERN_DEBUG "CPRM_CMD_SecureRW: 3\n");
 
 	mmc_wait_for_req(card->host, &mrq);
 
-	printk(KERN_INFO"CPRM_CMD_SecureRW: 4\n");
+	printk(KERN_DEBUG "CPRM_CMD_SecureRW: 4\n");
 
 	if (cmd.error) {
-		printk(KERN_INFO"%s ] :: cmd.error = [ %d ]\n ",
-			__func__, cmd.error);
+		printk(KERN_DEBUG "%s]cmd.error=%d\n", __func__, cmd.error);
 		return cmd.error;
 	}
+
 	if (data.error) {
-		printk(KERN_INFO"%s ] :: data.error = [ %d ]\n ",
-			__func__, data.error);
+		printk(KERN_DEBUG "%s]data.error=%d\n", __func__, data.error);
 		return data.error;
 	}
 
 	err = mmc_wait_busy(card);
-	printk(KERN_INFO"CPRM_CMD_SecureRW: 5\n");
+	printk(KERN_DEBUG "CPRM_CMD_SecureRW: 5\n");
 
 	if (dir == MMC_DATA_READ) {
 		local_irq_save(flags);
@@ -266,28 +267,30 @@ static int CPRM_CMD_SecureMultiRW(struct mmc_card *card,
 
 
 int stub_sendcmd(struct mmc_card *card,
-	unsigned int cmd, unsigned long arg, unsigned int len,
-	unsigned char *buff)
-{
+	unsigned int cmd,
+	unsigned long arg,
+	unsigned int len,
+	unsigned char *buff) {
+
 	int returnVal = -1;
 	unsigned char *kbuffer = NULL;
 	int direction = 0;
 	int result = 0;
 
 	if (card == NULL) {
-		printk(KERN_INFO"stub_sendcmd: card is null error\n");
+		printk(KERN_DEBUG "stub_sendcmd: card is null error\n");
 		return -ENXIO;
 	}
 
 	kbuffer = kmalloc(len, GFP_KERNEL);
 	if (kbuffer == NULL) {
-		printk(KERN_INFO"malloc failed\n");
+		printk(KERN_DEBUG "malloc failed\n");
 		return -ENOMEM;
 	}
+
 	memset(kbuffer, 0x00, len);
 
-	printk(KERN_INFO" === %s ] cmd = [ %x ] len = [ %d ]\n ",
-		__func__, cmd, len);
+	printk(KERN_DEBUG "%s]cmd=0x%x,len=%d\n ", __func__, cmd, len);
 
 	mmc_claim_host(card->host);
 
@@ -295,74 +298,105 @@ int stub_sendcmd(struct mmc_card *card,
 
 	case ACMD43:
 		direction = MMC_DATA_READ;
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD43_GET_MKB,
-						direction, arg, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD43_GET_MKB,
+			direction,
+			arg,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO"SD_ACMD43_GET_MKB [0x%x]\n ", returnVal);
+		printk(KERN_DEBUG "SD_ACMD43_GET_MKB:0x%x\n", returnVal);
 		break;
 
 	case ACMD44:
 		direction = MMC_DATA_READ;
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD44_GET_MID,
-						direction, 0, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD44_GET_MID,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO"SD_ACMD44_GET_MID [0x%x]\n ", returnVal);
+		printk(KERN_DEBUG "SD_ACMD44_GET_MID:0x%x\n", returnVal);
 		break;
 
 	case ACMD45:
 		direction = MMC_DATA_WRITE;
 		result = copy_from_user((void *)kbuffer, (void *)buff, len);
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD45_SET_CER_RN1,
-						direction, 0, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD45_SET_CER_RN1,
+			direction,
+			0,
+			kbuffer,
+			len);
 
 		printk(KERN_INFO"SD_ACMD45_SET_CER_RN1 [0x%x]\n ", returnVal);
 		break;
 
 	case ACMD46:
 		direction = MMC_DATA_READ;
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD46_GET_CER_RN2,
-						direction, 0, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD46_GET_CER_RN2,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO"SD_ACMD46_GET_CER_RN2 [0x%x]\n ", returnVal);
+		printk(KERN_DEBUG "SD_ACMD46_GET_CER_RN2:0x%x\n",
+			returnVal);
 		break;
 
 	case ACMD47:
 		direction = MMC_DATA_WRITE;
 		result = copy_from_user((void *)kbuffer, (void *)buff, len);
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD47_SET_CER_RES2,
-						direction, 0, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD47_SET_CER_RES2,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO"SD_ACMD47_SET_CER_RES2 [0x%x]\n ", returnVal);
+		printk(KERN_DEBUG "SD_ACMD47_SET_CER_RES2:0x%x\n",
+			returnVal);
 		break;
 
 	case ACMD48:
 		direction = MMC_DATA_READ;
-		returnVal = CPRM_CMD_SecureRW(card, SD_ACMD48_GET_CER_RES1,
-						direction, 0, kbuffer, len);
+		returnVal = CPRM_CMD_SecureRW(card,
+			SD_ACMD48_GET_CER_RES1,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO"SD_ACMD48_GET_CER_RES1 [0x%x]\n ", returnVal);
+		printk(KERN_DEBUG "SD_ACMD48_GET_CER_RES1:0x%x\n",
+			returnVal);
 		break;
 
 	case ACMD25:
 		direction = MMC_DATA_WRITE;
 		result = copy_from_user((void *)kbuffer, (void *)buff, len);
 		returnVal = CPRM_CMD_SecureMultiRW(card,
-					SD_ACMD25_SECURE_WRITE_MULTI_BLOCK,
-					direction, 0, kbuffer, len);
+			SD_ACMD25_SECURE_WRITE_MULTI_BLOCK,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO
-			"SD_ACMD25_SECURE_WRITE_MULTI_BLOCK[%d]=%d\n",
+		printk(KERN_DEBUG "SD_ACMD25_SECURE_WRITE_MULTI_BLOCK[%d]=%d\n",
 			len, returnVal);
 		break;
 
 	case ACMD18:
 		direction = MMC_DATA_READ;
 		returnVal = CPRM_CMD_SecureMultiRW(card,
-					SD_ACMD18_SECURE_READ_MULTI_BLOCK,
-					direction, 0, kbuffer, len);
+			SD_ACMD18_SECURE_READ_MULTI_BLOCK,
+			direction,
+			0,
+			kbuffer,
+			len);
 
-		printk(KERN_INFO
-			"SD_ACMD18_SECURE_READ_MULTI_BLOCK [%d]=%d\n",
+		printk(KERN_DEBUG "SD_ACMD18_SECURE_READ_MULTI_BLOCK [%d]=%d\n",
 			len, returnVal);
 		break;
 
@@ -370,20 +404,20 @@ int stub_sendcmd(struct mmc_card *card,
 		break;
 
 	default:
-		printk(KERN_INFO" %s ] : CMD [ %x ] ERROR",
-			__func__, cmd);
+		printk(KERN_DEBUG " %s ] : CMD [ %x ] ERROR", __func__, cmd);
 		break;
 	}
 
 	if (returnVal == 0) {
 		if (direction == MMC_DATA_READ)
 			result = copy_to_user((void *)buff,
-				(void *)kbuffer, len);
+							(void *)kbuffer,
+							len);
 
 		result = returnVal;
-		printk(KERN_INFO"stub_sendcmd  SDAS_E_SUCCESS\n");
+		printk(KERN_DEBUG "stub_sendcmd  SDAS_E_SUCCESS\n");
 	} else {
-		printk(KERN_INFO"stub_sendcmd  SDAS_E_FAIL\n");
+		printk(KERN_DEBUG "stub_sendcmd  SDAS_E_FAIL\n");
 		result = -EIO;
 	}
 

@@ -91,7 +91,7 @@ static void __exit felica_exit(void);
 #define FELICA_NL_REQ_SYNC				0x06
 #define FELICA_NL_RESPONCE				0xFE
 #define FELICA_NL_CONNECT_MSG			0xFF
-#define FELICA_NL_MSG_DATA_SIZE			4096
+#define FELICA_NL_MSG_DATA_SIZE			4096*4
 #define FELICA_NL_MSG_SIZE			(FELICA_NL_MSG_DATA_SIZE+4)
 
 #define MSG_READ1_FLAGS_OFFSET			1
@@ -134,7 +134,7 @@ static long felica_uart_ioctl(struct file *file, unsigned int cmd,\
 			unsigned long arg);
 static void felica_nl_init(void);
 static void felica_nl_exit(void);
-static void felica_nl_send_msg(int len);
+static int  felica_nl_send_msg(int len);
 static void felica_nl_recv_msg(struct sk_buff *skb);
 static void felica_nl_wait_ret_msg(void);
 static void felica_set_felica_info(void);

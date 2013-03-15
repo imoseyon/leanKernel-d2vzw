@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_linux.c 347638 2012-07-27 11:39:03Z $
+ * $Id: bcmsdh_linux.c 373329 2012-12-07 04:46:09Z $
  */
 
 /**
@@ -189,6 +189,10 @@ int bcmsdh_probe(struct device *dev)
 
 	/* Get customer specific OOB IRQ parametres: IRQ number as IRQ type */
 	irq = dhd_customer_oob_irq_map(&irq_flags);
+#if	defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+	/* Do not disable this IRQ during suspend */
+	irq_flags |= IRQF_NO_SUSPEND;
+#endif /* defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI) */
 	if  (irq < 0) {
 		SDLX_MSG(("%s: Host irq is not defined\n", __FUNCTION__));
 		return 1;
@@ -632,7 +636,9 @@ static irqreturn_t wlan_oob_irq(int irq, void *dev_id)
 
 	dhdp = (dhd_pub_t *)dev_get_drvdata(sdhcinfo->dev);
 
+#ifndef BCMSPI_ANDROID
 	bcmsdh_oob_intr_set(0);
+#endif /* !BCMSPI_ANDROID */
 
 	if (dhdp == NULL) {
 		SDLX_MSG(("Out of band GPIO interrupt fired way too early\n"));
@@ -663,7 +669,13 @@ int bcmsdh_register_oob_intr(void * dhdp)
 		if (error)
 			return -ENODEV;
 
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+		if (device_may_wakeup(sdhcinfo->dev)) {
+#endif
 		error = enable_irq_wake(sdhcinfo->oob_irq);
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+		}
+#endif
 		if (error)
 			SDLX_MSG(("%s enable_irq_wake error=%d \n", __FUNCTION__, error));
 		sdhcinfo->oob_irq_registered = TRUE;
@@ -680,9 +692,15 @@ void bcmsdh_set_irq(int flag)
 		sdhcinfo->oob_irq_enable_flag = flag;
 		if (flag) {
 			enable_irq(sdhcinfo->oob_irq);
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+			if (device_may_wakeup(sdhcinfo->dev))
+#endif
 			enable_irq_wake(sdhcinfo->oob_irq);
 		} else {
 #if !(defined(BCMSPI_ANDROID) && defined(CUSTOMER_HW4) && defined(CONFIG_NKERNEL))
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+			if (device_may_wakeup(sdhcinfo->dev))
+#endif
 			disable_irq_wake(sdhcinfo->oob_irq);
 #endif /* !defined(BCMSPI_ANDROID) */
 			disable_irq(sdhcinfo->oob_irq);

@@ -65,11 +65,15 @@ baseband=`getprop ro.baseband`
 # Suppress default route installation during RA for IPV6; user space will take
 # care of this
 #
-for file in /proc/sys/net/ipv6/conf/*
+for file in /proc/sys/net/ipv6/conf/rmnet*
 do
   echo 0 > $file/accept_ra_defrtr
 done
 
+for file in /proc/sys/net/ipv6/conf/wlan*
+do
+  echo 1 > $file/accept_ra_defrtr
+done
 #
 # Start gpsone_daemon for SVLTE Type I & II devices
 #

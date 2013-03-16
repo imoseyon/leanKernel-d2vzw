@@ -61,6 +61,7 @@
 /dev/lightsensor          0640   system     system
 /dev/radio0               0644   fm_radio   fm_radio
 /dev/msm_pcm_out*         0660   system     audio
+/dev/msm_a2dp_in          0660   system     audio
 /dev/msm_pcm_in*          0660   system     audio
 /dev/msm_voicememo        0660   system     audio
 /dev/msm_pcm_ctl*         0660   system     audio
@@ -80,6 +81,7 @@
 /dev/msm_pcm_lp_dec       0660   system     audio
 /dev/msm_mvs              0660   system     audio
 /dev/smd0                 0640   radio      radio
+/dev/smd11                0660   root       radio
 /dev/qmi                  0640   radio      radio
 /dev/qmi0                 0640   radio      radio
 /dev/qmi1                 0640   radio      radio
@@ -96,8 +98,11 @@
 /dev/msm_acdb             0660  system       audio
 /dev/msm_rtac             0660  system       audio
 /dev/msm_fm               0660  system       audio
+/dev/msm_ac3              0660  system       audio
+/dev/msm_cad              0660  system       audio
 /dev/audience_a2220       0660  system       audio
 /dev/msm_rtac             0660  system       audio
+/dev/oncrpc/300000ba:00010000  0660   system     drmrpc
 
 # CDMA radio interface MUX
 /dev/ts0710mux*           0640   radio      radio
@@ -137,4 +142,4 @@
 /sys/devices/system/cpu/cpufreq interactive/hispeed_freq    0664    system  system
 /sys/devices/system/cpu/cpufreq interactive/go_hispeed_load 0664    system  system
 /sys/devices/system/cpu/cpufreq interactive/above_hispeed_delay 0664    system  system
-/sys/devices/system/cpu/cpufreq interactive/boost	0664	system	system
+/sys/devices/system/cpu/cpufreq interactive/boost      0664    system  system

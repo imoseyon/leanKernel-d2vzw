@@ -991,14 +991,6 @@ config KERNEL_PMEM_SMI_REGION
 	help
 	   Enable the in-kernel PMEM allocator to use SMI memory.
 
-config KERNEL_PMEM_EBI_REGION
-	bool "Enable in-kernel PMEM region for EBI"
-	default y if ARCH_MSM8X60
-	depends on ANDROID_PMEM && (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSMCOPPER)
-	help
-	  Enable the in-kernel PMEM allocator to use EBI memory.
-
-
 config PMEM_GPU0
 	bool "Enable PMEM GPU0 region"
 	default y

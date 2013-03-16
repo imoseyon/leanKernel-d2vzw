@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Linux/arm 3.0.64 Kernel Configuration
+# Linux/arm 3.0.69 Kernel Configuration
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -34,7 +34,7 @@ CONFIG_HAVE_IRQ_WORK=y
 CONFIG_EXPERIMENTAL=y
 CONFIG_INIT_ENV_ARG_LIMIT=32
 CONFIG_CROSS_COMPILE=""
-CONFIG_LOCALVERSION="-leanKernel-vzw_tw_jb-2.0-"
+CONFIG_LOCALVERSION="-leanKernel-vzw_tw_jb-2.1-"
 # CONFIG_LOCALVERSION_AUTO is not set
 CONFIG_HAVE_KERNEL_GZIP=y
 CONFIG_HAVE_KERNEL_LZMA=y
@@ -2733,6 +2733,7 @@ CONFIG_MMC_BLOCK_MINORS=32
 # CONFIG_MMC_BLOCK_DEFERRED_RESUME is not set
 # CONFIG_SDIO_UART is not set
 # CONFIG_MMC_TEST is not set
+CONFIG_MMC_CPRM=y
 
 #
 # MMC/SD/SDIO Host Controller Drivers

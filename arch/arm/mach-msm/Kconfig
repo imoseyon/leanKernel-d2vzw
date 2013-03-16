@@ -910,10 +910,6 @@ config MACH_M2
 	depends on ARCH_MSM8960
 	default n
 	select REGULATOR_MSM_GPIO
-	select HAVE_MEMBLOCK_NODE_MAP
-	select ARCH_SPARSEMEM_ENABLE
-	select HOLES_IN_ZONE if SPARSEMEMP
-	select MSM_MERCURY
         bool "MSM8960 Samsung M2"
         help
           Support for Samsung M2 devices.

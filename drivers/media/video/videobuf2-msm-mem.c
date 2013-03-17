@@ -62,7 +62,7 @@ static unsigned long msm_mem_allocate(struct videobuf2_contig_pmem *mem)
 		goto alloc_failed;
 	}
 	rc = ion_map_iommu(mem->client, mem->ion_handle,
-			-1, 0, SZ_4K, 0,
+			CAMERA_DOMAIN, GEN_POOL, SZ_4K, 0,
 			(unsigned long *)&phyaddr,
 			(unsigned long *)&len, 0, 0);
 	if (rc < 0) {
@@ -195,7 +195,7 @@ int videobuf2_pmem_contig_user_get(struct videobuf2_contig_pmem *mem,
 	rc = ion_phys(client, mem->ion_handle, (ion_phys_addr_t *)&mem->phyaddr,
 			 (size_t *)&len);
 #else
-	rc = ion_map_iommu(client, mem->ion_handle, domain_num, 0,
+	rc = ion_map_iommu(client, mem->ion_handle, domain_num, GEN_POOL,
 		SZ_4K, 0, (unsigned long *)&mem->phyaddr, &len, 0, 0);
 	if (rc < 0)
 		ion_free(client, mem->ion_handle);
@@ -245,7 +245,7 @@ void videobuf2_pmem_contig_user_put(struct videobuf2_contig_pmem *mem,
 #endif
 #else
 		ion_unmap_iommu(client, mem->ion_handle,
-				domain_num, 0);
+				domain_num, GEN_POOL);
 #endif
 		ion_free(client, mem->ion_handle);
 #elif CONFIG_ANDROID_PMEM

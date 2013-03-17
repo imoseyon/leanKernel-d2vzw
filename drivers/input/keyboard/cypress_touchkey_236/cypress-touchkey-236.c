@@ -60,7 +60,7 @@
 #define CYPRESS_LED_CONTROL_OFF	0X70
 #define CYPRESS_SLEEP		0X80
 static int vol_mv_level = 33;
-extern int system_rev;
+extern unsigned int system_rev;
 
 
 #define TOUCHKEY_BACKLIGHT	"button-backlight"

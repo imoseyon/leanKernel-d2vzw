@@ -54,7 +54,7 @@ static ssize_t sec_fg_store(struct device *dev,
 			struct device_attribute *attr,
 			const char *buf, size_t count);
 
-extern int system_rev;
+extern unsigned int system_rev;
 
 #define MAX17040_CHECK_LOW_VCELL_SOC	2
 #define MAX17040_LOW_AVGVCELL	3350000

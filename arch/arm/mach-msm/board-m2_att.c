@@ -185,7 +185,7 @@
 #include <linux/persistent_ram.h>
 #endif
 
-extern int system_rev;
+extern unsigned int system_rev;
 #ifdef CONFIG_TOUCHSCREEN_MMS144
 struct tsp_callbacks *charger_callbacks;
 #endif

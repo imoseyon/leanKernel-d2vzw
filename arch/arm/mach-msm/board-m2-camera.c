@@ -33,7 +33,7 @@
 #include <linux/leds-aat1290a.h>
 #endif
 
-extern int system_rev;
+extern unsigned int system_rev;
 #if (defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)) && \
 	defined(CONFIG_I2C)
 

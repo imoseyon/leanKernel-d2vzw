@@ -364,7 +364,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
 
 #define MSM_MM_FW_SIZE      (0x200000 - HOLE_SIZE) /* 2mb -128kb*/
-#define MSM8960_FIXED_AREA_START (0xa0000000 - (MSM_ION_MM_FW_SIZE + \
+#define MSM8960_FIXED_AREA_START (0xb0000000 - (MSM_ION_MM_FW_SIZE + \
                             HOLE_SIZE))
 #define MAX_FIXED_AREA_SIZE 0x10000000
 #define MSM8960_FW_START    MSM8960_FIXED_AREA_START
@@ -928,7 +928,7 @@ static void __init reserve_ion_memory(void)
 						&ion_mm_heap_device.dev,
 						heap->size,
 						fixed_middle_start,
-						0xa0000000);
+						0xb0000000);
 					WARN_ON(ret);
 				}
 				pdata->secure_base = fixed_middle_start

@@ -59,22 +59,7 @@ fail:
 
 static int update_cpu_max_freq(int cpu, uint32_t max_freq)
 {
-	int ret = 0;
-
-	ret = msm_cpufreq_set_freq_limits(cpu, MSM_CPUFREQ_NO_LIMIT, max_freq);
-	if (ret)
-		return ret;
-
-	limited_max_freq = max_freq;
-	if (max_freq != MSM_CPUFREQ_NO_LIMIT)
-		pr_info("msm_thermal: Limiting cpu%d max frequency to %d\n",
-				cpu, max_freq);
-	else
-		pr_info("msm_thermal: Max frequency reset for cpu%d\n", cpu);
-
-	ret = cpufreq_update_policy(cpu);
-
-	return ret;
+	return 0;
 }
 
 static void check_temp(struct work_struct *work)

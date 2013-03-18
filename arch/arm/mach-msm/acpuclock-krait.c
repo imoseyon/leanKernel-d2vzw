@@ -1035,6 +1035,48 @@ static void krait_apply_vmin(struct acpu_level *tbl)
 	}
 }
 
+ssize_t vc_get_vdd(char *buf)
+{
+        int i = 0, len = 0;
+
+        if (buf) {
+                mutex_lock(&driver_lock);
+                while(drv.acpu_freq_tbl[i].speed.khz != 0) i++;
+
+                for(i--; i >= 0; i--) {
+                  if (drv.acpu_freq_tbl[i].use_for_scaling) {
+                        len += sprintf(buf + len, "%umhz: %d mV\n",
+                                (unsigned int)drv.acpu_freq_tbl[i].speed.khz/1000,
+                                drv.acpu_freq_tbl[i].vdd_core/1000 );
+                  }
+                }
+                mutex_unlock(&driver_lock);
+        }
+        return len;
+}
+
+void vc_set_vdd(const char *buf)
+{
+        int ret, i = 0;
+        char size_cur[16];
+        unsigned int volt;
+
+        while(drv.acpu_freq_tbl[i].speed.khz != 0) i++;
+        mutex_lock(&driver_lock);
+        for(i--; i >= 0; i--) {
+          ret = sscanf(buf, "%d", &volt);
+          if (drv.acpu_freq_tbl[i].use_for_scaling) {
+            pr_info("[imoseyon]: voltage for %lu changed to %d\n",
+                drv.acpu_freq_tbl[i].speed.khz, volt*1000);
+            drv.acpu_freq_tbl[i].vdd_core = min(max((unsigned int)volt*1000,
+                (unsigned int)700000), (unsigned int)1350000);
+            ret = sscanf(buf, "%s", size_cur);
+            buf += (strlen(size_cur)+1);
+          }
+        }
+        mutex_unlock(&driver_lock);
+}
+
 static int __init get_speed_bin(u32 pte_efuse)
 {
 	uint32_t speed_bin;

@@ -1,0 +1,37 @@
+#!/system/bin/sh
+BB="/system/xbin/busybox"
+SCRIPT="/system/etc/init.d/00leanKernel"
+
+echo
+echo "leanKernel configurator"
+echo
+echo "---"
+echo "1) Revert thermald to stock."
+echo "2) interactiveX: set screen-off max freq to 1.1Ghz."
+echo "3) interactiveX: set screen-off max freq to 810Mhz (leanKernel default)."
+echo 
+echo -n "Please enter a number between 1 and 3 (or press enter to exit): "
+
+read option
+
+$BB mount -o rw,remount /system /system
+
+case $option in
+  1) 
+	$BB cp -f /sbin/thermald /system/bin/thermald
+	pkill thermald
+	echo "thermald reverted to stock."
+	;;
+  2) 
+	$BB sed -i s/^SO_MAX=.*$/SO_MAX=1134000/ $SCRIPT
+	$SCRIPT
+	echo "interactiveX: screen off max freq set to 1134000."
+	;;
+  3) 
+	$BB sed -i s/^SO_MAX=.*$/SO_MAX=810000/ $SCRIPT
+	$SCRIPT
+	echo "interactiveX: screen off max freq set to 810000 (default)."
+	;;
+esac
+$BB mount -r /system /system
+echo

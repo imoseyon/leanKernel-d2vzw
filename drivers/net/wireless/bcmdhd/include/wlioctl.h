@@ -43,8 +43,6 @@
 #include <bcmcdc.h>
 #endif /* LINUX_POSTMOGRIFY_REMOVAL */
 
-#include <dhd_sec_feature.h>
-
 /*  LINUX_POSTMOGRIFY_REMOVAL: undefined during compile phase, so its
  *  a no-op for most cases. For hybrid and other open source releases,
  *  its defined during a second pass and mogrified out for distribution.

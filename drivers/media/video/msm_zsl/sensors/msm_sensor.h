@@ -50,22 +50,9 @@ enum msm_sensor_cam_mode_t {
 	MSM_SENSOR_MODE_INVALID
 };
 
-struct msm_sensor_output_reg_addr_t {
-	uint16_t x_output;
-	uint16_t y_output;
-	uint16_t line_length_pclk;
-	uint16_t frame_length_lines;
-};
-
 struct msm_sensor_id_info_t {
 	uint16_t sensor_id_reg_addr;
 	uint16_t sensor_id;
-};
-
-struct msm_sensor_exp_gain_info_t {
-	uint16_t coarse_int_time_addr;
-	uint16_t global_gain_addr;
-	uint16_t vert_offset;
 };
 
 struct msm_sensor_reg_t {

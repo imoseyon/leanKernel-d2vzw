@@ -165,7 +165,6 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	var = &fbi->var;
 	pinfo = &mfd->panel_info;
-	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(1);
@@ -606,6 +605,8 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	register_mipi_dev(pdev);
 #endif
+
+	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
 
 	if (!mfd->cont_splash_done)
 		cont_splash_clk_ctrl(1);

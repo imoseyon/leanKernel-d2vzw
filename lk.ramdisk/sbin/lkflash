@@ -1,0 +1,81 @@
+#!/system/xbin/busybox ash
+#
+# lkflash - flash latest leanKernel
+# 
+# author - imoseyon@gmail.com
+#
+BB="/system/xbin/busybox"
+
+CUR=`$BB uname -a | $BB awk -F- '{ print \$4 }'`
+DEVICE=`$BB uname -a | $BB awk -F- '{ print \$3 }'`
+STABLE="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}"
+EXP="http://imoseyon.host4droid.com/s3/lkflash/${DEVICE}-exp"
+
+$BB mkdir -p /sdcard/lk
+
+while [ 1 ]; do
+echo
+echo "leanKernel flasher"
+echo "------------------"
+echo "1) latest stable (recommended)"
+echo "2) latest experimental (not available)" 
+echo "3) check/display versions" 
+echo
+echo "FLASH AT YOUR OWN RISK. I'm not responsible for my mistakes or yours. ;)"
+echo
+echo -n "Please enter a number between 1 and 3 (or press enter to exit): "
+
+read option
+case $option in
+  1)
+	$BB wget -q -O /sdcard/lk/loc $STABLE
+	echo; echo -n "Downloading stable "
+	break
+	;;
+  2) 
+	$BB wget -q -O /sdcard/lk/loc $EXP
+	echo; echo -n "Downloading experimental "
+	break
+	;;
+  3) 
+  	echo "Please wait..."
+	vstable=`$BB wget -q -O - $STABLE | $BB awk '{ print \$3 }'`
+	vexp=`$BB wget -q -O - $EXP | $BB awk '{ print \$3 }'`
+	echo; echo ">>> Current version: $CUR, Latest stable: $vstable, Exp: $vexp"	
+	sleep 2
+	;;
+  *)
+	echo "BYE"
+	exit
+	;;
+esac
+done
+
+[ ! -s "/sdcard/lk/loc" ] && exit
+MD5=`$BB awk '{ print \$2 }' /sdcard/lk/loc`
+VER=`$BB awk '{ print \$3 }' /sdcard/lk/loc`
+if [ "$CUR" == "$VER" ]; then
+  echo
+  echo "Aborted. You're already running $CUR."
+  exit
+fi
+echo "v$VER. Please wait..."
+$BB wget -q -O /sdcard/lk/kernel.zip `$BB awk '{ print \$1 }' /sdcard/lk/loc`
+[ ! -s "/sdcard/lk/kernel.zip" ] && exit
+SUM=`$BB md5sum /sdcard/lk/kernel.zip | $BB awk '{ print \$1 }'`
+echo
+if [ "$MD5" == "$SUM" ]; then
+  echo "Download finished. Checksum verified. Flashing kernel..."
+  cd /sdcard/lk
+  $BB cp -f kernel.zip ../lk_backup_$VER.zip
+  $BB unzip -q kernel.zip
+  $BB mount -o rw,remount /system /system
+  $BB cp -af system/* /system/
+  chmod 755 /system/bin/thermald /system/etc/init.d/00leanKernel
+  $BB mount -r /system /system
+  $BB dd if=boot.img of=/dev/block/mmcblk0p7 2> /dev/null
+  $BB rm -rf /sdcard/lk/*
+  echo; echo "leanKernel $VER flashed!  Reboot when you're ready to run new kernel."
+else
+  echo "md5sum check failed - please try again."
+fi

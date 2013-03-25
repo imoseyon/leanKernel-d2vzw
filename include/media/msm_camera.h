@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -255,10 +255,11 @@ struct msm_mctl_post_proc_cmd {
 
 #define MSM_MAX_CAMERA_CONFIGS 2
 
-#define PP_SNAP  0x01
-#define PP_RAW_SNAP ((0x01)<<1)
-#define PP_PREV  ((0x01)<<2)
-#define PP_THUMB ((0x01)<<3)
+#define PP_SNAP  BIT(0)
+#define PP_RAW_SNAP BIT(1)
+#define PP_PREV  BIT(2)
+#define PP_THUMB BIT(3)
+#define PP_RDI   BIT(4)
 #define PP_MASK		(PP_SNAP|PP_RAW_SNAP|PP_PREV|PP_THUMB)
 
 #define MSM_CAM_CTRL_CMD_DONE  0
@@ -819,11 +820,35 @@ struct msm_snapshot_pp_status {
 #define CFG_GET_3D_CALI_DATA 30
 #define CFG_GET_CALIB_DATA		31
 #define CFG_GET_OUTPUT_INFO		32
-#define CFG_GET_EEPROM_DATA		33
-#define CFG_SET_ACTUATOR_INFO		34
-#define CFG_GET_ACTUATOR_INFO		35
-#define CFG_MAX			36
-
+#define CFG_GET_EEPROM_INFO		33
+#define CFG_GET_EEPROM_DATA		34
+#define CFG_SET_ACTUATOR_INFO		35
+#define CFG_GET_ACTUATOR_INFO           36
+/* TBD: QRD */
+/*
+#define CFG_SET_SATURATION            37
+#define CFG_SET_SHARPNESS             38
+#define CFG_SET_TOUCHAEC              39
+#define CFG_SET_AUTO_FOCUS            40
+#define CFG_SET_AUTOFLASH             41
+#define CFG_SET_EXPOSURE_COMPENSATION 42
+*/
+#define CFG_SET_ISO                   43
+#define CFG_START_STREAM              44
+#define CFG_STOP_STREAM               45
+#define CFG_GET_CSI_PARAMS            46
+#define CFG_POWER_UP                  47
+#define CFG_POWER_DOWN                48
+#define CFG_WRITE_I2C_ARRAY           49
+#define CFG_READ_I2C_ARRAY            50
+#define CFG_PCLK_CHANGE               51
+#define CFG_CONFIG_VREG_ARRAY         52
+#define CFG_CONFIG_CLK_ARRAY          53
+#define CFG_GPIO_OP                   54
+#define CFG_SET_VISION_MODE           55
+#define CFG_SET_VISION_AE             56
+#define CFG_HDR_UPDATE                57
+#define CFG_MAX                       58
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1189,6 +1214,8 @@ struct sensor_pict_fps {
 struct exp_gain_cfg {
 	uint16_t gain;
 	uint32_t line;
+	int32_t luma_avg;
+	uint16_t fgain;
 };
 
 struct focus_cfg {
@@ -1291,6 +1318,44 @@ struct sensor_eeprom_data_t {
 	uint16_t index;
 };
 
+struct msm_sensor_exp_gain_info_t {
+	uint16_t coarse_int_time_addr;
+	uint16_t global_gain_addr;
+	uint16_t vert_offset;
+};
+
+struct msm_sensor_output_reg_addr_t {
+	uint16_t x_output;
+	uint16_t y_output;
+	uint16_t line_length_pclk;
+	uint16_t frame_length_lines;
+};
+
+enum sensor_hdr_update_t {
+	SENSOR_HDR_UPDATE_AWB,
+	SENSOR_HDR_UPDATE_LSC,
+};
+
+struct sensor_hdr_update_parm_t {
+	enum sensor_hdr_update_t type;
+	uint16_t awb_gain_r, awb_gain_b;
+	uint8_t lsc_table[504];
+};
+
+struct sensor_driver_params_type {
+	struct msm_camera_i2c_reg_setting *init_settings;
+	uint16_t init_settings_size;
+	struct msm_camera_i2c_reg_setting *mode_settings;
+	uint16_t mode_settings_size;
+	struct msm_sensor_output_reg_addr_t *sensor_output_reg_addr;
+	struct msm_camera_i2c_reg_setting *start_settings;
+	struct msm_camera_i2c_reg_setting *stop_settings;
+	struct msm_camera_i2c_reg_setting *groupon_settings;
+	struct msm_camera_i2c_reg_setting *groupoff_settings;
+	struct msm_sensor_exp_gain_info_t *sensor_exp_gain_info;
+	struct msm_sensor_output_info_t *output_info;
+};
+
 struct mirror_flip {
 	int32_t x_mirror;
 	int32_t y_flip;
@@ -1327,6 +1392,8 @@ struct sensor_cfg_data {
 		struct sensor_calib_data calib_info;
 		struct sensor_output_info_t output_info;
 		struct sensor_eeprom_data_t eeprom_data;
+		//struct csi_lane_params_t csi_lane_params;
+		struct sensor_hdr_update_parm_t hdr_update_parm;
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;

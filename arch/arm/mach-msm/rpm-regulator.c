@@ -1854,6 +1854,10 @@ static int __devinit rpm_vreg_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, platform_data);
 
+#if defined(CONFIG_MACH_M2_ATT)
+	rpm_vreg_set_frequency(RPM_VREG_ID_PM8921_S2, RPM_VREG_FREQ_2p40);
+#endif
+
 	return rc;
 
 remove_regulators:

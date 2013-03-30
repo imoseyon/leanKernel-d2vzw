@@ -456,6 +456,7 @@ config BATTERY_SAMSUNG_STRETTO
 	  with MAX77693 (I2C) chips.
 	  MAX77693 have Charger,Fuelgauge, MUIC etc.
 	  This is samsung battery driver for STRETTO
+
 config BATTERY_BCL
 	tristate "Battery Current Limit driver"
 	help

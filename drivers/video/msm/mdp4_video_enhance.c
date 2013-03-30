@@ -283,6 +283,7 @@ void lut_tune(int num, unsigned int *pLutTable)
 	struct fb_cmap *cmap;
 	struct msm_fb_data_type *mfd;
 	uint32_t out;
+	unsigned long flags;
 
 	/*for final assignment*/
 	u16 r_1, g_1, b_1;
@@ -351,10 +352,10 @@ void lut_tune(int num, unsigned int *pLutTable)
 	mfd = (struct msm_fb_data_type *) registered_fb[0]->par;
 	if (mfd->panel.type == MIPI_CMD_PANEL) {
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
-		mutex_lock(&mdp_lut_push_sem);
+		spin_lock_irqsave(&mdp_lut_push_lock, flags);
 		mdp_lut_push = 1;
 		mdp_lut_push_i = mdp_lut_i;
-		mutex_unlock(&mdp_lut_push_sem);
+		spin_unlock_irqrestore(&mdp_lut_push_lock, flags);
 	} else {
 		/*mask off non LUT select bits*/
 		out = inpdw(MDP_BASE + 0x90070) & ~((0x1 << 10) | 0x7);

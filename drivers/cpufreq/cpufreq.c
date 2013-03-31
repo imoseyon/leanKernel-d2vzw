@@ -32,8 +32,6 @@
 
 #include <trace/events/power.h>
 
-unsigned int thermal_max = 1512000;
-
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -416,11 +414,6 @@ show_one(scaling_max_freq, max);
 show_one(scaling_cur_freq, cur);
 show_one(cpu_utilization, util);
 
-static ssize_t show_thermal_max_freq(struct cpufreq_policy *policy, char *buf)
-{
-	return sprintf(buf, "%u\n", thermal_max);
-}
-
 static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				struct cpufreq_policy *policy);
 
@@ -450,20 +443,6 @@ static ssize_t store_##file_name					\
 
 store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
-
-static ssize_t store_thermal_max_freq
-        (struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-        unsigned int ret = -EINVAL;
-        unsigned int value = 0;
-
-        ret = sscanf(buf, "%u", &value);
-        if (ret != 1)
-                return -EINVAL;
-
-        thermal_max = value;
-	return count;
-}
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -673,12 +652,10 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
-cpufreq_freq_attr_rw(thermal_max_freq);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
 	&cpuinfo_max_freq.attr,
-	&thermal_max_freq.attr,
 	&cpuinfo_transition_latency.attr,
 	&scaling_min_freq.attr,
 	&scaling_max_freq.attr,

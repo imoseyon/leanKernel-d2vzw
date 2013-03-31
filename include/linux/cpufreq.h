@@ -295,7 +295,7 @@ __ATTR(_name, _perm, show_##_name, NULL)
 
 #define cpufreq_freq_attr_rw(_name)		\
 static struct freq_attr _name =			\
-__ATTR(_name, 0644, show_##_name, store_##_name)
+__ATTR(_name, 0666, show_##_name, store_##_name)
 
 struct global_attr {
 	struct attribute attr;
@@ -311,7 +311,7 @@ __ATTR(_name, 0444, show_##_name, NULL)
 
 #define define_one_global_rw(_name)		\
 static struct global_attr _name =		\
-__ATTR(_name, 0644, show_##_name, store_##_name)
+__ATTR(_name, 0666, show_##_name, store_##_name)
 
 
 /*********************************************************************

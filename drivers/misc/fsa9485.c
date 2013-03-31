@@ -137,6 +137,7 @@
 #define	ADC_OPEN		0x1f
 
 extern int force_fast_charge;
+extern bool init_not_done;
 
 int uart_connecting;
 EXPORT_SYMBOL(uart_connecting);
@@ -1158,6 +1159,7 @@ static void fsa9485_init_detect(struct work_struct *work)
 	struct fsa9485_usbsw *usbsw = container_of(work,
 			struct fsa9485_usbsw, init_work.work);
 	int ret = 0;
+	init_not_done = false;
 
 	dev_info(&usbsw->client->dev, "%s\n", __func__);
 

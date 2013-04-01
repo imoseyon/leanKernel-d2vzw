@@ -25,6 +25,7 @@
 #include <linux/memory_alloc.h>
 #include <mach/hardware.h>
 #include <linux/msm_ion.h>
+#include <linux/spinlock.h>
 
 #ifdef CONFIG_MSM_BUS_SCALING
 #include <mach/msm_bus.h>
@@ -51,7 +52,7 @@ extern uint32 mdp_intr_mask;
 extern int mdp_lut_i;
 extern int mdp_lut_push;
 extern int mdp_lut_push_i;
-extern struct mutex mdp_lut_push_sem;
+extern spinlock_t mdp_lut_push_lock;
 
 #define MDP4_REVISION_V1		0
 #define MDP4_REVISION_V2		1
@@ -737,6 +738,7 @@ extern struct mdp_hist_mgmt *mdp_hist_mgmt_array[];
 
 void mdp_hw_init(void);
 int mdp_ppp_pipe_wait(void);
+void mdp_pipe_kickoff_simplified(uint32 term);
 void mdp_pipe_kickoff(uint32 term, struct msm_fb_data_type *mfd);
 void mdp_clk_ctrl(int on);
 void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,

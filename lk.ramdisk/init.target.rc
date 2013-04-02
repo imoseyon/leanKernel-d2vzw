@@ -230,10 +230,10 @@ service qcamerasvr /system/bin/mm-qcamera-daemon
     user media
     group system camera inet input graphics
 
-service thermald /system/bin/thermald
-    class main
+service thermald /sbin/thermald
     user root
     group root
+    disabled
 
 service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
     user root

@@ -449,7 +449,28 @@ static ssize_t store_##file_name					\
 }
 
 store_one(scaling_min_freq, min);
-store_one(scaling_max_freq, max);
+
+static ssize_t store_scaling_max_freq
+        (struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+        unsigned int ret = -EINVAL;
+        struct cpufreq_policy new_policy;
+
+        ret = cpufreq_get_policy(&new_policy, policy->cpu);
+        if (ret)
+                return -EINVAL;
+
+        ret = sscanf(buf, "%u", &new_policy.max);
+        if (ret != 1)
+                return -EINVAL;
+
+        ret = __cpufreq_set_policy(policy, &new_policy);
+        policy->user_policy.max = policy->max;
+
+        thermal_max = max(policy->max, thermal_max);
+
+        return ret ? ret : count;
+}
 
 static ssize_t store_thermal_max_freq
         (struct cpufreq_policy *policy, const char *buf, size_t count)

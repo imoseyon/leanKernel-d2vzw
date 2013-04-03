@@ -21,6 +21,10 @@
 #include <asm/clkdev.h>
 #include <mach/kgsl.h>
 #include <linux/android_pmem.h>
+#include <linux/persistent_ram.h>
+#include <linux/memory.h>
+#include <asm/memory.h>
+#include <asm/setup.h>
 #include <mach/irqs-8960.h>
 #include <mach/dma.h>
 #include <linux/dma-mapping.h>
@@ -4665,3 +4669,43 @@ void __init msm8960_add_vidc_device(void)
 	platform_add_devices(msm8960_vidc_device,
 		ARRAY_SIZE(msm8960_vidc_device));
 }
+
+#define PERSISTENT_RAM_BASE 0xbff00000
+#define PERSISTENT_RAM_SIZE SZ_1M
+#define RAM_CONSOLE_SIZE (124*SZ_1K * 2)
+
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+static struct persistent_ram_descriptor pram_descs[] = {
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	{
+		.name = "ram_console",
+		.size = RAM_CONSOLE_SIZE,
+	},
+#endif
+};
+
+static struct persistent_ram msm8960_persistent_ram = {
+	.start = PERSISTENT_RAM_BASE,
+	.size = PERSISTENT_RAM_SIZE,
+	.num_descs = ARRAY_SIZE(pram_descs),
+	.descs = pram_descs,
+};
+
+void __init add_persistent_ram(void)
+{
+    persistent_ram_early_init(&msm8960_persistent_ram);
+}
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct platform_device ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+};
+
+void __init add_ramconsole_devices(void)
+{
+    platform_device_register(&ram_console_device);
+}
+#endif /* CONFIG_ANDROID_RAM_CONSOLE */
+

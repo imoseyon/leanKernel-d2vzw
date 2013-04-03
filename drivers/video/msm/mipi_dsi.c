@@ -596,6 +596,9 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 	/*
 	 * register in mdp driver
 	 */
+
+	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
+
 	rc = platform_device_add(mdp_dev);
 	if (rc)
 		goto mipi_dsi_probe_err;
@@ -605,8 +608,6 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	register_mipi_dev(pdev);
 #endif
-
-	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
 
 	if (!mfd->cont_splash_done)
 		cont_splash_clk_ctrl(1);

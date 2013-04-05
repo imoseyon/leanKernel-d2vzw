@@ -2889,32 +2889,12 @@ static void __init msm8930ab_update_retention_spm(void)
 }
 
 #ifdef CONFIG_SERIAL_MSM_HS
-static int configure_uart_gpios(int on)
-{
-	int ret = 0, i;
-	int uart_gpios[] = {93, 94, 95, 96};
-
-	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
-		if (on) {
-			ret = gpio_request(uart_gpios[i], NULL);
-			if (ret) {
-				pr_err("%s: unable to request uart gpio[%d]\n",
-					__func__, uart_gpios[i]);
-				break;
-			}
-		} else {
-			gpio_free(uart_gpios[i]);
-		}
-	}
-
-	if (ret && on && i)
-		for (; i >= 0; i--)
-			gpio_free(uart_gpios[i]);
-	return ret;
-}
-
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata = {
-	.gpio_config	= configure_uart_gpios,
+	.config_gpio	= 4,
+	.uart_tx_gpio	= 93,
+	.uart_rx_gpio	= 94,
+	.uart_cts_gpio	= 95,
+	.uart_rfr_gpio	= 96,
 };
 #else
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
@@ -3035,6 +3015,8 @@ static void __init msm8930_cdp_init(void)
 	else
 		platform_add_devices(pmic_pm8917_devices,
 					ARRAY_SIZE(pmic_pm8917_devices));
+	if(machine_is_msm8930_evt())
+                qcom_wcnss_pdata.has_48mhz_xo = 0;
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (machine_is_msm8930_evt() &&
 		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {

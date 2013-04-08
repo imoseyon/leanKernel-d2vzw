@@ -30,7 +30,6 @@
 #include "kgsl_cffdump.h"
 #include "kgsl_sharedmem.h"
 #include "kgsl_iommu.h"
-#include "kgsl_trace.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -255,29 +254,26 @@ static int adreno_setup_pt(struct kgsl_device *device,
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
-	result = kgsl_mmu_map_global(pagetable, &rb->buffer_desc);
+	result = kgsl_mmu_map_global(pagetable, &rb->buffer_desc,
+				     GSL_PT_PAGE_RV);
 	if (result)
 		goto error;
 
-	result = kgsl_mmu_map_global(pagetable, &rb->memptrs_desc);
+	result = kgsl_mmu_map_global(pagetable, &rb->memptrs_desc,
+				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 	if (result)
 		goto unmap_buffer_desc;
 
-	result = kgsl_mmu_map_global(pagetable, &device->memstore);
+	result = kgsl_mmu_map_global(pagetable, &device->memstore,
+				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 	if (result)
 		goto unmap_memptrs_desc;
 
-	result = kgsl_mmu_map_global(pagetable, &device->mmu.setstate_memory);
+	result = kgsl_mmu_map_global(pagetable, &device->mmu.setstate_memory,
+				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 	if (result)
 		goto unmap_memstore_desc;
 
-	/*
-	 * Set the mpu end to the last "normal" global memory we use.
-	 * For the IOMMU, this will be used to restrict access to the
-	 * mapped registers.
-	 */
-	device->mh.mpu_range = device->mmu.setstate_memory.gpuaddr +
-				device->mmu.setstate_memory.size;
 	return result;
 
 unmap_memstore_desc:
@@ -760,10 +756,6 @@ static int adreno_of_get_pwrlevels(struct device_node *parent,
 		&pdata->init_level))
 		pdata->init_level = 1;
 
-	if (adreno_of_read_property(parent, "qcom,step-pwrlevel",
-		&pdata->step_mul))
-		pdata->step_mul = 1;
-
 	if (pdata->init_level < 0 || pdata->init_level > pdata->num_levels) {
 		KGSL_CORE_ERR("Initial power level out of range\n");
 		pdata->init_level = 1;
@@ -1046,9 +1038,10 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
+	/* Default value is 83, if not found in DT */
 	if (adreno_of_read_property(pdev->dev.of_node, "qcom,idle-timeout",
 		&pdata->idle_timeout))
-		pdata->idle_timeout = HZ/12;
+		pdata->idle_timeout = 83;
 
 	if (adreno_of_read_property(pdev->dev.of_node, "qcom,nap-allowed",
 		&pdata->nap_allowed))
@@ -1305,6 +1298,8 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 			mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
 		return 0;
 	}
+
+	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 
 error_mmu_off:
 	kgsl_mmu_stop(&device->mmu);
@@ -2543,8 +2538,6 @@ void adreno_regwrite(struct kgsl_device *device, unsigned int offsetwords,
 	if (!in_interrupt())
 		kgsl_pre_hwaccess(device);
 
-	trace_kgsl_regwrite(device, offsetwords, value);
-
 	kgsl_cffdump_regwrite(device->id, offsetwords << 2, value);
 	reg = (unsigned int *)(device->reg_virt + (offsetwords << 2));
 
@@ -3097,8 +3090,7 @@ static unsigned int adreno_readtimestamp(struct kgsl_device *device,
 		break;
 	}
 	case KGSL_TIMESTAMP_CONSUMED:
-		kgsl_sharedmem_readl(&device->memstore, &timestamp,
-			KGSL_MEMSTORE_OFFSET(context_id, soptimestamp));
+		adreno_regread(device, REG_CP_TIMESTAMP, &timestamp);
 		break;
 	case KGSL_TIMESTAMP_RETIRED:
 		kgsl_sharedmem_readl(&device->memstore, &timestamp,

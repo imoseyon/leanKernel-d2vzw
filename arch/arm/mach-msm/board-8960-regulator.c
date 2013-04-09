@@ -549,7 +549,7 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 		0, 2),
 	PM8XXX_NLDO1200(L28, "8921_l28", 0, 1, 375000, 1050000, 200, "8921_s7",
 		0, 3),
-#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2)
 	PM8XXX_LDO(L29,      "8921_l29", 0, 1, 1800000, 1800000, 200, "8921_s8",
 		0, 4),
 #else
@@ -565,7 +565,11 @@ static struct rpm_regulator_init_data
 msm_rpm_regulator_init_data[] __devinitdata = {
 	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
 	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
-	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
+#if defined(CONFIG_MACH_M2_ATT)
+	RPM_SMPS(S2, 0, 1, 1, 1350000, 1350000, NULL,      0, 2p40, NONE, NONE),
+#else
+	RPM_SMPS(S2, 0, 1, 1, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
+#endif
 	RPM_SMPS(S3, 0, 1, 1,  500000, 1150000, NULL, 100000, 4p80, NONE, NONE),
 	RPM_SMPS(S4, 1, 1, 0, 1800000, 1800000, NULL, 100000, 1p60, AUTO, AUTO),
 	RPM_SMPS(S7, 0, 1, 0, 1150000, 1150000, NULL, 100000, 3p20, NONE, NONE),
@@ -579,7 +583,7 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L5,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L6,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L7,	 1, 1, 0, 1850000, 2950000, NULL,      10000, 10000),
-#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2)
 	RPM_LDO(L8,	 0, 1, 0, 3000000, 3100000, NULL,      0, 0),
 	RPM_LDO(L9,	 0, 1, 0, 2850000, 2850000, NULL,      0, 0),
 #else
@@ -587,7 +591,7 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L9,	 0, 1, 0, 3000000, 3000000, NULL,      0, 0),
 #endif
 	RPM_LDO(L10,	 0, 1, 0, 3000000, 3000000, NULL,      0, 0),
-#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2)
 	RPM_LDO(L11,	 0, 1, 0, 2800000, 3300000, NULL,      0, 0),
 #else
 	RPM_LDO(L11,	 0, 1, 0, 2850000, 2850000, NULL,      0, 0),
@@ -595,7 +599,7 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L12,	 0, 1, 0, 1200000, 1200000, "8921_s4", 0, 0),
 	RPM_LDO(L14,	 0, 1, 0, 1800000, 1800000, NULL,      0, 0),
 	RPM_LDO(L15,	 0, 1, 0, 1800000, 2950000, NULL,      0, 0),
-#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2)
 	RPM_LDO(L16,	 0, 1, 0, 2800000, 3000000, NULL,      0, 0),
 	RPM_LDO(L17,	 0, 1, 0, 1800000, 3300000, NULL,      0, 0),
 	RPM_LDO(L18,	 0, 1, 0, 1300000, 1300000, "8921_s4", 0, 0),
@@ -608,7 +612,7 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L22,	 0, 1, 0, 2750000, 2750000, NULL,      0, 0),
 	RPM_LDO(L23,	 1, 1, 1, 1800000, 1800000, "8921_s8", 10000, 10000),
 	RPM_LDO(L24,	 0, 1, 1,  750000, 1150000, "8921_s1", 10000, 10000),
-#if defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2)
 	RPM_LDO(L25,	 1, 1, 0, 1225000, 1225000, "8921_s1", 10000, 10000),
 #else
 	RPM_LDO(L25,	 1, 1, 0, 1250000, 1250000, "8921_s1", 10000, 10000),

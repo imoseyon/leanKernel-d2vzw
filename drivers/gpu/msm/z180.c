@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -212,6 +212,10 @@ static irqreturn_t z180_irq_handler(struct kgsl_device *device)
 
 			queue_work(device->work_queue, &device->ts_expired_ws);
 			wake_up_interruptible(&device->wait_queue);
+
+			atomic_notifier_call_chain(
+				&(device->ts_notifier_list),
+				device->id, NULL);
 		}
 	}
 
@@ -244,26 +248,22 @@ static int z180_setup_pt(struct kgsl_device *device,
 	int result = 0;
 	struct z180_device *z180_dev = Z180_DEVICE(device);
 
-	result = kgsl_mmu_map_global(pagetable, &device->mmu.setstate_memory);
+	result = kgsl_mmu_map_global(pagetable, &device->mmu.setstate_memory,
+				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 
 	if (result)
 		goto error;
 
-	result = kgsl_mmu_map_global(pagetable, &device->memstore);
+	result = kgsl_mmu_map_global(pagetable, &device->memstore,
+				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 	if (result)
 		goto error_unmap_dummy;
 
 	result = kgsl_mmu_map_global(pagetable,
-				     &z180_dev->ringbuffer.cmdbufdesc);
+				     &z180_dev->ringbuffer.cmdbufdesc,
+				     GSL_PT_PAGE_RV);
 	if (result)
 		goto error_unmap_memstore;
-	/*
-	 * Set the mpu end to the last "normal" global memory we use.
-	 * For the IOMMU, this will be used to restrict access to the
-	 * mapped registers.
-	 */
-	device->mh.mpu_range = z180_dev->ringbuffer.cmdbufdesc.gpuaddr +
-				z180_dev->ringbuffer.cmdbufdesc.size;
 	return result;
 
 error_unmap_dummy:
@@ -495,7 +495,6 @@ static int z180_ringbuffer_init(struct kgsl_device *device)
 	struct z180_device *z180_dev = Z180_DEVICE(device);
 	memset(&z180_dev->ringbuffer, 0, sizeof(struct z180_ringbuffer));
 	z180_dev->ringbuffer.prevctx = Z180_INVALID_CONTEXT;
-	z180_dev->ringbuffer.cmdbufdesc.flags = KGSL_MEMFLAGS_GPUREADONLY;
 	return kgsl_allocate_contiguous(&z180_dev->ringbuffer.cmdbufdesc,
 		Z180_RB_SIZE);
 }
@@ -574,9 +573,6 @@ static int z180_start(struct kgsl_device *device, unsigned int init_ram)
 	mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
 	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_ON);
 	device->ftbl->irqctrl(device, 1);
-
-	device->reset_counter++;
-
 	return 0;
 
 error_clk_off:
@@ -815,9 +811,9 @@ static int z180_waittimestamp(struct kgsl_device *device,
 {
 	int status = -EINVAL;
 
-	/* Don't wait forever, set a max of Z180_IDLE_TIMEOUT */
+	/* Don't wait forever, set a max (10 sec) value for now */
 	if (msecs == -1)
-		msecs = Z180_IDLE_TIMEOUT;
+		msecs = 10 * MSEC_PER_SEC;
 
 	mutex_unlock(&device->mutex);
 	status = z180_wait(device, context, timestamp, msecs);

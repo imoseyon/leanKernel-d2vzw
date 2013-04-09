@@ -1,13 +1,6 @@
 #ifndef _MSM_KGSL_H
 #define _MSM_KGSL_H
 
-/*
- * The KGSL version has proven not to be very useful in userspace if features
- * are cherry picked into other trees out of order so it is frozen as of 3.14.
- * It is left here for backwards compatabilty and as a reminder that
- * software releases are never linear. Also, I like pie.
- */
-
 #define KGSL_VERSION_MAJOR        3
 #define KGSL_VERSION_MINOR        14
 
@@ -25,25 +18,13 @@
 
 #define KGSL_CONTEXT_INVALID 0xffffffff
 
-/* --- Memory allocation flags --- */
+/* Memory allocayion flags */
+#define KGSL_MEMFLAGS_GPUREADONLY	0x01000000
 
-/* General allocation hints */
-#define KGSL_MEMFLAGS_GPUREADONLY 0x01000000
-#define KGSL_MEMFLAGS_USE_CPU_MAP 0x10000000
-
-/* Memory caching hints */
-#define KGSL_CACHEMODE_MASK 0x0C000000
-#define KGSL_CACHEMODE_SHIFT 26
-
-#define KGSL_CACHEMODE_WRITECOMBINE 0
-#define KGSL_CACHEMODE_UNCACHED 1
-#define KGSL_CACHEMODE_WRITETHROUGH 2
-#define KGSL_CACHEMODE_WRITEBACK 3
-
-/* Memory types for which allocations are made */
 #define KGSL_MEMTYPE_MASK		0x0000FF00
 #define KGSL_MEMTYPE_SHIFT		8
 
+/* Memory types for which allocations are made */
 #define KGSL_MEMTYPE_OBJECTANY			0
 #define KGSL_MEMTYPE_FRAMEBUFFER		1
 #define KGSL_MEMTYPE_RENDERBUFFER		2
@@ -74,8 +55,7 @@
 #define KGSL_MEMALIGN_MASK		0x00FF0000
 #define KGSL_MEMALIGN_SHIFT		16
 
-/* --- generic KGSL flag values --- */
-
+/* generic flag values */
 #define KGSL_FLAGS_NORMALMODE  0x00000000
 #define KGSL_FLAGS_SAFEMODE    0x00000001
 #define KGSL_FLAGS_INITIALIZED0 0x00000002
@@ -466,14 +446,6 @@ struct kgsl_sharedmem_from_vmalloc {
 #define IOCTL_KGSL_SHAREDMEM_FROM_VMALLOC \
 	_IOWR(KGSL_IOC_TYPE, 0x23, struct kgsl_sharedmem_from_vmalloc)
 
-/*
- * This is being deprecated in favor of IOCTL_KGSL_GPUMEM_CACHE_SYNC which
- * supports both directions (flush and invalidate). This code will still
- * work, but by definition it will do a flush of the cache which might not be
- * what you want to have happen on a buffer following a GPU operation.  It is
- * safer to go with IOCTL_KGSL_GPUMEM_CACHE_SYNC
- */
-
 #define IOCTL_KGSL_SHAREDMEM_FLUSH_CACHE \
 	_IOW(KGSL_IOC_TYPE, 0x24, struct kgsl_sharedmem_free)
 
@@ -565,115 +537,6 @@ struct kgsl_timestamp_event_fence {
 
 #define IOCTL_KGSL_TIMESTAMP_EVENT \
 	_IOWR(KGSL_IOC_TYPE, 0x33, struct kgsl_timestamp_event)
-
-/**
- * struct kgsl_gpumem_alloc_id - argument to IOCTL_KGSL_GPUMEM_ALLOC_ID
- * @id: returned id value for this allocation.
- * @flags: mask of KGSL_MEM* values requested and actual flags on return.
- * @size: requested size of the allocation and actual size on return.
- * @mmapsize: returned size to pass to mmap() which may be larger than 'size'
- * @gpuaddr: returned GPU address for the allocation
- *
- * Allocate memory for access by the GPU. The flags and size fields are echoed
- * back by the kernel, so that the caller can know if the request was
- * adjusted.
- *
- * Supported flags:
- * KGSL_MEMFLAGS_GPUREADONLY: the GPU will be unable to write to the buffer
- * KGSL_MEMTYPE*: usage hint for debugging aid
- * KGSL_MEMALIGN*: alignment hint, may be ignored or adjusted by the kernel.
- * KGSL_MEMFLAGS_USE_CPU_MAP: If set on call and return, the returned GPU
- * address will be 0. Calling mmap() will set the GPU address.
- */
-struct kgsl_gpumem_alloc_id {
-	unsigned int id;
-	unsigned int flags;
-	unsigned int size;
-	unsigned int mmapsize;
-	unsigned long gpuaddr;
-/* private: reserved for future use*/
-	unsigned int __pad[2];
-};
-
-#define IOCTL_KGSL_GPUMEM_ALLOC_ID \
-	_IOWR(KGSL_IOC_TYPE, 0x34, struct kgsl_gpumem_alloc_id)
-
-/**
- * struct kgsl_gpumem_free_id - argument to IOCTL_KGSL_GPUMEM_FREE_ID
- * @id: GPU allocation id to free
- *
- * Free an allocation by id, in case a GPU address has not been assigned or
- * is unknown. Freeing an allocation by id with this ioctl or by GPU address
- * with IOCTL_KGSL_SHAREDMEM_FREE are equivalent.
- */
-struct kgsl_gpumem_free_id {
-	unsigned int id;
-/* private: reserved for future use*/
-	unsigned int __pad;
-};
-
-#define IOCTL_KGSL_GPUMEM_FREE_ID \
-	_IOWR(KGSL_IOC_TYPE, 0x35, struct kgsl_gpumem_free_id)
-
-/**
- * struct kgsl_gpumem_get_info - argument to IOCTL_KGSL_GPUMEM_GET_INFO
- * @gpuaddr: GPU address to query. Also set on return.
- * @id: GPU allocation id to query. Also set on return.
- * @flags: returned mask of KGSL_MEM* values.
- * @size: returned size of the allocation.
- * @mmapsize: returned size to pass mmap(), which may be larger than 'size'
- * @useraddr: returned address of the userspace mapping for this buffer
- *
- * This ioctl allows querying of all user visible attributes of an existing
- * allocation, by either the GPU address or the id returned by a previous
- * call to IOCTL_KGSL_GPUMEM_ALLOC_ID. Legacy allocation ioctls may not
- * return all attributes so this ioctl can be used to look them up if needed.
- *
- */
-struct kgsl_gpumem_get_info {
-	unsigned long gpuaddr;
-	unsigned int id;
-	unsigned int flags;
-	unsigned int size;
-	unsigned int mmapsize;
-	unsigned long useraddr;
-/* private: reserved for future use*/
-	unsigned int __pad[4];
-};
-
-#define IOCTL_KGSL_GPUMEM_GET_INFO\
-	_IOWR(KGSL_IOC_TYPE, 0x36, struct kgsl_gpumem_get_info)
-
-/**
- * struct kgsl_gpumem_sync_cache - argument to IOCTL_KGSL_GPUMEM_SYNC_CACHE
- * @gpuaddr: GPU address of the buffer to sync.
- * @id: id of the buffer to sync. Either gpuaddr or id is sufficient.
- * @op: a mask of KGSL_GPUMEM_CACHE_* values
- *
- * Sync the L2 cache for memory headed to and from the GPU - this replaces
- * KGSL_SHAREDMEM_FLUSH_CACHE since it can handle cache management for both
- * directions
- *
- */
-struct kgsl_gpumem_sync_cache {
-	unsigned int gpuaddr;
-	unsigned int id;
-	unsigned int op;
-/* private: reserved for future use*/
-	unsigned int __pad[2]; /* For future binary compatibility */
-};
-
-#define KGSL_GPUMEM_CACHE_CLEAN (1 << 0)
-#define KGSL_GPUMEM_CACHE_TO_GPU KGSL_GPUMEM_CACHE_CLEAN
-
-#define KGSL_GPUMEM_CACHE_INV (1 << 1)
-#define KGSL_GPUMEM_CACHE_FROM_GPU KGSL_GPUMEM_CACHE_INV
-
-#define KGSL_GPUMEM_CACHE_FLUSH \
-	(KGSL_GPUMEM_CACHE_CLEAN | KGSL_GPUMEM_CACHE_INV)
-
-#define IOCTL_KGSL_GPUMEM_SYNC_CACHE \
-	_IOW(KGSL_IOC_TYPE, 0x37, struct kgsl_gpumem_sync_cache)
 
 #ifdef __KERNEL__
 #ifdef CONFIG_MSM_KGSL_DRM

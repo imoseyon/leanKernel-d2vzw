@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -154,7 +154,9 @@ static struct kobj_type ktype_mem_entry = {
 
 static struct mem_entry_stats mem_stats[] = {
 	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_KERNEL, kernel),
+#ifdef CONFIG_ANDROID_PMEM
 	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_PMEM, pmem),
+#endif
 #ifdef CONFIG_ASHMEM
 	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_ASHMEM, ashmem),
 #endif
@@ -512,29 +514,21 @@ static struct kgsl_memdesc_ops kgsl_coherent_ops = {
 
 void kgsl_cache_range_op(struct kgsl_memdesc *memdesc, int op)
 {
-	/*
-	 * If the buffer is mapped in the kernel operate on that address
-	 * otherwise use the user address
-	 */
-
-	void *addr = (memdesc->hostptr) ?
-		memdesc->hostptr : (void *) memdesc->useraddr;
-
+	void *addr = memdesc->hostptr;
 	int size = memdesc->size;
 
-	if (addr !=  NULL) {
-		switch (op) {
-		case KGSL_CACHE_OP_FLUSH:
-			dmac_flush_range(addr, addr + size);
-			break;
-		case KGSL_CACHE_OP_CLEAN:
-			dmac_clean_range(addr, addr + size);
-			break;
-		case KGSL_CACHE_OP_INV:
-			dmac_inv_range(addr, addr + size);
-			break;
-		}
+	switch (op) {
+	case KGSL_CACHE_OP_FLUSH:
+		dmac_flush_range(addr, addr + size);
+		break;
+	case KGSL_CACHE_OP_CLEAN:
+		dmac_clean_range(addr, addr + size);
+		break;
+	case KGSL_CACHE_OP_INV:
+		dmac_inv_range(addr, addr + size);
+		break;
 	}
+
 	outer_cache_range_op_sg(memdesc->sg, memdesc->sglen, op);
 }
 EXPORT_SYMBOL(kgsl_cache_range_op);
@@ -542,7 +536,7 @@ EXPORT_SYMBOL(kgsl_cache_range_op);
 static int
 _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			struct kgsl_pagetable *pagetable,
-			size_t size)
+			size_t size, unsigned int protflags)
 {
 	int pcount = 0, order, ret = 0;
 	int j, len, page_size, sglen_alloc, sglen = 0;
@@ -550,15 +544,13 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	pgprot_t page_prot = pgprot_writecombine(PAGE_KERNEL);
 	void *ptr;
 	unsigned int align;
-	int step = ((VMALLOC_END - VMALLOC_START)/8) >> PAGE_SHIFT;
 
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
 
 	page_size = (align >= ilog2(SZ_64K) && size >= SZ_64K)
 			? SZ_64K : PAGE_SIZE;
 	/* update align flags for what we actually use */
-	if (page_size != PAGE_SIZE)
-		kgsl_memdesc_set_align(memdesc, ilog2(page_size));
+	kgsl_memdesc_set_align(memdesc, ilog2(page_size));
 
 	/*
 	 * There needs to be enough room in the sg structure to be able to
@@ -675,41 +667,40 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	 * zeroed and unmaped each individual page, and then we had to turn
 	 * around and call flush_dcache_page() on that page to clear the caches.
 	 * This was killing us for performance. Instead, we found it is much
-	 * faster to allocate the pages without GFP_ZERO, map a chunk of the
-	 * range ('step' pages), memset it, flush it and then unmap
-	 * - this results in a factor of 4 improvement for speed for large
-	 * buffers. There is a small decrease in speed for small buffers,
-	 * but only on the order of a few microseconds at best. The 'step'
-	 * size is based on a guess at the amount of free vmalloc space, but
-	 * will scale down if there's not enough free space.
+	 * faster to allocate the pages without GFP_ZERO, map the entire range,
+	 * memset it, flush the range and then unmap - this results in a factor
+	 * of 4 improvement for speed for large buffers.  There is a small
+	 * increase in speed for small buffers, but only on the order of a few
+	 * microseconds at best.  The only downside is that there needs to be
+	 * enough temporary space in vmalloc to accomodate the map. This
+	 * shouldn't be a problem, but if it happens, fall back to a much slower
+	 * path
 	 */
-	for (j = 0; j < pcount; j += step) {
-		step = min(step, pcount - j);
 
-		ptr = vmap(&pages[j], step, VM_IOREMAP, page_prot);
+	ptr = vmap(pages, pcount, VM_IOREMAP, page_prot);
 
-		if (ptr != NULL) {
-			memset(ptr, 0, step * PAGE_SIZE);
-			dmac_flush_range(ptr, ptr + step * PAGE_SIZE);
-			vunmap(ptr);
-		} else {
-			int k;
-			/* Very, very, very slow path */
+	if (ptr != NULL) {
+		memset(ptr, 0, memdesc->size);
+		dmac_flush_range(ptr, ptr + memdesc->size);
+		vunmap(ptr);
+	} else {
+		/* Very, very, very slow path */
 
-			for (k = j; k < j + step; k++) {
-				ptr = kmap_atomic(pages[k]);
-				memset(ptr, 0, PAGE_SIZE);
-				dmac_flush_range(ptr, ptr + PAGE_SIZE);
-				kunmap_atomic(ptr);
-			}
-			/* scale down the step size to avoid this path */
-			if (step > 1)
-				step >>= 1;
+		for (j = 0; j < pcount; j++) {
+			ptr = kmap_atomic(pages[j]);
+			memset(ptr, 0, PAGE_SIZE);
+			dmac_flush_range(ptr, ptr + PAGE_SIZE);
+			kunmap_atomic(ptr);
 		}
 	}
 
 	outer_cache_range_op_sg(memdesc->sg, memdesc->sglen,
 				KGSL_CACHE_OP_FLUSH);
+
+	ret = kgsl_mmu_map(pagetable, memdesc, protflags);
+
+	if (ret)
+		goto done;
 
 	KGSL_STATS_ADD(size, kgsl_driver.stats.page_alloc,
 		kgsl_driver.stats.page_alloc_max);
@@ -737,7 +728,8 @@ kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	size = ALIGN(size, PAGE_SIZE * 2);
 
-	ret =  _kgsl_sharedmem_page_alloc(memdesc, pagetable, size);
+	ret =  _kgsl_sharedmem_page_alloc(memdesc, pagetable, size,
+		GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 	if (!ret)
 		ret = kgsl_page_alloc_map_kernel(memdesc);
 	if (ret)
@@ -751,7 +743,17 @@ kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
 			    struct kgsl_pagetable *pagetable,
 			    size_t size)
 {
-	return _kgsl_sharedmem_page_alloc(memdesc, pagetable, PAGE_ALIGN(size));
+	unsigned int protflags;
+
+	if (size == 0)
+		return -EINVAL;
+
+	protflags = GSL_PT_PAGE_RV;
+	if (!(memdesc->flags & KGSL_MEMFLAGS_GPUREADONLY))
+		protflags |= GSL_PT_PAGE_WV;
+
+	return _kgsl_sharedmem_page_alloc(memdesc, pagetable, size,
+		protflags);
 }
 EXPORT_SYMBOL(kgsl_sharedmem_page_alloc_user);
 
@@ -825,6 +827,12 @@ _kgsl_sharedmem_ebimem(struct kgsl_memdesc *memdesc,
 	}
 
 	result = memdesc_sg_phys(memdesc, memdesc->physaddr, size);
+
+	if (result)
+		goto err;
+
+	result = kgsl_mmu_map(pagetable, memdesc,
+		GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 
 	if (result)
 		goto err;

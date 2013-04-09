@@ -171,6 +171,7 @@ static int max17040_read_word(struct i2c_client *client, int reg)
 	return ret;
 }
 
+#ifdef CONFIG_SEC_DEBUG_FUELGAUGE_LOG
 static void max17040_dump_regs(struct i2c_client *client)
 {
 	int i;
@@ -193,6 +194,7 @@ static void max17040_dump_regs(struct i2c_client *client)
 
 	kfree(str);
 }
+#endif
 
 static void max17040_reset(struct i2c_client *client)
 {
@@ -448,18 +450,20 @@ static void max17040_work(struct work_struct *work)
 
 	max17040_get_vcell(chip->client);
 	max17040_get_soc(chip->client);
-	pr_info("%s : VCELL:%dmV, AVGVCELL:%dmV\n", __func__,
+	pr_debug("%s : VCELL:%dmV, AVGVCELL:%dmV\n", __func__,
 		chip->vcell/1000, chip->avgvcell/1000);
-	pr_info("%s : Raw SOC:%d%%, SOC:%d%%\n", __func__,
+	pr_debug("%s : Raw SOC:%d%%, SOC:%d%%\n", __func__,
 		chip->raw_soc, chip->soc);
-	pr_info("%s : CONFIG:0x%04x, RATE:0x%04x\n", __func__,
+	pr_debug("%s : CONFIG:0x%04x, RATE:0x%04x\n", __func__,
 		max17040_read_word(chip->client, MAX17040_RCOMP_MSB),
 		max17040_read_word(chip->client, 0x16));
-	pr_info("%s : STATUS:0x%04x, temperature:%d\n", __func__,
+	pr_debug("%s : STATUS:0x%04x, temperature:%d\n", __func__,
 		max17040_read_word(chip->client, 0x1a),
 		chip->temperature);
 
+#ifdef CONFIG_SEC_DEBUG_FUELGAUGE_LOG
 	max17040_dump_regs(chip->client);
+#endif
 
 	if ((chip->soc >= 5) && (chip->is_wakelock_active)) {
 		pr_info("%s : unlock lowbat_wake lock, charging\n", __func__);
@@ -785,7 +789,7 @@ static int max17040_set_property(struct power_supply *psy,
 		chip->chg_state = val->intval;
 		switch (val->intval) {
 		case POWER_SUPPLY_STATUS_FULL:
-			pr_info("%s: charger full state!\n", __func__);
+			pr_debug("%s: charger full state!\n", __func__);
 			/* adjust full soc */
 			max17040_adjust_fullsoc(chip->client);
 			break;

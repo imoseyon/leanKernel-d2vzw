@@ -276,6 +276,8 @@ void msm_restart(char mode, const char *cmd)
 			__raw_writel(0x77665511, restart_reason);
 		} else if (!strncmp(cmd, "nvrestore", 9)) {
 			__raw_writel(0x77665512, restart_reason);
+		} else if (!strncmp(cmd, "debuglevel", 10)) {
+			__raw_writel(0xabcd4948, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;

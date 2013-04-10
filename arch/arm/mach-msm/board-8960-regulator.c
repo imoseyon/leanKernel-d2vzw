@@ -565,11 +565,7 @@ static struct rpm_regulator_init_data
 msm_rpm_regulator_init_data[] __devinitdata = {
 	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
 	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
-#if defined(CONFIG_MACH_M2_ATT)
-	RPM_SMPS(S2, 0, 1, 1, 1350000, 1350000, NULL,      0, 2p40, NONE, NONE),
-#else
-	RPM_SMPS(S2, 0, 1, 1, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
-#endif
+	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL,      0, 1p60, NONE, NONE),
 	RPM_SMPS(S3, 0, 1, 1,  500000, 1150000, NULL, 100000, 4p80, NONE, NONE),
 	RPM_SMPS(S4, 1, 1, 0, 1800000, 1800000, NULL, 100000, 1p60, AUTO, AUTO),
 	RPM_SMPS(S7, 0, 1, 0, 1150000, 1150000, NULL, 100000, 3p20, NONE, NONE),

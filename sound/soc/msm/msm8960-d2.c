@@ -132,23 +132,6 @@ static struct clk *rx_bit_clk;
 static struct clk *tx_osr_clk;
 static struct clk *tx_bit_clk;
 
-struct ext_amp_work {
-	struct delayed_work dwork;
-};
-
-static struct ext_amp_work ext_amp_dwork;
-
-/* Work queue for delaying the amp power on-off to
-remove the static noise during SPK_PA enable */
-static void external_speaker_amp_work(struct work_struct *work)
-{
-	pr_debug("%s :: Top Speaker Amp enable\n", __func__);
-	gpio_direction_output(top_spk_pamp_gpio, 1);
-	pr_debug("%s: slepping 4 ms after turning on external "
-			" Top Speaker Ampl\n", __func__);
-	usleep_range(4000, 4000);
-}
-
 static void msm8960_ext_spk_power_amp_on(u32 spk)
 {
 	if (spk & (BOTTOM_SPK_AMP_POS | BOTTOM_SPK_AMP_NEG)) {
@@ -187,11 +170,8 @@ static void msm8960_ext_spk_power_amp_on(u32 spk)
 
 		if ((msm8960_ext_top_spk_pamp & TOP_SPK_AMP_POS) &&
 			(msm8960_ext_top_spk_pamp & TOP_SPK_AMP_NEG)) {
-			/* Delaying the amp power_on to remove the static noise
-			during SPK_PA enable */
-			schedule_delayed_work(
-			&ext_amp_dwork.dwork,
-			msecs_to_jiffies(30));
+			gpio_direction_output(top_spk_pamp_gpio, 1);
+			usleep_range(4000, 4000);
 		}
 	} else  {
 
@@ -224,6 +204,7 @@ static void msm8960_ext_spk_power_amp_off(u32 spk)
 		gpio_direction_output(top_spk_pamp_gpio, 0);
 		pr_debug("%s: slepping 4 ms after turning off external "
 			" Top Speaker Ampl\n", __func__);
+		usleep_range(4000, 4000);
 		msm8960_ext_top_spk_pamp = 0;
 	} else  {
 
@@ -2324,8 +2305,6 @@ static int __init msm8960_audio_init(void)
 
 	mutex_init(&cdc_mclk_mutex);
 	
-	INIT_DELAYED_WORK(&ext_amp_dwork.dwork,
-			external_speaker_amp_work);
 	return ret;
 
 }

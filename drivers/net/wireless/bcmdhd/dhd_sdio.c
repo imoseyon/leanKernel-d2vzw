@@ -6105,7 +6105,7 @@ clkwait:
 	}
 	/* Resched the DPC if ctrl cmd is pending on bus credit */
 	if (bus->ctrl_frame_stat) {
-		DHD_TRACE_HW4(("%s : tx_max : %d, tx_seq : %d, clkstate : %d \n",
+		DHD_TRACE(("%s : tx_max : %d, tx_seq : %d, clkstate : %d \n",
 			__FUNCTION__, bus->tx_max, bus->tx_seq, bus->clkstate));
 		resched = TRUE;
 	}

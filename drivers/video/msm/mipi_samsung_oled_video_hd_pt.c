@@ -1389,7 +1389,7 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 				 GAMMA_SmartDimming_COND_SET[i]);
 		}
 		pr_debug("SD: %03d %s\n", gamma_lux, pBuffer);
-		pr_info("bl_level:%d,cd:%d:Candela:%d aid_change:%d\n",
+		pr_debug("bl_level:%d,cd:%d:Candela:%d aid_change:%d\n",
 			bl_level, cd, gamma_lux, aid_change);
 	}
 	return aid_change;

@@ -29,6 +29,7 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
+#include <linux/sched.h>
 
 #include <trace/events/power.h>
 
@@ -467,7 +468,14 @@ static ssize_t store_scaling_max_freq
         ret = __cpufreq_set_policy(policy, &new_policy);
         policy->user_policy.max = policy->max;
 
-        thermal_max = max(policy->max, thermal_max);
+	if (policy->max > thermal_max) {
+	  struct task_struct *tsk;
+	  thermal_max = policy->max;
+	  for_each_process(tsk)
+		if (!strcmp(tsk->comm,"thermald"))
+			send_sig(SIGKILL, tsk, 0);
+	  pr_info("[imoseyon] thermald restarted at %d max.\n", thermal_max);
+	}
 
         return ret ? ret : count;
 }

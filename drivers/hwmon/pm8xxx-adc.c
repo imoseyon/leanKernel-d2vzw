@@ -194,12 +194,12 @@ int pm8921_enable_batt_therm(u8 en)
 		return rc;
 	}
 
-	if (en == 0) { 
+	if (en == 0) {
 		reg &= EN_BATT_THERM_MASK1;
-		pr_info("[pm8921] disable Vref_batt_therm\n");
+		pr_debug("[pm8921] disable Vref_batt_therm\n");
 	} else {
 		reg |= EN_BATT_THERM_MASK2;
-		pr_info("[pm8921] enable Vref_batt_therm\n");
+		pr_debug("[pm8921] enable Vref_batt_therm\n");
 	}
 
 	rc = pm8xxx_writeb(adc_pmic->dev->parent, CHG_CNTRL_2, reg);

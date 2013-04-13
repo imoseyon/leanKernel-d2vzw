@@ -1592,7 +1592,7 @@ static void sec_bat_monitor_work(struct work_struct *work)
 		}
 	}
 	pm8921_enable_batt_therm(0);
-	pr_info("%s: battery check is %s (%d time%c)\n",
+	pr_debug("%s: battery check is %s (%d time%c)\n",
 		__func__, info->present ? "present" : "absent",
 		i, (i == 1) ? ' ' : 's');
 
@@ -1624,11 +1624,11 @@ static void sec_bat_monitor_work(struct work_struct *work)
 #ifdef ADJUST_RCOMP_WITH_TEMPER
 	sec_fg_update_temper(info);
 #endif
-	pr_info("[battery] level(%d), vcell(%d), therm(%d)\n",
+	pr_debug("[battery] level(%d), vcell(%d), therm(%d)\n",
 		info->batt_soc, info->batt_vcell, info->batt_temp);
-	pr_info("[battery] cable_type(%d), chg_status(%d), health(%d)\n",
+	pr_debug("[battery] cable_type(%d), chg_status(%d), health(%d)\n",
 	 info->cable_type, info->charging_status, info->batt_health);
-	pr_info("[battery] timeout_chgstp(%d), chg_enabled(%d), rechg_status(%d)\n",
+	pr_debug("[battery] timeout_chgstp(%d), chg_enabled(%d), rechg_status(%d)\n",
 		info->is_timeout_chgstop, info->charging_enabled,
 		info->recharging_status);
 

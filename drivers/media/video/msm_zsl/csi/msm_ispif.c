@@ -256,6 +256,7 @@ static int msm_ispif_config(struct msm_ispif_params_list *params_list)
 					   ispif_params[i].cid_mask);
 	}
 
+	msm_io_w(0x40, ispif->base + ISPIF_CTRL_ADDR);
 	msm_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base + ISPIF_IRQ_MASK_ADDR);
 	msm_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base + ISPIF_IRQ_CLEAR_ADDR);
 	msm_io_w(ISPIF_IRQ_GLOBAL_CLEAR_CMD, ispif->base +

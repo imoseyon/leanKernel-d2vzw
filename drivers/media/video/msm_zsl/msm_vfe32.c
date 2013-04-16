@@ -787,6 +787,8 @@ static void vfe32_start_common(uint16_t operation_mode)
 			     vfe32_ctrl->register_total * 4);
 		msm_io_w_mb(7, vfe32_ctrl->vfebase + VFE_REG_UPDATE_CMD);
 		msm_io_w_mb(1, vfe32_ctrl->vfebase + VFE_CAMIF_COMMAND);
+		msm_io_w_mb(VFE_AXI_CFG_MASK,
+			vfe32_ctrl->vfebase + VFE_AXI_CFG);
 		v4l2_subdev_notify(&vfe32_ctrl->subdev,
 				   NOTIFY_ISPIF_STREAM,
 				   (void *)ISPIF_STREAM(PIX_0 | RDI_0 | RDI_1,

@@ -34,6 +34,10 @@ void fsm_restart(char mode, const char *cmd);
 #define msm_set_restart_mode(mode)
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+extern void *restart_reason;
+#endif
+
 extern int pmic_reset_irq;
 
 #endif

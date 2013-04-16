@@ -35,6 +35,10 @@
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include "smd_private.h"
 
 struct subsys_soc_restart_order {
@@ -547,6 +551,20 @@ static int ssr_panic_handler(struct notifier_block *this,
 			dev->desc->crash_shutdown(dev->desc);
 	return NOTIFY_DONE;
 }
+
+int ssr_panic_handler_for_sec_dbg(void)
+{
+	struct subsys_device *dev;
+
+	list_for_each_entry(dev, &subsystem_list, list) {
+		if (dev->desc->crash_shutdown)
+			dev->desc->crash_shutdown(dev->desc);
+		printk(KERN_EMERG "subsystem(%s) shtdown crash\n",
+				dev->desc->name);
+	}
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL(ssr_panic_handler_for_sec_dbg);
 
 static struct notifier_block panic_nb = {
 	.notifier_call  = ssr_panic_handler,

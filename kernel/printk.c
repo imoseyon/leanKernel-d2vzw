@@ -41,12 +41,17 @@
 #include <linux/cpu.h>
 #include <linux/notifier.h>
 #include <linux/rculist.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#include <linux/io.h>
+#endif
 
 #include <asm/uaccess.h>
 
 #include <mach/msm_rtb.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
+
 
 /*
  * Architectures can override it:
@@ -188,6 +193,165 @@ static int __init log_buf_len_setup(char *str)
 	return 0;
 }
 early_param("log_buf_len", log_buf_len_setup);
+
+#ifdef CONFIG_SEC_DEBUG
+#define CONFIG_PRINTK_NOCACHE
+/*
+ * Example usage: sec_log=256K@0x45000000
+ *
+ * In above case, log_buf size is 256KB and its physical base address
+ * is 0x45000000. Actually, *(int *)(base - 8) is log_magic and *(int
+ * *)(base - 4) is log_ptr. Therefore we reserve (size + 8) bytes from
+ * (base - 8)
+ */
+#define LOG_MAGIC 0x4d474f4c /* "LOGM" */
+
+/* These variables are also protected by logbuf_lock */
+static unsigned *sec_log_ptr;
+static char *sec_log_buf;
+static unsigned sec_log_size;
+
+#ifdef CONFIG_PRINTK_NOCACHE
+static unsigned sec_log_save_size;
+static unsigned long long sec_log_save_base;
+unsigned long long sec_log_reserve_base;
+unsigned sec_log_reserve_size;
+unsigned int *sec_log_irq_en;
+#endif
+static inline void emit_sec_log_char(char c)
+{
+    if (sec_log_buf && sec_log_ptr) {
+        sec_log_buf[*sec_log_ptr & (sec_log_size - 1)] = c;
+        (*sec_log_ptr)++;
+    }
+}
+
+
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+void sec_debug_subsys_set_kloginfo(unsigned int *idx_paddr,
+    unsigned int *log_paddr, unsigned int *size)
+{
+    *idx_paddr = (unsigned int)&log_end -
+        CONFIG_PAGE_OFFSET + CONFIG_PHYS_OFFSET;
+    *log_paddr = (unsigned int)__log_buf -
+        CONFIG_PAGE_OFFSET + CONFIG_PHYS_OFFSET;
+    *size = __LOG_BUF_LEN;
+}
+#endif
+
+
+#ifdef CONFIG_PRINTK_NOCACHE
+static int __init printk_remap_nocache(void)
+{
+    void __iomem *nocache_base = 0;
+    unsigned *sec_log_mag;
+    unsigned long flags;
+    unsigned start;
+    int rc = 0;
+
+    sec_getlog_supply_kloginfo(log_buf);
+
+    if (0 == sec_debug_is_enabled()) {
+#ifdef CONFIG_SEC_SSR_DUMP
+        nocache_base = ioremap_nocache(sec_log_save_base - 4096,
+        sec_log_save_size + 8192);
+        nocache_base = nocache_base + 4096;
+        sec_log_mag = nocache_base - 8;
+        sec_log_ptr = nocache_base - 4;
+        sec_log_buf = nocache_base;
+        ramdump_kernel_log_addr = sec_log_ptr;
+        pr_debug("ramdump_kernel_log_addr = 0x%x\n",
+        ramdump_kernel_log_addr);
+        sec_log_size = sec_log_save_size;
+        sec_log_irq_en = nocache_base - 0xC ;
+#endif
+
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+        nocache_base = ioremap_nocache(sec_log_save_base - 4096,
+        sec_log_save_size + 8192);
+        nocache_base = nocache_base + 4096;
+
+        sec_log_mag = nocache_base - 8;
+        sec_log_ptr = nocache_base - 4;
+        sec_log_buf = nocache_base;
+        sec_log_size = sec_log_save_size;
+        sec_log_irq_en = nocache_base - 0xC ;
+#endif
+        return rc;
+    }
+    pr_err("%s: sec_log_save_size %d at sec_log_save_base 0x%x\n",
+    __func__, sec_log_save_size, (unsigned int)sec_log_save_base);
+    pr_err("%s: sec_log_reserve_size %d at sec_log_reserve_base 0x%x\n",
+    __func__, sec_log_reserve_size, (unsigned int)sec_log_reserve_base);
+
+    nocache_base = ioremap_nocache(sec_log_save_base - 4096,
+                    sec_log_save_size + 8192);
+    nocache_base = nocache_base + 4096;
+
+    sec_log_mag = nocache_base - 8;
+    sec_log_ptr = nocache_base - 4;
+    sec_log_buf = nocache_base;
+#ifdef CONFIG_SEC_SSR_DUMP
+        ramdump_kernel_log_addr = sec_log_ptr;
+        pr_info("%s: ramdump_kernel_log_addr = 0x%x\n",
+        __func__, ramdump_kernel_log_addr);
+#endif
+    sec_log_size = sec_log_save_size;
+    sec_log_irq_en = nocache_base - 0xC ;
+
+    raw_spin_lock_irqsave(&logbuf_lock, flags);
+    if (*sec_log_mag != LOG_MAGIC) {
+        *sec_log_ptr = 0;
+        *sec_log_mag = LOG_MAGIC;
+    }
+
+    start = min(con_start, log_start);
+    while (start != log_end) {
+        emit_sec_log_char(__log_buf
+                  [start++ & (__LOG_BUF_LEN - 1)]);
+    }
+
+    raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+    return rc;
+}
+#endif
+
+static int __init sec_log_setup(char *str)
+{
+    unsigned size = memparse(str, &str);
+
+/*
+    unsigned *sec_log_mag;
+    unsigned start;
+    unsigned long flags;
+*/
+
+    if (size && (size == roundup_pow_of_two(size)) && (*str == '@')) {
+        unsigned long long base = 0;
+        base = simple_strtoul(++str, &str, 0);
+
+#ifdef CONFIG_PRINTK_NOCACHE
+        sec_log_save_size = size;
+        sec_log_save_base = base;
+        sec_log_size = size;
+        sec_log_reserve_base = base - 8;
+        sec_log_reserve_size = size + 8;
+
+        return 1;
+#endif
+    }
+    return 1;
+}
+
+__setup("sec_log=", sec_log_setup);
+
+#else
+
+static inline void emit_sec_log_char(char c)
+{
+}
+
+#endif
 
 void __init setup_log_buf(int early)
 {
@@ -735,6 +899,10 @@ static void emit_log_char(char c)
 		con_start = log_end - log_buf_len;
 	if (logged_chars < log_buf_len)
 		logged_chars++;
+
+#ifdef CONFIG_SEC_DEBUG
+    emit_sec_log_char(c);
+#endif
 }
 
 /*
@@ -1889,4 +2057,8 @@ void kmsg_dump(enum kmsg_dump_reason reason)
 		dumper->dump(dumper, reason, s1, l1, s2, l2);
 	rcu_read_unlock();
 }
+#ifdef CONFIG_PRINTK_NOCACHE
+module_init(printk_remap_nocache);
+#endif
+
 #endif

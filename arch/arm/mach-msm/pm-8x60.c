@@ -52,6 +52,9 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 /******************************************************************************
  * Debug Definitions
@@ -519,6 +522,10 @@ static inline bool msm_pm_l2x0_power_collapse(void)
 }
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+static int debug_power_collaspe_status[2] = {0};
+#endif
+
 static bool __ref msm_pm_spm_power_collapse(
 	unsigned int cpu, bool from_idle, bool notify_rpm)
 {
@@ -549,8 +556,17 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-	collapsed = msm_pm_l2x0_power_collapse();
 
+#ifdef CONFIG_SEC_DEBUG
+	debug_power_collaspe_status[smp_processor_id()] =
+			(from_idle<<8)|(notify_rpm<<4)|1;
+	secdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
+#endif
+	collapsed = msm_pm_l2x0_power_collapse();
+#ifdef CONFIG_SEC_DEBUG
+	secdbg_sched_msg("-pc(%d)", collapsed);
+	debug_power_collaspe_status[smp_processor_id()] = 0;
+#endif
 	msm_pm_boot_config_after_pc(cpu);
 
 	if (collapsed) {

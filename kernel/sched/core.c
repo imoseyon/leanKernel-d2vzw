@@ -81,6 +81,10 @@
 #include <asm/paravirt.h>
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include "sched.h"
 #include "../workqueue_sched.h"
 
@@ -3387,6 +3391,9 @@ need_resched:
 		 */
 		cpu = smp_processor_id();
 		rq = cpu_rq(cpu);
+#ifdef CONFIG_SEC_DEBUG
+		sec_debug_task_sched_log(cpu, rq->curr);
+#endif
 	} else
 		raw_spin_unlock_irq(&rq->lock);
 
@@ -7085,6 +7092,13 @@ void __init sched_init(void)
 {
 	int i, j;
 	unsigned long alloc_size = 0, ptr;
+
+#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_FAIR_GROUP_SCHED
+	sec_gaf_supply_rqinfo(offsetof(struct rq, curr),
+			offsetof(struct cfs_rq, rq));
+#endif
+#endif
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);

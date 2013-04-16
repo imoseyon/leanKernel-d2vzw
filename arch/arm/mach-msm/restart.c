@@ -39,6 +39,12 @@
 #include <asm/kexec.h>
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#include <linux/notifier.h>
+#include <linux/ftrace.h>
+#endif
+
 #define WDT0_RST	0x38
 #define WDT0_EN		0x40
 #define WDT0_BARK_TIME	0x4C
@@ -59,7 +65,9 @@ static int ssr_magic_number = 0;
 #endif
 
 static int restart_mode;
+#ifndef CONFIG_SEC_DEBUG
 void *restart_reason;
+#endif
 
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
@@ -75,7 +83,7 @@ module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 
 static int panic_prep_restart(struct notifier_block *this,
-			      unsigned long event, void *ptr)
+				  unsigned long event, void *ptr)
 {
 	in_panic = 1;
 	return NOTIFY_DONE;
@@ -90,14 +98,25 @@ static void set_dload_mode(int on)
 	if (dload_mode_addr) {
 		__raw_writel(on ? 0xE47B337D : 0, dload_mode_addr);
 		__raw_writel(on ? 0xCE14091A : 0,
-		       dload_mode_addr + sizeof(unsigned int));
+			   dload_mode_addr + sizeof(unsigned int));
 #ifdef CONFIG_LGE_CRASH_HANDLER
 		__raw_writel(on ? LGE_ERROR_HANDLER_MAGIC_NUM : 0,
 				lge_error_handler_cookie_addr);
 #endif
 		mb();
+#ifdef CONFIG_SEC_DEBUG
+		pr_err("set_dload_mode <%d> ( %lx )\n", on, CALLER_ADDR0);
+#endif
 	}
 }
+
+#ifdef CONFIG_SEC_DEBUG
+void sec_debug_set_qc_dload_magic(int on)
+{
+	pr_info("%s: on=%d\n", __func__, on);
+	set_dload_mode(on);
+}
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -238,8 +257,35 @@ void set_kernel_crash_magic_number(void)
 
 void msm_restart(char mode, const char *cmd)
 {
-
+#ifndef CONFIG_SEC_DEBUG
 #ifdef CONFIG_MSM_DLOAD_MODE
+
+	/* This looks like a normal reboot at this point. */
+	set_dload_mode(0);
+
+	/* Write download mode flags if we're panic'ing */
+	set_dload_mode(in_panic);
+
+	/* Write download mode flags if restart_mode says so */
+	if (restart_mode == RESTART_DLOAD)
+		set_dload_mode(1);
+
+	/* Kill download mode if master-kill switch is set */
+	if (!download_mode)
+		set_dload_mode(0);
+#endif
+#endif
+
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+#ifdef CONFIG_MSM_DLOAD_MODE
+#ifdef CONFIG_SEC_DEBUG
+
+	if (sec_debug_is_enabled()
+	&& ((restart_mode == RESTART_DLOAD) || in_panic))
+		set_dload_mode(1);
+	else
+		set_dload_mode(0);
+#else
 
 	/* This looks like a normal reboot at this point. */
 	set_dload_mode(0);
@@ -261,6 +307,8 @@ void msm_restart(char mode, const char *cmd)
 		set_dload_mode(0);
 #endif
 
+#endif
+#endif
 	printk(KERN_NOTICE "Going down for restart now\n");
 
 	pm8xxx_reset_pwr_off(1);
@@ -282,11 +330,40 @@ void msm_restart(char mode, const char *cmd)
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
 			__raw_writel(0x6f656d00 | code, restart_reason);
+#ifdef CONFIG_SEC_DEBUG
+		} else if (!strncmp(cmd, "sec_debug_hw_reset", 18)) {
+			__raw_writel(0x776655ee, restart_reason);
+#endif
+#ifdef CONFIG_SEC_PERIPHERAL_SECURE_CHK
+		} else if (!strncmp(cmd, "peripheral_hw_reset", 19)) {
+			__raw_writel(0x77665507, restart_reason);
+			printk(KERN_NOTICE "peripheral_hw_reset C777!!!!\n");
+#endif
+#ifdef CONFIG_SEC_L1_DCACHE_PANIC_CHK
+		} else if (!strncmp(cmd, "l1_dcache_reset", 15)) {
+			__raw_writel(0x77665588, restart_reason);
+			printk(KERN_NOTICE "l1_dcache_reset !!!!\n");
+#endif
+#ifdef CONFIG_SEC_SSR_DEBUG_LEVEL_CHK
+		} else if (!strncmp(cmd, "cpdebug", 7) /* set cp debug level */
+				&& !kstrtoul(cmd + 7, 0, &value)) {
+			__raw_writel(0xfedc0000 | value, restart_reason);
+#endif
+#ifdef CONFIG_SEC_DEBUG
+		} else {
+			__raw_writel(0x12345678, restart_reason);
+		}
+	} else {
+		printk(KERN_NOTICE "%s : clear reset flag\r\n", __func__);
+		/* clear abnormal reset flag */
+		__raw_writel(0x12345678, restart_reason);
+#else
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	} else {
 		__raw_writel(0x77665501, restart_reason);
+#endif
 	}
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	if (in_panic == 1)
@@ -310,6 +387,19 @@ reset:
 	mdelay(10000);
 	printk(KERN_ERR "Restarting has failed\n");
 }
+
+#ifdef CONFIG_SEC_DEBUG
+static int dload_mode_normal_reboot_handler(struct notifier_block *nb,
+				unsigned long l, void *p)
+{
+	set_dload_mode(0);
+	return 0;
+}
+
+static struct notifier_block dload_reboot_block = {
+	.notifier_call = dload_mode_normal_reboot_handler
+};
+#endif
 
 static int __init msm_pmic_restart_init(void)
 {
@@ -351,6 +441,16 @@ static int __init msm_restart_init(void)
 #ifdef CONFIG_MSM_DLOAD_MODE
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
+#ifdef CONFIG_SEC_DEBUG
+	register_reboot_notifier(&dload_reboot_block);
+#endif
+/* Reset detection is switched on below.*/
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+	if (!sec_debug_is_enabled()) {
+		set_dload_mode(0);
+	} else
+#endif
+
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	lge_error_handler_cookie_addr = MSM_IMEM_BASE +
 		LGE_ERROR_HANDLER_MAGIC_ADDR;
@@ -358,7 +458,9 @@ static int __init msm_restart_init(void)
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();
+#ifndef CONFIG_SEC_DEBUG
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+#endif
 	pm_power_off = msm_power_off;
 #ifdef CONFIG_KEXEC_HARDBOOT
 	kexec_hardboot_hook = msm_kexec_hardboot;

@@ -1553,7 +1553,7 @@ static void msm_otg_mhl_notify_online(int on)
 	}
 
 	if (queue && phy->state != OTG_STATE_UNDEFINED)
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 }
 
 static bool msm_otg_is_mhl(struct msm_otg *motg)
@@ -2053,7 +2053,7 @@ static void msm_ta_detect_work(struct work_struct *w)
 		motg->cur_power = 0;
 		msm_otg_start_peripheral(otg, 0);
 		otg->phy->state = OTG_STATE_B_IDLE;
-		schedule_work(&motg->sm_work);
+		queue_work(system_nrt_wq, &motg->sm_work);
 		return;
 	}
 	schedule_delayed_work(&motg->check_ta_work, MSM_CHECK_TA_DELAY);
@@ -3096,7 +3096,7 @@ void msm_otg_set_charging_state(bool enable)
 			clear_bit(B_SESS_VLD, &motg->inputs);
 	}
 
-	schedule_work(&motg->sm_work);
+	queue_work(system_nrt_wq, &motg->sm_work);
 }
 EXPORT_SYMBOL_GPL(msm_otg_set_charging_state);
 

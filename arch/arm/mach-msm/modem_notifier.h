@@ -24,6 +24,12 @@
 #define MODEM_NOTIFIER_END_RESET 0x2
 #define MODEM_NOTIFIER_SMSM_INIT 0x3
 
+#ifdef CONFIG_SEC_DEBUG_LOW_LOG
+extern unsigned long long sec_log_reserve_base;
+extern int sec_debug_is_enabled(void);
+extern unsigned sec_debug_get_reset_reason(void);
+#endif
+
 extern int modem_register_notifier(struct notifier_block *nb);
 extern int modem_unregister_notifier(struct notifier_block *nb);
 extern void modem_notify(void *data, unsigned int state);

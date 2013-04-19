@@ -1688,9 +1688,9 @@ static int msm_close(struct file *f)
 	}
 
 	mutex_lock(&pcam->vid_lock);
-#if defined(CONFIG_MSM_IOMMU)
 	mutex_lock(&pcam_inst->inst_lock);
 
+#if defined(CONFIG_MSM_IOMMU)
 	if (pcam_inst->streamon) {
 		/*something went wrong since instance
 		is closing without streamoff*/

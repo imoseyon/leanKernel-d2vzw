@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -52,6 +52,9 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 /******************************************************************************
  * Debug Definitions
@@ -117,7 +120,6 @@ static char *msm_pm_sleep_mode_labels[MSM_PM_SLEEP_MODE_NR] = {
 
 static struct hrtimer pm_hrtimer;
 static struct msm_pm_sleep_ops pm_sleep_ops;
-static bool msm_pm_ldo_retention_enabled = true;
 /*
  * Write out the attribute.
  */
@@ -519,6 +521,10 @@ static inline bool msm_pm_l2x0_power_collapse(void)
 }
 #endif
 
+#ifdef CONFIG_SEC_DEBUG
+static int debug_power_collaspe_status[2] = {0};
+#endif
+
 static bool __ref msm_pm_spm_power_collapse(
 	unsigned int cpu, bool from_idle, bool notify_rpm)
 {
@@ -549,8 +555,17 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-	collapsed = msm_pm_l2x0_power_collapse();
 
+#ifdef CONFIG_SEC_DEBUG
+	debug_power_collaspe_status[smp_processor_id()] =
+			(from_idle<<8)|(notify_rpm<<4)|1;
+	secdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
+#endif
+	collapsed = msm_pm_l2x0_power_collapse();
+#ifdef CONFIG_SEC_DEBUG
+	secdbg_sched_msg("-pc(%d)", collapsed);
+	debug_power_collaspe_status[smp_processor_id()] = 0;
+#endif
 	msm_pm_boot_config_after_pc(cpu);
 
 	if (collapsed) {
@@ -797,14 +812,6 @@ int msm_pm_idle_prepare(struct cpuidle_device *dev,
 			}
 			/* fall through */
 		case MSM_PM_SLEEP_MODE_RETENTION:
-			/*
-			 * The Krait BHS regulator doesn't have enough head
-			 * room to drive the retention voltage on LDO and so
-			 * has disabled retention
-			 */
-			if (!msm_pm_ldo_retention_enabled)
-				break;
-
 			if (!allow)
 				break;
 
@@ -978,39 +985,6 @@ void msm_pm_cpu_enter_lowpower(unsigned int cpu)
 	else
 		msm_pm_swfi();
 }
-
-static void msm_pm_ack_retention_disable(void *data)
-{
-	/*
-	 * This is a NULL function to ensure that the core has woken up
-	 * and is safe to disable retention.
-	 */
-}
-/**
- * msm_pm_enable_retention() - Disable/Enable retention on all cores
- * @enable: Enable/Disable retention
- *
- */
-void msm_pm_enable_retention(bool enable)
-{
-	msm_pm_ldo_retention_enabled = enable;
-	/*
-	 * If retention is being disabled, wakeup all online core to ensure
-	 * that it isn't executing retention. Offlined cores need not be woken
-	 * up as they enter the deepest sleep mode, namely RPM assited power
-	 * collapse
-	 */
-	if (!enable) {
-		preempt_disable();
-		smp_call_function_many(cpu_online_mask,
-				msm_pm_ack_retention_disable,
-				NULL, true);
-		preempt_enable();
-
-
-	}
-}
-EXPORT_SYMBOL(msm_pm_enable_retention);
 
 static int msm_pm_enter(suspend_state_t state)
 {

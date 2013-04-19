@@ -35,6 +35,10 @@
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include "smd_private.h"
 
 struct subsys_soc_restart_order {
@@ -147,6 +151,7 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 	int old_val = restart_level;
+	int subtype;
 
 	if (cpu_is_msm9615()) {
 		pr_err("Only Phase 1 subsystem restart is supported\n");
@@ -159,7 +164,9 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 
 	switch (restart_level) {
 	case RESET_SUBSYS_INDEPENDENT:
-		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		subtype = socinfo_get_platform_subtype();
+		if ((subtype == PLATFORM_SUBTYPE_SGLTE) ||
+			(subtype == PLATFORM_SUBTYPE_SGLTE2)) {
 			pr_info("Phase 3 is currently unsupported. Using phase 2 instead.\n");
 			restart_level = RESET_SUBSYS_COUPLED;
 		}
@@ -547,6 +554,20 @@ static int ssr_panic_handler(struct notifier_block *this,
 			dev->desc->crash_shutdown(dev->desc);
 	return NOTIFY_DONE;
 }
+
+int ssr_panic_handler_for_sec_dbg(void)
+{
+	struct subsys_device *dev;
+
+	list_for_each_entry(dev, &subsystem_list, list) {
+		if (dev->desc->crash_shutdown)
+			dev->desc->crash_shutdown(dev->desc);
+		printk(KERN_EMERG "subsystem(%s) shtdown crash\n",
+				dev->desc->name);
+	}
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL(ssr_panic_handler_for_sec_dbg);
 
 static struct notifier_block panic_nb = {
 	.notifier_call  = ssr_panic_handler,

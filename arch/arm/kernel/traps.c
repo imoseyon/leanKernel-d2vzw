@@ -37,6 +37,10 @@
 
 #include "signal.h"
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include <trace/events/exception.h>
 
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
@@ -312,7 +316,9 @@ void die(const char *str, struct pt_regs *regs, int err)
 	if (bug_type != BUG_TRAP_TYPE_NONE)
 		str = "Oops - BUG";
 	ret = __die(str, err, thread, regs);
-
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+	sec_debug_save_die_info(str, regs);
+#endif
 	if (regs && kexec_should_crash(thread->task))
 		crash_kexec(regs);
 

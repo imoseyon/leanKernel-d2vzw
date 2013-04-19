@@ -29,6 +29,10 @@
 
 #include <asm/ioctls.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 /*
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  *
@@ -763,6 +767,43 @@ static int __init init_log(struct logger_log *log)
 	return 0;
 }
 
+#ifdef CONFIG_SEC_DEBUG
+int sec_debug_subsys_set_logger_info(
+	struct sec_debug_subsys_logger_log_info *log_info)
+{
+	/*
+	struct secdbg_logger_log_info log_info = {
+		.stinfo = {
+			.buffer_offset = offsetof(struct logger_log, buffer),
+			.w_off_offset = offsetof(struct logger_log, w_off),
+			.head_offset = offsetof(struct logger_log, head),
+			.size_offset = offsetof(struct logger_log, size),
+			.size_t_typesize = sizeof(size_t),
+		},
+	};
+	*/
+	log_info->stinfo.buffer_offset = offsetof(struct logger_log, buffer);
+	log_info->stinfo.w_off_offset = offsetof(struct logger_log, w_off);
+	log_info->stinfo.head_offset = offsetof(struct logger_log, head);
+	log_info->stinfo.size_offset = offsetof(struct logger_log, size);
+	log_info->stinfo.size_t_typesize = sizeof(size_t);
+
+	log_info->main.log_paddr = __pa(&log_main);
+	log_info->main.buffer_paddr = __pa(_buf_log_main);
+
+	log_info->system.log_paddr = __pa(&log_system);
+	log_info->system.buffer_paddr = __pa(_buf_log_system);
+
+	log_info->events.log_paddr = __pa(&log_events);
+	log_info->events.buffer_paddr = __pa(_buf_log_events);
+
+	log_info->radio.log_paddr = __pa(&log_radio);
+	log_info->radio.buffer_paddr = __pa(_buf_log_radio);
+
+	return 0;
+}
+#endif
+
 static int __init logger_init(void)
 {
 	int ret;
@@ -783,6 +824,10 @@ static int __init logger_init(void)
 	if (unlikely(ret))
 		goto out;
 
+#ifdef CONFIG_SEC_DEBUG
+	sec_getlog_supply_loggerinfo(_buf_log_main, _buf_log_radio,
+			_buf_log_events, _buf_log_system);
+#endif
 out:
 	return ret;
 }

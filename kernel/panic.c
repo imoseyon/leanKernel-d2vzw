@@ -25,6 +25,10 @@
 #include <linux/dmi.h>
 #include <linux/coresight.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
 
@@ -130,6 +134,11 @@ void panic(const char *fmt, ...)
 	 */
 	if (!test_taint(TAINT_DIE) && oops_in_progress <= 1)
 		dump_stack();
+#endif
+
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
+	sec_debug_save_panic_info(buf,
+			(unsigned int)__builtin_return_address(0));
 #endif
 
 	/*

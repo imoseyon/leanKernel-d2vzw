@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_common.c 375022 2012-12-17 06:11:41Z $
+ * $Id: dhd_common.c 383289 2013-02-06 06:42:35Z $
  */
 #include <typedefs.h>
 #include <osl.h>
@@ -278,12 +278,12 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 
 	ret = dhd_prot_ioctl(dhd_pub, ifindex, ioc, buf, len);
 #if defined(CUSTOMER_HW4)
-	if ((ret || ret == -ETIMEDOUT) && (dhd_pub->up))
+		if ((ret || ret == -ETIMEDOUT) && (dhd_pub->up))
 #else
-	if ((ret) && (dhd_pub->up))
+		if ((ret) && (dhd_pub->up))
 #endif /* CUSTOMER_HW4 */
-		/* Send hang event only if dhd_open() was success */
-		dhd_os_check_hang(dhd_pub, ifindex, ret);
+			/* Send hang event only if dhd_open() was success */
+			dhd_os_check_hang(dhd_pub, ifindex, ret);
 
 	dhd_os_proto_unblock(dhd_pub);
 
@@ -299,7 +299,7 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 			DHD_ERROR(("%s: WLC_IOCTL: cmd: %d, ret = %d\n",
 				__FUNCTION__, ioc->cmd, ret));
 	}
-#endif 
+#endif /* OEM_ANDROID && CUSTOMER_HW4 */
 
 	return ret;
 }
@@ -579,7 +579,8 @@ dhd_prec_enq(dhd_pub_t *dhdp, struct pktq *q, void *pkt, int prec)
 	if (pktq_pfull(q, prec))
 		eprec = prec;
 	else if (pktq_full(q)) {
-		pktq_peek_tail(q, &eprec);
+		p = pktq_peek_tail(q, &eprec);
+		ASSERT(p);
 		if (eprec > prec || eprec < 0)
 			return FALSE;
 	}
@@ -599,7 +600,8 @@ dhd_prec_enq(dhd_pub_t *dhdp, struct pktq *q, void *pkt, int prec)
 	}
 
 	/* Enqueue */
-	pktq_penq(q, prec, pkt);
+	p = pktq_penq(q, prec, pkt);
+	ASSERT(p);
 
 	return TRUE;
 }
@@ -970,7 +972,7 @@ wl_show_host_event(wl_event_msg_t *event, void *event_data)
 	case WLC_E_SERVICE_FOUND:
 	case WLC_E_P2PO_ADD_DEVICE:
 	case WLC_E_P2PO_DEL_DEVICE:
-		DHD_EVENT(("MACEVENT: %s, MAC: %s\n", event_name, eabuf));
+		DHD_EVENT(("MACEVENT: %s, MAC %s\n", event_name, eabuf));
 		break;
 
 	default:
@@ -1040,6 +1042,11 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 	case WLC_E_IF:
 		{
 		dhd_if_event_t *ifevent = (dhd_if_event_t *)event_data;
+		/* Ignore the event if NOIF is set */
+		if (ifevent->flags & WLC_E_IF_FLAGS_BSSCFG_NOIF) {
+			DHD_ERROR(("WLC_E_IF: NO_IF set, event Ignored\r\n"));
+			return (BCME_OK);
+		}
 #ifdef PROP_TXSTATUS
 			{
 		uint8* ea = pvt_data->eth.ether_dhost;
@@ -1537,6 +1544,7 @@ dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx)
 	char iovbuf[32];
 	int retcode;
 
+
 	if (dhd == NULL) return;
 	if (dhd->arp_version == 1)
 		idx = 0;
@@ -1841,7 +1849,6 @@ dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd)
 	int bcn_li_dtim = 1; /* deafult no dtim skip setting */
 	int ret = -1;
 	int dtim_assoc = 0;
-
 	int ap_beacon = 0;
 
 	/* Check if associated */
@@ -2004,7 +2011,6 @@ dhd_pno_set(dhd_pub_t *dhd, wlc_ssid_t* ssids_local, int nssid, ushort scan_fr,
 		err = -1;
 		return err;
 	}
-
 #ifndef WL_SCHED_SCAN
 	if (!dhd_support_sta_mode(dhd))
 		return err;
@@ -2119,7 +2125,7 @@ int dhd_keep_alive_onoff(dhd_pub_t *dhd)
 {
 	char 				buf[256];
 	const char 			*str;
-	wl_mkeep_alive_pkt_t	mkeep_alive_pkt;
+	wl_mkeep_alive_pkt_t	mkeep_alive_pkt = {0};
 	wl_mkeep_alive_pkt_t	*mkeep_alive_pktp;
 	int					buf_len;
 	int					str_len;

@@ -24,6 +24,10 @@ extern const char linux_proc_banner[];
  */
 #define KERN_CONT	"<c>"
 
+#ifdef CONFIG_SEC_SSR_DUMP
+extern unsigned *ramdump_kernel_log_addr;
+#endif
+
 extern int console_printk[];
 
 #define console_loglevel (console_printk[0])

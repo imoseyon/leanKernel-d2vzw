@@ -158,7 +158,13 @@ static char *log_buf = __log_buf;
 static int log_buf_len = __LOG_BUF_LEN;
 static unsigned logged_chars; /* Number of chars produced since last read+clear operation */
 static int saved_console_loglevel = -1;
-
+#ifdef CONFIG_SEC_SSR_DUMP
+/*
+ * variable to hold the ioremap address of kernel log buffer,
+ * which is reused in ramdump.c
+ */
+unsigned *ramdump_kernel_log_addr;
+#endif
 #ifdef CONFIG_KEXEC
 /*
  * This appends the listed symbols to /proc/vmcoreinfo
@@ -260,8 +266,6 @@ static int __init printk_remap_nocache(void)
         sec_log_ptr = nocache_base - 4;
         sec_log_buf = nocache_base;
         ramdump_kernel_log_addr = sec_log_ptr;
-        pr_debug("ramdump_kernel_log_addr = 0x%x\n",
-        ramdump_kernel_log_addr);
         sec_log_size = sec_log_save_size;
         sec_log_irq_en = nocache_base - 0xC ;
 #endif
@@ -293,8 +297,6 @@ static int __init printk_remap_nocache(void)
     sec_log_buf = nocache_base;
 #ifdef CONFIG_SEC_SSR_DUMP
         ramdump_kernel_log_addr = sec_log_ptr;
-        pr_info("%s: ramdump_kernel_log_addr = 0x%x\n",
-        __func__, ramdump_kernel_log_addr);
 #endif
     sec_log_size = sec_log_save_size;
     sec_log_irq_en = nocache_base - 0xC ;

@@ -134,8 +134,19 @@ static int ramdump_read(struct file *filep, char __user *buf, size_t count,
 
 	copy_size = min(count, (size_t)MAX_IOREMAP_SIZE);
 	copy_size = min((unsigned long)copy_size, data_left);
+#ifdef CONFIG_SEC_SSR_DUMP
+	/* When ramdump device is Kernel, avoid the ioremap once again.
+	 * Assign the addres which was already returned by ioremap function
+	 * in printk.c file
+	 */
+	if (!strcmp((const char *)rd_dev->name, "ramdump_kernel_log")) {
+		device_mem = ramdump_kernel_log_addr;
+	} else {
+#endif
 	device_mem = ioremap_nocache(addr, copy_size);
-
+#ifdef CONFIG_SEC_SSR_DUMP
+	}
+#endif
 	if (device_mem == NULL) {
 		pr_err("Ramdump(%s): Unable to ioremap: addr %lx, size %x\n",
 			rd_dev->name, addr, copy_size);

@@ -29,6 +29,10 @@
 #include <mach/socinfo.h>
 #include <mach/msm_smsm.h>
 
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
+
 #include "smd_private.h"
 #include "modem_notifier.h"
 #include "ramdump.h"
@@ -147,6 +151,15 @@ static struct ramdump_segment smem_segments[] = {
 	{0x80000000, 0x00200000},
 };
 
+#ifdef CONFIG_SEC_SSR_DUMP
+/* Defining the kernel ramdump address and its Size */
+static struct ramdump_segment kernel_log_segments[] = {
+	{0x88d00008, 0x00080000},
+};
+/* Declaring the kernel ramdump device */
+static void *kernel_log_ramdump_dev;
+#endif
+
 static void *modemfw_ramdump_dev;
 static void *modemsw_ramdump_dev;
 static void *smem_ramdump_dev;
@@ -181,6 +194,19 @@ static int modem_ramdump(int enable, const struct subsys_desc *crashed_subsys)
 			pr_err("Unable to dump smem memory (rc = %d).\n", ret);
 			goto out;
 		}
+
+#ifdef CONFIG_SEC_SSR_DUMP
+		pr_debug("Before kernel log do_ramdump\n");
+		ret = do_ramdump(kernel_log_ramdump_dev, kernel_log_segments,
+			ARRAY_SIZE(kernel_log_segments));
+
+		if (ret < 0) {
+			pr_err("Unable to dump kernel memory (rc = %d).\n",
+			ret);
+			goto out;
+		}
+		pr_debug("After kernel do_ramdump\n");
+#endif
 	}
 
 out:
@@ -295,6 +321,12 @@ static int __init modem_8960_init(void)
 		goto out;
 	}
 
+#ifdef CONFIG_SEC_SSR_DUMP
+    /* Create the ramdump device files whenever SSR is enabled */
+    if (get_restart_level() == RESET_SUBSYS_INDEPENDENT) {
+
+    pr_info("%s: SSR enabled, creating ramdump devices", __func__);
+
 	modemfw_ramdump_dev = create_ramdump_device("modem_fw");
 
 	if (!modemfw_ramdump_dev) {
@@ -322,6 +354,15 @@ static int __init modem_8960_init(void)
 		goto out;
 	}
 
+	if (!kernel_log_ramdump_dev) {
+		pr_err("%s: Unable to create kernel ramdump device. (%d)\n",
+			__func__, -ENOMEM);
+		ret = -ENOMEM;
+		goto out;
+	}   
+	pr_debug("After create_ramdump_device: kernel\n");
+	}
+#endif
 	ret = modem_debugfs_init();
 
 	pr_info("%s: modem fatal driver init'ed.\n", __func__);

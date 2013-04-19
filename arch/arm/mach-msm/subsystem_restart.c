@@ -73,7 +73,7 @@ struct subsys_device {
 	void *restart_order;
 };
 
-static int enable_ramdumps;
+static int enable_ramdumps = 1;
 module_param(enable_ramdumps, int, S_IRUGO | S_IWUSR);
 
 struct workqueue_struct *ssr_wq;
@@ -404,6 +404,11 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	 * before the powerup lock is released, panic and bail out.
 	 */
 	mutex_unlock(shutdown_lock);
+
+#ifdef CONFIG_SEC_DEBUG
+	/* Print the modem crash details to klog */
+	print_modem_dump_info();
+#endif
 
 	/* Collect ram dumps for all subsystems in order here */
 	for_each_subsys_device(list, count, NULL, subsystem_ramdump);

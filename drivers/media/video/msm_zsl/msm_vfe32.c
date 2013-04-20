@@ -235,6 +235,9 @@ static struct vfe32_cmd_type vfe32_cmd[] = {
 	{VFE_CMD_DEMOSAICV3_UPDATE},
 };
 
+static uint32_t recovery_active;
+static uint32_t recover_irq_mask0, recover_irq_mask1;
+
 uint32_t vfe32_AXI_WM_CFG[] = {
 	0x0000004C,
 	0x00000064,
@@ -590,6 +593,7 @@ static void vfe32_reset_internal_variables(void)
 	       sizeof(struct vfe_stats_control));
 	/* jpeg_soc flag */
 	vfe32_ctrl->jpeg_soc = 0;
+	recovery_active = 0;
 	vfe32_set_default_reg_values();
 }
 
@@ -2849,6 +2853,30 @@ static void vfe32_process_reset_irq(void)
 {
 	unsigned long flags;
 
+	if (recovery_active) {
+		pr_info("Recovery restart start\n");
+		msm_io_w(VFE_RELOAD_ALL_WRITE_MASTERS,
+			vfe32_ctrl->vfebase + VFE_BUS_CMD);
+		msm_io_w(recover_irq_mask0,
+			vfe32_ctrl->vfebase + VFE_IRQ_MASK_0);
+		msm_io_w(recover_irq_mask1,
+			vfe32_ctrl->vfebase + VFE_IRQ_MASK_1);
+		msm_io_w_mb(1,
+			vfe32_ctrl->vfebase + VFE_REG_UPDATE_CMD);
+		pr_info("camif cfg: 0x%x\n",
+			msm_io_r(
+			vfe32_ctrl->vfebase + VFE_CAMIF_FRAME_CFG));
+		/* Clear CAMIF Status */
+		msm_io_w_mb(0x4,
+			vfe32_ctrl->vfebase + VFE_CAMIF_COMMAND);
+		/* Enable CAMIF capture */
+		msm_io_w_mb(0x1,
+			vfe32_ctrl->vfebase + VFE_CAMIF_COMMAND);
+		recovery_active = 0;
+		pr_info("Recovery restart done\n");
+		return;
+	}
+
 	atomic_set(&vfe32_ctrl->vstate, 0);
 
 	spin_lock_irqsave(&vfe32_ctrl->stop_flag_lock, flags);
@@ -2930,7 +2958,8 @@ static void vfe32_process_error_irq(uint32_t errStatus)
 		temp = (uint32_t *) (vfe32_ctrl->vfebase + VFE_CAMIF_STATUS);
 		camifStatus = msm_io_r(temp);
 		pr_err("camifStatus  = 0x%x\n", camifStatus);
-		vfe32_send_isp_msg(vfe32_ctrl, MSG_ID_CAMIF_ERROR);
+		if(!camifStatus)
+			vfe32_send_isp_msg(vfe32_ctrl, MSG_ID_CAMIF_ERROR);
 	}
 
 	if (errStatus & VFE32_IMASK_BHIST_OVWR)
@@ -3601,6 +3630,7 @@ static void vfe32_process_stats_cs_irq(void)
 static void vfe32_do_tasklet(unsigned long data)
 {
 	unsigned long flags;
+	uint8_t  axi_busy_flag = true;
 	int stat_interrupt;
 	struct vfe32_isr_queue_cmd *qcmd = NULL;
 
@@ -3644,18 +3674,20 @@ static void vfe32_do_tasklet(unsigned long data)
 			(qcmd->vfeInterruptStatus0 &
 				VFE_IRQ_STATUS0_STATS_CS);
 
-		if (qcmd->vfeInterruptStatus0 &
-			VFE_IRQ_STATUS0_CAMIF_SOF_MASK) {
-			if (stat_interrupt)
-				vfe32_ctrl->simultaneous_sof_stat = 1;
-			CDBG("irq	camifSofIrq\n");
-			vfe32_process_camif_sof_irq();
-		}
-		/* interrupt to be processed,  *qcmd has the payload.  */
-		if (qcmd->vfeInterruptStatus0 &
-			VFE_IRQ_STATUS0_REG_UPDATE_MASK) {
-			CDBG("irq	regUpdateIrq\n");
-			vfe32_process_reg_update_irq();
+		if (!recovery_active) {
+			if (qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_CAMIF_SOF_MASK) {
+				if (stat_interrupt)
+					vfe32_ctrl->simultaneous_sof_stat = 1;
+				CDBG("irq	camifSofIrq\n");
+				vfe32_process_camif_sof_irq();
+			}
+			/* interrupt to be processed,  *qcmd has the payload.  */
+			if (qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_REG_UPDATE_MASK) {
+				CDBG("irq	regUpdateIrq\n");
+				vfe32_process_reg_update_irq();
+			}
 		}
 
 		if (qcmd->vfeInterruptStatus1 &
@@ -3665,13 +3697,61 @@ static void vfe32_do_tasklet(unsigned long data)
 		}
 
 		if (atomic_read(&vfe32_ctrl->vstate)) {
-			if (qcmd->vfeInterruptStatus1 &
-			    VFE32_IMASK_ERROR_ONLY_1) {
+			if ((qcmd->vfeInterruptStatus1 &
+			    VFE32_IMASK_ERROR_ONLY_1) && !recovery_active) {
 				pr_err("irq	errorIrq\n");
 				vfe32_process_error_irq
 				    (qcmd->vfeInterruptStatus1 &
 				     VFE32_IMASK_ERROR_ONLY_1);
 			}
+
+			if ((qcmd->vfeInterruptStatus1 & 0x3FFF00) &&
+							!recovery_active) {
+				pr_info("Start recovery\n");
+				recover_irq_mask0 = msm_io_r(
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_MASK_0);
+				recover_irq_mask1 = msm_io_r(
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_MASK_1);
+				pr_info("mask0: 0x%x mask1: 0x%x\n",
+					recover_irq_mask0, recover_irq_mask1);
+				msm_io_w(0x0,
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_MASK_0);
+				msm_io_w(VFE_IMASK_WHILE_STOPPING_1,
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_MASK_1);
+				msm_io_w(VFE_CLEAR_ALL_IRQS,
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_CLEAR_0);
+				msm_io_w(VFE_CLEAR_ALL_IRQS,
+					vfe32_ctrl->vfebase +
+						VFE_IRQ_CLEAR_1);
+				/* Disable CAMIF capture */
+				msm_io_w(0x2,
+					vfe32_ctrl->vfebase +
+						VFE_CAMIF_COMMAND);
+				msm_io_w(AXI_HALT,
+					vfe32_ctrl->vfebase +
+						VFE_AXI_CMD);
+				wmb();
+				while (axi_busy_flag) {
+					if (msm_io_r(
+						vfe32_ctrl->vfebase +
+							VFE_AXI_STATUS) & 0x1)
+						axi_busy_flag = false;
+				}
+				msm_io_w_mb(AXI_HALT_CLEAR,
+					vfe32_ctrl->vfebase +
+						VFE_AXI_CMD);
+				pr_info("Halt done\n");
+				msm_io_w_mb(VFE_RESET_UPON_STOP_CMD,
+					vfe32_ctrl->vfebase +
+						VFE_GLOBAL_RESET);
+				recovery_active = 1;
+			}
+
 			/* next, check output path related interrupts. */
 			if (!vfe32_ctrl->start_ack_pending) {
 				if (qcmd->vfeInterruptStatus0 &

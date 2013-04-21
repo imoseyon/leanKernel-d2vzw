@@ -9,8 +9,9 @@ echo "---"
 echo "1) interactiveX: set screen-off max freq to 1.1Ghz."
 echo "2) interactiveX: set screen-off max freq to 810Mhz (leanKernel default)."
 echo "3) Stop thermald (for running benchmarks)."
+echo "4) Restart mpdecision (when cpu1 gets stuck)."
 echo 
-echo -n "Please enter a number between 1 and 3 (or press enter to exit): "
+echo -n "Please enter a number between 1 and 4 (or press enter to exit): "
 
 read option
 
@@ -30,6 +31,10 @@ case $option in
   3) 
 	stop thermald
 	echo "thermald stopped - reboot to get it back."
+	;;
+  4) 
+	$BB pkill -f mpdecision
+	echo "mpdecision restarted."
 	;;
 esac
 $BB mount -r /system /system

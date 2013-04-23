@@ -63,6 +63,8 @@ struct msm_gemini_device {
 	/* input buf queue
 	 */
 	struct msm_gemini_q input_buf_q;
+
+	uint32_t core_reset;
 };
 
 int __msm_gemini_open(struct msm_gemini_device *pgmn_dev);

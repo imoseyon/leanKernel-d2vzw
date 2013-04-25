@@ -3884,7 +3884,7 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 	}
 
 	spin_lock_irqsave(&vfe32_ctrl->stop_flag_lock, flags);
-	if (vfe32_ctrl->stop_ack_pending) {
+	if (vfe32_ctrl->stop_ack_pending || recovery_active) {
 		irq.vfeIrqStatus0 &= VFE_IMASK_WHILE_STOPPING_0;
 		irq.vfeIrqStatus1 &= VFE_IMASK_WHILE_STOPPING_1;
 	}

@@ -561,7 +561,6 @@ static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
 static struct pm8xxx_ccadc_platform_data pm8xxx_ccadc_pdata = {
 	.r_sense_uohm		= 10000,
 	.calib_delay_ms		= 600000,
-	.periodic_wakeup	= true,
 };
 
 /**

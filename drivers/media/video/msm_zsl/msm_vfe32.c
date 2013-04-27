@@ -4048,7 +4048,7 @@ vfe32_config_done:
 }
 
 static struct msm_cam_clk_info vfe32_clk_info[] = {
-	{"vfe_clk", 228570000},
+	{"vfe_clk", 320000000},
 	{"vfe_pclk", -1},
 	{"csi_vfe_clk", -1},
 };

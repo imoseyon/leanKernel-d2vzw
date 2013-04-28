@@ -62,7 +62,7 @@ atomic_t irq_cnt;
 
 static struct vfe32_ctrl_type *vfe32_ctrl;
 static void *vfe_syncdata;
-static uint32_t vfe_clk_rate;
+static uint32_t vfe_clk_rate=320000000;
 
 struct vfe32_isr_queue_cmd {
 	struct list_head list;
@@ -1224,7 +1224,7 @@ static void vfe32_sync_timer_start(const uint32_t *tbl)
 	 */
 	/* Sync Timer Pixel Duration */
 	value = *tbl++;
-	vfe_clk_rate = 228570000;
+//	vfe_clk_rate = 228570000;
 	if (vfe_clk_rate == 0)
 		CDBG("nishu clock null\n");
 	else

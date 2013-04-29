@@ -1108,6 +1108,7 @@ static struct platform_suspend_ops msm_pm_ops = {
 static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
 {
 	struct msm_pm_sleep_status_data *pdata;
+	char *key;
 	u32 cpu;
 
 	if (!pdev)

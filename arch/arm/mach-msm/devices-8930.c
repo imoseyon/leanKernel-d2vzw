@@ -48,20 +48,6 @@ static struct resource msm8930_resources_pccntr[] = {
 	},
 };
 
-static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
-	.base_addr = MSM_ACC0_BASE + 0x08,
-	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
-	.mask = 1UL << 13,
-};
-
-struct platform_device msm8930_cpu_slp_status = {
-	.name		= "cpu_slp_status",
-	.id		= -1,
-	.dev = {
-		.platform_data = &msm_pm_slp_sts_data,
-	},
-};
-
 struct platform_device msm8930_pc_cntr = {
 	.name		= "pc-cntr",
 	.id		= -1,

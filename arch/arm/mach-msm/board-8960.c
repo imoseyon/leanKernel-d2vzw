@@ -647,7 +647,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -2851,6 +2851,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_iommu_domain_device,
 	&msm_tsens_device,
 	&msm8960_pc_cntr,
+	&msm8960_cpu_slp_status,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {

@@ -584,7 +584,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -2467,6 +2467,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_tsens_device,
 	&msm8930_cache_dump_device,
 	&msm8930_pc_cntr,
+	&msm8930_cpu_slp_status,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
@@ -3038,8 +3039,17 @@ static void __init msm8930_cdp_init(void)
 	else
 		platform_add_devices(pmic_pm8917_devices,
 					ARRAY_SIZE(pmic_pm8917_devices));
-	if(machine_is_msm8930_evt())
-                qcom_wcnss_pdata.has_48mhz_xo = 0;
+
+	if (machine_is_msm8930_evt()) {
+	        /* It is QRD Device, clock should be set appropraitely */
+		if ((SOCINFO_VERSION_MAJOR(socinfo_get_platform_version()) == 1)
+		&& (SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1))
+			/* For evt2a, which supports 48 MHz */
+			qcom_wcnss_pdata.has_48mhz_xo = 1;
+		else
+			/* Assuming all other versions do not support 48MHz */
+			qcom_wcnss_pdata.has_48mhz_xo = 0;
+	}
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (machine_is_msm8930_evt() &&
 		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {

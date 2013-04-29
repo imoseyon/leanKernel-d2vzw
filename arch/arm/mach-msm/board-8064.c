@@ -533,7 +533,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -1858,11 +1858,12 @@ static struct mdm_platform_data sglte2_mdm_platform_data = {
 static struct mdm_platform_data sglte2_qsc_platform_data = {
 	.mdm_version = "3.0",
 	.ramdump_delay_ms = 2000,
+     /* delay between two PS_HOLDs */
+	.ps_hold_delay_ms = 500,
 	.ramdump_timeout_ms = 600000,
 	.no_powerdown_after_ramdumps = 1,
 	.image_upgrade_supported = 1,
 	.no_a2m_errfatal_on_ssr = 1,
-	.no_reset_on_first_powerup = 1,
 	.kpd_not_inverted = 1,
 	.subsys_name = "external_modem",
 };
@@ -2529,6 +2530,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_rotator_device,
 #endif
 	&msm8064_pc_cntr,
+	&msm8064_cpu_slp_status,
 };
 
 static struct platform_device

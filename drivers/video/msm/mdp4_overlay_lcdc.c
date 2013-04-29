@@ -527,7 +527,7 @@ void mdp4_lcdc_free_base_pipe(struct msm_fb_data_type *mfd)
 	/* base pipe may change after borderfill_stage_down */
 	pipe = vctrl->base_pipe;
 	mdp4_mixer_stage_down(pipe, 1);
-	mdp4_overlay_pipe_free(pipe);
+	mdp4_overlay_pipe_free(pipe, 1);
 	vctrl->base_pipe = NULL;
 }
 
@@ -654,6 +654,8 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 
 	pipe->srcp0_ystride = fbi->fix.line_length;
 	pipe->bpp = bpp;
+
+	mdp4_overlay_solidfill_init(pipe);
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
@@ -842,7 +844,7 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 			/* base pipe may change after borderfill_stage_down */
 			pipe = vctrl->base_pipe;
 			mdp4_mixer_stage_down(pipe, 1);
-			mdp4_overlay_pipe_free(pipe);
+			mdp4_overlay_pipe_free(pipe, 1);
 			vctrl->base_pipe = NULL;
 		} else {
 			/* system suspending */

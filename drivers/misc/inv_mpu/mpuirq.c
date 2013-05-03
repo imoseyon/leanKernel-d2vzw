@@ -167,7 +167,7 @@ static irqreturn_t mpuirq_handler(int irq, void *dev_id)
 	mpuirq_data.interruptcount++;
 
 	if (mpuirq_logcount++ > 51) {
-		pr_info("mpuirq_handler: every 50'th\n");
+		pr_debug("mpuirq_handler: every 50'th\n");
 		mpuirq_logcount = 0;
 	}
 	/* wake up (unblock) for reading data from userspace */

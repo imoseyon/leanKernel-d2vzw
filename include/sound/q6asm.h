@@ -71,10 +71,12 @@
 /* Enable Sample_Rate/Channel_Mode notification event from Decoder */
 #define SR_CM_NOTIFY_ENABLE	0x0004
 
-#define ASYNC_IO_MODE	0x0002
-#define SYNC_IO_MODE	0x0001
-#define NO_TIMESTAMP    0xFF00
-#define SET_TIMESTAMP   0x0000
+#define TUN_WRITE_IO_MODE 0x0008 /* tunnel read write mode */
+#define TUN_READ_IO_MODE  0x0004 /* tunnel read write mode */
+#define ASYNC_IO_MODE	  0x0002
+#define SYNC_IO_MODE	  0x0001
+#define NO_TIMESTAMP      0xFF00
+#define SET_TIMESTAMP     0x0000
 
 #define SOFT_PAUSE_ENABLE	1
 #define SOFT_PAUSE_DISABLE	0
@@ -196,6 +198,8 @@ int q6asm_open_write_compressed(struct audio_client *ac, uint32_t format);
 int q6asm_open_read_write(struct audio_client *ac,
 			uint32_t rd_format,
 			uint32_t wr_format);
+
+int q6asm_open_loopack(struct audio_client *ac);
 
 int q6asm_write(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 				uint32_t lsw_ts, uint32_t flags);

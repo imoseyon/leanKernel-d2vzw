@@ -1,5 +1,5 @@
 /* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
- *
+*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -848,7 +848,9 @@ struct msm_snapshot_pp_status {
 #define CFG_SET_VISION_MODE           55
 #define CFG_SET_VISION_AE             56
 #define CFG_HDR_UPDATE                57
-#define CFG_MAX                       58
+#define CFG_ACTUAOTOR_REG_INIT        58
+#define CFG_MAX                       59
+
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1407,6 +1409,40 @@ struct sensor_cfg_data {
 		int is_autoflash;
 		struct mirror_flip mirror_flip;
 	} cfg;
+};
+
+enum actuator_type {
+	ACTUATOR_VCM,
+	ACTUATOR_PIEZO,
+	ACTUATOR_HALL_EFFECT,
+};
+
+enum msm_actuator_data_type {
+	MSM_ACTUATOR_BYTE_DATA = 1,
+	MSM_ACTUATOR_WORD_DATA,
+};
+
+enum msm_actuator_addr_type {
+	MSM_ACTUATOR_BYTE_ADDR = 1,
+	MSM_ACTUATOR_WORD_ADDR,
+};
+
+enum msm_actuator_write_type {
+	MSM_ACTUATOR_WRITE_HW_DAMP,
+	MSM_ACTUATOR_WRITE_DAC,
+};
+
+struct msm_actuator_reg_params_t {
+	enum msm_actuator_write_type reg_write_type;
+	uint32_t hw_mask;
+	uint16_t reg_addr;
+	uint16_t hw_shift;
+	uint16_t data_shift;
+};
+
+struct reg_settings_t {
+	uint16_t reg_addr;
+	uint16_t reg_data;
 };
 
 struct msm_actuator_move_params_t {

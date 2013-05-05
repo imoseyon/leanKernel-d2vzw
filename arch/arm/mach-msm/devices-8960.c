@@ -3186,6 +3186,7 @@ static struct msm_dcvs_freq_entry grp3d_freq[] = {
 	{0, 950, 0, 0, 0},
 	{0, 950, 0, 0, 0},
 	{0, 1200, 1, 100, 100},
+	{0, 1200, 1, 100, 100},
 };
 
 static struct msm_dcvs_freq_entry grp2d_freq[] = {
@@ -3481,6 +3482,11 @@ static struct kgsl_device_iommu_data kgsl_3d0_iommu_data[] = {
 
 static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 	.pwrlevel = {
+		{
+			.gpu_freq = 480000000,
+			.bus_freq = 5,
+			.io_fraction = 0,
+		},
 		{
 			.gpu_freq = 400000000,
 			.bus_freq = 4,

@@ -3551,6 +3551,7 @@ static struct clk_freq_tbl clk_tbl_gfx3d_8960[] = {
 	F_GFX3D(300000000, pll3, 1,  4),
 	F_GFX3D(320000000, pll2, 2,  5),
 	F_GFX3D(400000000, pll2, 1,  2),
+	F_GFX3D(480000000, pll3, 2,  5),
 	F_END
 };
 
@@ -6659,6 +6660,7 @@ static void __init msm8960_clock_pre_init(void)
 
 		gmem_axi_clk.c.depends = &gfx3d_axi_clk.c;
 	} else if (cpu_is_msm8960()) {
+		gfx3d_clk.c.fmax[VDD_DIG_HIGH] = 480000000;
 		gfx3d_clk.freq_tbl = clk_tbl_gfx3d_8960;
 		memcpy(msm_clocks_8960 + ARRAY_SIZE(msm_clocks_8960_common),
 			 msm_clocks_8960_only, sizeof(msm_clocks_8960_only));

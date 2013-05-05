@@ -1154,8 +1154,10 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		event.data = &con2fb;
 		if (!lock_fb_info(info))
 			return -ENODEV;
+		console_lock();
 		event.info = info;
 		ret = fb_notifier_call_chain(FB_EVENT_SET_CONSOLE_MAP, &event);
+		console_unlock();
 		unlock_fb_info(info);
 		break;
 	case FBIOBLANK:
@@ -1375,8 +1377,7 @@ fb_mmap(struct file *file, struct vm_area_struct * vma)
 		len = info->fix.mmio_len;
 	}
 	mutex_unlock(&info->mm_lock);
-	/* This is an IO map - tell maydump to skip this VMA */
-	vma->vm_flags |= VM_IO | VM_RESERVED;
+
 	vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
 	fb_pgprotect(file, vma, start);
 

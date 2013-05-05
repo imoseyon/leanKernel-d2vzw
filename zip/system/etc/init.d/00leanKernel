@@ -1,6 +1,11 @@
 #!/system/bin/sh
 
 SO_MAX=810000
+COLOR=2
 
-echo $SO_MAX > /sys/devices/system/cpu/cpufreq/interactive/screen_off_maxfreq
+if test -f /sys/devices/system/cpu/cpufreq/interactive/screen_off_maxfreq
+then
+  echo $SO_MAX > /sys/devices/system/cpu/cpufreq/interactive/screen_off_maxfreq
+fi
+echo $COLOR > /sys/class/lcd/panel/panel_colors
 

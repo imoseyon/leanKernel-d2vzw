@@ -2358,7 +2358,6 @@ static struct platform_device msm8930_device_rpm_regulator __devinitdata = {
 static struct platform_device *early_common_devices[] __initdata = {
 	&msm8960_device_dmov,
 	&msm_device_smd,
-	&msm8960_device_uart_gsbi5,
 	&msm_device_uart_dm6,
 	&msm_device_saw_core0,
 	&msm_device_saw_core1,
@@ -2506,10 +2505,30 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_pcm_hostless,
 	&msm_multi_ch_pcm,
 	&msm_lowlatency_pcm,
+	&msm_fm_loopback,
 };
+
+#define GSBI_DUAL_MODE_CODE	0x60
+#define MSM_GSBI10_PHYS		0x1A200000
 
 static void __init msm8930_i2c_init(void)
 {
+	int minor_ver = SOCINFO_VERSION_MINOR(socinfo_get_platform_version());
+	int major_ver = SOCINFO_VERSION_MAJOR(socinfo_get_platform_version());
+	void __iomem *gsbi_mem;
+
+	if (machine_is_msm8930_evt() &&
+		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
+		if (major_ver == 1 && minor_ver == 0) {
+			gsbi_mem = ioremap_nocache(MSM_GSBI10_PHYS, 4);
+			writel_relaxed(GSBI_DUAL_MODE_CODE, gsbi_mem);
+			/* Ensure protocol code is written before proceeding */
+			wmb();
+			iounmap(gsbi_mem);
+			msm8960_i2c_qup_gsbi10_pdata.use_gsbi_shared_mode = 1;
+		}
+	}
+
 	msm8960_device_qup_i2c_gsbi4.dev.platform_data =
 					&msm8960_i2c_qup_gsbi4_pdata;
 
@@ -2928,6 +2947,8 @@ static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
 static void __init msm8930_cdp_init(void)
 {
 	int i, reg_size = 0;
+	int minor_ver = SOCINFO_VERSION_MINOR(socinfo_get_platform_version());
+	int major_ver = SOCINFO_VERSION_MAJOR(socinfo_get_platform_version());
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
 		msm8930_pm8917_pdata_fixup();
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
@@ -2943,6 +2964,9 @@ static void __init msm8930_cdp_init(void)
 		BUG_ON(msm_rpm_init(&msm8930_rpm_data_pm8917));
 		BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data_pm8917));
 	}
+
+	if (machine_is_msm8930_evt())
+		configure_8930_sglte_regulator();
 
 	regulator_suppress_info_printing();
 	if (msm_xo_init())
@@ -2980,6 +3004,21 @@ static void __init msm8930_cdp_init(void)
 		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
 #endif
 		platform_device_register(&msm_device_uart_dm9);
+
+		/* For 8930 SGLTE serial console */
+		if (major_ver == 1) {
+			if (minor_ver == 0)
+				/* Add UART Serial for EVT1 device */
+				platform_device_register(
+					&msm8930_device_uart_gsbi10);
+			else if (minor_ver == 1)
+				/* Add UART Serial for EVT2 device */
+				platform_device_register(
+					&msm8930_device_uart_gsbi11);
+		}
+	} else {
+		/* For 8930 Standalone serial console */
+		platform_device_register(&msm8960_device_uart_gsbi5);
 	}
 
 	msm_otg_pdata.phy_init_seq = hsusb_phy_init_seq;

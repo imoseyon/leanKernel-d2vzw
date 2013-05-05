@@ -10,6 +10,8 @@ echo "1) interactiveX: set screen-off max freq to 1.1Ghz."
 echo "2) interactiveX: set screen-off max freq to 810Mhz (leanKernel default)."
 echo "3) Stop thermald (for running benchmarks)."
 echo "4) Restart mpdecision (when cpu1 gets stuck)."
+echo "5) Overlock 3D GPU to 480Mhz."
+echo "6) Reset 3D GPU to 400Mhz (leanKernel default)"
 echo 
 echo -n "Please enter a number between 1 and 4 (or press enter to exit): "
 
@@ -35,6 +37,16 @@ case $option in
   4) 
 	$BB pkill -f mpdecision
 	echo "mpdecision restarted."
+	;;
+  5)
+        $BB sed -i s/^GPU=.*$/GPU=0/ $SCRIPT
+        $SCRIPT
+        echo "gpu OC'ed to 480mhz."
+	;;
+  6)
+        $BB sed -i s/^GPU=.*$/GPU=1/ $SCRIPT
+        $SCRIPT
+        echo "gpu OC removed."
 	;;
 esac
 $BB mount -r /system /system

@@ -12,8 +12,11 @@ echo "3) Stop thermald (for running benchmarks)."
 echo "4) Restart mpdecision (when cpu1 gets stuck)."
 echo "5) Overlock 3D GPU to 480Mhz."
 echo "6) Reset 3D GPU to 400Mhz (leanKernel default)"
+echo "7) Set display color temp to cold."
+echo "8) Set display color temp to normal."
+echo "9) Set display color temp to warm."
 echo 
-echo -n "Please enter a number between 1 and 4 (or press enter to exit): "
+echo -n "Please enter a number between 1 and 9 (or press enter to exit): "
 
 read option
 
@@ -48,6 +51,21 @@ case $option in
         $SCRIPT
         echo "gpu OC removed."
 	;;
+  7)
+        $BB sed -i s/^COLOR=.*$/COLOR=0/ $SCRIPT
+        $SCRIPT
+        echo "Color temp is set to Cold - turn display off/on to take effect."
+        ;;
+  8)
+        $BB sed -i s/^COLOR=.*$/COLOR=2/ $SCRIPT
+        $SCRIPT
+        echo "Color temp is set to Normal - turn display off/on to take effect."
+        ;;
+  9)
+        $BB sed -i s/^COLOR=.*$/COLOR=4/ $SCRIPT
+        $SCRIPT
+        echo "Color temp is set to Warm - turn display off/on to take effect."
+        ;;
 esac
 $BB mount -r /system /system
 echo

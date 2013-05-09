@@ -221,7 +221,6 @@ void kgsl_check_fences(struct work_struct *work);
 	.hwaccess_gate = COMPLETION_INITIALIZER((_dev).hwaccess_gate),\
 	.suspend_gate = COMPLETION_INITIALIZER((_dev).suspend_gate),\
 	.ft_gate = COMPLETION_INITIALIZER((_dev).ft_gate),\
-	.recovery_gate = COMPLETION_INITIALIZER((_dev).recovery_gate),\
 	.idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
 			kgsl_idle_check),\
 	.ts_expired_ws  = __WORK_INITIALIZER((_dev).ts_expired_ws,\

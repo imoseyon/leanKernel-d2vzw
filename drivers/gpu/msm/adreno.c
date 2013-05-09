@@ -1331,7 +1331,7 @@ static int adreno_start(struct kgsl_device *device)
 	 * fire and attempt to change any device state
 	 */
 
-	if (KGSL_STATE_DUMP_AND_RECOVER != device->state)
+	if (KGSL_STATE_DUMP_AND_FT != device->state)
 		mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
 
 	device->reset_counter++;

@@ -153,6 +153,10 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 
 			clk_set_rate(pwr->grp_clks[0],
 				pwr->pwrlevels[level].gpu_freq);
+			if (!strcmp(device->name, "kgsl-2d0") || 
+			    !strcmp(device->name, "kgsl-2d1")) 
+				pr_info("[imosey] %s: levchange requested %d\n",
+                                        device->name, pwr->pwrlevels[level].gpu_freq);
 		}
 	}
 
@@ -716,6 +720,9 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	int i = 0;
+	bool is2d = false;
+	if (!strcmp(device->name, "kgsl-2d0") ||
+	    !strcmp(device->name, "kgsl-2d1")) is2d = true;
 	if (state == KGSL_PWRFLAGS_OFF) {
 		if (test_and_clear_bit(KGSL_PWRFLAGS_CLK_ON,
 			&pwr->power_flags)) {
@@ -729,6 +736,9 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 				clk_set_rate(pwr->grp_clks[0],
 					pwr->pwrlevels[pwr->num_pwrlevels - 1].
 					gpu_freq);
+				if (is2d) pr_info("[imosey] %s: FLAGS_OFF requested %d\n", 
+					device->name,
+					pwr->pwrlevels[pwr->num_pwrlevels - 1].gpu_freq);
 				for (i = KGSL_MAX_CLKS - 1; i > 0; i--)
 					if (pwr->grp_clks[i])
 						clk_unprepare(pwr->grp_clks[i]);
@@ -736,10 +746,14 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 			kgsl_pwrctrl_busy_time(device, true);
 		} else if (requested_state == KGSL_STATE_SLEEP) {
 			/* High latency clock maintenance. */
-			if ((pwr->pwrlevels[0].gpu_freq > 0))
+			if ((pwr->pwrlevels[0].gpu_freq > 0)) {
 				clk_set_rate(pwr->grp_clks[0],
 					pwr->pwrlevels[pwr->num_pwrlevels - 1].
 					gpu_freq);
+				if (is2d) pr_info("[imosey] %s: SLEEP requested %d\n", 
+					device->name,
+					pwr->pwrlevels[pwr->num_pwrlevels - 1].gpu_freq);
+			}
 			for (i = KGSL_MAX_CLKS - 1; i > 0; i--)
 				if (pwr->grp_clks[i])
 					clk_unprepare(pwr->grp_clks[i]);
@@ -754,11 +768,15 @@ void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 					if (pwr->grp_clks[i])
 						clk_prepare(pwr->grp_clks[i]);
 
-				if (pwr->pwrlevels[0].gpu_freq > 0)
+				if (pwr->pwrlevels[0].gpu_freq > 0) {
 					clk_set_rate(pwr->grp_clks[0],
 						pwr->pwrlevels
 						[pwr->active_pwrlevel].
 						gpu_freq);
+				  if (is2d) pr_info("[imosey] %s: FLAGS_ON requested %d\n", 
+					device->name,
+					pwr->pwrlevels[pwr->active_pwrlevel].gpu_freq);
+				}
 			}
 			/* as last step, enable grp_clk
 			   this is to let GPU interrupt to come */

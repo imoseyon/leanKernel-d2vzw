@@ -353,7 +353,7 @@ void msm_restart(char mode, const char *cmd)
 				&& !kstrtoul(cmd + 7, 0, &value)) {
 			__raw_writel(0xfedc0000 | value, restart_reason);
 #endif
-#ifdef CONFIG_SEC_DEBUG
+#if 1
 		} else {
 			__raw_writel(0x12345678, restart_reason);
 		}

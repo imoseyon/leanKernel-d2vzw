@@ -3013,6 +3013,11 @@ static void vfe_send_outmsg(struct v4l2_subdev *sd, uint8_t msgid,
 	msg.buf.ch_paddr[2] = ch2_paddr;
 	msg.frameCounter = frame_id;
 
+	if (vfe32_ctrl->simultaneous_sof_frame) {
+		msg.frameCounter--;
+		printk(KERN_DEBUG "%s:SOF and Frame IRQs together, adjusting frame counter\n", __func__);
+	}
+
 	v4l2_subdev_notify(&vfe32_ctrl->subdev, NOTIFY_VFE_MSG_OUT, &msg);
 	return;
 }
@@ -3411,6 +3416,10 @@ static void vfe_send_stats_msg(uint32_t bufAddress, uint32_t statsNum)
 	/* spin_lock_irqsave(&ctrl->state_lock, flags); */
 	struct isp_msg_stats msgStats;
 	msgStats.frameCounter = vfe32_ctrl->vfeFrameId;
+	if (vfe32_ctrl->simultaneous_sof_stat) {
+		printk(KERN_DEBUG "%s:SOF and STATS IRQs together, adjusting frame counter\n", __func__);
+		msgStats.frameCounter--;
+	}
 	msgStats.buffer = bufAddress;
 
 	switch (statsNum) {
@@ -3590,7 +3599,7 @@ static void vfe32_process_stats_cs_irq(void)
 static void vfe32_do_tasklet(unsigned long data)
 {
 	unsigned long flags;
-
+	int stat_interrupt;
 	struct vfe32_isr_queue_cmd *qcmd = NULL;
 
 	CDBG("=== vfe32_do_tasklet start ===\n");
@@ -3611,8 +3620,32 @@ static void vfe32_do_tasklet(unsigned long data)
 		spin_unlock_irqrestore(&vfe32_ctrl->tasklet_lock,
 			flags);
 
+		vfe32_ctrl->simultaneous_sof_frame =
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_CAMIF_SOF_MASK) &&
+			((qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE0_MASK) ||
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE1_MASK));
+
+		stat_interrupt =
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_AEC) |
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_AWB) |
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_AF) |
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_IHIST) |
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_RS) |
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_STATS_CS);
+
 		if (qcmd->vfeInterruptStatus0 &
 			VFE_IRQ_STATUS0_CAMIF_SOF_MASK) {
+			if (stat_interrupt)
+				vfe32_ctrl->simultaneous_sof_stat = 1;
 			CDBG("irq	camifSofIrq\n");
 			vfe32_process_camif_sof_irq();
 		}
@@ -3740,6 +3773,8 @@ static void vfe32_do_tasklet(unsigned long data)
 				}
 			}
 		}
+		vfe32_ctrl->simultaneous_sof_stat = 0;
+		vfe32_ctrl->simultaneous_sof_frame = 0;
 		kfree(qcmd);
 	}
 	CDBG("=== vfe32_do_tasklet end ===\n");

@@ -61,6 +61,7 @@ atomic_t irq_cnt;
 	vfe32_put_ch_pong_addr((chn), (addr)) : \
 	vfe32_put_ch_ping_addr((chn), (addr)))
 
+static void vfe32_set_default_reg_values(void);
 static struct vfe32_ctrl_type *vfe32_ctrl;
 static void *vfe_syncdata;
 static uint32_t vfe_clk_rate=320000000;
@@ -589,6 +590,7 @@ static void vfe32_reset_internal_variables(void)
 	       sizeof(struct vfe_stats_control));
 	/* jpeg_soc flag */
 	vfe32_ctrl->jpeg_soc = 0;
+	vfe32_set_default_reg_values();
 }
 
 static void vfe32_reset(void)
@@ -2857,7 +2859,7 @@ static void vfe32_process_reset_irq(void)
 	} else {
 		spin_unlock_irqrestore(&vfe32_ctrl->stop_flag_lock, flags);
 		/* this is from reset command. */
-		vfe32_set_default_reg_values();
+		vfe32_reset_internal_variables();
 
 		/* reload all write masters. (frame & line) */
 		msm_io_w(0x7FFF, vfe32_ctrl->vfebase + VFE_BUS_CMD);

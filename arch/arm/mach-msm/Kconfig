@@ -915,6 +915,7 @@ config MACH_M2
 	default n
 	select REGULATOR_MSM_GPIO
 	select MSM_IOMMU
+	select MSM_IOMMU_GPU_SYNC
         bool "MSM8960 Samsung M2"
         help
           Support for Samsung M2 devices.

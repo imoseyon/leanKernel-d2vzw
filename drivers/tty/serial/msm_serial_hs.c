@@ -1782,6 +1782,7 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 	if (msm_uport->is_shutdown) {
 		pr_err("%s(): Received UART interrupt after shutdown.\n",
 								__func__);
+		BUG_ON(1);
 		spin_unlock_irqrestore(&uport->lock, flags);
 		return IRQ_HANDLED;
 	}
@@ -2567,17 +2568,6 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 	tasklet_kill(&msm_uport->rx.tlet);
 
-	spin_lock_irqsave(&uport->lock, flags);
-	/* Disable all UART interrupts */
-	msm_uport->imr_reg = 0;
-	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
-
-	/* Free the UART IRQ line */
-	free_irq(uport->irq, msm_uport);
-
-	msm_uport->is_shutdown = true;
-	spin_unlock_irqrestore(&uport->lock, flags);
-
 	/* disable UART RX interface to DM */
 	data = msm_hs_read(uport, UARTDM_DMEN_ADDR);
 	data &= ~UARTDM_RX_DM_EN_BMSK;
@@ -2586,6 +2576,10 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	cancel_delayed_work_sync(&msm_uport->rx.flip_insert_work);
 	flush_workqueue(msm_uport->hsuart_wq);
 	pm_runtime_disable(uport->dev);
+
+	/* Disable all UART interrupts */
+	msm_uport->imr_reg = 0;
+	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
 
 	/* Disable the transmitter */
 	msm_hs_write(uport, UARTDM_CR_ADDR, UARTDM_CR_TX_DISABLE_BMSK);
@@ -2598,6 +2592,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	 */
 	mb();
 
+	msm_uport->is_shutdown = true;
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		clk_disable_unprepare(msm_uport->clk);
@@ -2614,6 +2609,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		irq_set_irq_wake(msm_uport->wakeup.irq, 0);
 
 	/* Free the interrupt */
+	free_irq(uport->irq, msm_uport);
 	if (use_low_power_wakeup(msm_uport))
 		free_irq(msm_uport->wakeup.irq, msm_uport);
 

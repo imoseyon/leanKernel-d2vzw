@@ -988,7 +988,7 @@ static long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
 			result = -EFAULT;
 			break;
 		}
-		context = kgsl_find_context(dev_priv, id);
+		context = kgsl_context_get_owner(dev_priv, id);
 		if (!context) {
 			result = -EINVAL;
 			break;
@@ -998,12 +998,14 @@ static long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
 		 * the out parameter
 		 */
 		if (copy_to_user(param->value, &(context->reset_status),
-			sizeof(unsigned int))) {
+			sizeof(unsigned int)))
 			result = -EFAULT;
-			break;
+		else {
+			/* Clear reset status once its been queried */
+			context->reset_status = KGSL_CTX_STAT_NO_ERROR;
 		}
-		/* Clear reset status once its been queried */
-		context->reset_status = KGSL_CTX_STAT_NO_ERROR;
+
+		kgsl_context_put(context);
 		break;
 	}
 	default:
@@ -1079,8 +1081,9 @@ static long kgsl_ioctl_device_waittimestamp_ctxtid(struct kgsl_device_private
 {
 	struct kgsl_device_waittimestamp_ctxtid *param = data;
 	struct kgsl_context *context;
-	int result;
+	long result = -EINVAL;
 
+<<<<<<< HEAD
 	context = kgsl_find_context(dev_priv, param->context_id);
 	if (context == NULL)
 		return -EINVAL;
@@ -1091,7 +1094,12 @@ static long kgsl_ioctl_device_waittimestamp_ctxtid(struct kgsl_device_private
 	 */
 	kgsl_context_get(context);
 	result = _device_waittimestamp(dev_priv, context,
+	context = kgsl_context_get_owner(dev_priv, param->context_id);
+
+	if (context)
+		result = _device_waittimestamp(dev_priv, context,
 			param->timestamp, param->timeout);
+
 	kgsl_context_put(context);
 	return result;
 }
@@ -1104,7 +1112,7 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 	struct kgsl_ibdesc *ibdesc;
 	struct kgsl_context *context;
 
-	context = kgsl_find_context(dev_priv, param->drawctxt_id);
+	context = kgsl_context_get_owner(dev_priv, param->drawctxt_id);
 	if (context == NULL) {
 		result = -EINVAL;
 		goto done;
@@ -1180,7 +1188,7 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 free_ibdesc:
 	kfree(ibdesc);
 done:
-
+	kgsl_context_put(context);
 	return result;
 }
 
@@ -1213,14 +1221,23 @@ static long kgsl_ioctl_cmdstream_readtimestamp_ctxtid(struct kgsl_device_private
 {
 	struct kgsl_cmdstream_readtimestamp_ctxtid *param = data;
 	struct kgsl_context *context;
+	long result = -EINVAL;
 
+<<<<<<< HEAD
 	context = kgsl_find_context(dev_priv, param->context_id);
 	if (context == NULL)
 		return -EINVAL;
 
+=======
+	context = kgsl_context_get_owner(dev_priv, param->context_id);
+>>>>>>> 6856c25... msm: kgsl: Fix context reference counting
 
-	return _cmdstream_readtimestamp(dev_priv, context,
+	if (context)
+		result = _cmdstream_readtimestamp(dev_priv, context,
 			param->type, &param->timestamp);
+
+	kgsl_context_put(context);
+	return result;
 }
 
 static void kgsl_freemem_event_cb(struct kgsl_device *device,
@@ -1277,16 +1294,14 @@ static long kgsl_ioctl_cmdstream_freememontimestamp_ctxtid(
 {
 	struct kgsl_cmdstream_freememontimestamp_ctxtid *param = data;
 	struct kgsl_context *context;
+	long result = -EINVAL;
 
-	context = kgsl_find_context(dev_priv, param->context_id);
-	if (context == NULL) {
-		KGSL_DRV_ERR(dev_priv->device,
-			"invalid drawctxt context_id %d\n", param->context_id);
-		return -EINVAL;
-	}
-
-	return _cmdstream_freememontimestamp(dev_priv, param->gpuaddr,
+	context = kgsl_context_get_owner(dev_priv, param->context_id);
+	if (context)
+		result = _cmdstream_freememontimestamp(dev_priv, param->gpuaddr,
 			context, param->timestamp, param->type);
+	kgsl_context_put(context);
+	return result;
 }
 
 static long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
@@ -1322,19 +1337,18 @@ done:
 static long kgsl_ioctl_drawctxt_destroy(struct kgsl_device_private *dev_priv,
 					unsigned int cmd, void *data)
 {
-	int result = 0;
 	struct kgsl_drawctxt_destroy *param = data;
 	struct kgsl_context *context;
+	long result = -EINVAL;
 
-	context = kgsl_find_context(dev_priv, param->drawctxt_id);
+	context = kgsl_context_get_owner(dev_priv, param->drawctxt_id);
 
-	if (context == NULL) {
-		result = -EINVAL;
-		goto done;
+	if (context) {
+		kgsl_context_detach(context);
+		result = 0;
 	}
 
-	kgsl_context_detach(context);
-done:
+	kgsl_context_put(context);
 	return result;
 }
 

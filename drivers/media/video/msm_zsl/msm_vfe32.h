@@ -169,6 +169,8 @@
 #define VFE_AF_PINGPONG_STATUS_BIT       0x100
 #define VFE_AWB_PINGPONG_STATUS_BIT      0x200
 
+#define VFE_RELOAD_ALL_WRITE_MASTERS 0x00003FFF
+
 enum VFE32_DMI_RAM_SEL {
 	NO_MEM_SELECTED          = 0,
 	BLACK_LUT_RAM_BANK0      = 0x1,
@@ -856,6 +858,7 @@ struct vfe32_frame_extra {
 #define VFE_BUS_STATS_SKIN_WR_PONG_ADDR    0x00000140
 #define VFE_BUS_STATS_SKIN_UB_CFG          0x00000144
 #define VFE_CAMIF_COMMAND               0x000001E0
+#define VFE_CAMIF_FRAME_CFG		0x000001EC
 #define VFE_CAMIF_STATUS                0x00000204
 #define VFE_REG_UPDATE_CMD              0x00000260
 #define VFE_DEMUX_GAIN_0                0x00000288
@@ -883,6 +886,9 @@ struct vfe32_frame_extra {
 
 #define VFE33_DMI_DATA_HI               0x000005A0
 #define VFE33_DMI_DATA_LO               0x000005A4
+
+#define VFE_AXI_CFG                     0x00000600
+#define VFE_AXI_CFG_MASK                0x80000000
 
 #define VFE32_OUTPUT_MODE_PT (0x1 << 0)
 #define VFE32_OUTPUT_MODE_S (0x1 << 1)
@@ -912,6 +918,9 @@ struct vfe32_ctrl_type {
 	spinlock_t  aec_ack_lock;
 	spinlock_t  awb_ack_lock;
 	spinlock_t  af_ack_lock;
+	spinlock_t  ihist_ack_lock;
+	spinlock_t  rs_ack_lock;
+	spinlock_t  cs_ack_lock;
 
 	uint32_t extlen;
 	void *extdata;
@@ -966,6 +975,8 @@ struct vfe32_ctrl_type {
 	struct clk *vfe_clk[3];
 	spinlock_t  sd_notify_lock;
 	struct tasklet_struct vfe32_tasklet;
+	uint32_t simultaneous_sof_frame;
+	uint32_t simultaneous_sof_stat;
 };
 
 #define statsAeNum      0

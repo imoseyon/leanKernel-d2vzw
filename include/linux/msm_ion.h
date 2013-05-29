@@ -91,17 +91,6 @@ enum cp_mem_usage {
  * Macro should be used with ion_heap_ids defined above.
  */
 #define ION_HEAP(bit) (1 << (bit))
-#define ion_full_heap_mask (ION_HEAP(ION_CP_MM_HEAP_ID) | \
-			   ION_HEAP(ION_CP_MFC_HEAP_ID) | \
-			   ION_HEAP(ION_CP_WB_HEAP_ID) | \
-			   ION_HEAP(ION_CAMERA_HEAP_ID) | \
-			   ION_HEAP(ION_SF_HEAP_ID) | \
-			   ION_HEAP(ION_IOMMU_HEAP_ID) | \
-			   ION_HEAP(ION_QSECOM_HEAP_ID) | \
-			   ION_HEAP(ION_AUDIO_HEAP_ID) | \
-			   ION_HEAP(ION_MM_FIRMWARE_HEAP_ID) | \
-			   ION_HEAP(ION_SYSTEM_HEAP_ID) )
-
 
 #define ION_ADSP_HEAP_NAME	"adsp"
 #define ION_VMALLOC_HEAP_NAME	"vmalloc"

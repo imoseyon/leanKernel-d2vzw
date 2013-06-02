@@ -355,6 +355,24 @@ static struct kgsl_device *kgsl_get_minor(int minor)
 	return ret;
 }
 
+int kgsl_register_ts_notifier(struct kgsl_device *device,
+			      struct notifier_block *nb)
+{
+	BUG_ON(device == NULL);
+	return atomic_notifier_chain_register(&device->ts_notifier_list,
+					      nb);
+}
+EXPORT_SYMBOL(kgsl_register_ts_notifier);
+
+int kgsl_unregister_ts_notifier(struct kgsl_device *device,
+				struct notifier_block *nb)
+{
+	BUG_ON(device == NULL);
+	return atomic_notifier_chain_unregister(&device->ts_notifier_list,
+						nb);
+}
+EXPORT_SYMBOL(kgsl_unregister_ts_notifier);
+
 int kgsl_check_timestamp(struct kgsl_device *device,
 	struct kgsl_context *context, unsigned int timestamp)
 {
@@ -692,6 +710,13 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 	dev_priv->device = device;
 	filep->private_data = dev_priv;
 
+	/* Get file (per process) private struct */
+	dev_priv->process_priv = kgsl_get_process_private(dev_priv);
+	if (dev_priv->process_priv ==  NULL) {
+		result = -ENOMEM;
+		goto err_freedevpriv;
+	}
+
 	mutex_lock(&device->mutex);
 	kgsl_check_suspended(device);
 
@@ -699,29 +724,16 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 		kgsl_sharedmem_set(&device->memstore, 0, 0,
 				device->memstore.size);
 
-		result = device->ftbl->init(device);
-		if (result)
-			goto err_freedevpriv;
+		result = device->ftbl->start(device, true);
 
-		result = device->ftbl->start(device);
-		if (result)
-			goto err_freedevpriv;
-
+		if (result) {
+			mutex_unlock(&device->mutex);
+			goto err_putprocess;
+		}
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 	}
 	device->open_count++;
 	mutex_unlock(&device->mutex);
-
-	/*
-	 * Get file (per process) private struct. This must be done
-	 * after the first start so that the global pagetable mappings
-	 * are set up before we create the per-process pagetable.
-	 */
-	dev_priv->process_priv = kgsl_get_process_private(dev_priv);
-	if (dev_priv->process_priv ==  NULL) {
-		result = -ENOMEM;
-		goto err_stop;
-	}
 
 	KGSL_DRV_INFO(device, "Initialized %s: mmu=%s pagetable_count=%d\n",
 		device->name, kgsl_mmu_enabled() ? "on" : "off",
@@ -729,15 +741,9 @@ static int kgsl_open(struct inode *inodep, struct file *filep)
 
 	return result;
 
-err_stop:
-	mutex_lock(&device->mutex);
-	device->open_count--;
-	if (device->open_count == 0) {
-		result = device->ftbl->stop(device);
-		kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
-	}
+err_putprocess:
+	kgsl_put_process_private(device, dev_priv->process_priv);
 err_freedevpriv:
-	mutex_unlock(&device->mutex);
 	filep->private_data = NULL;
 	kfree(dev_priv);
 err_pmruntime:

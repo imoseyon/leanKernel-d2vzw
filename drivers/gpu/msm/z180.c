@@ -551,18 +551,7 @@ static int __devexit z180_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int z180_init(struct kgsl_device *device)
-{
-	struct z180_device *z180_dev = Z180_DEVICE(device);
-
-	z180_dev->timestamp = 0;
-	z180_dev->current_timestamp = 0;
-	kgsl_pwrscale_enable(device);
-
-	return 0;
-}
-
-static int z180_start(struct kgsl_device *device)
+static int z180_start(struct kgsl_device *device, unsigned int init_ram)
 {
 	int status = 0;
 

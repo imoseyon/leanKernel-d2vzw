@@ -404,7 +404,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
 	/* Make sure no user process is waiting for a timestamp *
 	 * before supending */
-	if (device->active_cnt != 0) {
+	if (device->state == KGSL_STATE_ACTIVE && device->active_cnt != 0) {
 		mutex_unlock(&device->mutex);
 		wait_for_completion(&device->suspend_gate);
 		mutex_lock(&device->mutex);
@@ -615,11 +615,17 @@ kgsl_put_process_private(struct kgsl_device *device,
 
 	list_del(&private->list);
 
-	for (node = rb_first(&private->mem_rb); node; ) {
+	while (1) {
+		spin_lock(&private->mem_lock);
+		node = rb_first(&private->mem_rb);
+		if (!node) {
+			spin_unlock(&private->mem_lock);
+			break;
+		}
 		entry = rb_entry(node, struct kgsl_mem_entry, node);
-		node = rb_next(&entry->node);
 
 		rb_erase(&entry->node, &private->mem_rb);
+		spin_unlock(&private->mem_lock);
 		kgsl_mem_entry_detach_process(entry);
 	}
 	kgsl_mmu_putpagetable(private->pagetable);

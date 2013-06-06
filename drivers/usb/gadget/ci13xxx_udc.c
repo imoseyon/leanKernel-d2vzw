@@ -2273,8 +2273,11 @@ static int _gadget_stop_activity(struct usb_gadget *gadget)
 	gadget->otg_srp_reqd = 0;
 
 	udc->driver->disconnect(gadget);
-	usb_ep_fifo_flush(&udc->ep0out.ep);
-	usb_ep_fifo_flush(&udc->ep0in.ep);
+
+	spin_lock_irqsave(udc->lock, flags);
+	_ep_nuke(&udc->ep0out);
+	_ep_nuke(&udc->ep0in);
+	spin_unlock_irqrestore(udc->lock, flags);
 
 	if (udc->ep0in.last_zptr) {
 		dma_pool_free(udc->ep0in.td_pool, udc->ep0in.last_zptr,
@@ -2313,7 +2316,7 @@ __acquires(udc->lock)
 
 	/*stop charging upon reset */
 	if (udc->transceiver)
-		usb_phy_set_power(udc->transceiver, 0);
+		usb_phy_set_power(udc->transceiver, 100);
 
 	retval = _gadget_stop_activity(&udc->gadget);
 	if (retval)
@@ -3017,21 +3020,24 @@ static int ep_queue(struct usb_ep *ep, struct usb_request *req,
 
 	trace("%p, %p, %X", ep, req, gfp_flags);
 
-	if (ep == NULL || req == NULL || mEp->desc == NULL)
-		return -EINVAL;
-
-	if (!udc->softconnect)
-		return -ENODEV;
-
 	spin_lock_irqsave(mEp->lock, flags);
+	if (ep == NULL || req == NULL || mEp->desc == NULL) {
+		retval = -EINVAL;
+		goto done;
+	}
+
+	if (!udc->softconnect) {
+		retval = -ENODEV;
+		goto done;
+	}
 
 	if (!udc->configured && mEp->type !=
 		USB_ENDPOINT_XFER_CONTROL) {
-		spin_unlock_irqrestore(mEp->lock, flags);
 		trace("usb is not configured"
 			"ept #%d, ept name#%s\n",
 			mEp->num, mEp->ep.name);
-		return -ESHUTDOWN;
+		retval = -ESHUTDOWN;
+		goto done;
 	}
 
 	if (mEp->type == USB_ENDPOINT_XFER_CONTROL) {
@@ -3111,12 +3117,19 @@ static int ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 
 	trace("%p, %p", ep, req);
 
+	spin_lock_irqsave(mEp->lock, flags);
+	/*
+	 * Only ep0 IN is exposed to composite.  When a req is dequeued
+	 * on ep0, check both ep0 IN and ep0 OUT queues.
+	 */
 	if (ep == NULL || req == NULL || mReq->req.status != -EALREADY ||
 		mEp->desc == NULL || list_empty(&mReq->queue) ||
-		list_empty(&mEp->qh.queue))
+		(list_empty(&mEp->qh.queue) && ((mEp->type !=
+			USB_ENDPOINT_XFER_CONTROL) ||
+			list_empty(&_udc->ep0out.qh.queue)))) {
+		spin_unlock_irqrestore(mEp->lock, flags);
 		return -EINVAL;
-
-	spin_lock_irqsave(mEp->lock, flags);
+	}
 
 	dbg_event(_usb_addr(mEp), "DEQUEUE", 0);
 
@@ -3255,7 +3268,13 @@ static void ep_fifo_flush(struct usb_ep *ep)
 	del_timer(&mEp->prime_timer);
 	mEp->prime_timer_count = 0;
 	dbg_event(_usb_addr(mEp), "FFLUSH", 0);
-	hw_ep_flush(mEp->num, mEp->dir);
+	/*
+	 * _ep_nuke() takes care of flushing the endpoint.
+	 * some function drivers expect udc to retire all
+	 * pending requests upon flushing an endpoint.  There
+	 * is no harm in doing it.
+	 */
+	_ep_nuke(mEp);
 
 	spin_unlock_irqrestore(mEp->lock, flags);
 }

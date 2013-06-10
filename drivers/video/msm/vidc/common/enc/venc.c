@@ -1738,22 +1738,25 @@ static long vid_enc_ioctl(struct file *file,
 		}
 		break;
 	}
-	case VEN_IOCTL_GET_PERF_LEVEL:
+	case VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG:
 	{
-		u32 curr_perf_level;
-		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
-			return -EFAULT;
-		result = vid_enc_get_curr_perf_level(client_ctx,
-			&curr_perf_level);
-		if (!result) {
-			ERR("get_curr_perf_level failed!!");
+		struct vcd_property_hdr vcd_property_hdr;
+		struct vcd_property_bitstream_restrict_enable vcd_property_val;
+		u32 vcd_status = VCD_ERR_FAIL;
+
+		vcd_property_hdr.prop_id =
+			VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG;
+		vcd_property_hdr.sz = sizeof(struct
+				vcd_property_bitstream_restrict_enable);
+
+		vcd_property_val.bitstream_restrict_enable_flag = true;
+
+		vcd_status = vcd_set_property(client_ctx->vcd_handle,
+				&vcd_property_hdr, &vcd_property_val);
+		if (vcd_status) {
+			pr_err("Setting bitstream restrict flag failed");
 			return -EIO;
 		}
-		DBG("VEN_IOCTL_GET_PERF_LEVEL %u\n",
-			curr_perf_level);
-		if (copy_to_user(venc_msg.out,
-			&curr_perf_level, sizeof(u32)))
-			return -EFAULT;
 		break;
 	}
 	case VEN_IOCTL_SET_AC_PREDICTION:

@@ -61,13 +61,9 @@ static int memset16_rgb8888(void *_ptr, unsigned short val, unsigned count,
 
 	count >>= 1;
 	while (count--) {
-/*
 		*ptr++ = (green << 8) | red;
 		*ptr++ = blue;
-*/
 
-		*ptr++ = blue;
-		*ptr++ = blue;
 		if (need_align) {
 			if (!(total_pixel % fb->var.xres)) {
 				ptr += align_amount;

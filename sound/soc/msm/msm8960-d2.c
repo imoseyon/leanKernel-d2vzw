@@ -358,7 +358,7 @@ static int msm8960_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 			codec_clk = clk_get(NULL, "i2s_spkr_osr_clk");
 			if (codec_clk) {
 				clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
-				clk_enable(codec_clk);
+				clk_prepare_enable(codec_clk);
 				tabla_mclk_enable(codec, 1, dapm);
 			} else {
 				pr_err("%s: Error setting Tabla MCLK\n", __func__);
@@ -374,7 +374,7 @@ static int msm8960_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 				pr_debug("%s: disabling MCLK. clk_users = %d\n",
 						__func__, clk_users);
 				tabla_mclk_enable(codec, 0, dapm);
-				clk_disable(codec_clk);
+				clk_disable_unprepare(codec_clk);
 				clk_put(codec_clk);
 			}
 		} else {
@@ -1487,11 +1487,11 @@ static int msm8660_i2s_hw_params(struct snd_pcm_substream *substream,
 			if (codec_clk == NULL)  {
 				codec_clk = clk_get(NULL, "i2s_spkr_osr_clk");
 				clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
-				clk_enable(codec_clk);
+				clk_prepare_enable(codec_clk);
 			}
 			rx_bit_clk = clk_get(NULL, "i2s_spkr_bit_clk");
 			clk_set_rate(rx_bit_clk, 8);
-			clk_enable(rx_bit_clk);
+			clk_prepare_enable(rx_bit_clk);
 		}
 		clk_set_rate(rx_bit_clk, bit_clk_set);
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -1502,11 +1502,11 @@ static int msm8660_i2s_hw_params(struct snd_pcm_substream *substream,
 			if (tx_osr_clk == NULL) {
 				tx_osr_clk = clk_get(NULL, "i2s_mic_osr_clk");
 				clk_set_rate(tx_osr_clk, I2S_MIC_MCLK_RATE);
-				clk_enable(tx_osr_clk);
+				clk_prepare_enable(tx_osr_clk);
 			}
 			tx_bit_clk = clk_get(NULL, "i2s_mic_bit_clk");
 			clk_set_rate(tx_bit_clk, 8);
-			clk_enable(tx_bit_clk);
+			clk_prepare_enable(tx_bit_clk);
 		}
 		clk_set_rate(tx_bit_clk, bit_clk_set);
 	}
@@ -1520,18 +1520,18 @@ static void msm8960_i2s_shutdown(struct snd_pcm_substream *substream)
 			(unsigned int)codec_clk, (unsigned int)rx_bit_clk);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		if (rx_bit_clk) {
-			clk_disable(rx_bit_clk);
+			clk_disable_unprepare(rx_bit_clk);
 			clk_put(rx_bit_clk);
-			clk_disable(codec_clk);
+			clk_disable_unprepare(codec_clk);
 			clk_put(codec_clk);
 			rx_bit_clk = NULL;
 		}
 		msm8960_cdc_i2s_rx_free_gpios();
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		if (tx_bit_clk) {
-			clk_disable(tx_bit_clk);
+			clk_disable_unprepare(tx_bit_clk);
 			clk_put(tx_bit_clk);
-			clk_disable(tx_osr_clk);
+			clk_disable_unprepare(tx_osr_clk);
 			clk_put(tx_osr_clk);
 			tx_bit_clk = NULL;
 		}
@@ -1617,7 +1617,7 @@ static int msm8960_i2s_startup(struct snd_pcm_substream *substream)
 	rx_bit_clk = clk_get(NULL, "i2s_spkr_bit_clk");
 	if (IS_ERR(rx_bit_clk)) {
 		pr_err("Failed to get i2s_spkr_bit_clk\n");
-		clk_disable(codec_clk);
+		clk_disable_unprepare(codec_clk);
 		clk_put(codec_clk);
 		return -EBUSY;
 	}
@@ -1625,7 +1625,7 @@ static int msm8960_i2s_startup(struct snd_pcm_substream *substream)
 	ret = clk_prepare_enable(rx_bit_clk);
 	if (ret) {
 		pr_err("Unable to enable bit_clk\n");
-		clk_disable(codec_clk);
+		clk_disable_unprepare(codec_clk);
 		clk_put(codec_clk);
 		clk_put(rx_bit_clk);
 		return ret;
@@ -1659,7 +1659,7 @@ static int msm8960_i2s_startup(struct snd_pcm_substream *substream)
 		tx_bit_clk = clk_get(NULL, "i2s_mic_bit_clk");
 		if (IS_ERR(tx_bit_clk)) {
 			pr_debug("Failed to get i2s_mic_bit_clk\n");
-			clk_disable(tx_osr_clk);
+			clk_disable_unprepare(tx_osr_clk);
 			clk_put(tx_osr_clk);
 			return -EBUSY;
 		}
@@ -1668,7 +1668,7 @@ static int msm8960_i2s_startup(struct snd_pcm_substream *substream)
 		if (ret) {
 			pr_debug("Unable to enable i2s_mic_bit_clk\n");
 			clk_put(tx_bit_clk);
-			clk_disable(tx_osr_clk);
+			clk_disable_unprepare(tx_osr_clk);
 			clk_put(tx_osr_clk);
 			return ret;
 		}

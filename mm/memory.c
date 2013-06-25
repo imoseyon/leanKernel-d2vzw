@@ -159,7 +159,9 @@ static void check_sync_rss_stat(struct task_struct *task)
 	if (unlikely(task->rss_stat.events++ > TASK_RSS_EVENTS_THRESH))
 		__sync_task_rss_stat(task, task->mm);
 }
-
+#if defined(CONFIG_VMWARE_MVP)
+EXPORT_SYMBOL_GPL(get_mm_counter);
+#endif
 unsigned long get_mm_counter(struct mm_struct *mm, int member)
 {
 	long val = 0;

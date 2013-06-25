@@ -774,6 +774,7 @@ static int hdmi_msm_audio_off(void);
 static int hdmi_msm_read_edid(void);
 static void hdmi_msm_hpd_off(void);
 static int hdmi_msm_hpd_on();
+static void hdmi_msm_send_event(boolean on);
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) \
 		|| defined(CONFIG_VIDEO_MHL_TAB_V2)
 void mhl_hpd_handler(bool state)
@@ -791,6 +792,10 @@ void mhl_hpd_handler(bool state)
 	} else if (!hdmi_msm_state->boot_completion) {
 		pr_err("hdmi_msm_state->boot_completion = %d\n",
 			hdmi_msm_state->boot_completion);
+	} else if (!(state) && external_common_state->hpd_state) {
+		external_common_state->hpd_state = 0;
+		hdmi_msm_state->hpd_state_in_isr = 0;
+		hdmi_msm_send_event(false);
 	}
 }
 #endif
@@ -808,9 +813,11 @@ static void hdmi_msm_send_event(boolean on)
 
 	if (on) {
 		/* Build EDID table */
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 		cancel_work_sync(&hdmi_msm_state->hdcp_reauth_work);
 		if (hdmi_msm_state->full_auth_done)
 			hdcp_deauthenticate();
+#endif
 		hdmi_msm_read_edid();
 
 		hdmi_msm_set_mode(FALSE);
@@ -826,12 +833,12 @@ static void hdmi_msm_send_event(boolean on)
 		kobject_uevent(external_common_state->uevent_kobj, KOBJ_ONLINE);
 		switch_set_state(&hdmi_msm_state->hdmi_audio_switch, 1);
 		/*sending hdmi_audio_ch*/
-		switch_set_state(&hdmi_msm_state->hdmi_audio_ch,
-			hdmi_msm_is_dvi_mode() ?
-			0 : external_common_state->audio_speaker_data);
-		DEV_INFO("HDMI HPD: hdmi_audio_ch : %d\n",
-			hdmi_msm_is_dvi_mode() ?
-			0 : external_common_state->audio_speaker_data);
+		if(!hdmi_msm_is_dvi_mode()) {
+			switch_set_state(&hdmi_msm_state->hdmi_audio_ch,
+			external_common_state->audio_speaker_data);
+			DEV_INFO("HDMI HPD: hdmi_audio_ch : %d\n",
+			external_common_state->audio_speaker_data);
+		}
 #ifndef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 		/* Send Audio for HDMI Compliance Cases*/
 		envp[0] = "HDCP_STATE=PASS";
@@ -1040,6 +1047,7 @@ static irqreturn_t hdmi_msm_isr(int irq, void *dev_id)
 			 * then stop the authentication , rather than
 			 * reauthenticating it again
 			 */
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 			if (hdmi_msm_state->hdcp_activating &&
 					!(hdmi_msm_state->full_auth_done)) {
 				DEV_DBG("%s getting hpd while authenticating\n",
@@ -1048,6 +1056,7 @@ static irqreturn_t hdmi_msm_isr(int irq, void *dev_id)
 				hdmi_msm_state->hpd_during_auth = TRUE;
 				mutex_unlock(&hdcp_auth_state_mutex);
 			}
+#endif
 		}
 
 		/* Set up HPD_CTRL to sense HPD event */

@@ -36,6 +36,8 @@
 #define MAX_ZONE_LIMIT		10
 #if defined(CONFIG_MACH_AEGIS2)
 #define SEND_KEY_CHECK_TIME_MS	65
+#elif defined(CONFIG_MACH_M2_KDI)
+#define SEND_KEY_CHECK_TIME_MS  70
 #else
 #define SEND_KEY_CHECK_TIME_MS	60
 #endif

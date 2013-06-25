@@ -47,6 +47,9 @@
 #include "queue.h"
 
 MODULE_ALIAS("mmc:block");
+#if defined(CONFIG_MACH_M2_KDI)
+#define MMC_ENABLE_CPRM
+#endif
 
 #if defined(CONFIG_MMC_CPRM)
 #include "cprmdrv_samsung.h"

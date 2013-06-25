@@ -141,7 +141,7 @@ static struct msm_gpiomux_config msm8960_cam_common_configs[] = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[0],
 		},
 	},
-#if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_K2_KDI)
+#if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_M2_KDI)
 	{
 		.gpio = CAM2_RST_N,
 		.settings = {
@@ -1871,7 +1871,7 @@ static void cam_ldo_power_on(int mode, int num)
 			usleep(1*1000);
 		}	else	{
 			/* VT_RESET */
-		#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+		#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 			gpio_set_value_cansleep(gpio_rev(CAM2_RST_N), 1);
 			temp = gpio_get_value(gpio_rev(CAM2_RST_N));
 		#else
@@ -1981,7 +1981,7 @@ static void cam_ldo_power_on(int mode, int num)
 					cam_err("error enabling regulator.");
 			} else
 				gpio_set_value_cansleep(gpio_rev(CAM_CORE_EN), 1);
-#elif defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_KDI)
 			gpio_set_value_cansleep(gpio_rev(CAM_CORE_EN), 1);
 #else
 			gpio_set_value_cansleep(CAM_CORE_EN, 1);
@@ -2048,7 +2048,7 @@ static void cam_ldo_power_off(int mode)
 
 	if (mode) {		/* front camera */
 		/* VT_RESET */
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 		gpio_set_value_cansleep(gpio_rev(CAM2_RST_N), 0);
 		usleep(1*1000);
 #else
@@ -2135,7 +2135,7 @@ static void cam_ldo_power_off(int mode)
 		}
 		else
 			gpio_set_value_cansleep(gpio_rev(CAM_CORE_EN), 0);
-#elif defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_KDI)
 		gpio_set_value_cansleep(gpio_rev(CAM_CORE_EN), 0);
 #else
 		gpio_set_value_cansleep(CAM_CORE_EN, 0);
@@ -2198,7 +2198,7 @@ static void cam_get_fw(u8 *isp_fw, u8 *phone_fw)
 void print_ldos(void)
 {
 	int temp = 0;
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	temp = gpio_get_value(gpio_rev(CAM_CORE_EN));
 #else
 	temp = gpio_get_value(CAM_CORE_EN);
@@ -3051,7 +3051,7 @@ static int get_mclk_rev(void)
 	return ((system_rev >= BOARD_REV08) ? 1 : 0);
 #elif defined(CONFIG_MACH_M2_SKT)
 	return ((system_rev >= BOARD_REV09) ? 1 : 0);
-#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	return ((system_rev >= BOARD_REV03) ? 1 : 0);
 #elif defined(CONFIG_MACH_APEXQ)
 	return ((system_rev >= BOARD_REV04) ? 1 : 0);
@@ -3225,7 +3225,7 @@ void __init msm8960_init_cam(void)
 	gpio_tlmm_config(GPIO_CFG(GPIO_CAM_MCLK, 1, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 #elif defined(CONFIG_S5C73M3) && defined(CONFIG_S5K6A3YX)
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	gpio_tlmm_config(GPIO_CFG(gpio_rev(CAM_CORE_EN), 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 #else
@@ -3240,7 +3240,7 @@ void __init msm8960_init_cam(void)
 		GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(ISP_RESET, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	gpio_tlmm_config(GPIO_CFG(gpio_rev(CAM2_RST_N), 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 #else
@@ -3355,14 +3355,14 @@ void __init msm8960_init_cam(void)
 	for (i = 0; i < ARRAY_SIZE(cam_dev); i++)
 		s_info = cam_dev[i]->dev.platform_data;
 
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 		s_info->sensor_platform_info->sensor_pwd =
 			gpio_rev(CAM_CORE_EN);
 #endif
 #else
 #if defined(CONFIG_S5C73M3)
 		s_info = &msm_camera_sensor_s5c73m3_data;
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 		s_info->sensor_platform_info->sensor_pwd =
 			gpio_rev(CAM_CORE_EN);
 #endif
@@ -3371,7 +3371,7 @@ void __init msm8960_init_cam(void)
 #endif
 #if defined(CONFIG_S5K6A3YX)
 		s_info = &msm_camera_sensor_s5k6a3yx_data;
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 		s_info->sensor_platform_info->sensor_pwd =
 			gpio_rev(CAM_CORE_EN);
 #endif

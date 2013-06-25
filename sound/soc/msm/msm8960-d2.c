@@ -316,7 +316,7 @@ static int msm8960_bias_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *k, int event)
 {
 	pr_debug("GPIO BIAS UP!!!%d\n", SND_SOC_DAPM_EVENT_ON(event));
-#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	if (system_rev == BOARD_REV00)
 		gpio_direction_output(GPIO_MAIN_MIC_BIAS_REV00,
 				SND_SOC_DAPM_EVENT_ON(event));
@@ -1165,7 +1165,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	} else if (machine_is_M2_DCM()) {
 		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
 			ARRAY_SIZE(common_audio_map_rev00));
-	} else if (machine_is_K2_KDI()) {
+	} else if (machine_is_M2_KDI()) {
 		snd_soc_dapm_add_routes(dapm, common_audio_map_rev00,
 			ARRAY_SIZE(common_audio_map_rev00));
 	} else {
@@ -1216,9 +1216,9 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	if (((machine_is_M2_SKT() && system_rev < BOARD_REV08) ||
 		(machine_is_M2_DCM() && system_rev < BOARD_REV03) ||
-		(machine_is_K2_KDI() && system_rev < BOARD_REV03)) ||
+		(machine_is_M2_KDI() && system_rev < BOARD_REV03)) ||
 		(!machine_is_M2_SKT() && !machine_is_M2_DCM() &&
-		!machine_is_STRETTO() && !machine_is_K2_KDI() &&
+		!machine_is_STRETTO() && !machine_is_M2_KDI() &&
 		!machine_is_SUPERIORLTE_SKT())) {
 		/* using mbhc driver for earjack */
 		if (GPIO_DETECT_USED) {
@@ -2090,7 +2090,6 @@ static struct platform_device *msm8960_snd_device;
 static int msm8960_configure_audio_gpios(void)
 {
 	int ret;
-
 	struct pm_gpio param = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
@@ -2100,8 +2099,37 @@ static int msm8960_configure_audio_gpios(void)
 		.out_strength   = PM_GPIO_STRENGTH_MED,
 		.function       = PM_GPIO_FUNC_NORMAL,
 	};
+#if defined(CONFIG_MACH_M2_KDI)
+
+        struct pm_gpio mic_open_det_param = {
+                .direction      = PM_GPIO_DIR_IN,
+                .output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+                .output_value   = 1,
+                .pull      = PM_GPIO_PULL_NO,
+                .vin_sel        = PM_GPIO_VIN_S4,
+                .out_strength   = PM_GPIO_STRENGTH_MED,
+                .function       = PM_GPIO_FUNC_NORMAL,
+        };
+
+
+        ret = gpio_request(PM8921_GPIO_PM_TO_SYS(35), "US_EURO_SWITCH");
+        if (ret) {
+                pr_err("%s: Failed to request gpio %d\n", __func__,
+                        PM8921_GPIO_PM_TO_SYS(35));
+                return ret;
+        }
+        ret = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(35), &mic_open_det_param);
+        if (ret) {
+                pr_err("%s: Failed to configure gpio %d\n", __func__,
+                        PM8921_GPIO_PM_TO_SYS(35));
+                return ret;
+        }
+        gpio_direction_input(PM8921_GPIO_PM_TO_SYS(35));
+
+#endif
+
 #if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_AEGIS2) \
-	&& !defined(CONFIG_MACH_K2_KDI) && !defined(CONFIG_MACH_EXPRESS)
+	&& !defined(CONFIG_MACH_M2_KDI) && !defined(CONFIG_MACH_EXPRESS)
 	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(23), "AV_SWITCH");
 	if (ret) {
 		pr_err("%s: Failed to request gpio %d\n", __func__,
@@ -2165,8 +2193,11 @@ static int msm8960_configure_audio_gpios(void)
 static void msm8960_free_audio_gpios(void)
 {
 	if (msm8960_audio_gpios_configured) {
+#if defined(CONFIG_MACH_M2_KDI)
+                gpio_free(PM8921_GPIO_PM_TO_SYS(35));
+#endif
 #if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_AEGIS2) \
-	&& !defined(CONFIG_MACH_K2_KDI) && !defined(CONFIG_MACH_EXPRESS)
+	&& !defined(CONFIG_MACH_M2_KDI) && !defined(CONFIG_MACH_EXPRESS)
 		gpio_free(PM8921_GPIO_PM_TO_SYS(23));
 		gpio_free(PM8921_GPIO_PM_TO_SYS(35));
 #endif

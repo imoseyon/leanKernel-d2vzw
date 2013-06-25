@@ -337,7 +337,7 @@ enum s5c73m3_fw_path {
 #define S5C73M3_FLASH_TORCH		0x0B12
 #define S5C73M3_FLASH_TORCH_OFF		0x0000
 
-#if defined(CONFIG_MACH_M2_DCM)
+#if defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 #define S5C73M3_FLASH_TORCH_ON		0x0004
 #else
 #define S5C73M3_FLASH_TORCH_ON		0x0001

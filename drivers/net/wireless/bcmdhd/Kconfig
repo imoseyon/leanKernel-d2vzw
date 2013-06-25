@@ -74,3 +74,9 @@ config WLAN_REGION_CODE
 		- 202 : KOR KTT
 		- 203 : KOR LGT
 		- 300 : CHN OPEN
+
+config BRCM_CCX
+	bool "Enable CCX"
+	default n
+	---help---
+		Enable Cisco Compatible eXtenstion

@@ -341,7 +341,7 @@ static int support_2gb_ddr(void)
 	if (system_rev >= BOARD_REV14)
 #elif defined(CONFIG_MACH_M2_VZW) /* D2_VZW, D2_USCC, D2_MPCS, D2_CRIKET */
 	if (system_rev >= BOARD_REV15)
-#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	if (system_rev >= BOARD_REV08)
 #else
 	if (false)

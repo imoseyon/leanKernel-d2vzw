@@ -1531,7 +1531,7 @@ static void fsa9485_smartdock_cb(bool attached)
 static void fsa9485_audio_dock_cb(bool attached)
 {
 	pr_info("fsa9485_audio_dock_cb attached %d\n", attached);
-
+	switch_set_state(&switch_dock, attached ? 7 : 0);
 	msm_otg_set_smartdock_state(attached);
 }
 

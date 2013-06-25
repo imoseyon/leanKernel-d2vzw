@@ -90,7 +90,7 @@ struct pm8xxx_mpp_init {
 
 /* Initial PM8921 GPIO configurations */
 static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
-#if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_K2_KDI)
+#if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_M2_KDI)
 	PM8XXX_GPIO_INPUT(16,	    PM_GPIO_PULL_UP_30), /* SD_CARD_WP */
     /* External regulator shared by display and touchscreen on LiQUID */
 	PM8XXX_GPIO_OUTPUT_VIN(21, 1, PM_GPIO_VIN_VPH),	 /* Backlight Enable */
@@ -206,9 +206,14 @@ static struct pm8xxx_adc_amux pm8xxx_adc_channels_data[] = {
 	{"dev_mpp_7", ADC_MPP_1_AMUX6, CHAN_PATH_SCALING1, AMUX_RSV1,
 		ADC_DECIMATION_TYPE2, ADC_SCALE_SEC_BOARD_THERM},  /*main_thm */
 #ifdef CONFIG_SAMSUNG_JACK
+#if defined(CONFIG_MACH_M2_KDI)
+	{"earjack", ADC_MPP_2_AMUX6, CHAN_PATH_SCALING2, AMUX_RSV1, 
+		ADC_DECIMATION_TYPE2, ADC_SCALE_DEFAULT}, 
+#else
 	{"earjack", ADC_MPP_1_AMUX6_SCALE_DEFAULT,
 		CHAN_PATH_SCALING1, AMUX_RSV1,
 		ADC_DECIMATION_TYPE2, ADC_SCALE_DEFAULT},
+#endif
 #endif
 };
 
@@ -984,7 +989,7 @@ static void msm8921_sec_charger_init(void)
 	} else if (machine_is_M2_DCM() && system_rev >= 0x00) {
 		pm8921_chg_pdata.batt_id_min = 860000;
 		pm8921_chg_pdata.batt_id_max = 960000;
-	} else if (machine_is_K2_KDI() && system_rev >= 0x00) {
+	} else if (machine_is_M2_KDI() && system_rev >= 0x00) {
 		pm8921_chg_pdata.batt_id_min = 860000;
 		pm8921_chg_pdata.batt_id_max = 960000;
 	} else if (machine_is_jaguar() && system_rev >= 0x04) {
@@ -1006,7 +1011,7 @@ static void msm8921_sec_charger_init(void)
 		(machine_is_M2_VZW() && system_rev >= 0x06) ||
 		(machine_is_jaguar() && system_rev >= 0x0A) ||
 		(machine_is_M2_DCM() && system_rev >= 0x00) ||
-		(machine_is_K2_KDI() && system_rev >= 0x00) ||
+		(machine_is_M2_KDI() && system_rev >= 0x00) ||
 		machine_is_JASPER())
 		pm8921_chg_pdata.max_voltage = 4350;
 }
@@ -1016,7 +1021,7 @@ void __init msm8960_init_pmic(void)
 	msm8921_sec_charger_init();
 
 #if !defined(CONFIG_MACH_AEGIS2) && !defined(CONFIG_MACH_JASPER)\
-	&& !defined(CONFIG_MACH_M2_VZW)
+	&& !(defined(CONFIG_MACH_M2_VZW)&&!defined(_d2mtr_))
 	pmic_reset_irq = PM8921_IRQ_BASE + PM8921_RESOUT_IRQ;
 #endif
 	msm8960_device_ssbi_pmic.dev.platform_data =

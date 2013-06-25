@@ -43,7 +43,7 @@ struct max17040_platform_data {
 	defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_SKT) || \
 	defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_GOGH) || \
 	defined(CONFIG_MACH_JASPER) || defined(CONFIG_MACH_AEGIS2) || \
-	defined(CONFIG_MACH_INFINITE) || defined(CONFIG_MACH_K2_KDI)
+	defined(CONFIG_MACH_INFINITE) || defined(CONFIG_MACH_M2_KDI)
 #define EMPTY_COND_SOC		100
 #define EMPTY_SOC		30
 #define FULL_SOC_DEFAULT	9860

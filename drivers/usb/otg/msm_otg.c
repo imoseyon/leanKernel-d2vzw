@@ -979,7 +979,8 @@ static void msm_otg_start_host(struct otg_transceiver *otg, int on)
 #ifdef CONFIG_USB_HOST_NOTIFY
 	if (on == 1) {
 		motg->ndev.mode = NOTIFY_HOST_MODE;
-		host_state_notify(&motg->ndev, NOTIFY_HOST_ADD);
+		if (!motg->smartdock)
+			host_state_notify(&motg->ndev, NOTIFY_HOST_ADD);
 	} else if (on == 0) {
 		motg->ndev.mode = NOTIFY_NONE_MODE;
 		host_state_notify(&motg->ndev, NOTIFY_HOST_REMOVE);

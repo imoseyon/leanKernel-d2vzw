@@ -100,7 +100,7 @@ static char panel_cond_set_4_8[] = {
 	0x01, 0x81, 0xC1, 0x00, 0xC3,
 	0xF6, 0xF6, 0xC1
 };
-#elif defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_KDI)
 static char panel_cond_set_4_8[] = {
 	0xF8,
 	0x3D, 0x35, 0x00, 0x00, 0x00,
@@ -447,7 +447,7 @@ static char GAMMA_SmartDimming_COND_SET[] = {
 };
 #endif
 
-#if defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_KDI)
 static char panel_cond_aid_ref[] = {
 	0xF8,
 	0x3D, 0x35, 0x00, 0x00, 0x00,
@@ -1284,7 +1284,7 @@ static int  aid_operation(int lux)
 		pr_info("%s LCD is 4.65 inch", __func__);
 	} else {/* 4.8 LCD_ID*/
 		if (lux == 0) {
-#if defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_KDI)
 			panel_cond_aid_ref[1] = 0x3D;
 #else
 			panel_cond_aid_ref[1] = 0x19;
@@ -1293,7 +1293,7 @@ static int  aid_operation(int lux)
 			etc_cond_set3_aid_ref[9] = 0x40;
 			aid_status = 0;
 		} else if (lux >= 190) {
-#if defined(CONFIG_MACH_K2_KDI)
+#if defined(CONFIG_MACH_M2_KDI)
 			panel_cond_aid_ref[1] = 0x3D;
 #else
 			panel_cond_aid_ref[1] = 0x19;
@@ -1304,8 +1304,8 @@ static int  aid_operation(int lux)
 		} else if (lux >= 110) {
 			ratio = aid_below_110_ratio_table[9][1];
 
-#if defined(CONFIG_MACH_K2_KDI)
-			panel_cond_aid_ref[1] = 0x3D;
+#if defined(CONFIG_MACH_M2_KDI)
+			panel_cond_aid_ref[1] = 0x7D;
 #else
 			panel_cond_aid_ref[1] = 0x59;
 #endif
@@ -1316,8 +1316,8 @@ static int  aid_operation(int lux)
 			index = (lux / 10) - 2;
 			ratio = aid_below_110_ratio_table[index][1];
 
-#if defined(CONFIG_MACH_K2_KDI)
-			panel_cond_aid_ref[1] = 0x3D;
+#if defined(CONFIG_MACH_M2_KDI)
+			panel_cond_aid_ref[1] = 0x7D;
 #else
 			panel_cond_aid_ref[1] = 0x59;
 #endif
@@ -1504,7 +1504,11 @@ static int prepare_brightness_control_cmd_array(int lcd_type, int bl_level)
 	return cmds_send_flag;
 }
 static struct mipi_panel_data mipi_pd = {
+#if defined (CONFIG_MACH_M2_KDI)
+        .panel_name     = "SMD_AMS480GY10-0\n",
+#else
 	.panel_name	= "SMD_AMS465GS0x\n",
+#endif
 	.ready_to_on	= {samsung_panel_ready_to_on_cmds
 				, ARRAY_SIZE(samsung_panel_ready_to_on_cmds)},
 	.ready_to_on_4_8 = {samsung_panel_ready_to_on_cmds_4_8

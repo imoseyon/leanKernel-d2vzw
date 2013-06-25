@@ -261,7 +261,7 @@ obj-$(CONFIG_MACH_M2_SPR) += board-m2_spr.o board-m2_spr-gpiomux.o
 obj-$(CONFIG_MACH_M2_ATT) += board-m2_att.o board-m2_att-gpiomux.o
 obj-$(CONFIG_MACH_M2_SKT) += board-m2_skt.o board-m2_skt-gpiomux.o
 obj-$(CONFIG_MACH_M2_DCM) += board-m2_dcm.o board-m2_dcm-gpiomux.o
-obj-$(CONFIG_MACH_K2_KDI) += board-k2_kdi.o board-k2_kdi-gpiomux.o
+obj-$(CONFIG_MACH_M2_KDI) += board-m2_kdi.o board-m2_kdi-gpiomux.o
 obj-$(CONFIG_MACH_AEGIS2) += board-aegis2.o board-aegis2-gpiomux.o
 obj-$(CONFIG_MACH_ACCELERATE) += board-accelerate.o board-accelerate-gpiomux.o
 obj-$(CONFIG_MACH_COMANCHE) += board-comanche.o board-comanche-gpiomux.o
@@ -292,7 +292,7 @@ obj-$(CONFIG_MACH_M2_SPR) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_ATT) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_SKT) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_M2_DCM) += board-msm8960-common-all.o board-mms-tsp.o
-obj-$(CONFIG_MACH_K2_KDI) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_M2_KDI) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_STRETTO) += board-msm8960-common-all.o board-mms-tsp.o
 obj-$(CONFIG_MACH_SUPERIORLTE_SKT) += board-msm8960-common-all.o board-mms-tsp.o
 

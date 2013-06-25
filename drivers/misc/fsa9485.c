@@ -670,10 +670,15 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 		pdata->dock_cb(FSA9485_DETACHED_DOCK);
 
 	if (local_usbsw->dock_ready == 1)
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		if (adc == 0x10)
 			val2 = DEV_SMARTDOCK;
 		else if (adc == 0x12)
 			val2 = DEV_AUDIO_DOCK;
+#else
+		if (adc == 0x12)
+			val2 = DEV_AUDIO_DOCK;
+#endif
 
 	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x adc : 0x%x\n",
 		val1, val2, adc);
@@ -808,6 +813,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 			usbsw->dock_attached = FSA9485_ATTACHED;
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		/* SmartDock */
 		} else if (val2 & DEV_SMARTDOCK) {
 			usbsw->adc = adc;
@@ -834,6 +840,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				pdata->smartdock_cb(FSA9485_ATTACHED);
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 			mhl_onoff_ex(1);
+#endif
 #endif
 		} else if (val2 & DEV_AUDIO_DOCK) {
 			usbsw->adc = adc;
@@ -933,6 +940,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 				usbsw->dock_attached = FSA9485_DETACHED;
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		} else if (usbsw->adc == 0x10) {
 			dev_info(&client->dev, "smart dock disconnect\n");
 
@@ -952,7 +960,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				pdata->smartdock_cb(FSA9485_DETACHED);
 			usbsw->adc = 0;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
+#if defined CONFIG_MHL_D3_SUPPORT
 			mhl_onoff_ex(false);
+			detached_status = 1;
+#endif
+			isDeskdockconnected = 0;
+#endif
 #endif
 		} else if (usbsw->adc == 0x12) {
 			dev_info(&client->dev, "audio dock disconnect\n");

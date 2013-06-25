@@ -575,6 +575,11 @@ static void gbam_start_io(struct gbam_port *port)
 
 	spin_unlock_irqrestore(&port->port_lock_ul, flags);
 	spin_lock_irqsave(&port->port_lock_dl, flags);
+	if (!port->port_usb) {
+		gbam_free_requests(ep, &d->rx_idle);
+		spin_unlock_irqrestore(&port->port_lock_dl, flags);
+		return;
+	}
 	ep = port->port_usb->in;
 	ret = gbam_alloc_requests(ep, &d->tx_idle, bam_mux_tx_q_size,
 			gbam_epin_complete, GFP_ATOMIC);
@@ -667,6 +672,9 @@ static void gbam_connect_work(struct work_struct *w)
 	struct bam_ch_info *d = &port->data_ch;
 	int ret;
 	unsigned long flags;
+
+	if (!port)
+		return;
 
 	spin_lock_irqsave(&port->port_lock_ul, flags);
 	spin_lock(&port->port_lock_dl);

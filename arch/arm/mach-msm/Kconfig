@@ -763,12 +763,12 @@ config MACH_M2_DCM
 	help
           Support for the Samsung M2 DCM device.
 
-config MACH_K2_KDI
+config MACH_M2_KDI
 	depends on ARCH_MSM8960
 	default n
-	bool "MSM8960 Samsung K2_KDI"
+	bool "MSM8960 Samsung M2_KDI"
 	help
-          Support for the Samsung K2 KDI device.
+          Support for the Samsung M2 KDI device.
 
 config MACH_STRETTO
 	depends on ARCH_MSM8960

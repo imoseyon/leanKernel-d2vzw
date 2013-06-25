@@ -230,7 +230,7 @@ int host_notify_dev_register(struct host_notify_dev *ndev)
 	}
 
 	dev_set_drvdata(ndev->dev, ndev);
-	ndev->state = 0;
+	ndev->state = NOTIFY_HOST_REMOVE;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(host_notify_dev_register);

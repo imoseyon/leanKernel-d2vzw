@@ -130,7 +130,7 @@ static int msm_ctrl_cmd_done(void __user *arg)
 static int msm_server_control(struct msm_cam_server_dev *server_dev,
 				struct msm_ctrl_cmd *out)
 {
-	int rc = 0;
+	int rc = 0,wait_count=0;
 	void *value;
 	struct msm_queue_cmd *rcmd;
 	struct msm_ctrl_cmd *ctrlcmd;
@@ -159,9 +159,24 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 
 	/* wait for config return status */
 	D("Waiting for config status\n");
+	/* QC-Patch Start */
+	#if 0
 	rc = wait_event_interruptible_timeout(queue->wait,
 		!list_empty_careful(&queue->list),
 		msecs_to_jiffies(out->timeout_ms));
+	#endif
+	wait_count = 2; 
+	do { 
+		rc = wait_event_interruptible_timeout(queue->wait, 
+		!list_empty_careful(&queue->list), 
+		msecs_to_jiffies(out->timeout_ms)); 
+		wait_count--; 
+		if (rc != -ERESTARTSYS) 
+			break; 
+		D("%s: wait_event interrupted by signal, remain_count = %d", 
+			__func__, wait_count); 
+		} while (wait_count > 0); 
+	/* QC-Patch End */
 	D("Waiting is over for config status\n");
 	if (list_empty_careful(&queue->list)) {
 		if (!rc)
@@ -1633,6 +1648,7 @@ static int msm_close(struct file *f)
 	if (pcam_inst->streamon) {
 		/*something went wrong since instance
 		is closing without streamoff*/
+		pcam->mctl.mctl_cmd = NULL;  /* QC-Patch */
 		if (pcam->mctl.mctl_release) {
 			rc = pcam->mctl.mctl_release(&(pcam->mctl));
 			if (rc < 0)
@@ -1665,7 +1681,7 @@ static int msm_close(struct file *f)
 		rc = msm_cam_server_close_session(&g_server_dev, pcam);
 		if (rc < 0)
 			pr_err("msm_cam_server_close_session fails %d\n", rc);
-
+		pcam->mctl.mctl_cmd = NULL; /* QC-Patch */
 		if (pcam->mctl.mctl_release) {
 			rc = pcam->mctl.mctl_release(&(pcam->mctl));
 			if (rc < 0)

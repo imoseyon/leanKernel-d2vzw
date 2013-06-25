@@ -336,7 +336,7 @@ static int is_pm8921_sec_charger_using(void)
 #elif defined(CONFIG_MACH_INFINITE)
 	if (system_rev >= 0x1)
 		return 0;
-#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_M2_KDI)
 	if (system_rev >= 0x1)
 		return 0;
 #elif defined(CONFIG_MACH_AEGIS2)

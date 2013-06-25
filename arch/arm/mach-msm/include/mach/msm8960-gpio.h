@@ -37,8 +37,8 @@
 #include <mach/m2_skt-gpio.h>
 #elif defined(CONFIG_MACH_M2_DCM)
 #include <mach/m2_dcm-gpio.h>
-#elif defined(CONFIG_MACH_K2_KDI)
-#include <mach/k2_kdi-gpio.h>
+#elif defined(CONFIG_MACH_M2_KDI)
+#include <mach/m2_kdi-gpio.h>
 #elif defined(CONFIG_MACH_GOGH)
 #include <mach/gogh-gpio.h>
 #elif defined(CONFIG_MACH_INFINITE)

@@ -845,6 +845,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on) {
+			bl_updated = 0;
 			msleep(16);
 			ret = pdata->on(mfd->pdev);
 			if (ret == 0) {

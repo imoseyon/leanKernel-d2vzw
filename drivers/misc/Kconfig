@@ -681,6 +681,10 @@ config USB_SWITCH_FSA9485
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
 
+config USB_SWITCH_SMART_DOCK_ENABLE
+	bool "Smartdock support"
+	default n
+
 config MPU_411_ENABLE
 	bool "mpu gyro sensor MPL 4.1.1"
 	depends on I2C

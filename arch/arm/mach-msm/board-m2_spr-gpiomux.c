@@ -578,7 +578,11 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
+#if defined(_d2tfnspr_)
+	.drv = GPIOMUX_DRV_2MA,
+#else
 	.drv = GPIOMUX_DRV_8MA,
+#endif
 	.pull = GPIOMUX_PULL_NONE,
 };
 

@@ -814,7 +814,7 @@ static void read_send_work(struct work_struct *work)
 		ret = wait_event_interruptible(dev->write_wq,
 				((req = mtpg_req_get(dev, &dev->tx_idle))
 							|| dev->error));
-		if (ret < 0) {
+		if (ret < 0 || !req) {
 			r = ret;
 			printk(KERN_DEBUG "[%s]\t%d ret = %d\n",
 						__func__, __LINE__, r);
@@ -836,7 +836,7 @@ static void read_send_work(struct work_struct *work)
 
 		ret = vfs_read(file, req->buf + hdr_length,
 					xfer - hdr_length, &file_pos);
-		if (ret < 0) {
+		if (ret < 0 || !req) {
 			r = ret;
 			break;
 		}
@@ -845,7 +845,7 @@ static void read_send_work(struct work_struct *work)
 
 		req->length = xfer;
 		ret = usb_ep_queue(dev->bulk_in, req, GFP_KERNEL);
-		if (ret < 0) {
+		if (ret < 0 || !req) {
 			dev->error = 1;
 			r = -EIO;
 			printk(KERN_DEBUG "[%s]\t%d ret = %d\n",

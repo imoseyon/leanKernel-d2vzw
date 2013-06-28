@@ -1823,7 +1823,7 @@ config CP_ACCESS
 
 	  If unsure, say N.
 
-source "arch/arm/mvp/Kconfig"
+#source "arch/arm/mvp/Kconfig"
 
 endmenu
 

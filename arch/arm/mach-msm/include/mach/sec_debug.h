@@ -46,6 +46,7 @@ extern void sec_gaf_supply_rqinfo(unsigned short curr_offset,
 				  unsigned short rq_offset);
 extern int sec_debug_is_enabled(void);
 extern int sec_debug_is_enabled_for_ssr(void);
+extern void sec_debug_set_qc_dload_magic(int on);
 #else
 static inline int sec_debug_init(void)
 {
@@ -522,7 +523,6 @@ extern int sec_debug_subsys_set_logger_info(
 	struct sec_debug_subsys_logger_log_info *log_info);
 int sec_debug_save_die_info(const char *str, struct pt_regs *regs);
 int sec_debug_save_panic_info(const char *str, unsigned int caller);
-extern void sec_debug_set_qc_dload_magic(int on);
 extern uint32_t global_pvs;
 #endif
 

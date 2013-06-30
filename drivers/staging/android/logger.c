@@ -767,7 +767,7 @@ static int __init init_log(struct logger_log *log)
 	return 0;
 }
 
-#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
 int sec_debug_subsys_set_logger_info(
 	struct sec_debug_subsys_logger_log_info *log_info)
 {

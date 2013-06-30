@@ -437,7 +437,7 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	 */
 	mutex_unlock(shutdown_lock);
 
-#ifdef CONFIG_SEC_DEBUG
+#ifdef CONFIG_SEC_DEBUG_SUBSYS
 	/* Print the modem crash details to klog */
 	print_modem_dump_info();
 #endif

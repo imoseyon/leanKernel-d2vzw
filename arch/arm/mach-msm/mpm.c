@@ -405,8 +405,13 @@ bool msm_mpm_irqs_detectable(bool from_idle)
 		while (i < MSM_MPM_NR_APPS_IRQS) {
 			struct irq_desc *desc = i ?
 				irq_to_desc(i) : NULL;
-			pr_info("%s: cannot monitor irq=%d %s\n",
-			__func__, i, desc->name);
+			if (i == 241) {
+			  pr_info("[imoseyon] %s: bypass monitor irq=%d %s\n",
+			  __func__, i, desc->name);
+			  return true;
+			}
+			pr_info("%s: %d: cannot monitor irq=%d %s\n",
+			__func__, from_idle, i, desc->name);
 			i = find_next_bit(apps_irq_bitmap,
 				MSM_MPM_NR_APPS_IRQS, i + 1);
 		}

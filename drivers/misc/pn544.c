@@ -152,9 +152,7 @@ wait_irq:
 #endif
 	mutex_unlock(&pn544_dev->read_mutex);
 	if (ret < 0) {
-		pr_err("%s: i2c_master_recv returned %d\n", __func__,
-				ret);
-		return ret;
+		return 0;
 	}
 
 	if (ret > count) {

@@ -3256,7 +3256,6 @@ static struct msm_dcvs_freq_entry grp3d_freq[] = {
 static struct msm_dcvs_freq_entry grp2d_freq[] = {
 	{0, 900, 0, 0, 0},
 	{0, 950, 1, 100, 100},
-	{0, 950, 1, 100, 100},
 };
 
 static struct msm_dcvs_core_info grp3d_core_info = {
@@ -3632,10 +3631,6 @@ static struct kgsl_device_iommu_data kgsl_2d0_iommu_data[] = {
 static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 	.pwrlevel = {
 		{
-			.gpu_freq = 228571000,
-			.bus_freq = 3,
-		},
-		{
 			.gpu_freq = 200000000,
 			.bus_freq = 2,
 		},
@@ -3648,7 +3643,7 @@ static struct kgsl_device_platform_data kgsl_2d0_pdata = {
 			.bus_freq = 0,
 		},
 	},
-	.init_level = 1,
+	.init_level = 0,
 	.num_levels = ARRAY_SIZE(grp2d_freq) + 1,
 	.set_grp_async = NULL,
 	.idle_timeout = HZ/5,
@@ -3703,10 +3698,6 @@ static struct resource kgsl_2d1_resources[] = {
 static struct kgsl_device_platform_data kgsl_2d1_pdata = {
 	.pwrlevel = {
 		{
-			.gpu_freq = 228571000,
-			.bus_freq = 3,
-		},
-		{
 			.gpu_freq = 200000000,
 			.bus_freq = 2,
 		},
@@ -3719,7 +3710,7 @@ static struct kgsl_device_platform_data kgsl_2d1_pdata = {
 			.bus_freq = 0,
 		},
 	},
-	.init_level = 1,
+	.init_level = 0,
 	.num_levels = ARRAY_SIZE(grp2d_freq) + 1,
 	.set_grp_async = NULL,
 	.idle_timeout = HZ/5,

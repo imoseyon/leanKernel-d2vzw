@@ -327,7 +327,7 @@ int kgsl_pwrscale_attach_policy(struct kgsl_device *device,
 	if (device->pwrscale.policy == policy)
 		goto done;
 
-	if (device->pwrctrl.num_pwrlevels < 2) {
+	if (device->pwrctrl.num_pwrlevels < 3) {
 		ret = -EINVAL;
 		goto done;
 	}

@@ -84,3 +84,5 @@ GTAGS
 *.orig
 *~
 \#*#
+zip
+buildlean.sh

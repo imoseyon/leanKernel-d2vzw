@@ -24,6 +24,7 @@
 #include <mach/msm_bus_board.h>
 #include <linux/delay.h>
 
+#  define UINT32_MAX    (4294967295U)
 static int release_buf;
 
 /* size is based on 4k page size */
@@ -817,7 +818,7 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 	void * __user arg)
 {
 	int is_copy_to_user;
-	int len;
+	uint32_t len;
 	uint32_t m;
 	struct msm_gemini_hw_cmds *hw_cmds_p;
 	struct msm_gemini_hw_cmd *hw_cmd_p;
@@ -825,6 +826,12 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 	if (copy_from_user(&m, arg, sizeof(m))) {
 		GMN_PR_ERR("%s:%d] failed\n", __func__, __LINE__);
 		return -EFAULT;
+	}
+	if ((m == 0) || (m > ((UINT32_MAX-sizeof(struct msm_gemini_hw_cmds))/
+		sizeof(struct msm_gemini_hw_cmd)))) {
+		GMN_PR_ERR("%s:%d] outof range of hwcmds\n",
+			 __func__, __LINE__);
+		return -EINVAL;
 	}
 
 	len = sizeof(struct msm_gemini_hw_cmds) +
@@ -972,14 +979,6 @@ int msm_gemini_ioctl_set_outmode(struct msm_gemini_device *pgmn_dev,
 	return rc;
 }
 
-int msm_gemini_ioctl_test_dump_region(struct msm_gemini_device *pgmn_dev,
-	unsigned long arg)
-{
-	GMN_DBG("%s:%d] Enter\n", __func__, __LINE__);
-	msm_gemini_hw_region_dump(arg);
-	return 0;
-}
-
 long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
 	unsigned int cmd, unsigned long arg)
 {
@@ -1046,10 +1045,6 @@ long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
 
 	case MSM_GMN_IOCTL_HW_CMDS:
 		rc = msm_gemini_ioctl_hw_cmds(pgmn_dev, (void __user *) arg);
-		break;
-
-	case MSM_GMN_IOCTL_TEST_DUMP_REGION:
-		rc = msm_gemini_ioctl_test_dump_region(pgmn_dev, arg);
 		break;
 
 	case MSM_GMN_IOCTL_SET_MODE:

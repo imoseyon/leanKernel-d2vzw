@@ -541,16 +541,9 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
 
-	/*
-	 * Change memory allocation size to 4K from 64K
-	 * Sluggish Problem
-	 */
-#if 1
 	page_size = (align >= ilog2(SZ_64K) && size >= SZ_64K)
 			? SZ_64K : PAGE_SIZE;
-#else
-	page_size = SZ_4K;
-#endif
+
 	/* update align flags for what we actually use */
 	if (page_size != PAGE_SIZE)
 		kgsl_memdesc_set_align(memdesc, ilog2(page_size));
@@ -576,12 +569,18 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		goto done;
 	}
 
-	/* Allocate space to store the list of pages to send to vmap. */
-	pages_size = sglen_alloc * sizeof(struct page *);
-	if (pages_size > PAGE_SIZE * 2)
-		pages = vmalloc(pages_size);
+	/*
+	 * Allocate space to store the list of pages to send to vmap.
+	 * This is an array of pointers so we can track 1024 pages per page
+	 * of allocation.  Since allocations can be as large as the user dares,
+	 * we have to use the kmalloc/vmalloc trick here to make sure we can
+	 * get the memory we need.
+	 */
+
+	if ((memdesc->sglen_alloc * sizeof(struct page *)) > PAGE_SIZE)
+		pages = vmalloc(memdesc->sglen_alloc * sizeof(struct page *));
 	else
-		pages = kmalloc(pages_size, GFP_KERNEL);
+		pages = kmalloc(PAGE_SIZE, GFP_KERNEL);
 
 	if (pages == NULL) {
 		KGSL_CORE_ERR("page table alloc (%d) failed\n",
@@ -689,6 +688,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 done:
 	if (pages_size > PAGE_SIZE * 2)
+	if ((memdesc->sglen_alloc * sizeof(struct page *)) > PAGE_SIZE)
 		vfree(pages);
 	else
 		kfree(pages);

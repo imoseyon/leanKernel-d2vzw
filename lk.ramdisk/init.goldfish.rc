@@ -4,6 +4,14 @@ on early-init
     # for backwards compatibility
     symlink /mnt/sdcard /sdcard
 
+on fs
+# mount mtd partitions
+    # Mount /system rw first to give the filesystem a chance to save a checkpoint
+    mount ext4 mtd@system /system
+    mount ext4 mtd@system /system ro remount
+    mount ext4 mtd@userdata /data nosuid nodev
+    mount ext4 mtd@cache /cache nosuid nodev
+
 on boot
     setsebool in_qemu=1
     restorecon /sys/qemu_trace/process_name

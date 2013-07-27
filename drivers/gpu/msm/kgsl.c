@@ -718,7 +718,7 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 {
 	struct kgsl_device *device = container_of(h,
 					struct kgsl_device, display_off);
-	KGSL_PWR_WARN(device, "late resume start\n");
+	KGSL_PWR_ERR(device, "late resume start\n");
 	mutex_lock(&device->mutex);
 	device->pwrctrl.restore_slumber = false;
 	if (device->pwrscale.policy == NULL)
@@ -744,7 +744,6 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 	}
 
 	mutex_unlock(&device->mutex);
-	kgsl_check_idle(device);
 	KGSL_PWR_ERR(device, "late resume end\n");
 }
 EXPORT_SYMBOL(kgsl_late_resume_driver);
@@ -1358,17 +1357,6 @@ static long kgsl_ioctl_device_waittimestamp_ctxtid(struct kgsl_device_private
 	struct kgsl_context *context;
 	long result = -EINVAL;
 
-<<<<<<< HEAD
-	context = kgsl_find_context(dev_priv, param->context_id);
-	if (context == NULL)
-		return -EINVAL;
-	/*
-	 * A reference count is needed here, because waittimestamp may
-	 * block with the device mutex unlocked and userspace could
-	 * request for the context to be destroyed during that time.
-	 */
-	kgsl_context_get(context);
-	result = _device_waittimestamp(dev_priv, context,
 	context = kgsl_context_get_owner(dev_priv, param->context_id);
 
 	if (context)
@@ -1390,6 +1378,9 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 	context = kgsl_context_get_owner(dev_priv, param->drawctxt_id);
 	if (context == NULL) {
 		result = -EINVAL;
+		KGSL_DRV_ERR(dev_priv->device,
+			"invalid context_id %d\n",
+			param->drawctxt_id);
 		goto done;
 	}
 
@@ -1498,14 +1489,7 @@ static long kgsl_ioctl_cmdstream_readtimestamp_ctxtid(struct kgsl_device_private
 	struct kgsl_context *context;
 	long result = -EINVAL;
 
-<<<<<<< HEAD
-	context = kgsl_find_context(dev_priv, param->context_id);
-	if (context == NULL)
-		return -EINVAL;
-
-=======
 	context = kgsl_context_get_owner(dev_priv, param->context_id);
->>>>>>> 6856c25... msm: kgsl: Fix context reference counting
 
 	if (context)
 		result = _cmdstream_readtimestamp(dev_priv, context,

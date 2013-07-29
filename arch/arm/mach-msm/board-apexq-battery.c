@@ -46,17 +46,30 @@ static sec_charging_current_t charging_current_table[] = {
 	{0,	0,	0,	0}, /* UNKNOWN */
 	{0,	0,	0,	0}, /* BATTERY */
 	{0,	0,	0,	0}, /* UPS */
+#ifdef CONFIG_MACH_EXPRESS
+	{1000,	1050,	200,	0}, /* MAINS */
+#else
 	{1000,	950,	200,	0}, /* MAINS */
+#endif
 	{1000,	500,	200,	0}, /* USB */
 	{1000,	500,	200,	0}, /* USB_DCP */
 	{1000,	500,	200,	0}, /* USB_CDP */
 	{1000,	500,	200,	0}, /* USB ACA */
 	{0,	0,	0,	0}, /* BMS */
 	{1000,	700,	200,	0}, /* MISC */
+#ifdef CONFIG_MACH_EXPRESS
+	{1000,	1050,	200,	0}, /* CARDOCK */
+	{1000,	1050,	200,	0}, /* UARTOFF */
+#else
 	{1000,	950,	200,	0}, /* CARDOCK */
 	{1000,	950,	200,	0}, /* UARTOFF */
+#endif
 	{0,	0,	0,	0}, /* WIRELESS/DUMMY */
+#ifdef CONFIG_MACH_EXPRESS
+	{1000,	-500,	0,	0}, /* OTG */
+#else
 	{0,	0,	0,	0}, /* OTG */
+#endif
 };
 
 static int msm_otg_pmic_gpio_config(
@@ -412,8 +425,13 @@ static int polling_time_table[] = {
 static struct battery_data_t apexq_battery_data[] = {
 	/* SDI battery data (High voltage 4.35V) */
 	{
+#ifdef CONFIG_MACH_EXPRESS
+		.RCOMP0 = 0x62,
+		.RCOMP_charging = 0x6A,
+#else
 		.RCOMP0 = 0x55,
 		.RCOMP_charging = 0x55,
+#endif
 		.temp_cohot = -300,
 		.temp_cocold = -6075,
 		.is_using_model_data = true,
@@ -522,6 +540,21 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		sizeof(temp_table)/sizeof(sec_bat_adc_table_data_t),
 
 	.temp_check_type = SEC_BATTERY_TEMP_CHECK_TEMP,
+#ifdef CONFIG_MACH_EXPRESS
+	.temp_check_count = 1,
+	.temp_high_threshold_event = 610,
+	.temp_high_recovery_event = 400,
+	.temp_low_threshold_event = -50,
+	.temp_low_recovery_event = -20,
+	.temp_high_threshold_normal = 450,
+	.temp_high_recovery_normal = 400,
+	.temp_low_threshold_normal = -50,
+	.temp_low_recovery_normal = -20,
+	.temp_high_threshold_lpm = 450,
+	.temp_high_recovery_lpm = 400,
+	.temp_low_threshold_lpm = -50,
+	.temp_low_recovery_lpm = -20,
+#else
 	.temp_check_count = 2,
 	.temp_high_threshold_event = 630,
 	.temp_high_recovery_event = 450,
@@ -535,6 +568,7 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_high_recovery_lpm = 440,
 	.temp_low_threshold_lpm = -40,
 	.temp_low_recovery_lpm = -10,
+#endif
 
 	.full_check_type = SEC_BATTERY_FULLCHARGED_CHGPSY,
 	.full_check_type_2nd = SEC_BATTERY_FULLCHARGED_NONE,
@@ -567,7 +601,11 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		SEC_FUELGAUGE_CAPACITY_TYPE_SCALE |
 		SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE,
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC, */
+#ifdef CONFIG_MACH_EXPRESS
+	.capacity_max = 960,
+#else
 	.capacity_max = 990,
+#endif
 	.capacity_max_margin = 50,
 	.capacity_min = 11,
 
@@ -579,7 +617,11 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.chg_polarity_status = 0,
 	.chg_irq = 0,
 	.chg_irq_attr = 0,
+#ifdef CONFIG_MACH_EXPRESS
+	.chg_float_voltage = 4350,
+#else
 	.chg_float_voltage = 4360,
+#endif
 };
 
 static struct platform_device sec_device_battery = {

@@ -401,6 +401,109 @@ void SetTargetVDDStrong(void)
  ****************************************************************************
 */
 
+#if defined(CONFIG_MACH_EXPRESS)
+static void cypress_power_onoff(int onoff)
+{
+	int ret;
+	static struct regulator *reg_l17;
+	static struct regulator *reg_lvs6;
+	static struct regulator *reg_l29;
+
+	if (system_rev < BOARD_REV06) {
+		if (!reg_lvs6) {
+			reg_lvs6 = regulator_get(NULL, "8921_lvs6");
+			if (IS_ERR(reg_lvs6)) {
+				pr_err("could not get 8921_lvs6, ret = %ld\n",
+					PTR_ERR(reg_lvs6));
+				return;
+			}
+		}
+
+		if (onoff) {
+			ret = regulator_enable(reg_lvs6);
+			if (ret) {
+				pr_err("enable lvs6 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_1.8V on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_lvs6);
+			if (ret) {
+				pr_err("disable lvs6 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_1.8V off is finished.\n");
+		}
+
+		if (!reg_l17) {
+			reg_l17 = regulator_get(NULL, "8921_l17");
+			if (IS_ERR(reg_l17)) {
+				pr_err("could not get 8921_l17, ret = %ld\n",
+					PTR_ERR(reg_l17));
+				return;
+			}
+
+			ret = regulator_set_voltage(reg_l17, 3300000, 3300000);
+			if (ret) {
+				pr_err("%s: unable to set ldo17 voltage to 3.3V\n",
+					__func__);
+				return;
+			}
+		}
+
+		if (onoff) {
+			ret = regulator_enable(reg_l17);
+			if (ret) {
+				pr_err("enable l17 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_power_on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_l17);
+			if (ret) {
+				pr_err("disable l17 failed, ret=%d\n", ret);
+				return;
+			}
+			pr_info("cypress_power_off is finished.\n");
+		}
+
+	} else {
+		if (!reg_l29) {
+			reg_l29 = regulator_get(NULL, "8921_l29");
+			if (IS_ERR(reg_l29)) {
+				pr_err("could not get 8921_l29, ret = %ld\n",
+					PTR_ERR(reg_l29));
+				return;
+			}
+
+			ret = regulator_set_voltage(reg_l29, 1800000, 1800000);
+			if (ret) {
+				pr_err("%s: unable to set ldo17 voltage to 1.8V\n",
+					__func__);
+				return;
+			}
+		}
+
+		if (onoff) {
+			ret = regulator_enable(reg_l29);
+			if (ret) {
+				pr_err("enable l29 failed, ret=%d\n", ret);
+				return;
+			}
+			gpio_direction_output(GPIO_TKEY_LED, 1);
+			pr_info("cypress_power_on is finished.\n");
+		} else {
+			ret = regulator_disable(reg_l29);
+			if (ret) {
+				pr_err("disable l29 failed, ret=%d\n", ret);
+				return;
+			}
+			gpio_direction_output(GPIO_TKEY_LED, 0);
+			pr_info("cypress_power_off is finished.\n");
+		}
+	}
+}
+#else
 static void cypress_power_onoff(int onoff)
 {
 	if (machine_is_GOGH()) {
@@ -499,6 +602,7 @@ static void cypress_power_onoff(int onoff)
 		}
 	}
 }
+#endif
 
 void ApplyTargetVDD(void)
 {

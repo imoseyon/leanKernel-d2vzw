@@ -305,11 +305,13 @@ int is_melfas_vdd_on(void)
 #endif
 }
 
+#if !defined(CONFIG_MACH_APEXQ)
 static void melfas_register_callback(struct tsp_callbacks *cb)
 {
 	charger_callbacks = cb;
 	pr_debug("[TSP] melfas_register_callback\n");
 }
+#endif
 
 #if defined(CONFIG_TOUCHSCREEN_MMS136) || \
 	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)

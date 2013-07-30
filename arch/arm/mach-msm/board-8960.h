@@ -101,6 +101,9 @@ void msm8960_allocate_fb_region(void);
 void msm8960_set_display_params(char *prim_panel, char *ext_panel);
 void msm8960_pm8921_gpio_mpp_init(void);
 void msm8960_mdp_writeback(struct memtype_reserve *reserve_table);
+void msm8960_init_battery(void);
+int msm8960_get_cable_status(void);
+extern int poweroff_charging;
 #define MSM_8960_GSBI4_QUP_I2C_BUS_ID 4
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
 #define MSM_8960_GSBI8_QUP_I2C_BUS_ID 8

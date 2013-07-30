@@ -940,6 +940,16 @@ config MACH_M2_VZW
         bool "MSM8960 Samsung M2_VZW"
         help
           Support for the Samsung M2 Verizon device.
+
+config MACH_APEXQ
+	depends on ARCH_MSM8960
+	default n
+	select REGULATOR_MSM_GPIO
+	select MSM_IOMMU_GPU_SYNC if MSM_IOMMU
+	select MSM_DCVS_FOR_MSM8260A
+        bool "MSM8960 Samsung ApexQ"
+        help
+          Support for Samsung ApexQ device.
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"
@@ -2630,6 +2640,11 @@ config MSM_DCVS
 	  The DCVS manager allows idle driver to feed the idle information to the
 	  algorithm and the algorithm returns a frequency for the core which is
 	  passed to the frequency change driver.
+
+config MSM_DCVS_FOR_MSM8260A
+	bool "MSM8260a DVFS support"
+	help
+	  To divide the dcvs for MSM8260A Model.
 
 config MSM_CPR
 	tristate "Use MSM CPR in S/W mode"

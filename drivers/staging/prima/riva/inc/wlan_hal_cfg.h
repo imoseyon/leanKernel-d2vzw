@@ -1,24 +1,23 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
-
+  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+  *
+  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+  *
+  *
+  * Permission to use, copy, modify, and/or distribute this software for
+  * any purpose with or without fee is hereby granted, provided that the
+  * above copyright notice and this permission notice appear in all
+  * copies.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  * PERFORMANCE OF THIS SOFTWARE.
+*/
 /*==========================================================================
  *
  *  @file:     wlan_hal_cfg.h
@@ -27,7 +26,7 @@
  *
  *  @author:   Kumar Anand
  *
- *             Copyright (C) 2010, Qualcomm, Inc. 
+ *             Copyright (C) 2010, Qualcomm Technologies, Inc. 
  *             All rights reserved.
  *
  *=========================================================================*/
@@ -38,7 +37,7 @@
 /*-------------------------------------------------------------------------
   Include Files
 -------------------------------------------------------------------------*/
-#include <wlan_defs.h>
+#include "qwlanfw_defs.h"
 
 /*-------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -100,28 +99,28 @@
 #define QWLAN_HAL_CFG_RPE_AGING_THRESHOLD_FOR_AC3_REG    46
 #define QWLAN_HAL_CFG_NO_OF_ONCHIP_REORDER_SESSIONS      47
 #define QWLAN_HAL_CFG_PS_LISTEN_INTERVAL                 48
-#define QWLAN_HAL_CFG_PS_HEART_BEAT_THRESHOLD            49 
-#define QWLAN_HAL_CFG_PS_NTH_BEACON_FILTER               50 
-#define QWLAN_HAL_CFG_PS_MAX_PS_POLL                     51 
+#define QWLAN_HAL_CFG_PS_HEART_BEAT_THRESHOLD            49
+#define QWLAN_HAL_CFG_PS_NTH_BEACON_FILTER               50
+#define QWLAN_HAL_CFG_PS_MAX_PS_POLL                     51
 #define QWLAN_HAL_CFG_PS_MIN_RSSI_THRESHOLD              52
-#define QWLAN_HAL_CFG_PS_RSSI_FILTER_PERIOD              53 
+#define QWLAN_HAL_CFG_PS_RSSI_FILTER_PERIOD              53
 #define QWLAN_HAL_CFG_PS_BROADCAST_FRAME_FILTER_ENABLE   54
 #define QWLAN_HAL_CFG_PS_IGNORE_DTIM                     55
 #define QWLAN_HAL_CFG_PS_ENABLE_BCN_EARLY_TERM           56
 #define QWLAN_HAL_CFG_DYNAMIC_PS_POLL_VALUE              57
-#define QWLAN_HAL_CFG_PS_NULLDATA_AP_RESP_TIMEOUT        58 
+#define QWLAN_HAL_CFG_PS_NULLDATA_AP_RESP_TIMEOUT        58
 #define QWLAN_HAL_CFG_TELE_BCN_WAKEUP_EN                 59
 #define QWLAN_HAL_CFG_TELE_BCN_TRANS_LI                  60
 #define QWLAN_HAL_CFG_TELE_BCN_TRANS_LI_IDLE_BCNS        61
 #define QWLAN_HAL_CFG_TELE_BCN_MAX_LI                    62
 #define QWLAN_HAL_CFG_TELE_BCN_MAX_LI_IDLE_BCNS          63
 #define QWLAN_HAL_CFG_TX_PWR_CTRL_ENABLE                 64
-#define QWLAN_HAL_CFG_VALID_RADAR_CHANNEL_LIST           65 
-#define QWLAN_HAL_CFG_TX_POWER_24_20                     66 
+#define QWLAN_HAL_CFG_VALID_RADAR_CHANNEL_LIST           65
+#define QWLAN_HAL_CFG_TX_POWER_24_20                     66
 #define QWLAN_HAL_CFG_TX_POWER_24_40                     67
 #define QWLAN_HAL_CFG_TX_POWER_50_20                     68
 #define QWLAN_HAL_CFG_TX_POWER_50_40                     69
-#define QWLAN_HAL_CFG_MCAST_BCAST_FILTER_SETTING         70 
+#define QWLAN_HAL_CFG_MCAST_BCAST_FILTER_SETTING         70
 #define QWLAN_HAL_CFG_BCN_EARLY_TERM_WAKEUP_INTERVAL     71
 #define QCOM_WLAN_CFG_MAX_TX_POWER_2_4                   72
 #define QCOM_WLAN_CFG_MAX_TX_POWER_5                     73
@@ -148,11 +147,31 @@
 #define QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC             94
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP              95
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO               96
-#define QWLAN_HAL_CFG_MAX_PARAMS                         97
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER              97
+#define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT                    98
+#define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION         99
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER     100
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT          101
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT           102
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER         103
+#define QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE           104
+#define QWLAN_HAL_CFG_ENABLE_NAT_KEEP_ALIVE_FILTER      105
+#define QWLAN_HAL_CFG_ENABLE_SAP_OBSS_PROT              106
+#define QWLAN_HAL_CFG_PSPOLL_DATA_RECEP_TIMEOUT         107
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE    108
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_MASK                  109
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME       110
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP 111
+#define QWLAN_HAL_CFG_ANTENNA_DIVERSITY                 112
+#define QWLAN_HAL_CFG_ATH_DISABLE                       113
+#define QWLAN_HAL_CFG_ENABLE_ADAPTIVE_RX_DRAIN_FEATURE  115
+#define QWLAN_HAL_CFG_MAX_PARAMS                        116
+
+
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      93
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      116
 
 
 /*-------------------------------------------------------------------------
@@ -269,7 +288,7 @@
  * Mapping is defined in the gHalUserFixedRateCfgToTpeRateTable
  */
 #define QWLAN_HAL_CFG_FIXED_RATE_STAMIN                        0
-#define QWLAN_HAL_CFG_FIXED_RATE_STAMAX                        44
+#define QWLAN_HAL_CFG_FIXED_RATE_STAMAX                        226
 #define QWLAN_HAL_CFG_FIXED_RATE_STADEF                        0
 #define QWLAN_HAL_CFG_FIXED_RATE_AUTO                          0
 #define QWLAN_HAL_CFG_FIXED_RATE_1MBPS                         1
@@ -431,7 +450,7 @@
 
 
 
-/* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G 
+/* ACM, AIFSN, [CWmin, CWmax, TxOp]-11A/11B/11G
  * Cwmin and Cwmax are two bytes each, MSB first. So Cwmax of [03 FF] is
  * equivalent to 0x03ff = 1023*/
 #define QWLAN_HAL_CFG_EDCA_PROFILE_ACM_IDX       0   /* byte[0] */
@@ -441,7 +460,7 @@
 #define QWLAN_HAL_CFG_EDCA_PROFILE_TXOPA_IDX     6   /* byte[6] */
 #define QWLAN_HAL_CFG_EDCA_PROFILE_CWMINB_IDX    7   /* byte[7] & byte [8]   */
 #define QWLAN_HAL_CFG_EDCA_PROFILE_CWMAXB_IDX    9   /* byte[9] & byte [10]  */
-#define QWLAN_HAL_CFG_EDCA_PROFILE_TXOPB_IDX     11  /* byte[11]*/  
+#define QWLAN_HAL_CFG_EDCA_PROFILE_TXOPB_IDX     11  /* byte[11]*/
 #define QWLAN_HAL_CFG_EDCA_PROFILE_CWMING_IDX    12  /* byte[12] & byte [13] */
 #define QWLAN_HAL_CFG_EDCA_PROFILE_CWMAXG_IDX    14  /* byte[14] & byte [15] */
 #define QWLAN_HAL_CFG_EDCA_PROFILE_TXOPG_IDX     16  /* byte[16]*/
@@ -573,24 +592,24 @@
 #define QWLAN_HAL_CFG_RADAR_CHANNEL_LIST_LEN    20
 
 /* QWLAN_HAL_CFG_TX_POWER_24_20 */
-#define QWLAN_WLAN_TX_POWER_24_20_DEFAULT    299 
-#define QWLAN_WLAN_TX_POWER_24_20_MIN        299 
-#define QWLAN_WLAN_TX_POWER_24_20_MAX        299 
+#define QWLAN_WLAN_TX_POWER_24_20_DEFAULT    299
+#define QWLAN_WLAN_TX_POWER_24_20_MIN        299
+#define QWLAN_WLAN_TX_POWER_24_20_MAX        299
 
 /* QWLAN_HAL_CFG_TX_POWER_24_40 */
 #define QWLAN_WLAN_TX_POWER_24_40_DEFAULT    300
-#define QWLAN_WLAN_TX_POWER_24_40_MIN        299 
-#define QWLAN_WLAN_TX_POWER_24_40_MAX        299 
+#define QWLAN_WLAN_TX_POWER_24_40_MIN        299
+#define QWLAN_WLAN_TX_POWER_24_40_MAX        299
 
 /* QWLAN_HAL_CFG_TX_POWER_50_20 */
 #define QWLAN_WLAN_TX_POWER_50_20_DEFAULT    301
-#define QWLAN_WLAN_TX_POWER_50_20_MIN        299 
-#define QWLAN_WLAN_TX_POWER_50_20_MAX        299 
+#define QWLAN_WLAN_TX_POWER_50_20_MIN        299
+#define QWLAN_WLAN_TX_POWER_50_20_MAX        299
 
 /* QWLAN_HAL_CFG_TX_POWER_50_40 */
 #define QWLAN_WLAN_TX_POWER_50_40_DEFAULT    302
-#define QWLAN_WLAN_TX_POWER_50_40_MIN        299 
-#define QWLAN_WLAN_TX_POWER_50_40_MAX        299 
+#define QWLAN_WLAN_TX_POWER_50_40_MIN        299
+#define QWLAN_WLAN_TX_POWER_50_40_MAX        299
 
 /* QCOM_WLAN_CFG_MAX_TX_POWER_2_4 */
 #define QCOM_WLAN_CFG_MAX_TX_POWER_2_4_LEN      128
@@ -711,108 +730,91 @@
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO_MAX 1
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO_DEF 0
 
-typedef struct 
-{
-   uint8    cfgStaId[QCOM_WLAN_CFG_STA_ID_LEN]; //QWLAN_HAL_CFG_STA_ID
-   uint8    reserved[2];               //Reserved field to align the next field on dword boundary
-   uint32   cfgCurrentTxAntenna;       //QWLAN_HAL_CFG_CURRENT_TX_ANTENNA
-   uint32   cfgCurrentRxAntenna;       //QWLAN_HAL_CFG_CURRENT_RX_ANTENNA
-   uint32   cfgLowGainOverride;        //QWLAN_HAL_CFG_LOW_GAIN_OVERRIDE
-   uint32   cfgPowerStatePerChain;     //QWLAN_HAL_CFG_POWER_STATE_PER_CHAIN
-   uint32   cfgCalPeriod;              //QWLAN_HAL_CFG_CAL_PERIOD
-   uint32   cfgCalControl;             //QWLAN_HAL_CFG_CAL_CONTROL
-   uint32   cfgProximity;              //QWLAN_HAL_CFG_PROXIMITY
-   uint32   cfgNetworkDensity;         //QWLAN_HAL_CFG_NETWORK_DENSITY
-   uint32   cfgMaxMediumTime;          //QWLAN_HAL_CFG_MAX_MEDIUM_TIME
-   uint32   cfgMaxMpdusInAmpu;         //QWLAN_HAL_CFG_MAX_MPDUS_IN_AMPDU
-   uint32   cfgRtsThreshold;           //QWLAN_HAL_CFG_RTS_THRESHOLD
-   uint32   cfgShortRetryLimit;        //QWLAN_HAL_CFG_SHORT_RETRY_LIMIT
-   uint32   cfgLongRetryLimit;         //QWLAN_HAL_CFG_LONG_RETRY_LIMIT
-   uint32   cfgFragmentationThreshold; //QWLAN_HAL_CFG_FRAGMENTATION_THRESHOLD
-   uint32   cfgDynamicThresholdZero;   //QWLAN_HAL_CFG_DYNAMIC_THRESHOLD_ZERO
-   uint32   cfgDynamicThresholdOne;    //QWLAN_HAL_CFG_DYNAMIC_THRESHOLD_ONE
-   uint32   cfgDynamicThresholdTwo;    //QWLAN_HAL_CFG_DYNAMIC_THRESHOLD_TWO
-   uint32   cfgFixedRate;              //QWLAN_HAL_CFG_FIXED_RATE
-   uint32   cfgRetryRatePolicy;        //QWLAN_HAL_CFG_RETRYRATE_POLICY
-   uint32   cfgRetryRateSecondary;     //QWLAN_HAL_CFG_RETRYRATE_SECONDARY
-   uint32   cfgRetryRateTertiary;      //QWLAN_HAL_CFG_RETRYRATE_TERTIARY
-   uint32   cfgForcePolicyProtection;  //QWLAN_HAL_CFG_FORCE_POLICY_PROTECTION
-   uint32   cfgFixedRateMcast24GHz;    //QWLAN_HAL_CFG_FIXED_RATE_MULTICAST_24GHZ
-   uint32   cfgFixedRateMcast5GHz;     //QWLAN_HAL_CFG_FIXED_RATE_MULTICAST_5GHZ
-   uint32   cfgDefaultRateIndex24GHz;  //QWLAN_HAL_CFG_DEFAULT_RATE_INDEX_24GHZ
-   uint32   cfgDefaultRateIndex5GHz;   //QWLAN_HAL_CFG_DEFAULT_RATE_INDEX_5GHZ
-   uint32   cfgMaxBaSessions;          //QWLAN_HAL_CFG_MAX_BA_SESSIONS
-   uint32   cfgPsDataInactivityTimeout;//QWLAN_HAL_CFG_PS_DATA_INACTIVITY_TIMEOUT
-   uint32   cfgPsTxInactivityTimeout;  //QWLAN_HAL_CFG_PS_TX_INACTIVITY_TIMEOUT
-   uint32   cfgPsEnableBcnFilter;      //QWLAN_HAL_CFG_PS_ENABLE_BCN_FILTER
-   uint32   cfgPsEnableRssiMonitor;    //QWLAN_HAL_CFG_PS_ENABLE_RSSI_MONITOR
-   uint32   cfgNumBeaconPerRssiAverage;//QWLAN_HAL_CFG_NUM_BEACON_PER_RSSI_AVERAGE
-   uint32   cfgStatsPeriod;            //QWLAN_HAL_CFG_STATS_PERIOD
-   uint32   cfgCfpMaxDuration;         //QWLAN_HAL_CFG_CFP_MAX_DURATION
-   uint32   cfgFrameTransEnabled;      //QWLAN_HAL_CFG_FRAME_TRANS_ENABLED
-   uint32   cfgDtimPeriod;             //QWLAN_HAL_CFG_DTIM_PERIOD
-   uint8    cfgEdcaWmmAcBk[QWLAN_HAL_CFG_EDCA_PARAM_MAX_LEN]; //QWLAN_HAL_CFG_EDCA_WMM_ACBK
-   uint8    cfgEdcaWmmAcBe[QWLAN_HAL_CFG_EDCA_PARAM_MAX_LEN]; //QWLAN_HAL_CFG_EDCA_WMM_ACBE
-   uint8    cfgEdcaWmmAcVo[QWLAN_HAL_CFG_EDCA_PARAM_MAX_LEN]; //QWLAN_HAL_CFG_EDCA_WMM_ACVO
-   uint8    cfgEdcaWmmAcVi[QWLAN_HAL_CFG_EDCA_PARAM_MAX_LEN]; //QWLAN_HAL_CFG_EDCA_WMM_ACVI
-   uint32   cfgbaSetupThresholdHigh;          //QWLAN_HAL_CFG_BA_THRESHOLD_HIGH
-   uint32   cfgbaRxMaxAvailBuffers;           //QWLAN_HAL_CFG_MAX_BA_BUFFERS
-   uint32   cfgRpePollingThreshold;           //QWLAN_HAL_CFG_RPE_POLLING_THRESHOLD
-   uint32   cfgRpeAgingThresholdForAc0Reg;    //QWLAN_HAL_CFG_RPE_AGING_THRESHOLD_FOR_AC0_REG
-   uint32   cfgRpeAgingThresholdForAc1Reg;    //QWLAN_HAL_CFG_RPE_AGING_THRESHOLD_FOR_AC1_REG
-   uint32   cfgRpeAgingThresholdForAc2Reg;    //QWLAN_HAL_CFG_RPE_AGING_THRESHOLD_FOR_AC2_REG
-   uint32   cfgRpeAgingThresholdForAc3Reg;    //QWLAN_HAL_CFG_RPE_AGING_THRESHOLD_FOR_AC3_REG
-   uint32   cfgNoOfOnchipReorderSessions;     //QWLAN_HAL_CFG_NO_OF_ONCHIP_REORDER_SESSIONS
-   uint32   cfgPsListenInterval;              //QWLAN_HAL_CFG_PS_LISTEN_INTERVAL
-   uint32   cfgPsHeartBeatThreshold;          //QWLAN_HAL_CFG_PS_HEART_BEAT_THRESHOLD
-   uint32   cfgPsNthBeaconFilter;             //QWLAN_HAL_CFG_PS_NTH_BEACON_FILTER
-   uint32   cfgPsMaxPsPoll;                   //QWLAN_HAL_CFG_PS_MAX_PS_POLL
-   uint32   cfgPsMinRssiThreshold;            //QWLAN_HAL_CFG_PS_MIN_RSSI_THRESHOLD
-   uint32   cfgPsRssiFilterPeriod;            //QWLAN_HAL_CFG_PS_RSSI_FILTER_PERIOD
-   uint32   cfgPsBroadcastFrameFilterEnable;  //QWLAN_HAL_CFG_PS_BROADCAST_FRAME_FILTER_ENABLE
-   uint32   cfgPsIgnoreDtim;                  //QWLAN_HAL_CFG_PS_IGNORE_DTIM
-   uint32   cfgPsEnableBcnEarlyTerm;          //QWLAN_HAL_CFG_PS_ENABLE_BCN_EARLY_TERM
-   uint32   cfgDynamicPsPollValue;            //QWLAN_HAL_CFG_DYNAMIC_PS_POLL_VALUE
-   uint32   cfgPsNullDataApRespTimeout;       //QWLAN_HAL_CFG_PS_NULLDATA_AP_RESP_TIMEOUT
-   uint32   cfgTxPowerEnable;                 //QWLAN_HAL_CFG_TX_PWR_CTRL_ENABLE
-   uint32   cfgTeleBcnWakeupEn;               //QWLAN_HAL_CFG_TELE_BCN_WAKEUP_EN
-   uint32   cfgTeleBcnTransLi;                //QWLAN_HAL_CFG_TELE_BCN_TRANS_LI
-   uint32   cfgTeleBcnTransLiIdleBcns;        //QWLAN_HAL_CFG_TELE_BCN_TRANS_LI_IDLE_BCNS
-   uint32   cfgTeleBcnMaxLi;                  //QWLAN_HAL_CFG_TELE_BCN_MAX_LI
-   uint32   cfgTeleBcnMaxLiIdleBcns;          //QWLAN_HAL_CFG_TELE_BCN_MAX_LI_IDLE_BCNS
-   uint32   cfgMcastBcastFilterSetting;       //QWLAN_HAL_CFG_MCAST_BCAST_FILTER_SETTING
-   uint32   cfgBcnEarlyTermWakeupInterval;    //QWLAN_HAL_CFG_BCN_EARLY_TERM_WAKEUP_INTERVAL
-   uint8    cfgValidRadarChannelList[QWLAN_HAL_CFG_RADAR_CHANNEL_LIST_LEN]; //QWLAN_HAL_CFG_VALID_RADAR_LIST
-   uint32   cfgTxPower2420;                   //QWLAN_HAL_CFG_TX_POWER_24_20
-   uint32   cfgTxPower2440;                   //QWLAN_HAL_CFG_TX_POWER_24_40
-   uint32   cfgTxPower5020;                   //QWLAN_HAL_CFG_TX_POWER_50_20
-   uint32   cfgTxPower5040;                   //QWLAN_HAL_CFG_TX_POWER_50_40
-   uint8    cfgMaxTxPower24[QCOM_WLAN_CFG_MAX_TX_POWER_2_4_LEN]; //QCOM_WLAN_CFG_MAX_TX_POWER_2_4
-   uint8    cfgMaxTxPower5[QCOM_WLAN_CFG_MAX_TX_POWER_5_LEN];    //QCOM_WLAN_CFG_MAX_TX_POWER_5
-   uint32   cfgInfraStaKeepAlivePeriod;       //QWLAN_HAL_CFG_INFRA_STA_KEEP_ALIVE_PERIOD
-   uint32   cfgEnableCloseLoop;               //QWLAN_HAL_CFG_ENABLE_CLOSE_LOOP
-   uint32   cfgBtcExecutionMode;              //QWLAN_HAL_CFG_BTC_EXECUTION_MODE
-   uint32   cfgBtcDhcpBtSlotsToBlock;         //QWLAN_HAL_CFG_BTC_DHCP_BT_SLOTS_TO_BLOCK
-   uint32   cfgBtcA2dpDhcpBtSubIntervals;     //QWLAN_HAL_CFG_BTC_A2DP_DHCP_BT_SUB_INTERVALS
-   uint32   cfgWcnssApiVersion;               //QWLAN_HAL_CFG_WCNSS_API_VERSION
-   uint32   cfgApKeepAliveTimeout;            //QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT
-   uint32   cfgGoKeepAliveTimeout;            //QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT
-   uint32   cfgEnableMCAddrList;              //QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST   
-   uint32   cfgBtcStaticLenInqBt;             //QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_BT
-   uint32   cfgBtcStaticLenPageBt;            //QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_BT
-   uint32   cfgBtcStaticLenConnBt;            //QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_BT
-   uint32   cfgBtcStaticLenLeBt;              //QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_BT
-   uint32   cfgBtcStaticLenInqWlan;           //QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_WLAN
-   uint32   cfgBtcStaticLenPageWlan;          //QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_WLAN
-   uint32   cfgBtcStaticLenConnWlan;          //QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_WLAN
-   uint32   cfgBtcStaticLenLeWlan;            //QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_WLAN
-   uint32   cfgBtcDynMaxLenBt;                //QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_BT
-   uint32   cfgBtcDynMaxLenWlan;              //QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_WLAN
-   uint32   cfgBtcMaxScoBlockPerc;            //QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC
-   uint32   cfgBtcDhcpProtOnA2dp;             //QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP
-   uint32   cfgBtcDhcpProtOnSco;              //QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO
-}tAniHalCfg, *tpAniHalCfg;
+/* QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER */
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_MIN  0
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_MAX  1
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_DEF  0
 
+/* QWLAN_HAL_CFG_MAX_ASSOC_LIMIT */
+#define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT_MIN  10
+#define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT_MAX  32
+#define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT_DEF  10
+
+/* QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION */
+#define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION_DEF    0
+
+/* QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER */
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_DEF    0
+
+/* QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT */
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_DEF    0
+
+/* QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT */
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MIN  1
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MAX  255
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_DEF  3
+
+/*QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER*/
+/*This value is multiplied to ChannelDwellTime
+ *i.e If value is 300 then ChannelDwellTime is (3*ChannelDwelltime)*/
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_MIN    0
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_MAX    300
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_DEF    300
+
+/* QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE */
+#define QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE_DEF    0
+
+/* QWLAN_HAL_CFG_ENABLE_NAT_KEEP_ALIVE_FILTER */
+#define QWLAN_HAL_CFG_ENABLE_NAT_KEEP_ALIVE_FILTER_MIN   0
+#define QWLAN_HAL_CFG_ENABLE_NAT_KEEP_ALIVE_FILTER_MAX   1
+#define QWLAN_HAL_CFG_ENABLE_NAT_KEEP_ALIVE_FILTER_DEF   0
+
+/* QWLAN_HAL_CFG_ENABLE_SAP_OBSS_PROT */
+#define QWLAN_HAL_CFG_ENABLE_SAP_OBSS_PROT_MIN   0
+#define QWLAN_HAL_CFG_ENABLE_SAP_OBSS_PROT_MAX   1
+#define QWLAN_HAL_CFG_ENABLE_SAP_OBSS_PROT_DEF   0
+
+/* QWLAN_HAL_CFG_PSPOLL_DATA_RECEP_TIMEOUT */
+#define QWLAN_HAL_CFG_PSPOLL_DATA_RECEP_TIMEOUT_STAMIN    1
+#define QWLAN_HAL_CFG_PSPOLL_DATA_RECEP_TIMEOUT_STAMAX    255
+#define QWLAN_HAL_CFG_PSPOLL_DATA_RECEP_TIMEOUT_STADEF    20
+
+/* QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE */
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE_MIN    0
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE_MAX    1
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE_DEF    0
+
+/* QWLAN_HAL_CFG_TDLS_PUAPSD_MASK */
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_MASK_MIN    0
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_MASK_MAX    0xf
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_MASK_DEF    0
+
+/* QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME */
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME_MIN    0
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME_MAX    10
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME_DEF    0
+
+/* QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP */
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP_MIN    10
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP_MAX    20
+#define QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP_DEF    10
+
+/* QWLAN_HAL_CFG_ANTENNA_DIVERSITY */
+#define QWLAN_HAL_CFG_ANTENNA_DIVERSITY_DEF  0
+#define QWLAN_HAL_CFG_ANTENNA_DIVERSITY_MIN  0
+#define QWLAN_HAL_CFG_ANTENNA_DIVERSITY_MAX  3
+
+#define QWLAN_HAL_CFG_ATH_DEF   0
+#define QWLAN_HAL_CFG_ATH_MIN   0
+#define QWLAN_HAL_CFG_ATH_MAX   1
 #endif //__WLAN_HAL_CFG_H__
 
 

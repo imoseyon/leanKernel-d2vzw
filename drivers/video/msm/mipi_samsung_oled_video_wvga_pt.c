@@ -265,8 +265,12 @@ static char acl_on[] = {
 };
 
 static char acl_off[] = {
-	0xC0,
-	0x00
+	0xC1,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
 };
 
 static char elvss_cond_set[] = {
@@ -370,6 +374,11 @@ static struct dsi_cmd_desc samsung_display_on_cmds[] = {
 		sizeof(etc_cond_set1), etc_cond_set1},
 
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(acl_off), acl_off},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(acl_on), acl_on},
+
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,		
 		sizeof(etc_cond_set2), etc_cond_set2},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(etc_cond_set3), etc_cond_set3},
@@ -657,10 +666,10 @@ static int get_candela_index(int bl_level)
 		backlightlevel = GAMMA_250CD; /* 22 */
 		break;
 	case 255:
-		if (mipi_pd.msd->dstat.auto_brightness == 1)
-			backlightlevel = GAMMA_300CD; /* 23 */
-		else
+		if (mipi_pd.msd->dstat.auto_brightness == 0)
 			backlightlevel = GAMMA_250CD; /* 22 */
+		else
+			backlightlevel = GAMMA_300CD; /* 23 */
 		break;
 	default:
 		backlightlevel = GAMMA_40CD; /* 1 */
@@ -696,7 +705,7 @@ static int set_elvss_level(int bl_level)
 	cd = get_candela_index(bl_level);
 	id3 = mipi_pd.manufacture_id & 0xFF;
 
-	if ((id2 == 0xA4) || (id2 == 0xB4))
+	if ((id2 == 0xA4) || (id2 == 0xB4) || (id2 == 0xA6) ||(id2 == 0xB6))
 		calc_elvss = id3 + GET_ELVSS_ID[cd];
 	else
 		calc_elvss = GET_DEFAULT_ELVSS_ID[cd];
@@ -1077,7 +1086,7 @@ static int __init mipi_video_samsung_oled_wvga_pt_init(void)
 	pinfo.clk_rate = 343500000;
 	pinfo.mipi.mode = DSI_VIDEO_MODE;
 
-	pinfo.mipi.pulse_mode_hsa_he = TRUE;
+	pinfo.mipi.pulse_mode_hsa_he = FALSE;
 	pinfo.mipi.hfp_power_stop = FALSE;
 	pinfo.mipi.hbp_power_stop = FALSE;
 	pinfo.mipi.hsa_power_stop = FALSE;

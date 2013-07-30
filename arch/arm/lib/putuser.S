@@ -28,19 +28,25 @@
  * Note also that it is intended that __put_user_bad is not global.
  */
 #include <linux/linkage.h>
+#if !defined(CONFIG_MACH_APEXQ)
 #include <asm/assembler.h>
+#endif
 #include <asm/errno.h>
 #include <asm/domain.h>
 
 ENTRY(__put_user_1)
+#if !defined(CONFIG_MACH_APEXQ)
 	check_uaccess r0, 1, r1, ip, __put_user_bad
+#endif
 1: TUSER(strb)	r2, [r0]
 	mov	r0, #0
 	mov	pc, lr
 ENDPROC(__put_user_1)
 
 ENTRY(__put_user_2)
+#if !defined(CONFIG_MACH_APEXQ)
 	check_uaccess r0, 2, r1, ip, __put_user_bad
+#endif
 	mov	ip, r2, lsr #8
 #ifdef CONFIG_THUMB2_KERNEL
 #ifndef __ARMEB__
@@ -64,14 +70,18 @@ ENTRY(__put_user_2)
 ENDPROC(__put_user_2)
 
 ENTRY(__put_user_4)
+#if !defined(CONFIG_MACH_APEXQ)
 	check_uaccess r0, 4, r1, ip, __put_user_bad
+#endif
 4: TUSER(str)	r2, [r0]
 	mov	r0, #0
 	mov	pc, lr
 ENDPROC(__put_user_4)
 
 ENTRY(__put_user_8)
+#if !defined(CONFIG_MACH_APEXQ)
 	check_uaccess r0, 8, r1, ip, __put_user_bad
+#endif
 #ifdef CONFIG_THUMB2_KERNEL
 5: TUSER(str)	r2, [r0]
 6: TUSER(str)	r3, [r0, #4]

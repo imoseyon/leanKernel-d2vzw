@@ -5964,6 +5964,7 @@ static struct clk_lookup msm_clocks_8960_common[] __initdata = {
 	CLK_LOOKUP("vcodec_iommu0_clk", vcodec_axi_a_clk.c, "mdp.0"),
 	CLK_LOOKUP("vcodec_iommu1_clk", vcodec_axi_b_clk.c, "mdp.0"),
 	CLK_LOOKUP("smmu_iface_clk", smmu_p_clk.c,	"mdp.0"),
+	CLK_LOOKUP("ijpeg_clk",         ijpeg_clk.c,            NULL),
 };
 
 static struct clk_lookup msm_clocks_8960_only[] __initdata = {
@@ -6547,7 +6548,11 @@ static void __init reg_init(void)
 		rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
 
 	/* Source the dsi1_esc_clk from the DSI1 PHY PLLs */
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+	rmwreg(0x0, DSI1_ESC_NS_REG, 0x7);
+#else
 	rmwreg(0x1, DSI1_ESC_NS_REG, 0x7);
+#endif
 
 	/*
 	 * Source the sata_phy_ref_clk from PXO and set predivider of

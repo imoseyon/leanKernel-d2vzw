@@ -491,10 +491,17 @@ struct msm_camera_cfg_cmd {
 #define CMD_VFE_PIX_SOF_COUNT_UPDATE 59
 #define CMD_VFE_COUNT_PIX_SOF_ENABLE 60
 
+#if defined(CONFIG_ISX012)
+#define CMD_AXI_CFG_PRIM    0xF1
+#define CMD_AXI_CFG_PRIM_ALL_CHNLS  0xF2
+#define CMD_AXI_CFG_SEC      0xF4
+#define CMD_AXI_CFG_SEC_ALL_CHNLS  0xF8
+#else
 #define CMD_AXI_CFG_PRIM               BIT(8)
 #define CMD_AXI_CFG_PRIM_ALL_CHNLS     BIT(9)
 #define CMD_AXI_CFG_SEC                BIT(10)
 #define CMD_AXI_CFG_SEC_ALL_CHNLS      BIT(11)
+#endif
 #define CMD_AXI_CFG_TERT1              BIT(12)
 #define CMD_AXI_CFG_TERT2              BIT(13)
 #define CMD_AXI_CFG_TERT3              BIT(14)

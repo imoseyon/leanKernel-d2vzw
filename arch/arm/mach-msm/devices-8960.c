@@ -1788,7 +1788,7 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	pdev->dev.platform_data = plat;
 	return platform_device_register(pdev);
 }
-#if defined(CONFIG_MACH_M2)
+#if defined(CONFIG_MACH_M2) || defined (CONFIG_MACH_APEXQ)
 static struct resource resources_qup_i2c_gsbi1[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",

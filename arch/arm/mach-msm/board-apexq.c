@@ -1116,9 +1116,67 @@ static void cypress_init(void)
 #endif
 
 #ifdef CONFIG_USB_SWITCH_FSA9485
+
 static enum cable_type_t set_cable_status;
 int msm8960_get_cable_status(void) {return (int)set_cable_status; }
 
+#ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
+static void fsa9485_mhl_cb(bool attached, int mhl_charge)
+{
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
+
+	pr_info("fsa9485_mhl_cb attached (%d), mhl_charge(%d)\n",
+			attached, mhl_charge);
+
+	if (attached) {
+		switch (mhl_charge) {
+		case 0:
+		case 1:
+			set_cable_status = CABLE_TYPE_USB;
+			break;
+		case 2:
+			set_cable_status = CABLE_TYPE_AC;
+			break;
+		}
+	} else {
+		set_cable_status = CABLE_TYPE_NONE;
+	}
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return;
+	}
+
+	switch (set_cable_status) {
+	case CABLE_TYPE_USB:
+		value.intval = POWER_SUPPLY_TYPE_USB;
+		break;
+	case CABLE_TYPE_AC:
+		value.intval = POWER_SUPPLY_TYPE_MAINS;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("%s: invalid cable :%d\n", __func__, set_cable_status);
+		return;
+	}
+
+	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		&value);
+	if (ret) {
+		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
+			__func__, ret);
+	}
+}
+#else
 static void fsa9485_mhl_cb(bool attached)
 {
 	union power_supply_propval value;
@@ -1157,14 +1215,14 @@ static void fsa9485_mhl_cb(bool attached)
 			__func__, ret);
 	}
 }
-
+#endif
 static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
 
 	if (attached) {
 		pr_info("%s set id state\n", __func__);
-		msm_otg_set_id_state(attached);
+//		msm_otg_set_id_state(attached);
 	}
 }
 
@@ -1178,10 +1236,10 @@ static void fsa9485_usb_cb(bool attached)
 	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
 
 	if (system_rev >= 0x1) {
-		if (attached) {
+//		if (attached) {
 			pr_info("%s set vbus state\n", __func__);
 			msm_otg_set_vbus_state(attached);
-		}
+//		}
 	}
 
 	for (i = 0; i < 10; i++) {
@@ -1408,6 +1466,56 @@ static void fsa9485_usb_cdp_cb(bool attached)
 		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
 			__func__, ret);
 	}
+
+}
+static void fsa9485_smartdock_cb(bool attached)
+{
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
+
+	pr_info("fsa9485_smartdock_cb attached %d\n", attached);
+
+	set_cable_status =
+		attached ? CABLE_TYPE_SMART_DOCK : CABLE_TYPE_NONE;
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return;
+	}
+
+	switch (set_cable_status) {
+	case CABLE_TYPE_SMART_DOCK:
+		value.intval = POWER_SUPPLY_TYPE_USB_CDP;
+		break;
+	case CABLE_TYPE_NONE:
+		value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		break;
+	default:
+		pr_err("invalid status:%d\n", attached);
+		return;
+	}
+
+	ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+		&value);
+	if (ret) {
+		pr_err("%s: fail to set power_suppy ONLINE property(%d)\n",
+			__func__, ret);
+	}
+
+//	msm_otg_set_smartdock_state(attached);
+}
+
+static void fsa9485_audio_dock_cb(bool attached)
+{
+	pr_info("fsa9485_audio_dock_cb attached %d\n", attached);
+
+//	msm_otg_set_smartdock_state(attached);
 }
 
 static int fsa9485_dock_init(void)
@@ -1425,12 +1533,32 @@ static int fsa9485_dock_init(void)
 
 int msm8960_get_cable_type(void)
 {
+#ifdef CONFIG_WIRELESS_CHARGING
+	union power_supply_propval value;
+	int i, ret = 0;
+	struct power_supply *psy;
+
+	for (i = 0; i < 10; i++) {
+		psy = power_supply_get_by_name("battery");
+		if (psy)
+			break;
+	}
+	if (i == 10) {
+		pr_err("%s: fail to get battery ps\n", __func__);
+		return -1;
+	}
+#endif
+
 	pr_info("cable type (%d) -----\n", set_cable_status);
 
 	if (set_cable_status != CABLE_TYPE_NONE) {
 		switch (set_cable_status) {
 		case CABLE_TYPE_MISC:
+#ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
+			fsa9485_mhl_cb(1 , 0);
+#else
 			fsa9485_mhl_cb(1);
+#endif
 			break;
 		case CABLE_TYPE_USB:
 			fsa9485_usb_cb(1);
@@ -1438,6 +1566,13 @@ int msm8960_get_cable_type(void)
 		case CABLE_TYPE_AC:
 			fsa9485_charger_cb(1);
 			break;
+#ifdef CONFIG_WIRELESS_CHARGING
+		case CABLE_TYPE_WPC:
+			value.intval = POWER_SUPPLY_TYPE_WPC;
+			ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE,
+				&value);
+			break;
+#endif
 		default:
 			pr_err("invalid status:%d\n", set_cable_status);
 			break;
@@ -1462,6 +1597,7 @@ static struct platform_device fsa_i2c_gpio_device = {
 };
 
 static struct fsa9485_platform_data fsa9485_pdata = {
+	.otg_cb = fsa9485_otg_cb,
 	.usb_cb = fsa9485_usb_cb,
 	.charger_cb = fsa9485_charger_cb,
 	.uart_cb = fsa9485_uart_cb,
@@ -1469,6 +1605,8 @@ static struct fsa9485_platform_data fsa9485_pdata = {
 	.dock_cb = fsa9485_dock_cb,
 	.dock_init = fsa9485_dock_init,
 	.usb_cdp_cb = fsa9485_usb_cdp_cb,
+	.smartdock_cb = fsa9485_smartdock_cb,
+	.audio_dock_cb = fsa9485_audio_dock_cb,
 };
 
 static struct i2c_board_info micro_usb_i2c_devices_info[] __initdata = {

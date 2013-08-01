@@ -57,7 +57,7 @@ atomic_t irq_cnt;
 
 static struct vfe32_ctrl_type *vfe32_ctrl;
 static void  *vfe_syncdata;
-static uint32_t vfe_clk_rate;
+static uint32_t vfe_clk_rate=320000000;
 
 struct vfe32_isr_queue_cmd {
 	struct list_head list;
@@ -1080,7 +1080,7 @@ static void vfe32_sync_timer_start(const uint32_t *tbl)
 	 * anywhere as of now, and hence vfe_clk_rate contains value
 	 * '0' causing "division by zero" error here
 	 */
-	vfe_clk_rate = 228570000;
+//	vfe_clk_rate = 228570000;
 
 	/* Sync Timer Pixel Duration */
 	value = *tbl++;
@@ -3858,7 +3858,7 @@ vfe32_config_done:
 }
 
 static struct msm_cam_clk_info vfe32_clk_info[] = {
-	{"vfe_clk", 228570000},
+	{"vfe_clk", 320000000},
 	{"vfe_pclk", -1},
 	{"csi_vfe_clk", -1},
 };

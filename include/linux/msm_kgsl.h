@@ -32,7 +32,6 @@
 #define KGSL_CONTEXT_TYPE_C2D		  3
 #define KGSL_CONTEXT_TYPE_RS		  4
 
-
 #define KGSL_CONTEXT_INVALID 0xffffffff
 
 /* --- Memory allocation flags --- */

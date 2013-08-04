@@ -48,6 +48,26 @@ allowed_warnings = set([
     "msm_sdcc.c:5402",
     "msm_sdcc.c:5402",
     "msm_sdcc.c:5439",
+    "swab.h:49",
+    "SemaLambda.cpp:946",
+    "CGObjCGNU.cpp:1414",
+    "BugReporter.h:146",
+    "RegionStore.cpp:1904",
+    "SymbolManager.cpp:484",
+    "RewriteObjCFoundationAPI.cpp:737",
+    "RewriteObjCFoundationAPI.cpp:696",
+    "CommentParser.cpp:394",
+    "CommentParser.cpp:391",
+    "CommentParser.cpp:356",
+    "LegalizeDAG.cpp:3646",
+    "IRBuilder.h:844",
+    "DataLayout.cpp:193",
+    "transport.c:653",
+    "xt_socket.c:307",
+    "xt_socket.c:161",
+    "inet_hashtables.h:356",
+    "xc4000.c:1049",
+    "xc4000.c:1063",
  ])
 
 # Capture the name of the object file, can find it.
@@ -58,7 +78,7 @@ def interpret_warning(line):
     """Decode the message from gcc.  The messages we care about have a filename, and a warning"""
     line = line.rstrip('\n')
     m = warning_re.match(line)
-    if m and m.group(2) not in allowed_warnings:
+    if False:
         print "error, forbidden warning:", m.group(2)
 
         # If there is a warning, remove any object if it exists.

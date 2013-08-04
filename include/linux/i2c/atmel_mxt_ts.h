@@ -49,6 +49,30 @@ struct mxt_config_info {
 };
 
 /* The platform data for the Atmel maXTouch touchscreen driver */
+#if defined(CONFIG_TOUCHSCREEN_MXT224)
+struct mxt_platform_data {
+	const u8 *config;
+	size_t config_length;
+
+	unsigned int x_line;
+	unsigned int y_line;
+	unsigned int x_size;
+	unsigned int y_size;
+	unsigned int blen;
+	unsigned int threshold;
+	unsigned int voltage;
+	unsigned char orient;
+	unsigned long irqflags;
+	bool	i2c_pull_up;
+	bool	digital_pwr_regulator;
+	int reset_gpio;
+	int irq_gpio;
+
+	u8(*read_chg) (void);
+	int (*init_hw) (bool);
+	int (*power_on) (bool);
+};
+#else
 struct mxt_platform_data {
 	const struct mxt_config_info *config_array;
 	size_t config_array_size;
@@ -78,5 +102,6 @@ struct mxt_platform_data {
 	int (*init_hw) (bool);
 	int (*power_on) (bool);
 };
+#endif
 
 #endif /* __LINUX_ATMEL_MXT_TS_H */

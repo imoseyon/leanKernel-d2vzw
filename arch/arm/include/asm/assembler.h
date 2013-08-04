@@ -320,6 +320,7 @@
 	.size \name , . - \name
 	.endm
 
+#if !defined(CONFIG_MACH_APEXQ)
 	.macro check_uaccess, addr:req, size:req, limit:req, tmp:req, bad:req
 #ifndef CONFIG_CPU_USE_DOMAINS
 	adds	\tmp, \addr, #\size - 1
@@ -327,5 +328,6 @@
 	bcs	\bad
 #endif
 	.endm
+#endif
 
 #endif /* __ASM_ASSEMBLER_H__ */

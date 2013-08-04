@@ -39,9 +39,9 @@ static int yas530_ext_resume(void *mlsl_handle,
 			 struct ext_slave_platform_data *pdata)
 {
 	int result = INV_SUCCESS;
-
+#if !defined(CONFIG_MACH_APEXQ)
 	struct yas530_ext_private_data *private_data = pdata->private_data;
-
+#endif
 	geomagnetic_api_resume();
 
 	return result;
@@ -56,7 +56,7 @@ static int yas530_ext_read(void *mlsl_handle,
 	int raw[3] = {0,};
 	int xyz[3] = {0,};
 	int accuracy = 0;
-	int i = 0;
+//	int i = 0;
 	short xyz_scaled[3] = {0,};
 
 	geomagnetic_api_read(xyz, raw, NULL, &accuracy);
@@ -82,7 +82,9 @@ static int yas530_ext_config(void *mlsl_handle,
 			 struct ext_slave_config *data)
 {
 	int result = INV_SUCCESS;
+#if !defined(CONFIG_MACH_APEXQ)
 	struct yas530_private_data *private_data = pdata->private_data;
+#endif
 
 	return result;
 }
@@ -94,8 +96,9 @@ static int yas530_ext_get_config(void *mlsl_handle,
 			     struct ext_slave_config *data)
 {
 	int result = INV_SUCCESS;
+#if !defined(CONFIG_MACH_APEXQ)
 	struct yas530_ext_private_data *private_data = pdata->private_data;
-
+#endif
 	switch (data->key) {
 	default:
 		return INV_ERROR_FEATURE_NOT_IMPLEMENTED;
@@ -110,7 +113,7 @@ static int yas530_ext_init(void *mlsl_handle,
 
 	struct yas530_ext_private_data *private_data;
 	int result = INV_SUCCESS;
-	char offset[3] = {0, 0, 0};
+//	char offset[3] = {0, 0, 0};
 
 	private_data = (struct yas530_ext_private_data *)
 		kzalloc(sizeof(struct yas530_ext_private_data), GFP_KERNEL);

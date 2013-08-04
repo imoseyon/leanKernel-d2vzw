@@ -18,6 +18,7 @@
 #include <linux/msm_ion.h>
 #include <linux/gpio.h>
 #include <linux/coresight.h>
+#include <linux/avtimer.h>
 #include <asm/clkdev.h>
 #include <mach/kgsl.h>
 #include <linux/android_pmem.h>
@@ -115,6 +116,10 @@
 
 #define MSM8960_PC_CNTR_PHYS	(MSM8960_IMEM_PHYS + 0x664)
 #define MSM8960_PC_CNTR_SIZE		0x40
+
+/* avtimer */
+#define AVTIMER_MSW_PHYSICAL_ADDRESS 0x2800900C
+#define AVTIMER_LSW_PHYSICAL_ADDRESS 0x28009008
 
 static struct resource msm8960_resources_pccntr[] = {
 	{
@@ -1788,7 +1793,7 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	pdev->dev.platform_data = plat;
 	return platform_device_register(pdev);
 }
-#if defined(CONFIG_MACH_M2)
+#if defined(CONFIG_MACH_M2) || defined (CONFIG_MACH_APEXQ)
 static struct resource resources_qup_i2c_gsbi1[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
@@ -4684,6 +4689,11 @@ struct platform_device msm8960_cache_dump_device = {
 	.dev            = {
 		.platform_data = &msm8960_cache_dump_pdata,
 	},
+};
+
+struct dev_avtimer_data dev_avtimer_pdata = {
+	.avtimer_msw_phy_addr = AVTIMER_MSW_PHYSICAL_ADDRESS,
+	.avtimer_lsw_phy_addr = AVTIMER_LSW_PHYSICAL_ADDRESS,
 };
 
 #define MDM2AP_ERRFATAL			40

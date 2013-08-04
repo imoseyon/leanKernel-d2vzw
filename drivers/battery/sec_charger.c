@@ -10,9 +10,23 @@
  * published by the Free Software Foundation.
  */
 
-#define DEBUG
+//#define DEBUG
 
 #include <linux/battery/sec_charger.h>
+
+static struct device_attribute sec_charger_attrs[] = {
+	SEC_CHARGER_ATTR(reg),
+	SEC_CHARGER_ATTR(data),
+	SEC_CHARGER_ATTR(regs),
+};
+
+static enum power_supply_property sec_charger_props[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+};
 
 static int sec_chg_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
@@ -26,6 +40,7 @@ static int sec_chg_get_property(struct power_supply *psy,
 		val->intval = charger->charging_current ? 1 : 0;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
+	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 	case POWER_SUPPLY_PROP_HEALTH:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (!sec_hal_chg_get_property(charger->client, psp, val))
@@ -45,6 +60,9 @@ static int sec_chg_set_property(struct power_supply *psy,
 		container_of(psy, struct sec_charger_info, psy_chg);
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_STATUS:
+		charger->status = val->intval;
+		break;
 	/* val->intval : type */
 	case POWER_SUPPLY_PROP_ONLINE:
 		charger->cable_type = val->intval;
@@ -79,12 +97,19 @@ static void sec_chg_isr_work(struct work_struct *work)
 	struct sec_charger_info *charger =
 		container_of(work, struct sec_charger_info, isr_work.work);
 	union power_supply_propval val;
+	int full_check_type;
 
 	dev_info(&charger->client->dev,
 		"%s: Charger Interrupt\n", __func__);
 
-	if (charger->pdata->full_check_type ==
-		SEC_BATTERY_FULLCHARGED_CHGINT) {
+	psy_do_property("battery", get,
+		POWER_SUPPLY_PROP_CHARGE_NOW, val);
+	if (val.intval == SEC_BATTERY_CHARGING_1ST)
+		full_check_type = charger->pdata->full_check_type;
+	else
+		full_check_type = charger->pdata->full_check_type_2nd;
+
+	if (full_check_type == SEC_BATTERY_FULLCHARGED_CHGINT) {
 		if (!sec_hal_chg_get_property(charger->client,
 			POWER_SUPPLY_PROP_STATUS, &val))
 			return;
@@ -169,11 +194,7 @@ static irqreturn_t sec_chg_irq_thread(int irq, void *irq_data)
 {
 	struct sec_charger_info *charger = irq_data;
 
-	if ((charger->pdata->full_check_type ==
-		SEC_BATTERY_FULLCHARGED_CHGINT) ||
-		(charger->pdata->ovp_uvlo_check_type ==
-		SEC_BATTERY_OVP_UVLO_CHGINT))
-		schedule_delayed_work(&charger->isr_work, 0);
+	schedule_delayed_work(&charger->isr_work, 0);
 
 	return IRQ_HANDLED;
 }
@@ -262,7 +283,7 @@ static int __devinit sec_charger_probe(
 	i2c_set_clientdata(client, charger);
 
 	charger->psy_chg.name		= "sec-charger";
-	charger->psy_chg.type		= POWER_SUPPLY_TYPE_BATTERY;
+	charger->psy_chg.type		= POWER_SUPPLY_TYPE_UNKNOWN;
 	charger->psy_chg.get_property	= sec_chg_get_property;
 	charger->psy_chg.set_property	= sec_chg_set_property;
 	charger->psy_chg.properties	= sec_charger_props;
@@ -288,6 +309,9 @@ static int __devinit sec_charger_probe(
 	}
 
 	if (charger->pdata->chg_irq) {
+		INIT_DELAYED_WORK_DEFERRABLE(
+			&charger->isr_work, sec_chg_isr_work);
+
 		ret = request_threaded_irq(charger->pdata->chg_irq,
 				NULL, sec_chg_irq_thread,
 				charger->pdata->chg_irq_attr,
@@ -298,30 +322,27 @@ static int __devinit sec_charger_probe(
 			goto err_supply_unreg;
 		}
 
-		if (charger->pdata->full_check_type ==
-			SEC_BATTERY_FULLCHARGED_CHGINT) {
-			ret = enable_irq_wake(charger->pdata->chg_irq);
-			if (ret < 0)
-				dev_err(&client->dev,
-					"%s: Failed to Enable Wakeup Source(%d)\n",
-					__func__, ret);
-		}
-
-		INIT_DELAYED_WORK_DEFERRABLE(
-			&charger->isr_work, sec_chg_isr_work);
+		ret = enable_irq_wake(charger->pdata->chg_irq);
+		if (ret < 0)
+			dev_err(&client->dev,
+				"%s: Failed to Enable Wakeup Source(%d)\n",
+				__func__, ret);
 	}
 
 	ret = sec_chg_create_attrs(charger->psy_chg.dev);
 	if (ret) {
 		dev_err(&client->dev,
 			"%s : Failed to create_attrs\n", __func__);
-		goto err_supply_unreg;
+		goto err_req_irq;
 	}
 
 	dev_dbg(&client->dev,
 		"%s: SEC Charger Driver Loaded\n", __func__);
 	return 0;
 
+err_req_irq:
+	if (charger->pdata->chg_irq)
+		free_irq(charger->pdata->chg_irq, charger);
 err_supply_unreg:
 	power_supply_unregister(&charger->psy_chg);
 err_free:

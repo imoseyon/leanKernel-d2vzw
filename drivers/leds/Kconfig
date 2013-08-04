@@ -589,6 +589,20 @@ config LEDS_TRIGGER_SLEEP
 	help
 	  This turns LEDs on when the screen is off but the cpu still running.
 
+config LEDS_MSM_TKEY
+        tristate "LED Support for touchkey LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
+
+config LEDS_MSM_KB
+        tristate "LED Support for keyboard LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
+
 comment "iptables trigger is under Netfilter config (LED target)"
 	depends on LEDS_TRIGGERS
 

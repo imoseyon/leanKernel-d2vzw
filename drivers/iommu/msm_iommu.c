@@ -88,7 +88,7 @@ static void _msm_iommu_remote_spin_lock_init(void)
 
 void msm_iommu_remote_p0_spin_lock(void)
 {
-#ifndef CONFIG_MACH_M2
+#if !defined(CONFIG_MACH_M2) && !defined(CONFIG_MACH_APEXQ)
 	msm_iommu_remote_lock.lock->flag[PROC_APPS] = 1;
 	msm_iommu_remote_lock.lock->turn = 1;
 
@@ -102,7 +102,7 @@ void msm_iommu_remote_p0_spin_lock(void)
 
 void msm_iommu_remote_p0_spin_unlock(void)
 {
-#ifndef CONFIG_MACH_M2
+#if !defined(CONFIG_MACH_M2) && !defined(CONFIG_MACH_APEXQ)
 	smp_mb();
 
 	msm_iommu_remote_lock.lock->flag[PROC_APPS] = 0;

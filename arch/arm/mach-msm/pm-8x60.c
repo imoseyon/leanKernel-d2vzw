@@ -52,6 +52,8 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
+#include <linux/cpu_pm.h>
+
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif

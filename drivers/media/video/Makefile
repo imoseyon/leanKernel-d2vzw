@@ -214,7 +214,11 @@ obj-y	+= davinci/
 ifeq ($(CONFIG_S5C73M3),y)
 obj-$(CONFIG_MSM_CAMERA) += msm_zsl/
 else
+ifeq ($(CONFIG_ISX012),y)
+obj-$(CONFIG_MSM_CAMERA) += msm_apexq/
+else
 obj-$(CONFIG_MSM_CAMERA) += msm/
+endif
 endif
 obj-$(CONFIG_ARCH_OMAP)	+= omap/
 obj-$(CONFIG_MSM_VIDC_V4L2) += msm_vidc/

@@ -24,6 +24,7 @@
 #include "board-8960.h"
 #include "board-storage-common-a.h"
 
+#ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
 static struct msm_bus_vectors sdcc_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_SPS,
@@ -63,6 +64,7 @@ static struct msm_bus_scale_pdata sdcc_bus_scale_pdata = {
 	ARRAY_SIZE(sdcc_bus_scale_usecases),
 	.name = "sdcc",
 };
+#endif
 
 /* MSM8960 has 5 SDCC controllers */
 enum sdcc_controllers {

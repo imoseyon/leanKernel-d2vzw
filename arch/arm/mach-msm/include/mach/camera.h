@@ -32,7 +32,7 @@
 extern int cam_mode;
 #endif
 
-#define CONFIG_MSM_CAMERA_DEBUG
+//#define CONFIG_MSM_CAMERA_DEBUG
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #else
@@ -685,9 +685,9 @@ int msm_camio_csi_config(struct msm_camera_csi_params *csi_params);
 int msm_camio_csiphy_config(struct msm_camera_csiphy_params *csiphy_params);
 int msm_camio_csid_config(struct msm_camera_csid_params *csid_params);
 void msm_io_read_interrupt(void);
-#if defined(CONFIG_S5C73M3)
+//#if defined(CONFIG_S5C73M3)
 void vfe32_process_ispif_sof_irq(int rdi);
-#endif
+//#endif
 int add_axi_qos(void);
 int update_axi_qos(uint32_t freq);
 void release_axi_qos(void);
@@ -701,9 +701,9 @@ void msm_io_w(u32 data, void __iomem *addr);
 void msm_io_w_mb(u32 data, void __iomem *addr);
 u32 msm_io_r(void __iomem *addr);
 u32 msm_io_r_mb(void __iomem *addr);
-#if defined(CONFIG_S5C73M3)
+//#if defined(CONFIG_S5C73M3)
 void msm_io_dump1(void __iomem *addr, int size);
-#endif
+//#endif
 
 void msm_io_dump(void __iomem *addr, int size);
 void msm_io_memcpy(void __iomem *dest_addr, void __iomem *src_addr, u32 len);

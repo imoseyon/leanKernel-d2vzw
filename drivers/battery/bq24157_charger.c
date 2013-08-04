@@ -15,7 +15,7 @@
  * GNU General Public License for more details.
  *
  */
-#define DEBUG
+//#define DEBUG
 
 #include <linux/battery/sec_charger.h>
 
@@ -39,6 +39,7 @@ static int bq24157_i2c_read(struct i2c_client *client,
 	return ret;
 }
 
+/*
 static void bq24157_i2c_write_array(struct i2c_client *client,
 				u8 *buf, int size)
 {
@@ -46,6 +47,7 @@ static void bq24157_i2c_write_array(struct i2c_client *client,
 	for (i = 0; i < size; i += 3)
 		bq24157_i2c_write(client, (u8) (*(buf + i)), (buf + i) + 1);
 }
+*/
 
 static void bq24157_set_command(struct i2c_client *client,
 				int reg, int datum)
@@ -79,14 +81,15 @@ static void bq24157_test_read(struct i2c_client *client)
 	}
 }
 
-static void bq24157_read_regs(struct i2c_client *client, char *str)
+static void bq24157_read_regs(struct i2c_client *client, char *str, int maxlen)
 {
 	u8 data = 0;
 	u32 addr = 0;
+	int len = 0;
 
 	for (addr = 0; addr <= 0x06; addr++) {
 		bq24157_i2c_read(client, addr, &data);
-		sprintf(str+strlen(str), "0x%x, ", data);
+		len += snprintf(str+len, maxlen-len, "0x%x, ", data);
 	}
 }
 
@@ -97,8 +100,10 @@ static int bq24157_get_charging_status(struct i2c_client *client)
 	u8 data = 0;
 
 	bq24157_i2c_read(client, BQ24157_STATUS, &data);
+#if defined(CONFIG_SEC_DEBUG_FUELGAUGE_LOG)
 	dev_info(&client->dev,
 		"%s : charger status(0x%02x)\n", __func__, data);
+#endif
 
 	data = (data & 0x30);
 
@@ -126,8 +131,10 @@ static int bq24157_get_charging_health(struct i2c_client *client)
 	u8 data = 0;
 
 	bq24157_i2c_read(client, BQ24157_STATUS, &data);
+#if defined(CONFIG_SEC_DEBUG_FUELGAUGE_LOG)
 	dev_info(&client->dev,
 		"%s : charger status(0x%02x)\n", __func__, data);
+#endif
 
 	if ((data & 0x30) == 0x30) {	/* check for fault */
 		data = (data & 0x07);
@@ -199,6 +206,7 @@ static u8 bq24157_get_fast_charging_current_data(
 	return data << 4;
 }
 
+/*
 static void bq24157_set_safety_limits(struct i2c_client *client)
 {
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
@@ -213,11 +221,14 @@ static void bq24157_set_safety_limits(struct i2c_client *client)
 	bq24157_set_command(client,
 		BQ24157_SAFETY, data);
 }
+*/
 
 static void bq24157_charger_function_conrol(
 				struct i2c_client *client)
 {
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
+	union power_supply_propval val;
+	int full_check_type;
 	u8 data;
 
 	if (charger->charging_current < 0) {
@@ -228,7 +239,9 @@ static void bq24157_charger_function_conrol(
 
 	if (charger->cable_type ==
 		POWER_SUPPLY_TYPE_BATTERY) {
-		/* Do Nothing */
+		/* USB100 mode, turn off charger */
+		bq24157_set_command(client,
+			BQ24157_CONTROL, 0x04);
 	} else {
 		data = 0x02;
 		dev_dbg(&client->dev, "%s : float voltage (%dmV)\n",
@@ -274,14 +287,26 @@ static void bq24157_charger_function_conrol(
 		bq24157_i2c_read(client, BQ24157_CONTROL, &data);
 		/* Enable charging */
 		data &= 0xfb;
+		psy_do_property("battery", get,
+			POWER_SUPPLY_PROP_CHARGE_NOW, val);
+		if (val.intval == SEC_BATTERY_CHARGING_1ST)
+			full_check_type = charger->pdata->full_check_type;
+		else
+			full_check_type = charger->pdata->full_check_type_2nd;
 		/* Termination setting */
-		switch (charger->pdata->full_check_type) {
+		switch (full_check_type) {
 		case SEC_BATTERY_FULLCHARGED_CHGGPIO:
 		case SEC_BATTERY_FULLCHARGED_CHGINT:
 		case SEC_BATTERY_FULLCHARGED_CHGPSY:
 			/* Enable Current Termination */
 			data |= 0x08;
 			break;
+		case SEC_BATTERY_FULLCHARGED_ADC:
+//		case SEC_BATTERY_FULLCHARGED_ADC_DUAL:
+		case SEC_BATTERY_FULLCHARGED_FG_CURRENT:
+//		case SEC_BATTERY_FULLCHARGED_FG_CURRENT_DUAL:
+			break;
+
 		}
 		bq24157_set_command(client,
 			BQ24157_CONTROL, data);
@@ -426,7 +451,7 @@ ssize_t sec_hal_chg_show_attrs(struct device *dev,
 		if (!str)
 			return -ENOMEM;
 
-		bq24157_read_regs(chg->client, str);
+		bq24157_read_regs(chg->client, str, 1024);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n",
 			str);
 

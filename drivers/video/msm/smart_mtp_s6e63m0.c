@@ -1057,7 +1057,8 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 	/*subtration MTP_OFFSET value from generated gamma table*/
 	str[3] -= pSmart->MTP.R_OFFSET.OFFSET_19;
 	str[4] -= pSmart->MTP.G_OFFSET.OFFSET_19;
-	str[5] -= pSmart->MTP.B_OFFSET.OFFSET_19;
+	if (pSmart->MTP.B_OFFSET.OFFSET_19 > str[5]) str[5]=0;
+	else str[5] -= pSmart->MTP.B_OFFSET.OFFSET_19;
 
 	str[6] -= pSmart->MTP.R_OFFSET.OFFSET_43;
 	str[7] -= pSmart->MTP.G_OFFSET.OFFSET_43;

@@ -1012,6 +1012,23 @@ void (*make_hexa[S6E63M0_TABLE_MAX])(int*, struct SMART_DIM*, char*) = {
 	v1_hexa
 };
 
+char offset_cal(int offset, char value)
+{
+	unsigned char real_value;
+
+	if (value < 0 )
+		real_value = value * -1;
+	else
+		real_value = value;
+
+	if (real_value - offset < 0)
+		return 0;
+	else if (real_value - offset > 255)
+		return 0xFF;
+	else
+		return real_value - offset;
+}
+
 void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 {
 	long long candela_level[S6E63M0_TABLE_MAX] = {-1, -1, -1, -1, -1, -1};
@@ -1054,26 +1071,24 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 	for (cnt = 0; cnt < S6E63M0_TABLE_MAX; cnt++)
 		(void)make_hexa[cnt](bl_index , pSmart, str);
 
-	/*subtration MTP_OFFSET value from generated gamma table*/
-	str[3] -= pSmart->MTP.R_OFFSET.OFFSET_19;
-	str[4] -= pSmart->MTP.G_OFFSET.OFFSET_19;
-	if (pSmart->MTP.B_OFFSET.OFFSET_19 > str[5]) str[5]=0;
-	else str[5] -= pSmart->MTP.B_OFFSET.OFFSET_19;
+	str[3] = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_19), str[3]);
+	str[4] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_19), str[4]);
+	str[5] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_19), str[5]);
 
-	str[6] -= pSmart->MTP.R_OFFSET.OFFSET_43;
-	str[7] -= pSmart->MTP.G_OFFSET.OFFSET_43;
-	str[8] -= pSmart->MTP.B_OFFSET.OFFSET_43;
+	str[6] = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_43), str[6]);
+	str[7] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_43), str[7]);
+	str[8] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_43), str[8]);
 
-	str[9] -= pSmart->MTP.R_OFFSET.OFFSET_87;
-	str[10] -= pSmart->MTP.G_OFFSET.OFFSET_87;
-	str[11] -= pSmart->MTP.B_OFFSET.OFFSET_87;
+	str[9] = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_87), str[9]);
+	str[10] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_87), str[10]);
+	str[11] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_87), str[11]);
 
-	str[12] -= pSmart->MTP.R_OFFSET.OFFSET_171;
-	str[13] -= pSmart->MTP.G_OFFSET.OFFSET_171;
-	str[14] -= pSmart->MTP.B_OFFSET.OFFSET_171;
+	str[12] = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_171), str[12]);
+	str[13] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_171), str[13]);
+	str[14] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_171), str[14]);
 
 	level_255_temp = (str[15] << 8) | str[16] ;
-	level_255_temp -=  pSmart->MTP.R_OFFSET.OFFSET_255_LSB;
+	level_255_temp = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_255_LSB), level_255_temp);
 	if (level_255_temp > 0xff) {
 		str[15] = 0;
 		str[16] = 0xff;
@@ -1083,7 +1098,7 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 	}
 
 	level_255_temp = (str[17] << 8) | str[18] ;
-	level_255_temp -=  pSmart->MTP.G_OFFSET.OFFSET_255_LSB;
+	level_255_temp = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_255_LSB), level_255_temp);
 	if (level_255_temp > 0xff) {
 		str[17] = 0;
 		str[18] = 0xff;
@@ -1093,7 +1108,7 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 	}
 
 	level_255_temp = (str[19] << 8) | str[20] ;
-	level_255_temp -=  pSmart->MTP.B_OFFSET.OFFSET_255_LSB;
+	level_255_temp = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_255_LSB), level_255_temp);
 	if (level_255_temp > 0xff) {
 		str[19] = 0;
 		str[20] = 0xff;

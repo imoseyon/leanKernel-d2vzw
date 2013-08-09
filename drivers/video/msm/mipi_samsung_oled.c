@@ -30,10 +30,8 @@
 #include "mdp4_video_enhance.h"
 #endif
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
 unsigned int Lpanel_colors = 2;
 extern void panel_load_colors(unsigned int val);
-#endif
 
 static struct mipi_samsung_driver_data msd;
 static struct pm_qos_request pm_qos_req;
@@ -1352,7 +1350,6 @@ static DEVICE_ATTR(auto_brightness, S_IRUGO | S_IWUSR | S_IWGRP,
 
 #endif
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
 static ssize_t panel_colors_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", Lpanel_colors);
@@ -1381,7 +1378,6 @@ static ssize_t panel_colors_store(struct device *dev, struct device_attribute *a
 
 static DEVICE_ATTR(panel_colors, S_IRUGO | S_IWUSR | S_IWGRP,
 			panel_colors_show, panel_colors_store);
-#endif
 
 #ifdef READ_REGISTER_ESD
 #define ID_E5H_IDLE 0x80
@@ -1569,10 +1565,8 @@ static int __devinit mipi_samsung_disp_probe(struct platform_device *pdev)
 				dev_attr_power_reduce.attr.name);
 	}
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
 	ret = sysfs_create_file(&lcd_device->dev.kobj,
 					&dev_attr_panel_colors.attr);
-#endif
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE)
 	bd = backlight_device_register("panel", &lcd_device->dev,

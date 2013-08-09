@@ -64,6 +64,15 @@ unsigned char V255_300CD_B;
 #endif
 /* #define SMART_DIMMING_DEBUG */
 
+static int color_mods[5][9] = {
+	{  0,  0,  5, -18, -16, -10, 0, 0,  3 },
+	{  0,  0,  2,  -9,  -8,  -5, 0, 0,  1 },
+	{  0,  0,  0,   0,   0,   0, 0, 0,  0 },
+	{  0,  0, -2,   9,   8,   5, 0, 0, -1 },
+	{  0,  0, -5,  18,  16,  10, 0, 0, -3 }
+};
+unsigned int panelval = 2;
+struct SMART_DIM *gpsmart;
 
 static int char_to_int(char data1)
 {
@@ -77,6 +86,14 @@ static int char_to_int(char data1)
 	return cal_data;
 }
 
+void panel_load_colors(unsigned int val)
+{
+	if (val < 5) {
+		panelval = val;
+		smart_dimming_init(gpsmart);
+	}
+}
+
 #define V255_COEFF 120
 #define V255_DENOMTR 600
 static int v255_adjustment(struct SMART_DIM *pSmart)
@@ -87,7 +104,7 @@ static int v255_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_255_LSB);
 	add_mtp = LSB + V255_300CD_R;
-	result_1 = result_2 = (V255_COEFF+add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V255_COEFF+add_mtp + color_mods[panelval][0]) << BIT_SHIFT;
 	do_div(result_2, V255_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -96,7 +113,7 @@ static int v255_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.G_OFFSET.OFFSET_255_LSB);
 	add_mtp = LSB + V255_300CD_G;
-	result_1 = result_2 = (V255_COEFF+add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V255_COEFF+add_mtp + color_mods[panelval][1]) << BIT_SHIFT;
 	do_div(result_2, V255_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -105,7 +122,7 @@ static int v255_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.B_OFFSET.OFFSET_255_LSB);
 	add_mtp = LSB + V255_300CD_B;
-	result_1 = result_2 = (V255_COEFF+add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V255_COEFF+add_mtp + color_mods[panelval][2]) << BIT_SHIFT;
 	do_div(result_2, V255_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -152,7 +169,7 @@ static void v255_hexa(int *index, struct SMART_DIM *pSmart, char *str)
 	str[20] = result_3 & 0xff;
 }
 
-#define V1_COEFF 5
+#define V1_COEFF 20
 #define V1_DENOMTR 600
 static int v1_adjustment(struct SMART_DIM *pSmart)
 {
@@ -162,7 +179,7 @@ static int v1_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.R_OFFSET.OFFSET_1);
 	add_mtp = LSB + V1_300CD_R;
-	result_1 = result_2 = (V1_COEFF + add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V1_COEFF + add_mtp + color_mods[panelval][3]) << BIT_SHIFT;
 	do_div(result_2, V1_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -170,7 +187,7 @@ static int v1_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.G_OFFSET.OFFSET_1);
 	add_mtp = LSB + V1_300CD_G;
-	result_1 = result_2 = (V1_COEFF+add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V1_COEFF+add_mtp + color_mods[panelval][4]) << BIT_SHIFT;
 	do_div(result_2, V1_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -178,7 +195,7 @@ static int v1_adjustment(struct SMART_DIM *pSmart)
 
 	LSB = char_to_int(pSmart->MTP.B_OFFSET.OFFSET_1);
 	add_mtp = LSB + V1_300CD_B;
-	result_1 = result_2 = (V1_COEFF+add_mtp) << BIT_SHIFT;
+	result_1 = result_2 = (V1_COEFF+add_mtp + color_mods[panelval][5]) << BIT_SHIFT;
 	do_div(result_2, V1_DENOMTR);
 	result_3 = (S6E63M0_VREG0_REF * result_2) >> BIT_SHIFT;
 	result_4 = S6E63M0_VREG0_REF - result_3;
@@ -215,7 +232,7 @@ static int v171_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V171_300CD_R;
 	result_1 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1)
 				- (pSmart->RGB_OUTPUT.R_VOLTAGE.level_255);
-	result_2 = (V171_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V171_COEFF + add_mtp + color_mods[panelval][6]) << BIT_SHIFT;
 	do_div(result_2, V171_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1) - result_3;
@@ -225,7 +242,7 @@ static int v171_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V171_300CD_G;
 	result_1 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1)
 				- (pSmart->RGB_OUTPUT.G_VOLTAGE.level_255);
-	result_2 = (V171_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V171_COEFF + add_mtp + color_mods[panelval][7]) << BIT_SHIFT;
 	do_div(result_2, V171_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1) - result_3;
@@ -235,7 +252,7 @@ static int v171_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V171_300CD_B;
 	result_1 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1)
 				- (pSmart->RGB_OUTPUT.B_VOLTAGE.level_255);
-	result_2 = (V171_COEFF+add_mtp) << BIT_SHIFT;
+	result_2 = (V171_COEFF+add_mtp + color_mods[panelval][8]) << BIT_SHIFT;
 	do_div(result_2, V171_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1) - result_3;
@@ -295,7 +312,7 @@ static int v87_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V87_300CD_R;
 	result_1 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.R_VOLTAGE.level_171);
-	result_2 = (V87_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V87_COEFF + add_mtp + color_mods[panelval][6]) << BIT_SHIFT;
 	do_div(result_2, V87_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1) - result_3;
@@ -305,7 +322,7 @@ static int v87_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V87_300CD_G;
 	result_1 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.G_VOLTAGE.level_171);
-	result_2 = (V87_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V87_COEFF + add_mtp + color_mods[panelval][7]) << BIT_SHIFT;
 	do_div(result_2, V87_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1) - result_3;
@@ -315,7 +332,7 @@ static int v87_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V87_300CD_B;
 	result_1 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.B_VOLTAGE.level_171);
-	result_2 = (V87_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V87_COEFF + add_mtp + color_mods[panelval][8]) << BIT_SHIFT;
 	do_div(result_2, V87_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1) - result_3;
@@ -373,7 +390,7 @@ static int v43_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V43_300CD_R;
 	result_1 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.R_VOLTAGE.level_87);
-	result_2 = (V43_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V43_COEFF + add_mtp + color_mods[panelval][6]) << BIT_SHIFT;
 	do_div(result_2, V43_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1) - result_3;
@@ -383,7 +400,7 @@ static int v43_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V43_300CD_G;
 	result_1 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.G_VOLTAGE.level_87);
-	result_2 = (V43_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V43_COEFF + add_mtp + color_mods[panelval][7]) << BIT_SHIFT;
 	do_div(result_2, V43_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1) - result_3;
@@ -393,7 +410,7 @@ static int v43_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V43_300CD_B;
 	result_1 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.B_VOLTAGE.level_87);
-	result_2 = (V43_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V43_COEFF + add_mtp + color_mods[panelval][8]) << BIT_SHIFT;
 	do_div(result_2, V43_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1) - result_3;
@@ -454,7 +471,7 @@ static int v19_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V19_300CD_R;
 	result_1 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.R_VOLTAGE.level_43);
-	result_2 = (V19_COEFF+add_mtp) << BIT_SHIFT;
+	result_2 = (V19_COEFF+add_mtp + color_mods[panelval][6]) << BIT_SHIFT;
 	do_div(result_2, V19_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.R_VOLTAGE.level_1) - result_3;
@@ -464,7 +481,7 @@ static int v19_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V19_300CD_G;
 	result_1 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.G_VOLTAGE.level_43);
-	result_2 = (V19_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V19_COEFF + add_mtp + color_mods[panelval][7]) << BIT_SHIFT;
 	do_div(result_2, V19_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.G_VOLTAGE.level_1) - result_3;
@@ -474,7 +491,7 @@ static int v19_adjustment(struct SMART_DIM *pSmart)
 	add_mtp = LSB + V19_300CD_B;
 	result_1 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1)
 			- (pSmart->RGB_OUTPUT.B_VOLTAGE.level_43);
-	result_2 = (V19_COEFF + add_mtp) << BIT_SHIFT;
+	result_2 = (V19_COEFF + add_mtp + color_mods[panelval][8]) << BIT_SHIFT;
 	do_div(result_2, V19_DENOMTR);
 	result_3 = (result_1 * result_2) >> BIT_SHIFT;
 	result_4 = (pSmart->RGB_OUTPUT.B_VOLTAGE.level_1) - result_3;
@@ -946,8 +963,9 @@ int smart_dimming_init(struct SMART_DIM *smart_dim)
 	gamma_cell_determine(system_rev);
 #elif defined(CONFIG_MACH_APEXQ)
 	gamma_cell_determine(get_lcd_manufacture_id());
-
 #endif
+
+	gpsmart = smart_dim;
 
 	v255_adjustment(smart_dim);
 	v1_adjustment(smart_dim);
@@ -1036,7 +1054,6 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 
 	unsigned long long temp_cal_data = 0;
 	int bl_level, cnt;
-	int level_255_temp = 0;
 
 	bl_level = pSmart->brightness_level;
 	/*calculate candela level */
@@ -1087,33 +1104,15 @@ void generate_gamma(struct SMART_DIM *pSmart, char *str, int size)
 	str[13] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_171), str[13]);
 	str[14] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_171), str[14]);
 
-	level_255_temp = (str[15] << 8) | str[16] ;
-	level_255_temp = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_255_LSB), level_255_temp);
-	if (level_255_temp > 0xff) {
-		str[15] = 0;
-		str[16] = 0xff;
-	} else {
-		str[15] = 0;
-		str[16] = level_255_temp & 0xff;
-	}
+	str[16] = (str[15] << 8) | str[16] ;
+	str[16] = offset_cal(char_to_int(pSmart->MTP.R_OFFSET.OFFSET_255_LSB), str[16]);
+	str[15] = 0;
 
-	level_255_temp = (str[17] << 8) | str[18] ;
-	level_255_temp = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_255_LSB), level_255_temp);
-	if (level_255_temp > 0xff) {
-		str[17] = 0;
-		str[18] = 0xff;
-	} else {
-		str[17] = 0;
-		str[18] = level_255_temp & 0xff;
-	}
+	str[18] = (str[17] << 8) | str[18] ;
+	str[18] = offset_cal(char_to_int(pSmart->MTP.G_OFFSET.OFFSET_255_LSB), str[18]);
+	str[17] = 0;
 
-	level_255_temp = (str[19] << 8) | str[20] ;
-	level_255_temp = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_255_LSB), level_255_temp);
-	if (level_255_temp > 0xff) {
-		str[19] = 0;
-		str[20] = 0xff;
-	} else {
-		str[19] = 0;
-		str[20] = level_255_temp & 0xff;
-	}
+	str[20] = (str[19] << 8) | str[20] ;
+	str[20] = offset_cal(char_to_int(pSmart->MTP.B_OFFSET.OFFSET_255_LSB), str[20]);
+	str[19] = 0;
 }

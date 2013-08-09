@@ -33,7 +33,7 @@
 #include <linux/device.h>
 
 /* definitions */
-#define	SEC_SIZEOF_POWER_SUPPLY_TYPE	13
+#define	SEC_SIZEOF_POWER_SUPPLY_TYPE	14
 
 enum sec_battery_voltage_mode {
 	/* average voltage */

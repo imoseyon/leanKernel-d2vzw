@@ -2052,6 +2052,14 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                                pAdapter->macAddressCurrent.bytes);
            }
        }
+       else if (strncmp(command, "SCAN-ACTIVE", 11) == 0)
+       {
+          pHddCtx->scan_info.scan_mode = eSIR_ACTIVE_SCAN;
+       }
+       else if (strncmp(command, "SCAN-PASSIVE", 12) == 0)
+       {
+          pHddCtx->scan_info.scan_mode = eSIR_PASSIVE_SCAN;
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
@@ -5379,6 +5387,12 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
          if(!pHddCtx->cfg_ini->fEnableActiveModeOffload)
             sme_disableFeatureCapablity(WLANACTIVE_OFFLOAD);
 #endif
+         /* Indicate if IBSS heartbeat monitoring needs to be offloaded */
+         if (!pHddCtx->cfg_ini->enableIbssHeartBeatOffload)
+         {
+            sme_disableFeatureCapablity(IBSS_HEARTBEAT_OFFLOAD);
+         }
+
          sme_featureCapsExchange(pHddCtx->hHal);
       }
 

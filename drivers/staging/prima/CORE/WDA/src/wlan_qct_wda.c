@@ -225,6 +225,11 @@ VOS_STATUS WDA_ProcessSetTmLevelReq(tWDA_CbContext *pWDA,
 VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA, 
                                    tUpdateVHTOpMode *pData);
 #endif
+
+#ifdef FEATURE_WLAN_LPHB
+VOS_STATUS WDA_ProcessLPHBConfReq(tWDA_CbContext *pWDA,
+                                  tSirLPHBReq *pData);
+#endif /* FEATURE_WLAN_LPHB */
 /*
  * FUNCTION: WDA_open
  * Allocate the WDA context 
@@ -1548,6 +1553,21 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
 
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
                             + sizeof(tHalCfg) + tlvStruct->length) ;
+
+   /* QWLAN_HAL_CFG_FLEX_CONNECT_POWER_FACTOR */
+   tlvStruct->type = QWLAN_HAL_CFG_FLEXCONNECT_POWER_FACTOR;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_FLEX_CONNECT_POWER_FACTOR, configDataValue)
+                                                               != eSIR_SUCCESS)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failed to get value for WNI_CFG_FLEX_CONNECT_POWER_FACTOR");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)(((tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length));
+
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
    {
@@ -5190,7 +5210,16 @@ VOS_STATUS WDA_ProcessUpdateEDCAParamReq(tWDA_CbContext *pWDA,
       return VOS_STATUS_E_NOMEM;
    }
    wdiEdcaParam->wdiEDCAInfo.ucBssIdx = pEdcaParams->bssIdx;
-   wdiEdcaParam->wdiEDCAInfo.ucEDCAParamsValid = pEdcaParams->highPerformance;
+   /*
+    Since firmware is not using highperformance flag, we have removed
+    this flag from wdiEDCAInfo structure to match sizeof the structure
+    between host and firmware.In future if we are planning to use
+    highperformance flag then Please define this flag  in wdiEDCAInfo
+    structure, update it here and send it to firmware. i.e.
+    Following is the original line which we removed as part of the fix
+    wdiEdcaParam->wdiEDCAInfo.ucEDCAParamsValid =
+                  pEdcaParams->highPerformance;
+   */
    WDA_UpdateEdcaParamsForAC(pWDA, &wdiEdcaParam->wdiEDCAInfo.wdiEdcaBEInfo,
                                                            &pEdcaParams->acbe);
    WDA_UpdateEdcaParamsForAC(pWDA, &wdiEdcaParam->wdiEDCAInfo.wdiEdcaBKInfo,
@@ -11283,6 +11312,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
           WDA_ProcessDHCPStopInd(pWDA, (tAniDHCPInd *)pMsg->bodyptr);
           break;
       }
+#ifdef FEATURE_WLAN_LPHB
+      case WDA_LPHB_CONF_REQ:
+      {
+         WDA_ProcessLPHBConfReq(pWDA, (tSirLPHBReq *)pMsg->bodyptr);
+         break;
+      }
+#endif
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11741,6 +11777,72 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
       }
   
+#ifdef FEATURE_WLAN_LPHB
+      case WDI_LPHB_WAIT_TIMEOUT_IND:
+      {
+         vos_msg_t            vosMsg;
+         tSirLPHBTimeoutInd  *lphbTimeoutInd;
+
+         lphbTimeoutInd =
+           (tSirLPHBTimeoutInd *)vos_mem_malloc(sizeof(tSirLPHBTimeoutInd));
+         if (NULL == lphbTimeoutInd)
+         {
+            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: LPHB IND buffer alloc Fail", __func__);
+            return ;
+         }
+
+         lphbTimeoutInd->sessionIdx =
+              wdiLowLevelInd->wdiIndicationData.wdiLPHBTimeoutInd.sessionIdx;
+         lphbTimeoutInd->protocolType =
+              wdiLowLevelInd->wdiIndicationData.wdiLPHBTimeoutInd.protocolType;
+         lphbTimeoutInd->eventReason =
+              wdiLowLevelInd->wdiIndicationData.wdiLPHBTimeoutInd.eventReason;
+
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "Get WDI_LPHB_WAIT_TIMEOUT_IND bssIdx %d",
+                   wdiLowLevelInd->wdiIndicationData.wdiLPHBTimeoutInd.bssIdx);
+
+         vosMsg.type    = eWNI_SME_LPHB_WAIT_TIMEOUT_IND;
+         vosMsg.bodyptr = lphbTimeoutInd;
+         vosMsg.bodyval = 0;
+         /* Send message to SME */
+         if (VOS_STATUS_SUCCESS !=
+             vos_mq_post_message(VOS_MQ_ID_SME, (vos_msg_t*)&vosMsg))
+         {
+            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
+                      "post WDI_LPHB_WAIT_TIMEOUT_IND to SME Failed");
+            vos_mem_free(lphbTimeoutInd);
+         }
+         break;
+      }
+#endif /* FEATURE_WLAN_LPHB */
+
+      case WDI_IBSS_PEER_INACTIVITY_IND:
+      {
+         tSirIbssPeerInactivityInd  *pIbssInd =
+            (tSirIbssPeerInactivityInd *)
+            vos_mem_malloc(sizeof(tSirIbssPeerInactivityInd));
+
+         if (NULL == pIbssInd)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                  "Memory allocation failure, "
+                  "WDI_IBSS_PEER_INACTIVITY_IND not forwarded");
+            break;
+         }
+
+         pIbssInd->bssIdx =
+            wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.bssIdx;
+         pIbssInd->staIdx =
+            wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.staIdx;
+         vos_mem_copy(pIbssInd->peerAddr,
+               wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.staMacAddr,
+               sizeof(tSirMacAddr));
+         WDA_SendMsg(pWDA, WDA_IBSS_PEER_INACTIVITY_IND, (void *)pIbssInd, 0) ;
+         break;
+      }
+
       default:
       {
          /* TODO error */
@@ -14053,3 +14155,83 @@ void WDA_SetEnableSSR(v_BOOL_t enableSSR)
 {
    WDI_SetEnableSSR(enableSSR);
 }
+
+#ifdef FEATURE_WLAN_LPHB
+/*
+ * FUNCTION: WDA_LPHBconfRspCallback
+ *
+ */
+void WDA_LPHBconfRspCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "<------ %s " ,__func__);
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+
+   /* Do not need to send notification to upper layer
+    * Just free allocated resources */
+   if (pWdaParams != NULL)
+   {
+      if (pWdaParams->wdaWdiApiMsgParam != NULL)
+      {
+         vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      }
+      vos_mem_free(pWdaParams->wdaMsgParam) ;
+      vos_mem_free(pWdaParams) ;
+   }
+
+   return;
+}
+
+/*
+ * FUNCTION: WDA_ProcessLPHBConfReq
+ *
+ */
+VOS_STATUS WDA_ProcessLPHBConfReq(tWDA_CbContext *pWDA,
+                                  tSirLPHBReq *pData)
+{
+   WDI_Status wdiStatus;
+   tWDA_ReqParams *pWdaParams ;
+
+   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+             "------> %s " , __func__);
+
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pData);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = (void *)pData;
+   pWdaParams->wdaWdiApiMsgParam = NULL;
+
+   wdiStatus = WDI_LPHBConfReq(pData, pWdaParams, WDA_LPHBconfRspCallback);
+   if (WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "Pending received for %s:%d ", __func__, __LINE__);
+   }
+   else if (WDI_STATUS_SUCCESS != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in %s:%d s %d", __func__, __LINE__, wdiStatus);
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      vos_mem_free(pWdaParams);
+   }
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+#endif /* FEATURE_WLAN_LPHB */
+

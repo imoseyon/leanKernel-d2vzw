@@ -653,7 +653,12 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN enableVhtFor24GHz;
 #endif
     tANI_U8   txLdpcEnable;
+    tANI_BOOLEAN  enableOxygenNwk;
 
+    /*
+     * Enable/Disable heartbeat offload
+     */
+    tANI_BOOLEAN enableHeartBeatOffload;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
@@ -689,13 +694,13 @@ typedef struct tagCsrScanStruct
     tDblLinkList tempScanResults;
     tANI_BOOLEAN fScanEnable;
     tANI_BOOLEAN fFullScanIssued;
-    tPalTimerHandle hTimerGetResult;
+    vos_timer_t hTimerGetResult;
 #ifdef WLAN_AP_STA_CONCURRENCY
-    tPalTimerHandle hTimerStaApConcTimer;
+    vos_timer_t hTimerStaApConcTimer;
 #endif
-    tPalTimerHandle hTimerIdleScan;
-    tPalTimerHandle hTimerResultAging;
-    tPalTimerHandle hTimerResultCfgAging;
+    vos_timer_t hTimerIdleScan;
+    vos_timer_t hTimerResultAging;
+    vos_timer_t hTimerResultCfgAging;
     tPalTimerHandle hTimerBgScan;
     //changes on every scan, it is used as a flag for whether 11d info is found on every scan
     tANI_U8 channelOf11dInfo;
@@ -848,7 +853,7 @@ typedef struct tagCsrTlStatsReqInfo
 {
    tANI_U32               periodicity;
    tANI_BOOLEAN           timerRunning;
-   tPalTimerHandle        hTlStatsTimer;
+   vos_timer_t            hTlStatsTimer;
    tANI_U8                numClient;
 }tCsrTlStatsReqInfo;
 
@@ -898,8 +903,8 @@ typedef struct tagCsrRoamSession
     tCsrTimerInfo roamingTimerInfo;
     eCsrRoamingReason roamingReason;
     tANI_BOOLEAN fCancelRoaming;
-    tPalTimerHandle hTimerRoaming;
-    tPalTimerHandle hTimerIbssJoining;
+    vos_timer_t hTimerRoaming;
+    vos_timer_t hTimerIbssJoining;
     tCsrTimerInfo ibssJoinTimerInfo;
     tANI_BOOLEAN ibss_join_pending;
     eCsrRoamResult roamResult;  //the roamResult that is used when the roaming timer fires
@@ -915,7 +920,7 @@ typedef struct tagCsrRoamSession
     tANI_BOOLEAN fWMMConnection;
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
     //To retry a join later when it fails if so desired
-    tPalTimerHandle hTimerJoinRetry;
+    vos_timer_t hTimerJoinRetry;
     tCsrTimerInfo joinRetryTimerInfo;
     tANI_U32 maxRetryCount;
 #endif
@@ -953,7 +958,7 @@ typedef struct tagCsrRoamStruct
     tANI_U32 numValidChannels; //total number of channels in CFG
 
     tANI_S32 sPendingCommands;
-    tPalTimerHandle hTimerWaitForKey;  //To support timeout for WaitForKey state
+    vos_timer_t hTimerWaitForKey;  //To support timeout for WaitForKey state
     tCsrSummaryStatsInfo       summaryStatsInfo;
     tCsrGlobalClassAStatsInfo  classAStatsInfo;
     tCsrGlobalClassBStatsInfo  classBStatsInfo;

@@ -643,6 +643,8 @@ typedef struct sSirSmeStartBssReq
 
     tANI_U8                 txLdpcIniFeatureEnabled;
 
+    tANI_U8                 oxygenNwkIniFeatureEnabled;
+
     tSirRSNie               rsnIE;             // RSN IE to be sent in
                                                // Beacon and Probe
                                                // Response frames
@@ -2717,6 +2719,14 @@ typedef struct sSmeIbssPeerInd
     //Beacon will be appended for new Peer indication.
 }tSmeIbssPeerInd, *tpSmeIbssPeerInd;
 
+typedef struct sSirIbssPeerInactivityInd
+{
+   tANI_U8       bssIdx;
+   tANI_U8       staIdx;
+   tSirMacAddr   peerAddr;
+}tSirIbssPeerInactivityInd, *tpSirIbssPeerInactivityInd;
+
+
 typedef struct sLimScanChn
 {
     tANI_U16 numTimeScan;   //how many time this channel is scan
@@ -4246,5 +4256,86 @@ typedef struct sSirUpdateChan
     tANI_U8 numChan;
     tSirUpdateChanParam chanParam[1];
 } tSirUpdateChanList, *tpSirUpdateChanList;
+
+#ifdef FEATURE_WLAN_LPHB
+#define SIR_LPHB_FILTER_LEN   64
+
+typedef enum
+{
+   LPHB_SET_EN_PARAMS_INDID,
+   LPHB_SET_TCP_PARAMS_INDID,
+   LPHB_SET_TCP_PKT_FILTER_INDID,
+   LPHB_SET_UDP_PARAMS_INDID,
+   LPHB_SET_UDP_PKT_FILTER_INDID,
+   LPHB_SET_NETWORK_INFO_INDID,
+} LPHBIndType;
+
+typedef struct sSirLPHBEnableStruct
+{
+   v_U8_t enable;
+   v_U8_t item;
+   v_U8_t session;
+} tSirLPHBEnableStruct;
+
+typedef struct sSirLPHBTcpParamStruct
+{
+   v_U32_t      srv_ip;
+   v_U32_t      dev_ip;
+   v_U16_t      src_port;
+   v_U16_t      dst_port;
+   v_U16_t      timeout;
+   v_U8_t       session;
+   tSirMacAddr  gateway_mac;
+} tSirLPHBTcpParamStruct;
+
+typedef struct sSirLPHBTcpFilterStruct
+{
+   v_U16_t length;
+   v_U8_t  offset;
+   v_U8_t  session;
+   v_U8_t  filter[SIR_LPHB_FILTER_LEN];
+} tSirLPHBTcpFilterStruct;
+
+typedef struct sSirLPHBUdpParamStruct
+{
+   v_U32_t      srv_ip;
+   v_U32_t      dev_ip;
+   v_U16_t      src_port;
+   v_U16_t      dst_port;
+   v_U16_t      interval;
+   v_U16_t      timeout;
+   v_U8_t       session;
+   tSirMacAddr  gateway_mac;
+} tSirLPHBUdpParamStruct;
+
+typedef struct sSirLPHBUdpFilterStruct
+{
+   v_U16_t length;
+   v_U8_t  offset;
+   v_U8_t  session;
+   v_U8_t  filter[SIR_LPHB_FILTER_LEN];
+} tSirLPHBUdpFilterStruct;
+
+typedef struct sSirLPHBReq
+{
+   v_U16_t cmd;
+   v_U16_t dummy;
+   union
+   {
+      tSirLPHBEnableStruct     lphbEnableReq;
+      tSirLPHBTcpParamStruct   lphbTcpParamReq;
+      tSirLPHBTcpFilterStruct  lphbTcpFilterReq;
+      tSirLPHBUdpParamStruct   lphbUdpParamReq;
+      tSirLPHBUdpFilterStruct  lphbUdpFilterReq;
+   } params;
+} tSirLPHBReq;
+
+typedef struct sSirLPHBTimeoutInd
+{
+   v_U8_t sessionIdx;
+   v_U8_t protocolType; /*TCP or UDP*/
+   v_U8_t eventReason;
+} tSirLPHBTimeoutInd;
+#endif /* FEATURE_WLAN_LPHB */
 
 #endif /* __SIR_API_H */

@@ -407,3 +407,4 @@ obj-$(CONFIG_MSM_CPU_PWRCTL) +=  msm_cpu_pwrctl.o
 
 obj-$(CONFIG_SEC_DEBUG) += sec_debug.o sec_getlog.o sec_gaf.o
 
+obj-$(CONFIG_ARCH_RANDOM) += early_random.o

@@ -216,7 +216,7 @@ qup_i2c_interrupt(int irq, void *devid)
 		return IRQ_HANDLED;
 	}
 
-	if (status & I2C_STATUS_ERROR_MASK) {
+	if (unlikely(status & I2C_STATUS_ERROR_MASK)) {
 		dev_err(dev->dev, "QUP: I2C status flags :0x%x, irq:%d\n",
 			status, irq);
 		err = status;
@@ -229,7 +229,7 @@ qup_i2c_interrupt(int irq, void *devid)
 		goto intr_done;
 	}
 
-	if (status1 & 0x7F) {
+	if (unlikely(status1 & 0x7F)) {
 		dev_err(dev->dev, "QUP: QUP status flags :0x%x\n", status1);
 		err = -status1;
 		/* Clear Error interrupt if it's a level triggered interrupt*/
@@ -763,6 +763,13 @@ recovery_end:
 	enable_irq(dev->err_irq);
 }
 
+void qup_i2c_bwreset(struct i2c_adapter *adap) {
+	struct qup_i2c_dev *dev = i2c_get_adapdata(adap);
+	mutex_lock(&dev->mlock);
+	dev->clk_ctl = 0;
+	mutex_unlock(&dev->mlock);
+}
+
 static int
 qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 {
@@ -771,18 +778,17 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	int ret;
 	int rem = num;
 	long timeout;
-	int err;
 
 	pm_runtime_get_sync(dev->dev);
 	mutex_lock(&dev->mlock);
 
-	if (dev->suspended) {
+	if (unlikely(dev->suspended)) {
 		mutex_unlock(&dev->mlock);
 		return -EIO;
 	}
 
 	/* Initialize QUP registers during first transfer */
-	if (dev->clk_ctl == 0) {
+	if (unlikely(dev->clk_ctl == 0)) {
 		int fs_div;
 		int hs_div;
 		uint32_t fifo_reg;
@@ -880,9 +886,8 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 				filled = true;
 		}
 
-		err = qup_update_state(dev, QUP_RUN_STATE);
-		if (err < 0) {
-			ret = err;
+		ret = qup_update_state(dev, QUP_RUN_STATE);
+		if (ret < 0) {
 			goto out_err;
 		}
 
@@ -899,9 +904,8 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 			uint32_t carry_over = 0;
 
 			/* Transition to PAUSE state only possible from RUN */
-			err = qup_update_state(dev, QUP_PAUSE_STATE);
-			if (err < 0) {
-				ret = err;
+			ret = qup_update_state(dev, QUP_PAUSE_STATE);
+			if (ret < 0) {
 				goto out_err;
 			}
 
@@ -942,9 +946,8 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 						filled = true;
 				}
 			}
-			err = qup_update_state(dev, QUP_RUN_STATE);
-			if (err < 0) {
-				ret = err;
+			ret = qup_update_state(dev, QUP_RUN_STATE);
+			if (ret < 0) {
 				goto out_err;
 			}
 			dev_dbg(dev->dev, "idx:%d, rem:%d, num:%d, mode:%d\n",
@@ -953,7 +956,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 			qup_print_status(dev);
 			timeout = wait_for_completion_timeout(&complete,
 					msecs_to_jiffies(dev->out_fifo_sz));
-			if (!timeout) {
+			if (unlikely(!timeout)) {
 				uint32_t istatus = readl_relaxed(dev->base +
 							QUP_I2C_STATUS);
 				uint32_t qstatus = readl_relaxed(dev->base +
@@ -991,7 +994,7 @@ qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 				goto out_err;
 			}
 timeout_err:
-			if (dev->err) {
+			if (unlikely(dev->err)) {
 				if (dev->err > 0 &&
 					dev->err & QUP_I2C_NACK_FLAG) {
 					dev_err(dev->dev,
@@ -1042,23 +1045,19 @@ timeout_err:
 			dev_dbg(dev->dev, "pos:%d, len:%d, cnt:%d\n",
 					dev->pos, msgs->len, dev->cnt);
 		} while (dev->cnt > 0);
-		if (dev->cnt == 0) {
-			if (msgs->len == dev->pos) {
-				rem--;
-				msgs++;
-				dev->pos = 0;
+		if (msgs->len == dev->pos) {
+			rem--;
+			msgs++;
+			dev->pos = 0;
+		}
+		if (rem) {
+			ret = qup_i2c_poll_clock_ready(dev);
+			if (ret < 0) {
+				goto out_err;
 			}
-			if (rem) {
-				err = qup_i2c_poll_clock_ready(dev);
-				if (err < 0) {
-					ret = err;
-					goto out_err;
-				}
-				err = qup_update_state(dev, QUP_RESET_STATE);
-				if (err < 0) {
-					ret = err;
-					goto out_err;
-				}
+			ret = qup_update_state(dev, QUP_RESET_STATE);
+			if (ret < 0) {
+				goto out_err;
 			}
 		}
 		/* Wait for I2C bus to be idle */
@@ -1079,9 +1078,11 @@ timeout_err:
 	}
 	dev->complete = NULL;
 	dev->msg = NULL;
+	/* No need.
 	dev->pos = 0;
 	dev->err = 0;
 	dev->cnt = 0;
+	*/
 	mutex_unlock(&dev->mlock);
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
@@ -1205,9 +1206,11 @@ blsp_core_init:
 		goto err_clk_get_failed;
 	}
 
-	/* We support frequencies upto FAST Mode(400KHz) */
+	/* We support frequencies upto FAST Mode(400KHz)
+	 * ...or, we could have some fun!  2 MHz seems stable enough.
+	 */
 	if (pdata->clk_freq <= 0 ||
-			pdata->clk_freq > 400000) {
+			pdata->clk_freq > 2000000) {
 		dev_err(&pdev->dev, "clock frequency not supported\n");
 		ret = -EIO;
 		goto err_config_failed;

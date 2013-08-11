@@ -3979,9 +3979,12 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi1_pdata = {
 #endif
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi3_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
+void msm_i2c_bwreset(int freq) {
+	msm8960_i2c_qup_gsbi3_pdata.clk_freq = freq;
+}
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi7_pdata = {
 	.clk_freq = 100000,

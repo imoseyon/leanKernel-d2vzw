@@ -1220,10 +1220,10 @@ static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
 
-	if (attached) {
+//	if (attached) {
 		pr_info("%s set id state\n", __func__);
-//		msm_otg_set_id_state(attached);
-	}
+		msm_otg_set_id_state(attached);
+//	}
 }
 
 static void fsa9485_usb_cb(bool attached)
@@ -1285,7 +1285,7 @@ static void fsa9485_charger_cb(bool attached)
 	pr_info("fsa9480_charger_cb attached %d\n", attached);
 	set_cable_status = attached ? CABLE_TYPE_AC : CABLE_TYPE_NONE;
 
-	msm_otg_set_charging_state(attached);
+//	msm_otg_set_charging_state(attached);
 
 	for (i = 0; i < 10; i++) {
 		psy = power_supply_get_by_name("battery");
@@ -3136,68 +3136,42 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
 #endif
-
+	
+static bool vbus_is_on;
 static int msm_hsusb_vbus_power(bool on)
 {
-	int rc;
-	static bool vbus_is_on;
-	static struct regulator *mvs_otg_switch;
-	struct pm_gpio param = {
-		.direction	= PM_GPIO_DIR_OUT,
-		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
-		.output_value	= 1,
-		.pull		= PM_GPIO_PULL_NO,
-		.vin_sel	= PM_GPIO_VIN_S4,
-		.out_strength	= PM_GPIO_STRENGTH_MED,
-		.function	= PM_GPIO_FUNC_NORMAL,
-	};
+        struct power_supply *psy = power_supply_get_by_name("battery");
+        union power_supply_propval value;
+        int ret = 0;
 
-	if (vbus_is_on == on)
-		return -EBUSY;
+        pr_info("%s, attached %d, vbus_is_on %d\n", __func__, on, vbus_is_on);
 
-	if (on) {
-		mvs_otg_switch = regulator_get(&msm8960_device_otg.dev,
-					       "vbus_otg");
-		if (IS_ERR(mvs_otg_switch)) {
-			pr_err("Unable to get mvs_otg_switch\n");
-			return -EBUSY;
-		}
+        /* If VBUS is already on (or off), do nothing. */
+        if (vbus_is_on == on)
+                return -EBUSY;
 
-		rc = gpio_request(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-						"usb_5v_en");
-		if (rc < 0) {
-			pr_err("failed to request usb_5v_en gpio\n");
-			goto put_mvs_otg;
-		}
+        if (on)
+                value.intval = POWER_SUPPLY_TYPE_OTG;
+        else
+                value.intval = POWER_SUPPLY_TYPE_BATTERY;
 
-		if (regulator_enable(mvs_otg_switch)) {
-			pr_err("unable to enable mvs_otg_switch\n");
-			goto free_usb_5v_en;
-		}
-
-		rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-				&param);
-		if (rc < 0) {
-			pr_err("failed to configure usb_5v_en gpio\n");
-			goto disable_mvs_otg;
-		}
-		vbus_is_on = true;
-		return 0;
-	} else {
-		gpio_set_value_cansleep(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN),
-				0);
+        if (psy && psy->set_property) {
+                ret = psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
+                if (ret) {
+                        pr_err("%s: fail to set power_suppy otg property(%d)\n",
+                                __func__, ret);
+                        return -EBUSY;
+                }
 #ifdef CONFIG_USB_SWITCH_FSA9485
-		fsa9485_otg_detach();
+                if (!on)
+                        fsa9485_otg_detach();
 #endif
-	}
-disable_mvs_otg:
-		regulator_disable(mvs_otg_switch);
-free_usb_5v_en:
-		gpio_free(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_OTG_EN));
-put_mvs_otg:
-		regulator_put(mvs_otg_switch);
-		vbus_is_on = false;
-		return -EBUSY;
+                vbus_is_on = on;
+        } else {
+                pr_err("%s : psy is null!\n", __func__);
+                return -EBUSY;
+        }
+        return 0;
 }
 
 static int phy_settings[] = {

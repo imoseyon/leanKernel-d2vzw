@@ -289,10 +289,10 @@ static bool sec_bat_check_cable_result_callback(
 	case POWER_SUPPLY_TYPE_BATTERY:
 		pr_info("%s set vbus cut\n",
 			__func__);
-		msm_otg_set_charging_state(0);
+//		msm_otg_set_charging_state(0);
 		break;
 	case POWER_SUPPLY_TYPE_MAINS:
-		msm_otg_set_charging_state(1);
+//		msm_otg_set_charging_state(1);
 		break;
 	default:
 		pr_err("%s cable type (%d)\n",

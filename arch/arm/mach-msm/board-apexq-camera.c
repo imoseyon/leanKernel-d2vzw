@@ -601,17 +601,21 @@ static void cam_ldo_power_on(int mode)
 	usleep(1000);
 
 /*Sensor IO 1.8V -CAM_SENSOR_IO_1P8  */
+#ifndef CONFIG_MACH_EXPRESS
 	if (system_rev >= BOARD_REV02) {
 		gpio_set_value_cansleep(GPIO_CAM_SENSOR_IO_EN, 1);
 		ret = gpio_get_value(GPIO_CAM_SENSOR_IO_EN);
 		printk(KERN_DEBUG "check CAM_SENSOR_IO_EN : %d\n", ret);
 	} else {
+#endif
 		l29 = regulator_get(NULL, "8921_lvs5");
 		ret = regulator_enable(l29);
 		if (ret)
 			cam_err("error enabling regulator\n");
+#ifndef CONFIG_MACH_EXPRESS
 	}
 	usleep(1000);
+#endif
 
 /*Sensor AVDD 2.8V - CAM_SENSOR_A2P8 */
 	gpio_set_value_cansleep(GPIO_CAM_A_EN, 1);
@@ -832,13 +836,19 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 	if (value == 0) {
 		pr_err("[Torch flash]OFF\n");
 		gpio_set_value_cansleep(gpio_flash_en, 0);
+#ifndef CONFIG_MACH_EXPRESS
 		gpio_set_value_cansleep(gpio_flash_set, 0);
+#endif
 		torchonoff = 0;
 	} else {
 		pr_err("[Torch flash]ON\n");
 		gpio_set_value_cansleep(gpio_flash_en, 0);
-
-        int i = 0;
+#ifdef CONFIG_MACH_EXPRESS
+		udelay(0);
+		gpio_set_value_cansleep(gpio_flash_en, 1);
+		udelay(1);
+#else
+		int i = 0;
 		for (i = 5; i > 1; i--) {
 			gpio_set_value_cansleep(
 				gpio_flash_set, 1);
@@ -849,6 +859,7 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 		}
 		gpio_set_value_cansleep(gpio_flash_set, 1);
 		usleep(2*1000);
+#endif
 		torchonoff = 1;
 	}
 	return size;
@@ -980,11 +991,13 @@ void __init msm8960_init_cam(void)
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(GPIO_CAM_A_EN, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+#ifndef CONFIG_MACH_EXPRESS
 	if (system_rev >= BOARD_REV02) {
 		gpio_tlmm_config(GPIO_CFG(GPIO_CAM_SENSOR_IO_EN, 0,
 			GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA),
 			GPIO_CFG_ENABLE);
 	}
+#endif
 	/*Main cam reset */
 	gpio_tlmm_config(GPIO_CFG(GPIO_CAM1_RST_N, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
@@ -1013,8 +1026,17 @@ void __init msm8960_init_cam(void)
 
 	s_info = &msm_camera_sensor_isx012_data;
 	if (rev) {
+#if defined(CONFIG_MACH_EXPRESS)
+		if (system_rev >= BOARD_REV07) {
+			s_info->sensor_platform_info->flash_en =
+				GPIO_MSM_FLASH_NOW;
+			s_info->sensor_platform_info->flash_set =
+				-1;
+		}
+#else
 		s_info->sensor_platform_info->flash_en =
 			pmic_gpio_msm_flash_cntl_en;
+#endif
 	}
 	gpio_flash_en = s_info->sensor_platform_info->flash_en;
 	gpio_flash_set = s_info->sensor_platform_info->flash_set;

@@ -950,6 +950,13 @@ config MACH_APEXQ
         bool "MSM8960 Samsung ApexQ"
         help
           Support for Samsung ApexQ device.
+
+config MACH_EXPRESS
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung EXPRESS"
+        help
+          Support for the Samsung EXPRESS(AT&T) device.
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"

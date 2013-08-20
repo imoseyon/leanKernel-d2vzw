@@ -1202,10 +1202,10 @@ static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
 
-	if (attached) {
+	//if (attached) {
 		pr_info("%s set id state\n", __func__);
 		msm_otg_set_id_state(attached);
-	}
+	//}
 }
 
 static void fsa9485_usb_cb(bool attached)
@@ -1218,10 +1218,10 @@ static void fsa9485_usb_cb(bool attached)
 	set_cable_status = attached ? CABLE_TYPE_USB : CABLE_TYPE_NONE;
 
 	if (system_rev >= BOARD_REV00) {
-		if (attached) {
+		//if (attached) {
 			pr_info("%s set vbus state\n", __func__);
 			msm_otg_set_vbus_state(attached);
-		}
+		//}
 	}
 
 	for (i = 0; i < 10; i++) {
@@ -3198,16 +3198,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.bus_scale_table	= &usb_bus_scale_pdata,
 #endif
 };
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-static void __init msm_otg_power_init(void)
-{
-	if (system_rev >= BOARD_REV00)
-		msm_otg_pdata.smb347s = true;
-	else
-		msm_otg_pdata.smb347s = false;
-}
-#endif
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 #define HSIC_HUB_RESET_GPIO	91
@@ -5502,10 +5492,6 @@ static void __init samsung_express_init(void)
 	}
 	android_usb_pdata.swfi_latency =
 		msm_rpmrs_levels[0].latency_us;
-
-#ifdef CONFIG_USB_HOST_NOTIFY
-	msm_otg_power_init();
-#endif
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 	if (machine_is_msm8960_liquid()) {

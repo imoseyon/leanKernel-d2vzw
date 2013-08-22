@@ -180,15 +180,10 @@ static void determine_jack_type(struct sec_jack_info *hi)
 					pr_debug(MODULE_NAME "determine_jack_type %d, %d, %d\n",
 						zones[i].adc_high, count[i],
 						zones[i].check_count);
-#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
-					/* G plus L Detection */
-					if (!hi->pdata->get_gnd_jack_state()) {
-#else
 #ifndef CONFIG_MACH_JAGUAR
 					if (recheck_jack == true && i == 3) {
 #else
 					if (recheck_jack == true && i == 5) {
-#endif
 #endif
 						pr_debug(MODULE_NAME "something wrong connectoin!\n");
 						handle_jack_not_inserted(hi);
@@ -436,6 +431,12 @@ static void sec_jack_det_work_func(struct work_struct *work)
 		usleep_range(10000, 10000);
 		time_left_ms -= 10;
 	}
+
+#if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
+	/* G plus L Detection */
+	if (!hi->pdata->get_gnd_jack_state())
+		return;
+#endif
 
 	/* set mic bias to enable adc */
 	pdata->set_micbias_state(true);

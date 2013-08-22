@@ -499,7 +499,7 @@ static int acpuclk_krait_set_rate(int cpu, unsigned long rate,
 	strt_acpu_s = drv.scalable[cpu].cur_speed;
 
 	/* Return early if rate didn't change. */
-	if (rate == strt_acpu_s->khz)
+	if (rate == strt_acpu_s->khz && reason != SETRATE_HOTPLUG)
 		goto out;
 
 	/* Find target frequency. */

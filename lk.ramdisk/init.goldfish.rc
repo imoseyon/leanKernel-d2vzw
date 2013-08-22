@@ -59,6 +59,9 @@ on boot
 # supported, and arbitrary breakage may result if you specify
 # something else.
 
+on fs
+        mount_all /fstab.goldfish
+
 service goldfish-setup /system/etc/init.goldfish.sh
     user root
     group root

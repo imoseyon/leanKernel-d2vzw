@@ -52,7 +52,3 @@ crypto.                 u:object_r:vold_prop:s0
 ctl.dumpstate           u:object_r:ctl_dumpstate_prop:s0
 ctl.ril-daemon          u:object_r:ctl_rildaemon_prop:s0
 ctl.                    u:object_r:ctl_default_prop:s0
-#line 1 "device/samsung/d2-common/sepolicy/property_contexts"
-persist.service.bdroid.         u:object_r:bluetooth_prop:s0
-bluetooth.                      u:object_r:bluetooth_prop:s0
-net.rmnet_usb0.                 u:object_r:radio_prop:s0

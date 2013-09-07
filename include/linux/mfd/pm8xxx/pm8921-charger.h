@@ -195,6 +195,7 @@ struct pm8921_charger_platform_data {
 #ifdef CONFIG_PM8921_SEC_CHARGER
 	int             (*get_cable_type)(void);
 #endif
+	bool				enable_tcxo_warmup_delay;
 };
 
 enum pm8921_charger_source {

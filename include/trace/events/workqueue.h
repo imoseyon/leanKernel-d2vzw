@@ -54,7 +54,7 @@ TRACE_EVENT(workqueue_queue_work,
 		__entry->function	= work->func;
 		__entry->workqueue	= cwq->wq;
 		__entry->req_cpu	= req_cpu;
-		__entry->cpu		= cwq->pool->gcwq->cpu;
+		__entry->cpu		= cwq->gcwq->cpu;
 	),
 
 	TP_printk("work struct=%p function=%pf workqueue=%p req_cpu=%u cpu=%u",
@@ -119,3 +119,4 @@ DEFINE_EVENT(workqueue_work, workqueue_execute_end,
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>
+

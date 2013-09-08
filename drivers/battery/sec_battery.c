@@ -1789,7 +1789,7 @@ static void sec_bat_set_polling(
 	dev_dbg(battery->dev, "%s: End\n", __func__);
 }
 
-if #defined(CONFIG_CHARGER_MAX77693)
+#if defined(CONFIG_CHARGER_MAX77693)
 extern void max77693_muic_monitor_status(void);
 #endif
 static void sec_bat_monitor_work(

@@ -143,5 +143,6 @@ obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 
 #MobiCore
 obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
+obj-y                           += exfat/
 
 obj-$(CONFIG_CORESIGHT)		+= coresight/

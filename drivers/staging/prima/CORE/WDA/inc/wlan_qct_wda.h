@@ -407,6 +407,9 @@ typedef struct
    v_BOOL_t             needShutdown;
    v_BOOL_t             wdiFailed;
    v_BOOL_t             wdaTimersCreated;
+
+   /* Event to wait for WDA stop on FTM mode */
+   vos_event_t          ftmStopDoneEvent;
 } tWDA_CbContext ; 
 
 typedef struct
@@ -1094,6 +1097,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_LPHB_WAIT_EXPIRE_IND   SIR_HAL_LPHB_WAIT_EXPIRE_IND
 #endif /* FEATURE_WLAN_LPHB */
 
+#define WDA_ADD_PERIODIC_TX_PTRN_IND    SIR_HAL_ADD_PERIODIC_TX_PTRN_IND
+#define WDA_DEL_PERIODIC_TX_PTRN_IND    SIR_HAL_DEL_PERIODIC_TX_PTRN_IND
+
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
@@ -1144,6 +1150,12 @@ v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx,
 
 #define WDA_UpdateRssiBmps(pvosGCtx,  staId, rssi) \
         WLANTL_UpdateRssiBmps(pvosGCtx, staId, rssi)
+
+#define WDA_UpdateSnrBmps(pvosGCtx,  staId, rssi) \
+        WLANTL_UpdateSnrBmps(pvosGCtx, staId, snr)
+
+#define WDA_GetSnr(staId, snr) \
+        WLANTL_GetSnr(staId, snr)
 
 #define WDA_UpdateLinkCapacity(pvosGCtx,  staId, linkCapacity) \
         WLANTL_UpdateLinkCapacity(pvosGCtx, staId, linkCapacity)

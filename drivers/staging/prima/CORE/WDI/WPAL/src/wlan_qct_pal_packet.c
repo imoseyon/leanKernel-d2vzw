@@ -84,13 +84,11 @@ typedef struct
 /* Storage for DXE CB function pointer */
 static wpalPacketLowPacketCB wpalPacketAvailableCB;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
 /* Temp storage for transport channel DIAG/LOG information
  * Each channel will update information with different context
  * Before send stored date to DIAG,
  * temporary it should be stored */
 static wpt_log_data_stall_type wpalTrasportStallInfo;
-#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 /*
    wpalPacketInit is no-op for VOSS-support wpt_packet
@@ -145,6 +143,9 @@ VOS_STATUS wpalPacketRXLowResourceCB(vos_pkt_t *pPacket, v_VOID_t *userData)
    }
 
    wpalPacketAvailableCB( (wpt_packet *)pPacket, userData );
+
+   wpalPacketAvailableCB = NULL;
+
    return VOS_STATUS_SUCCESS;
 }
 
@@ -166,8 +167,6 @@ wpt_packet * wpalPacketAlloc(wpt_packet_type pktType, wpt_uint32 nPktSize,
    v_U16_t      allocLen;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-   /* Initialize DXE CB function pointer storage */
-   wpalPacketAvailableCB = NULL;
    switch (pktType)
    {
    case eWLAN_PAL_PKT_TYPE_TX_802_11_MGMT:
@@ -831,7 +830,6 @@ wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource)
    return eWLAN_PAL_STATUS_SUCCESS;
 }
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
 /*---------------------------------------------------------------------------
     wpalPacketStallUpdateInfo – Update each channel information when stall
        detected, also power state and free resource count
@@ -877,6 +875,7 @@ void wpalPacketStallUpdateInfo
    return;
 }
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
 /*---------------------------------------------------------------------------
     wpalPacketStallDumpLog – Trigger to send log packet to DIAG
        Updated transport system information will be sent to DIAG

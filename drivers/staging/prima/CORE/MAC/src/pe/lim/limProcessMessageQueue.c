@@ -526,9 +526,14 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
     fcOffset = (v_U8_t)WDA_GET_RX_MPDU_HEADER_OFFSET(pRxPacketInfo);
     fc = pHdr->fc;
 
-    limLog( pMac, LOG4, FL("ProtVersion %d, Type %d, Subtype %d rateIndex=%d"),
-            fc.protVer, fc.type, fc.subType, WDA_GET_RX_MAC_RATE_IDX(pRxPacketInfo));
-   
+#ifdef WLAN_DUMP_MGMTFRAMES
+    limLog( pMac, LOGE, FL("ProtVersion %d, Type %d, Subtype %d rateIndex=%d"),
+            fc.protVer, fc.type, fc.subType,
+            WDA_GET_RX_MAC_RATE_IDX(pRxPacketInfo));
+    VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, pHdr,
+                       WDA_GET_RX_MPDU_HEADER_LEN(pRxPacketInfo));
+#endif
+
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     if ( WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo))
     {
@@ -1169,15 +1174,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
         case eWNI_SME_DISASSOC_REQ:
         case eWNI_SME_DEAUTH_REQ:
-        case eWNI_SME_STA_STAT_REQ:
-        case eWNI_SME_AGGR_STAT_REQ:
-        case eWNI_SME_GLOBAL_STAT_REQ:
-        case eWNI_SME_STAT_SUMM_REQ:
         case eWNI_SME_GET_SCANNED_CHANNEL_REQ:
-        case eWNI_SME_GET_STATISTICS_REQ:
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
-        case eWNI_SME_GET_ROAM_RSSI_REQ:
-#endif
 #ifdef FEATURE_OEM_DATA_SUPPORT
         case eWNI_SME_OEM_DATA_REQ:
 #endif
@@ -1254,6 +1251,14 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_REGISTER_MGMT_FRAME_REQ:
         case eWNI_SME_UPDATE_NOA:
         case eWNI_SME_CLEAR_DFS_CHANNEL_LIST:
+        case eWNI_SME_STA_STAT_REQ:
+        case eWNI_SME_AGGR_STAT_REQ:
+        case eWNI_SME_GLOBAL_STAT_REQ:
+        case eWNI_SME_STAT_SUMM_REQ:
+        case eWNI_SME_GET_STATISTICS_REQ:
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+#endif
             // These messages are from HDD
             limProcessNormalHddMsg(pMac, limMsg, false);   //no need to response to hdd
             break;

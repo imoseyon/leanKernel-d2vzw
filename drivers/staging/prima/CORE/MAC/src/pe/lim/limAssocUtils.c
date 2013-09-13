@@ -1669,6 +1669,8 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     if ( (selfStaDot11Mode == WNI_CFG_DOT11_MODE_ALL) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11A) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11AC) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11N) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11G) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11B) )
     {
         val = WNI_CFG_SUPPORTED_RATES_11B_LEN;
@@ -3799,22 +3801,20 @@ limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResult
             sizeof(tSirMacAddr));
 
     mlmStaContext = pStaDs->mlmStaContext;
-    if(eSIR_SME_SUCCESS == statusCode)
+    if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
+        (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
     {
-        if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
-            (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
-        {
-            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
-        }
-
-        limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);
+        limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
     }
-    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
+    limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry);
+
+    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE)||
+         (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
     {
         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE,
+                        psessionEntry->peSessionId, psessionEntry->limMlmState));
     }
-
     limSendDelStaCnf(pMac, staDsAddr, staDsAssocId, mlmStaContext, statusCode,psessionEntry);
 }
 

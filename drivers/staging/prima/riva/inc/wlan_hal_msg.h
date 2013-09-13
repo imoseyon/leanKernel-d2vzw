@@ -116,6 +116,9 @@ typedef tANI_U8 tHalIpv4Addr[4];
 #define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     61
 #endif
 
+#define HAL_PERIODIC_TX_PTRN_MAX_SIZE 1536
+#define HAL_MAXNUM_PERIODIC_TX_PTRNS 6
+
 /* Message types for messages exchanged between WDI and HAL */
 typedef enum 
 {
@@ -387,6 +390,15 @@ typedef enum
    WLAN_HAL_TDLS_LINK_TEARDOWN_RSP          = 201,
    WLAN_HAL_TDLS_IND                        = 202,
    WLAN_HAL_IBSS_PEER_INACTIVITY_IND        = 203,
+
+   /* APIs to offload TCP/UDP Heartbeat handshakes */
+   WLAN_HAL_LPHB_CFG_REQ                    = 211,
+   WLAN_HAL_LPHB_CFG_RSP                    = 212,
+   WLAN_HAL_LPHB_IND                        = 213,
+
+   WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND        = 214,
+   WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND        = 215,
+   WLAN_HAL_PERIODIC_TX_PTRN_FW_IND         = 216,
 
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -3804,6 +3816,124 @@ typedef PACKED_PRE struct PACKED_POST
    tHalNSOffloadParams nsOffloadParams;
 }  tHalHostOffloadReqMsg, *tpHalHostOffloadReqMsg;
 
+
+#ifdef FEATURE_WLAN_LPHB
+typedef enum
+{
+   WIFI_HB_SET_ENABLE         = 0x0001,
+   WIFI_HB_SET_TCP_PARAMS     = 0x0002,
+   WIFI_HB_SET_TCP_PKT_FILTER = 0x0003,
+   WIFI_HB_SET_UDP_PARAMS     = 0x0004,
+   WIFI_HB_SET_UDP_PKT_FILTER = 0x0005,
+   WIFI_HB_SET_NETWORK_INFO   = 0x0006,
+}tLowPowerHeartBeatCmdType ;
+
+#define MAX_FLITER_SIZE 64
+/*---------------------------------------------------------------------------
+ *FEATURE_WLAN_LPHB REQ
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 hostIpv4Addr;
+   uint32 destIpv4Addr;
+   uint16 hostPort;
+   uint16 destPort;
+   uint16 timeOutSec;  // in seconds
+   tSirMacAddr gatewayMacAddr;
+} tlowPowerHeartBeatParamsTcpStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 hostIpv4Addr;
+   uint32 destIpv4Addr;
+   uint16 hostPort;
+   uint16 destPort;
+   uint16 timePeriodSec;// in seconds
+   uint16 timeOutSec;   // in seconds
+   tSirMacAddr gatewayMacAddr;
+} tlowPowerHeartBeatParamsUdpStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 offset;
+   uint32 filterLength;
+   uint8  filter[MAX_FLITER_SIZE];
+} tlowPowerHeartBeatFilterStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 heartBeatEnable;
+   uint8 heartBeatType; //TCP or UDP
+} tlowPowerHeartBeatEnableStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+  uint8 dummy;
+} tlowPowerHeartBeatNetworkInfoStruct;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 sessionIdx;
+   uint16 lowPowerHeartBeatCmdType;
+   PACKED_PRE union PACKED_PRO
+   {
+      tlowPowerHeartBeatEnableStruct control;
+      tlowPowerHeartBeatFilterStruct tcpUdpFilter;
+      tlowPowerHeartBeatParamsTcpStruct tcpParams;
+      tlowPowerHeartBeatParamsUdpStruct udpParams;
+      tlowPowerHeartBeatNetworkInfoStruct info;
+    }options;
+} tHalLowPowerHeartBeatReq, *tpHalLowPowerHeartBeatReq;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatReq lowPowerHeartBeatParams;
+}  tHalLowPowerHeartBeatReqMsg, *tpHalLowPowerHeartBeatReqMsg;
+
+/*---------------------------------------------------------------------------
+ * FEATURE_WLAN_LPHB RSP
+ *--------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   /* success or failure */
+   uint8  sessionIdx;
+   uint32 status;
+   uint16 lowPowerHeartBeatCmdType;
+}tHalLowPowerHeartBeatRspParams, *tpHalLowPowerHeartBeatRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatRspParams lowPowerHeartBeatRspParams;
+}tHalLowPowerHeartBeatRspMsg, *tpHalLowPowerHeartBeatRspMsg;
+
+
+/*---------------------------------------------------------------------------
+ * FEATURE_WLAN_LPHB IND
+ *--------------------------------------------------------------------------*/
+#define WIFI_HB_EVENT_TCP_RX_TIMEOUT 0x0001
+#define WIFI_HB_EVENT_UDP_RX_TIMEOUT 0x0002
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 bssIdx;
+   uint8 sessionIdx;
+   uint8 protocolType; /*TCP or UDP*/
+   uint8 eventReason;
+
+}tHalLowPowerHeartBeatIndParam,*tpHalLowPowerHeartBeatIndParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatIndParam lowPowerHeartBeatIndParams;
+}tHalLowPowerHeartBeatIndMsg, *tpHalLowPowerHeartBeatIndMsg;
+
+#endif
 /*---------------------------------------------------------------------------
  * WLAN_HAL_KEEP_ALIVE_REQ
  *--------------------------------------------------------------------------*/
@@ -3885,6 +4015,60 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tANI_U8       bssIdx;
 }  tHalExitUapsdReqMsg, *tpHalExitUapsdReqMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32 selfStaIdx:8;
+    tANI_U32 ucPtrnId:8;         // Pattern ID
+    tANI_U32 usPtrnSize:16;      // Non-Zero Pattern size
+    tANI_U32 uPtrnIntervalMs;    // In msec
+    tANI_U8  ucPattern[HAL_PERIODIC_TX_PTRN_MAX_SIZE]; // Pattern buffer
+} tHalAddPeriodicTxPtrn, *tpHalAddPeriodicTxPtrn;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalAddPeriodicTxPtrn ptrnParams;
+}  tHalAddPeriodicTxPtrnIndMsg, *tpHalAddPeriodicTxPtrnIndMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32 selfStaIdx:8;
+    tANI_U32 rsvd:24;
+    /* Bitmap of pattern IDs that needs to be deleted */
+    tANI_U32 uPatternIdBitmap;
+} tHalDelPeriodicTxPtrn, *tpHalDelPeriodicTxPtrn;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalDelPeriodicTxPtrn ptrnParams;
+}   tHalDelPeriodicTxPtrnIndMsg, *tpHalDelPeriodicTxPtrnIndMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_PERIODIC_TX_PTRN_FW_IND
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* Type of Failure indication */
+    tANI_U32 bssIdx:8;
+    tANI_U32 selfStaIdx:8;
+    tANI_U32 rsvd:16;
+    tANI_U32 status;
+    tANI_U32 patternIdBitmap;
+} tHalPeriodicTxPtrnFwInd, *tpHalPeriodicTxPtrnFwInd;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalPeriodicTxPtrnFwInd fwIndParams;
+}   tHalPeriodicTxPtrnFwIndMsg, *tpHalPeriodicTxPtrnFwIndMsg;
 
 /*---------------------------------------------------------------------------
  * WLAN_HAL_ADD_WOWL_BCAST_PTRN
@@ -5724,6 +5908,7 @@ typedef enum {
     SPECULATIVE_PS_POLL = 24,
     SCAN_SCH            = 25,
     IBSS_HEARTBEAT_OFFLOAD = 26,
+    WLAN_PERIODIC_TX_PTRN = 28,
     MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
@@ -6117,6 +6302,8 @@ typedef PACKED_PRE struct PACKED_POST
 #endif
 
 #ifdef FEATURE_WLAN_TDLS
+#define HAL_MAX_SUPP_CHANNELS 128
+#define HAL_MAX_SUPP_OPER_CLASSES 32
 /*---------------------------------------------------------------------------
  * WLAN_HAL_TDLS_LINK_ESTABLISHED_REQ
  *-------------------------------------------------------------------------*/
@@ -6139,7 +6326,14 @@ typedef PACKED_PRE struct PACKED_POST
 
     /*TDLS Peer U-APSD Buffer STA Support*/
     tANI_U8        TPUBufferStaSupport;
-
+    /*TDLS Offchannel Support*/
+    tANI_U8        tdlsOffchannelSupport;
+    tANI_U8        peerCurrOperClass;
+    tANI_U8        selfCurrOperClass;
+    tANI_U8        validChannelsLen;
+    tANI_U8        validChannels[HAL_MAX_SUPP_CHANNELS];
+    tANI_U8        validOperClassesLen;
+    tANI_U8        validOperClasses[HAL_MAX_SUPP_OPER_CLASSES];
 }tTDLSLinkEstablishedType, *tpTDLSLinkEstablishedType;
 
 typedef PACKED_PRE struct PACKED_POST

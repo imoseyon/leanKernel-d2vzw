@@ -123,6 +123,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
+#include "wlan_hdd_debugfs.h"
 
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
@@ -167,6 +168,13 @@ static int wlan_hdd_inited;
 #define SIZE_OF_SETROAMMODE             11    /* size of SETROAMMODE */
 #define SIZE_OF_GETROAMMODE             11    /* size of GETROAMMODE */
 
+/*
+ * Driver miracast parameters 0-Disabled
+ * 1-Source, 2-Sink
+ */
+#define WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL 0
+#define WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL 2
+
 #ifdef WLAN_OPEN_SOURCE
 static struct wake_lock wlan_wake_lock;
 #endif
@@ -194,7 +202,6 @@ extern int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand);
 static VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels);
-static VOS_STATUS hdd_parse_countryrev(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels);
 static VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApBssid,
                               tANI_U8 *pChannel, tANI_U8 *pDwellTime,
                               tANI_U8 **pBuf, tANI_U8 *pBufLen);
@@ -642,69 +649,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            }
        }
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-       else if ( strncasecmp(command, "SETCOUNTRYREV", 13) == 0 )
-       {
-           tANI_U8 *value = command;
-           tANI_U8 countryCode[WNI_CFG_COUNTRY_CODE_LEN] = {0};
-           tANI_U8 revision = 0;
-           eHalStatus status = eHAL_STATUS_SUCCESS;
-           v_REGDOMAIN_t regId;
-
-           status = hdd_parse_countryrev(value, countryCode, &revision);
-           if (eHAL_STATUS_SUCCESS != status)
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Failed to parse country revision information", __func__);
-               ret = -EINVAL;
-               goto exit;
-           }
-
-           /* Validate country code */
-           status = sme_GetRegulatoryDomainForCountry(pHddCtx->hHal, countryCode, &regId);
-           if (eHAL_STATUS_SUCCESS != status)
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Invalid country code %s", __func__, countryCode);
-               ret = -EINVAL;
-               goto exit;
-           }
-
-           /* Validate revision */
-           if ((SME_KR_3 != revision) && (SME_KR_24 != revision) && (SME_KR_25 != revision))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Invalid revision %d", __func__, revision);
-               ret = -EINVAL;
-               goto exit;
-           }
-
-           hdd_checkandupdate_dfssetting(pAdapter, countryCode);
-           hdd_checkandupdate_phymode(pAdapter, countryCode);
-           ret = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, countryCode,
-                    pAdapter, pHddCtx->pvosContext, eSIR_TRUE);
-           if (0 != ret)
-           {
-               VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                       "%s: SME Change Country code fail ret=%d", __func__, ret);
-               ret = -EINVAL;
-               goto exit;
-           }
-
-           if (0 == strncmp(countryCode, "KR", 2))
-           {
-               status = sme_ChangeCountryValidChannelListByRevision((tHalHandle)(pHddCtx->hHal),
-                                                       revision);
-               if (eHAL_STATUS_SUCCESS != status)
-               {
-                   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                             "%s: Failed to build valid channel list", __func__);
-                   ret = -EINVAL;
-                   goto exit;
-               }
-           }
-       }
-#endif
        /*
           command should be a string having format
           SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
@@ -1070,39 +1014,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
        }
-       else if (strncmp(command, "GETCOUNTRYREV", 13) == 0)
-       {
-           tANI_U8 pBuf[WNI_CFG_COUNTRY_CODE_LEN];
-           tANI_U8 uBufLen = WNI_CFG_COUNTRY_CODE_LEN;
-           tANI_U8 revision = 0;
-           /* The format of the data copied to the user is GETCOUNTRYREV KR 25,
-              hence size of the array is country code + whitespace + 2 byte revision + ASCII NUL */
-           char extra[32] = {0};
-           tANI_U8 len = 0;
-
-           if (eHAL_STATUS_SUCCESS != sme_GetCountryCode( (tHalHandle)(pHddCtx->hHal), pBuf, &uBufLen ))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                  "%s: failed to get country code", __func__);
-               ret = -EFAULT;
-               goto exit;
-           }
-           pBuf[uBufLen] = '\0';
-           sme_GetCountryRevision((tHalHandle)(pHddCtx->hHal), &revision);
-
-           if (0 == strncmp(pBuf, "KR", 2))
-               len = snprintf(extra, sizeof(extra), "%s %s %u", command, pBuf, revision);
-           else
-               len = snprintf(extra, sizeof(extra), "%s %s", command, pBuf);
-
-           if (copy_to_user(priv_data.buf, &extra, len + 1))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: failed to copy data to user buffer", __func__);
-               ret = -EFAULT;
-               goto exit;
-           }
-       }
        else if (strncmp(command, "SETROAMSCANCHANNELS", 19) == 0)
        {
            tANI_U8 *value = command;
@@ -1387,8 +1298,17 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            /* done with the parsed buffer */
            vos_mem_free(buf);
 
-           wlan_hdd_action( NULL, dev, &chan, 0, NL80211_CHAN_HT20,
-                       1, dwellTime, finalBuf, finalLen,  1,
+           wlan_hdd_action( NULL,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+                       &(pAdapter->wdev),
+#else
+                       dev,
+#endif
+                       &chan, 0,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+                       NL80211_CHAN_HT20, 1,
+#endif
+                       dwellTime, finalBuf, finalLen,  1,
                        1, &cookie );
            vos_mem_free(finalBuf);
        }
@@ -2060,6 +1980,102 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
           pHddCtx->scan_info.scan_mode = eSIR_PASSIVE_SCAN;
        }
+       else if (strncmp(command, "GETDWELLTIME", 12) == 0)
+       {
+           hdd_config_t *pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
+           char extra[32];
+           tANI_U8 len = 0;
+
+           len = snprintf(extra, sizeof(extra), "GETDWELLTIME %u\n",
+                  (int)pCfg->nActiveMaxChnTime);
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           ret = len;
+       }
+       else if (strncmp(command, "SETDWELLTIME", 12) == 0)
+       {
+           tANI_U8 *value = command;
+           hdd_config_t *pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
+           int val = 0, temp;
+
+           value = value + 13;
+           temp = kstrtou32(value, 10, &val);
+           if ( temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
+                             val > CFG_ACTIVE_MAX_CHANNEL_TIME_MAX )
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: argument passed for SETDWELLTIME is incorrect", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           pCfg->nActiveMaxChnTime = val;
+       }
+       else if ( strncasecmp(command, "MIRACAST", 8) == 0 )
+       {
+           tANI_U8 filterType = 0;
+           tANI_U8 *value;
+           value = command + 9;
+
+           /* Convert the value from ascii to integer */
+           ret = kstrtou8(value, 10, &filterType);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype,
+                * then also kstrtou8 fails
+                */
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: kstrtou8 failed range ", __func__);
+              ret = -EINVAL;
+              goto exit;
+           }
+           if ((filterType < WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL ) ||
+               (filterType > WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Accepted Values are 0 to 2. 0-Disabled, 1-Source,"
+                      " 2-Sink ", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+           //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
+           pHddCtx->drvr_miracast = filterType;
+           hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
+        }
+       else if (strncmp(command, "SETMCRATE", 9) == 0)
+       {
+           int      rc;
+           tANI_U8 *value = command;
+           int      targetRate;
+
+           /* Only valid for SAP mode */
+           if (WLAN_HDD_SOFTAP != pAdapter->device_mode)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: SAP mode is not running", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+
+           /* Move pointer to ahead of SETMCRATE<delimiter> */
+           /* input value is in units of hundred kbps */
+           value = value + 10;
+           /* Convert the value from ascii to integer, decimal base */
+           ret = kstrtouint(value, 10, &targetRate);
+
+           rc = hdd_hostapd_set_mc_rate(pAdapter, targetRate);
+           if (rc)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Set MC Rate Fail %d", __func__, rc);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
@@ -2107,7 +2123,7 @@ void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand)
   This function parses the send action frame data passed in the format
   SENDACTIONFRAME<space><bssid><space><channel><space><dwelltime><space><data>
 
-  \param  - pValue Pointer to input country code revision
+  \param  - pValue Pointer to input data
   \param  - pTargetApBssid Pointer to target Ap bssid
   \param  - pChannel Pointer to the Target AP channel
   \param  - pDwellTime Pointer to the time to stay off-channel after transmitting action frame
@@ -2253,86 +2269,6 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_parse_countryrev() - HDD Parse country code revision
-
-  This function parses the country code revision passed in the format
-  SETCOUNTRYREV<space><Country code><space>revision
-
-  \param  - pValue Pointer to input country code revision
-  \param  - pCountryCode Pointer to local output array to record country code
-  \param  - pRevision Pointer to store revision integer number
-
-  \return - 0 for success non-zero for failure
-
-  --------------------------------------------------------------------------*/
-VOS_STATUS hdd_parse_countryrev(tANI_U8 *pValue, tANI_U8 *pCountryCode, tANI_U8 *pRevision)
-{
-    tANI_U8 *inPtr = pValue;
-    int tempInt;
-
-    inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
-    /*no argument after the command*/
-    if (NULL == inPtr)
-    {
-        return -EINVAL;
-    }
-
-    /*no space after the command*/
-    else if (SPACE_ASCII_VALUE != *inPtr)
-    {
-        return -EINVAL;
-    }
-
-    /*removing empty spaces*/
-    while ((SPACE_ASCII_VALUE  == *inPtr)&& ('\0' !=  *inPtr) ) inPtr++;
-
-    /*no argument followed by spaces*/
-    if ('\0' == *inPtr)
-    {
-        return -EINVAL;
-    }
-
-    /*getting the first argument ie the country code */
-    sscanf(inPtr, "%3s ", pCountryCode);
-
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
-               "Country code is : %s", pCountryCode);
-
-    /*inPtr pointing to the beginning of first space after country code */
-    inPtr = strpbrk( inPtr, " " );
-    /*no revision number after the country code argument */
-    if (NULL == inPtr)
-    {
-        return -EINVAL;
-    }
-
-    inPtr++;
-
-    /*removing empty space*/
-    while ((SPACE_ASCII_VALUE == *inPtr) && ('\0' != *inPtr) ) inPtr++;
-
-    /*no channel list after the number of channels argument and spaces*/
-    if (0 == strncmp(pCountryCode, "KR", 2))
-    {
-        if ('\0' == *inPtr)
-        {
-            return -EINVAL;
-        }
-
-        sscanf(inPtr, "%d", &tempInt);
-        *pRevision = tempInt;
-    }
-    else
-    {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
-               "Revision input is required only for Country KR");
-        return -EINVAL;
-    }
-    return VOS_STATUS_SUCCESS;
-}
-
-/**---------------------------------------------------------------------------
-
   \brief hdd_parse_channellist() - HDD Parse channel list
 
   This function parses the channel list passed in the format
@@ -2456,7 +2392,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
   This function parses the reasoc command data passed in the format
   REASSOC<space><bssid><space><channel>
 
-  \param  - pValue Pointer to input country code revision
+  \param  - pValue Pointer to input data
   \param  - pTargetApBssid Pointer to target Ap bssid
   \param  - pChannel Pointer to the Target AP channel
 
@@ -4965,6 +4901,21 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
            "%s: Cannot deallocate p2p connection timer", __func__);
    }
 
+   //Stop the traffic monitor timer
+   if ( VOS_TIMER_STATE_RUNNING ==
+                        vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr))
+   {
+        vos_timer_stop(&pHddCtx->tx_rx_trafficTmr);
+   }
+
+   // Destroy the traffic monitor timer
+   if (!VOS_IS_STATUS_SUCCESS(vos_timer_destroy(
+                         &pHddCtx->tx_rx_trafficTmr)))
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+           "%s: Cannot deallocate Traffic monitor timer", __func__);
+   }
+
    //Disable IMPS/BMPS as we do not want the device to enter any power
    //save mode during shutdown
    sme_DisablePowerSave(pHddCtx->hHal, ePMC_IDLE_MODE_POWER_SAVE);
@@ -5012,6 +4963,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          /* continue -- need to clean up as much as possible */
       }
    }
+
+   hdd_debugfs_exit(pHddCtx);
 
    // Unregister the Net Device Notifier
    unregister_netdevice_notifier(&hdd_netdev_notifier);
@@ -5500,6 +5453,9 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->req_bmps_comp_var);
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
    init_completion(&pHddCtx->scan_info.abortscan_event_var);
+   init_completion(&pHddCtx->driver_crda_req);
+
+   spin_lock_init(&pHddCtx->schedScan_lock);
 
    hdd_list_init( &pHddCtx->hddAdapters, MAX_NUMBER_OF_ADAPTERS );
 
@@ -5538,6 +5494,21 @@ int hdd_wlan_startup(struct device *dev )
                 "%s: Setting pHddCtx->cfg_ini->nBandCapability = 1", __func__);
          pHddCtx->cfg_ini->nBandCapability = 1;
       }
+   }
+
+   /* If SNR Monitoring is enabled, FW has to parse all beacons
+    * for calcaluting and storing the average SNR, so set Nth beacon
+    * filter to 1 to enable FW to parse all the beaocons
+    */
+   if (1 == pHddCtx->cfg_ini->fEnableSNRMonitoring)
+   {
+      /* The log level is deliberately set to WARN as overriding
+       * nthBeaconFilter to 1 will increase power cosumption and this
+       * might just prove helpful to detect the power issue.
+       */
+      hddLog(VOS_TRACE_LEVEL_WARN,
+             "%s: Setting pHddCtx->cfg_ini->nthBeaconFilter = 1", __func__);
+      pHddCtx->cfg_ini->nthBeaconFilter = 1;
    }
    /*
     * cfg80211: Initialization and registration ...
@@ -5876,6 +5847,13 @@ int hdd_wlan_startup(struct device *dev )
 #endif //WLAN_BTAMP_FEATURE
    }
 
+   /* Open debugfs interface */
+   if (VOS_STATUS_SUCCESS != hdd_debugfs_init(pAdapter))
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "%s: hdd_debugfs_init failed!", __func__);
+   }
+
    /* Register TM level change handler function to the platform */
    status = hddDevTmRegisterNotifyCallback(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( status ) )
@@ -5965,6 +5943,15 @@ int hdd_wlan_startup(struct device *dev )
        hddLog(VOS_TRACE_LEVEL_ERROR,
            "%s: vos timer init failed for hdd_p2p_go_conn_is_in_progress", __func__);
    }
+
+   //Register the traffic monitor timer now
+   if ( pHddCtx->cfg_ini->dynSplitscan)
+   {
+       vos_timer_init(&pHddCtx->tx_rx_trafficTmr,
+                     VOS_TIMER_TYPE_SW,
+                     hdd_tx_rx_pkt_cnt_stat_timer_handler,
+                     (void *)pHddCtx);
+   }
    goto success;
 
 err_nl_srv:
@@ -5982,6 +5969,8 @@ err_free_power_on_lock:
 err_unregister_pmops:
    hddDevTmUnregisterNotifyCallback(pHddCtx);
    hddDeregisterPmOps(pHddCtx);
+
+   hdd_debugfs_exit(pHddCtx);
 
 #ifdef WLAN_BTAMP_FEATURE
 err_bap_stop:
@@ -6459,7 +6448,8 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
 
     ENTER();
 
-    hddLog( LOGE, "hdd_softap_sta_deauth:(%p, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
+    hddLog(LOG1, "hdd_softap_sta_deauth:(%p, false)",
+           (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to deauth bcmc station
     if( pDestMacAddress[0] & 0x1 )

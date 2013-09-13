@@ -14,7 +14,7 @@ PANIC_ON_BUG := 0
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
 
 #Flag to enable TDLS feature
-#CONFIG_QCOM_TDLS := y
+CONFIG_QCOM_TDLS := y
 
 ifeq ($(CONFIG_CFG80211),y)
 HAVE_CFG80211 := 1
@@ -79,14 +79,15 @@ HDD_INC := 	-I$(WLAN_ROOT)/$(HDD_INC_DIR) \
 HDD_OBJS := 	$(HDD_SRC_DIR)/bap_hdd_main.o \
 		$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
 		$(HDD_SRC_DIR)/wlan_hdd_cfg.o \
+		$(HDD_SRC_DIR)/wlan_hdd_debugfs.o \
 		$(HDD_SRC_DIR)/wlan_hdd_dev_pwr.o \
 		$(HDD_SRC_DIR)/wlan_hdd_dp_utils.o \
 		$(HDD_SRC_DIR)/wlan_hdd_early_suspend.o \
 		$(HDD_SRC_DIR)/wlan_hdd_ftm.o \
 		$(HDD_SRC_DIR)/wlan_hdd_hostapd.o \
-		$(HDD_SRC_DIR)/wlan_hdd_oemdata.o \
 		$(HDD_SRC_DIR)/wlan_hdd_main.o \
 		$(HDD_SRC_DIR)/wlan_hdd_mib.o \
+		$(HDD_SRC_DIR)/wlan_hdd_oemdata.o \
 		$(HDD_SRC_DIR)/wlan_hdd_scan.o \
 		$(HDD_SRC_DIR)/wlan_hdd_softap_tx_rx.o \
 		$(HDD_SRC_DIR)/wlan_hdd_tx_rx.o \
@@ -342,7 +343,10 @@ VOSS_OBJS :=    $(VOSS_SRC_DIR)/vos_api.o \
 		$(VOSS_SRC_DIR)/vos_timer.o \
 		$(VOSS_SRC_DIR)/vos_trace.o \
 		$(VOSS_SRC_DIR)/vos_types.o \
-		$(VOSS_SRC_DIR)/vos_utils.o
+        $(VOSS_SRC_DIR)/vos_utils.o \
+        $(VOSS_SRC_DIR)/wlan_nv_parser.o \
+        $(VOSS_SRC_DIR)/wlan_nv_stream_read.o \
+        $(VOSS_SRC_DIR)/wlan_nv_template_builtin.o
 
 ifeq ($(BUILD_DIAG_VERSION),1)
 VOSS_OBJS += $(VOSS_SRC_DIR)/vos_diag.o
@@ -484,7 +488,9 @@ CDEFINES :=	-DANI_BUS_TYPE_PLATFORM=1 \
 		-DWLAN_SOFTAP_VSTA_FEATURE \
 		-DWLAN_FEATURE_ROAM_SCAN_OFFLOAD \
 		-DWLAN_FEATURE_GTK_OFFLOAD \
-		-DWLAN_WAKEUP_EVENTS
+		-DWLAN_WAKEUP_EVENTS \
+	    -DWLAN_KD_READY_NOTIFIER \
+		-DFEATURE_WLAN_LPHB
 
 ifneq ($(CONFIG_PRONTO_WLAN),)
 CDEFINES += -DWCN_PRONTO

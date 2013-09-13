@@ -693,7 +693,7 @@ typedef enum
 #define CFG_FW_RSSI_MONITORING_NAME            "gEnableFWRssiMonitoring"
 #define CFG_FW_RSSI_MONITORING_MIN             ( 0 )
 #define CFG_FW_RSSI_MONITORING_MAX             ( 1 )
-#define CFG_FW_RSSI_MONITORING_DEFAULT         WNI_CFG_PS_ENABLE_RSSI_MONITOR_STADEF
+#define CFG_FW_RSSI_MONITORING_DEFAULT         ( 1 )
 
 #define CFG_DATA_INACTIVITY_TIMEOUT_NAME       "gDataInactivityTimeout"
 #define CFG_DATA_INACTIVITY_TIMEOUT_MIN        ( 1 )
@@ -1328,12 +1328,6 @@ typedef enum
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX                 ( 1 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT             ( 0 )
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-#define CFG_MC_ADDR_LIST_FILTER_NAME               "isMcAddrListFilter"
-#define CFG_MC_ADDR_LIST_FILTER_MIN                ( 0 )
-#define CFG_MC_ADDR_LIST_FILTER_MAX                ( 1 )
-#define CFG_MC_ADDR_LIST_FILTER_DEFAULT            ( 0 )
-#endif
 
 #define CFG_ENABLE_SSR                      "gEnableSSR"
 #define CFG_ENABLE_SSR_MIN                  ( 0 )
@@ -1809,6 +1803,33 @@ typedef enum
 #define CFG_ENABLE_HEART_BEAT_OFFLOAD_MAX      ( 1 )
 #define CFG_ENABLE_HEART_BEAT_OFFLOAD_DEFAULT  ( 1 )
 
+#define CFG_ANTENNA_DIVERSITY_PARAM_NAME          "gAntennaDiversity"
+#define CFG_ANTENNA_DIVERSITY_PARAM_MIN           ( 0 )
+#define CFG_ANTENNA_DIVERSITY_PARAM_MAX           ( 3 )
+#define CFG_ANTENNA_DIVERSITY_PARAM_DEFAULT       ( 0 )
+
+#define CFG_ENABLE_SNR_MONITORING_NAME              "gEnableSNRMonitoring"
+#define CFG_ENABLE_SNR_MONITORING_MIN               ( 0 )
+#define CFG_ENABLE_SNR_MONITORING_MAX               ( 1 )
+#define CFG_ENABLE_SNR_MONITORING_DEFAULT           ( 0 )
+//Macro to enable/disable dynamic timer
+#define CFG_DYNAMIC_SPLIT_SCAN_NAME                    "gEnableDynSplitScan"
+#define CFG_DYNAMIC_SPLIT_SCAN_MIN                     ( 0 )
+#define CFG_DYNAMIC_SPLIT_SCAN_MAX                     ( 1 )
+#define CFG_DYNAMIC_SPLIT_SCAN_DEFAULT                 ( 1 )
+
+//Macro to monitor the packet count
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_NAME    "gSplitScanTxRxThreshold"
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_MIN     ( 10 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_MAX     ( 100 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_DEFAULT ( 50 )
+
+//Macro to handle the monitor timer value in milliseconds
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_NAME      "gSplitScanTxRxTimer"
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MIN       ( 1000 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MAX       ( 10000 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_DEFAULT   ( 5000 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2124,9 +2145,6 @@ typedef struct
    v_U8_t                      allowMCCGODiffBI;
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
    v_U8_t                      thermalMitigationEnable;
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   v_BOOL_t                    isMcAddrListFilter;
-#endif
 #ifdef WLAN_FEATURE_11AC
    v_U8_t                      vhtChannelWidth;
    v_U8_t                      vhtRxMCS;
@@ -2189,9 +2207,17 @@ typedef struct
    v_BOOL_t                    bFastRoamInConIniFeatureEnabled;
 #endif
    v_BOOL_t                    fEnableAdaptRxDrain;
+   //TX and RX traffic threshold for split scan
+   v_U8_t                      txRxThresholdForSplitScan;
+   v_U8_t                      dynSplitscan;   //Enable/Disable dynamic
+                                                 //splitscan
+   //Traffic monitor timer for split scan
+   v_U32_t                     trafficMntrTmrForSplitScan;
    v_BOOL_t                    enableOxygenNwk;
    v_U8_t                      flexConnectPowerFactor;
    v_BOOL_t                    enableIbssHeartBeatOffload;
+   v_U32_t                     antennaDiversity;
+   v_BOOL_t                    fEnableSNRMonitoring;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

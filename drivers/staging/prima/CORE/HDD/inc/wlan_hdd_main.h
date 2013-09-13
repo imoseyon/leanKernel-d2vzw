@@ -229,6 +229,8 @@ typedef struct hdd_tx_rx_stats_s
    __u32    rxDropped;
    __u32    rxDelivered;
    __u32    rxRefused;
+   __u32    pkt_tx_count; //TX pkt Counter used for dynamic splitscan
+   __u32    pkt_rx_count; //RX pkt Counter used for dynamic splitscan
 } hdd_tx_rx_stats_t;
 
 typedef struct hdd_chip_reset_stats_s
@@ -639,6 +641,13 @@ struct hdd_ap_ctx_s
    tCsrRoamSetKey wepKey[CSR_MAX_NUM_KEY];
 
    beacon_data_t *beacon;
+
+   //Elements for setting MC rate with SAP mode
+   v_U32_t targetMCRate;
+   v_U32_t getStasCookie;
+   tSap_Event getStasEventBuffer;
+   tSap_AssocMacAddr *assocStasBuffer;
+   struct completion sap_get_associated_stas_complete;
 };
 
 struct hdd_mon_ctx_s
@@ -800,6 +809,9 @@ struct hdd_adapter_s
 #endif
    
    v_S7_t rssi;
+
+   tANI_U8 snr;
+
    struct work_struct  monTxWorkQueue;
    struct sk_buff *skb_to_tx;
 
@@ -818,6 +830,7 @@ struct hdd_adapter_s
    //Magic cookie for adapter sanity verification
    v_U32_t magic;
    v_BOOL_t higherDtimTransition;
+   v_BOOL_t survey_idx;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -963,7 +976,7 @@ struct hdd_context_s
    /** Concurrency Parameters*/
    tVOS_CONCURRENCY_MODE concurrency_mode;
 
-   v_U16_t no_of_sessions[VOS_MAX_NO_OF_MODE];
+   v_U16_t no_of_sessions[VOS_MAX_NO_OF_MODE + 1];
 
    hdd_chip_reset_stats_t hddChipResetStats;
    /* Number of times riva restarted */
@@ -1021,11 +1034,33 @@ struct hdd_context_s
      * */
     v_U8_t configuredMcastBcastFilter;
 
+    v_U8_t sus_res_mcastbcast_filter;
+
     vos_timer_t hdd_p2p_go_conn_is_in_progress;
 
 #ifdef FEATURE_WLAN_LPHB
     lphbEnableStruct  lphbEnableReq;
 #endif /* FEATURE_WLAN_LPHB */
+
+    /* debugfs entry */
+    struct dentry *debugfs_phy;
+
+    /* Use below lock to protect access to isSchedScanUpdatePending
+     * since it will be accessed in two different contexts.
+     */
+    spinlock_t schedScan_lock;
+
+    // Flag keeps track of wiphy suspend/resume
+    v_BOOL_t isWiphySuspended;
+
+    // Indicates about pending sched_scan results
+    v_BOOL_t isSchedScanUpdatePending;
+    /*
+    * TX_rx_pkt_count_timer
+    */
+    vos_timer_t    tx_rx_trafficTmr;
+    v_U8_t         drvr_miracast;
+    v_U8_t         issplitscan_enabled;
 };
 
 

@@ -1179,13 +1179,6 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
         return;
     }
 
-    if (limSetLinkState(pMac, eSIR_LINK_PREASSOC_STATE, psessionEntry->bssId,
-                        psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
-    {
-        vos_mem_free(pMlmReassocReq);
-        return;
-    }
-
     pMlmReassocReq->listenInterval = (tANI_U16) val;
 
     psessionEntry->pLimMlmReassocReq = pMlmReassocReq;
@@ -1560,36 +1553,6 @@ void limProcessFTAggrQoSRsp(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         vos_mem_free(pAggrQosRspMsg);
     }
     return;
-}
-
-
-/*--------------------------------------------------------------------------
-         Determines if a session with ccx or 11r assoc is present.
-        If present it will return TRUE else FALSE
-  ------------------------------------------------------------------------*/
-int limisFastTransitionRequired(tpAniSirGlobal pMac, int sessionId)
-{
-    if(pMac->lim.gpSession[sessionId].valid == TRUE)
-    {
-        // If ccx or 11r connection is found we need to return TRUE
-        if((pMac->lim.gpSession[sessionId].bssType == eSIR_INFRASTRUCTURE_MODE) &&
-           (((pMac->lim.gpSession[sessionId].is11Rconnection) 
-#ifdef FEATURE_WLAN_CCX
-           || (pMac->lim.gpSession[sessionId].isCCXconnection)
-#endif
-#ifdef FEATURE_WLAN_LFR
-           || (pMac->lim.gpSession[sessionId].isFastRoamIniFeatureEnabled)
-#endif
-           )&& 
-            pMac->lim.gpSession[sessionId].isFastTransitionEnabled))
-        {
-            // Make sure we have 11r/CCX and FT enabled only then we need
-            // the values to be altered from cfg for FW RSSI Period alteration.
-            return TRUE;
-        }
-    }
-
-    return FALSE;
 }
 
 #endif /* WLAN_FEATURE_VOWIFI_11R */

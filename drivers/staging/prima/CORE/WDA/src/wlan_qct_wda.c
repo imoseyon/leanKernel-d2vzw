@@ -502,6 +502,10 @@ VOS_STATUS WDA_start(v_PVOID_t pVosContext)
          wdaContext->wdaTimersCreated = VOS_TRUE;
       }
    }
+   else
+   {
+      vos_event_init(&wdaContext->ftmStopDoneEvent);
+   }
    return status;
 }
 
@@ -1568,6 +1572,21 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    tlvStruct = (tHalCfg *)(((tANI_U8 *) tlvStruct
                             + sizeof(tHalCfg) + tlvStruct->length));
 
+   /* QWLAN_HAL_CFG_ANTENNA_DIVERSITY */
+   tlvStruct->type = QWLAN_HAL_CFG_ANTENNA_DIVERSITY;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if (wlan_cfgGetInt(pMac, WNI_CFG_ANTENNA_DIVESITY,
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_ANTENNA_DIVESITY");
+      goto handle_failure;
+   }
+
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
    {
@@ -1644,6 +1663,18 @@ void WDA_stopCallback(WDI_Status status, void* pUserData)
    else
    {
       wdaContext->wdaState = WDA_STOP_STATE;
+   }
+
+   /* FTM Driver stop procedure should be synced.
+    * Stop and Close will happen on same context */
+   if (eDRIVER_TYPE_MFG == wdaContext->driverMode)
+   {
+      if (VOS_STATUS_SUCCESS != vos_event_set(&wdaContext->ftmStopDoneEvent))
+      {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: FTM Stop Event Set Fail", __func__);
+         VOS_ASSERT(0);
+      }
    }
 
    /* Indicate VOSS about the start complete */
@@ -1729,6 +1760,21 @@ VOS_STATUS WDA_stop(v_PVOID_t pVosContext, tANI_U8 reason)
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams);
       status = VOS_STATUS_E_FAILURE;
+   }
+
+   /* FTM Driver stop procedure should be synced.
+    * Stop and Close will happen on same context */
+   if (eDRIVER_TYPE_MFG == pWDA->driverMode)
+   {
+      status = vos_wait_single_event(&pWDA->ftmStopDoneEvent,
+                                     WDI_RESPONSE_TIMEOUT);
+      if (status != VOS_STATUS_SUCCESS)
+      {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: FTM Stop Timepoout", __func__);
+         VOS_ASSERT(0);
+         vos_event_reset(&pWDA->ftmStopDoneEvent);
+      }
    }
    return status;
 }
@@ -9381,7 +9427,8 @@ VOS_STATUS WDA_NVDownload_Start(v_PVOID_t pVosContext)
    }
    
    /* Get the NV structure base address and size from VOS */
-   vos_nv_getNVBuffer(&pNvBuffer,&bufferSize);
+   vos_nv_getNVEncodedBuffer(&pNvBuffer,&bufferSize);
+
    wdiNvDownloadReqParam = (WDI_NvDownloadReqParamsType *)vos_mem_malloc(
                                           sizeof(WDI_NvDownloadReqParamsType)) ;
    if(NULL == wdiNvDownloadReqParam) 
@@ -10322,6 +10369,98 @@ VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA,
 #endif // WLAN_FEATURE_GTK_OFFLOAD
 
 /*
+ * FUNCTION: WDA_ProcessAddPeriodicTxPtrnInd
+ *
+ */
+VOS_STATUS WDA_ProcessAddPeriodicTxPtrnInd(tWDA_CbContext *pWDA,
+                               tSirAddPeriodicTxPtrn *pAddPeriodicTxPtrnParams)
+{
+   WDI_Status wdiStatus;
+   WDI_AddPeriodicTxPtrnParamsType *addPeriodicTxPtrnParams;
+
+   addPeriodicTxPtrnParams =
+      vos_mem_malloc(sizeof(WDI_AddPeriodicTxPtrnParamsType));
+
+   if (NULL == addPeriodicTxPtrnParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for addPeriodicTxPtrnParams!",
+                __func__);
+
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   vos_mem_copy(&(addPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams),
+                pAddPeriodicTxPtrnParams, sizeof(tSirAddPeriodicTxPtrn));
+
+   addPeriodicTxPtrnParams->wdiReqStatusCB = WDA_WdiIndicationCallback;
+   addPeriodicTxPtrnParams->pUserData = pWDA;
+
+   wdiStatus = WDI_AddPeriodicTxPtrnInd(addPeriodicTxPtrnParams);
+
+   if (WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d", __func__, __LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in %s:%d", __func__, __LINE__ );
+   }
+
+   vos_mem_free(addPeriodicTxPtrnParams);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+
+/*
+ * FUNCTION: WDA_ProcessDelPeriodicTxPtrnInd
+ *
+ */
+VOS_STATUS WDA_ProcessDelPeriodicTxPtrnInd(tWDA_CbContext *pWDA,
+                               tSirDelPeriodicTxPtrn *pDelPeriodicTxPtrnParams)
+{
+   WDI_Status wdiStatus;
+   WDI_DelPeriodicTxPtrnParamsType *delPeriodicTxPtrnParams;
+
+   delPeriodicTxPtrnParams =
+      vos_mem_malloc(sizeof(WDI_DelPeriodicTxPtrnParamsType));
+
+   if (NULL == delPeriodicTxPtrnParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for delPeriodicTxPtrnParams!",
+                __func__);
+
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   vos_mem_copy(&(delPeriodicTxPtrnParams->wdiDelPeriodicTxPtrnParams),
+                pDelPeriodicTxPtrnParams, sizeof(tSirDelPeriodicTxPtrn));
+
+   delPeriodicTxPtrnParams->wdiReqStatusCB = WDA_WdiIndicationCallback;
+   delPeriodicTxPtrnParams->pUserData = pWDA;
+
+   wdiStatus = WDI_DelPeriodicTxPtrnInd(delPeriodicTxPtrnParams);
+
+   if (WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d", __func__, __LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in %s:%d", __func__, __LINE__ );
+   }
+
+   vos_mem_free(delPeriodicTxPtrnParams);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+
+/*
  * -------------------------------------------------------------------------
  * DATA interface with WDI for Mgmt Frames
  * ------------------------------------------------------------------------- 
@@ -10603,6 +10742,16 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       }
       status = VOS_STATUS_E_FAILURE;
    }
+#ifdef WLAN_DUMP_MGMTFRAMES
+   if (VOS_IS_STATUS_SUCCESS(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                      "%s() TX packet : SubType %d", __func__,pFc->subType);
+      VOS_TRACE_HEX_DUMP( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                          pData, frmLen);
+   }
+#endif
+
    return status;
 }
 /*
@@ -11319,6 +11468,19 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif
+      case WDA_ADD_PERIODIC_TX_PTRN_IND:
+      {
+         WDA_ProcessAddPeriodicTxPtrnInd(pWDA,
+            (tSirAddPeriodicTxPtrn *)pMsg->bodyptr);
+         break;
+      }
+      case WDA_DEL_PERIODIC_TX_PTRN_IND:
+      {
+         WDA_ProcessDelPeriodicTxPtrnInd(pWDA,
+            (tSirDelPeriodicTxPtrn *)pMsg->bodyptr);
+         break;
+      }
+
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11817,6 +11979,18 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
       }
 #endif /* FEATURE_WLAN_LPHB */
+      case WDI_PERIODIC_TX_PTRN_FW_IND:
+      {
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+            "%s: WDI_PERIODIC_TX_PTRN_FW_IND received, bssIdx: %d, "
+            "selfStaIdx: %d, status: %d, patternIdBitmap: %d", __func__,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.bssIdx,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.selfStaIdx,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.status,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.patternIdBitmap);
+
+         break;
+      }
 
       case WDI_IBSS_PEER_INACTIVITY_IND:
       {
@@ -13953,6 +14127,10 @@ VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport)
       wdaDestroyTimers(pWDA);
       pWDA->wdaTimersCreated = VOS_FALSE;
    }
+   else
+   {
+      vos_event_destroy(&pWDA->ftmStopDoneEvent);
+  }
 
    /* call WDI shutdown */
    wdiStatus = WDI_Shutdown(closeTransport);

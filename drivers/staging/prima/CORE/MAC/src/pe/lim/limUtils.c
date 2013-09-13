@@ -121,7 +121,12 @@ limAssignDialogueToken(tpAniSirGlobal pMac)
     //assocId and tid of the node will be filled in by caller.
     pCurrNode->next = NULL;
     pCurrNode->token = token++;
-    PELOG4(limLog(pMac, LOG4, FL("token assigned = %d"), token);)
+
+    /* Dialog token should be a non-zero value */
+    if (0 == pCurrNode->token)
+       pCurrNode->token = token;
+
+    PELOG4(limLog(pMac, LOG4, FL("token assigned = %d"), pCurrNode->token);)
     return pCurrNode;
 }
 
@@ -2592,6 +2597,8 @@ void limProcessChannelSwitchTimeout(tpAniSirGlobal pMac)
                         eSIR_MAC_UNSPEC_FAILURE_REASON);
         return;
     }
+    limCovertChannelScanType(pMac, psessionEntry->currentOperChannel, false);
+    pMac->lim.dfschannelList.timeStamp[psessionEntry->currentOperChannel] = 0;
     switch(psessionEntry->gLimChannelSwitch.state)
     {
         case eLIM_CHANNEL_SWITCH_PRIMARY_ONLY:

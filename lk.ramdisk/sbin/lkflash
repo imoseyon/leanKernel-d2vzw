@@ -18,7 +18,7 @@ echo
 echo "leanKernel flasher"
 echo "------------------"
 echo "1) latest stable (recommended)"
-echo "2) latest experimental (not available)" 
+echo "2) latest experimental" 
 echo "3) check/display versions" 
 echo
 echo "FLASH AT YOUR OWN RISK. I'm not responsible for my mistakes or yours. ;)"

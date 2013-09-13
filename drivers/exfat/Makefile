@@ -1,3 +1,5 @@
+EXTRA_CFLAGS += -fno-pic
+
 obj-m += exfat_core.o exfat_fs.o
 
 exfat_fs-y	:= exfat_super.o

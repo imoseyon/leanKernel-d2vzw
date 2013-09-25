@@ -3733,16 +3733,10 @@ static void vfe32_do_tasklet(unsigned long data)
 			if ((qcmd->vfeInterruptStatus1 &
 				VFE32_IMASK_ERROR_ONLY_1) &&
 				atomic_read(&recovery_active) != 1) {
-				pr_err("irq     errorIrq\n");
+				pr_err("irq	errorIrq\n");
 				vfe32_process_error_irq
 				    (qcmd->vfeInterruptStatus1 &
 				     VFE32_IMASK_ERROR_ONLY_1);
-				atomic_set(&recovery_active, 1);
-				vfe32_process_reset_irq();
-				vfe32_ctrl->simultaneous_sof_stat = 0;
-				vfe32_ctrl->simultaneous_sof_frame = 0;
-				kfree(qcmd);
-				return;
 			}
 
 			if ((qcmd->vfeInterruptStatus1 & 0x3FFF00) &&

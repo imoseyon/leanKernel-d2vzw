@@ -458,7 +458,7 @@ static void *msm_ipc_router_skb_to_buf(struct sk_buff_head *skb_head,
 	return buf;
 }
 
-static void msm_ipc_router_free_skb(struct sk_buff_head *skb_head)
+void msm_ipc_router_free_skb(struct sk_buff_head *skb_head)
 {
 	struct sk_buff *temp_skb;
 
@@ -613,6 +613,27 @@ static int calc_tx_header_size(struct rr_packet *pkt,
 		hdr_size = -EINVAL;
 	}
 
+	return hdr_size;
+}
+
+/**
+ * calc_rx_header_size() - Calculate the RX header size
+ * @xprt_info: XPRT info of the received message.
+ *
+ * @return: valid header size on success, INT_MAX on failure.
+ */
+static int calc_rx_header_size(struct msm_ipc_router_xprt_info *xprt_info)
+{
+	int xprt_version = 0;
+	int hdr_size = INT_MAX;
+
+	if (xprt_info)
+		xprt_version = xprt_info->xprt->get_version(xprt_info->xprt);
+
+	if (xprt_version == IPC_ROUTER_V1)
+		hdr_size = sizeof(struct rr_header_v1);
+	else if (xprt_version == IPC_ROUTER_V2)
+		hdr_size = sizeof(struct rr_header_v2);
 	return hdr_size;
 }
 
@@ -2080,7 +2101,7 @@ static void do_read_data(struct work_struct *work)
 			     read_data);
 
 	while ((pkt = rr_read(xprt_info)) != NULL) {
-		if (pkt->length < IPC_ROUTER_HDR_SIZE ||
+		if (pkt->length < calc_rx_header_size(xprt_info) ||
 		    pkt->length > MAX_IPC_PKT_SIZE) {
 			pr_err("%s: Invalid pkt length %d\n",
 				__func__, pkt->length);
@@ -2273,6 +2294,8 @@ static int loopback_data(struct msm_ipc_port *src,
 	struct msm_ipc_port *port_ptr;
 	struct rr_packet *pkt;
 	int ret_len;
+	struct sk_buff *temp_skb;
+	int align_size;
 
 	if (!data) {
 		pr_err("%s: Invalid pkt pointer\n", __func__);
@@ -2294,16 +2317,22 @@ static int loopback_data(struct msm_ipc_port *src,
 	hdr->dst_node_id = IPC_ROUTER_NID_LOCAL;
 	hdr->dst_port_id = port_id;
 
+	temp_skb = skb_peek_tail(pkt->pkt_fragment_q);
+	align_size = ALIGN_SIZE(pkt->length);
+	skb_put(temp_skb, align_size);
+	pkt->length += align_size;
+
 	down_read(&local_ports_lock_lha2);
 	port_ptr = msm_ipc_router_lookup_local_port(port_id);
 	if (!port_ptr) {
 		pr_err("%s: Local port %d not present\n", __func__, port_id);
 		up_read(&local_ports_lock_lha2);
+		pkt->pkt_fragment_q = NULL;
 		release_pkt(pkt);
 		return -ENODEV;
 	}
 
-	ret_len = pkt->length;
+	ret_len = hdr->size;
 	post_pkt_to_port(port_ptr, pkt, 0);
 	update_comm_mode_info(&src->mode_info, NULL);
 	up_read(&local_ports_lock_lha2);
@@ -2501,6 +2530,8 @@ int msm_ipc_router_send_to(struct msm_ipc_port *src,
 
 	ret = msm_ipc_router_write_pkt(src, rport_ptr, pkt);
 	up_read(&routing_table_lock_lha3);
+	if (ret < 0)
+		pkt->pkt_fragment_q = NULL;
 	release_pkt(pkt);
 
 	return ret;
@@ -2520,11 +2551,10 @@ int msm_ipc_router_send_msg(struct msm_ipc_port *src,
 	}
 
 	ret = msm_ipc_router_send_to(src, out_skb_head, dest);
-	if (ret == -EAGAIN)
-		return ret;
 	if (ret < 0) {
-		pr_err("%s: msm_ipc_router_send_to failed - ret: %d\n",
-			__func__, ret);
+		if (ret != -EAGAIN)
+			pr_err("%s: msm_ipc_router_send_to failed - ret: %d\n",
+				__func__, ret);
 		msm_ipc_router_free_skb(out_skb_head);
 		return ret;
 	}

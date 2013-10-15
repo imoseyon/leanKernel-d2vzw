@@ -440,28 +440,27 @@ static void kgsl_mem_entry_detach_process(struct kgsl_mem_entry *entry)
 static struct kgsl_context *
 kgsl_create_context(struct kgsl_device_private *dev_priv)
 {
+	struct kgsl_device *device = dev_priv->device;
 	struct kgsl_context *context;
-	int ret, id;
+	int ret, id = 0;
 
 	context = kzalloc(sizeof(*context), GFP_KERNEL);
 
-	if (context == NULL) {
-		KGSL_DRV_INFO(dev_priv->device, "kzalloc(%d) failed\n",
-				sizeof(*context));
+	if (context == NULL)
 		return ERR_PTR(-ENOMEM);
-	}
+
 
 	while (1) {
-		if (idr_pre_get(&dev_priv->device->context_idr,
-				GFP_KERNEL) == 0) {
-			KGSL_DRV_INFO(dev_priv->device,
-					"idr_pre_get: ENOMEM\n");
+		if (idr_pre_get(&device->context_idr, GFP_KERNEL) == 0) {
+			KGSL_DRV_INFO(device, "idr_pre_get: ENOMEM\n");
 			ret = -ENOMEM;
-			goto func_end;
+			break;
 		}
 
-		ret = idr_get_new_above(&dev_priv->device->context_idr,
-				  context, 1, &id);
+		write_lock(&device->context_lock);
+		ret = idr_get_new_above(&device->context_idr, context, 1, &id);
+		context->id = id;
+		write_unlock(&device->context_lock);
 
 		if (ret != -EAGAIN)
 			break;
@@ -472,21 +471,24 @@ kgsl_create_context(struct kgsl_device_private *dev_priv)
 
 	/* MAX - 1, there is one memdesc in memstore for device info */
 	if (id >= KGSL_MEMSTORE_MAX) {
-		KGSL_DRV_ERR(dev_priv->device, "cannot have more than %d "
+		KGSL_DRV_INFO(device, "cannot have more than %d "
 				"ctxts due to memstore limitation\n",
 				KGSL_MEMSTORE_MAX);
-		idr_remove(&dev_priv->device->context_idr, id);
+		write_lock(&device->context_lock);
+		idr_remove(&device->context_idr, id);
+		write_unlock(&device->context_lock);
 		ret = -ENOSPC;
 		goto func_end;
 	}
 
 	kref_init(&context->refcount);
-	context->id = id;
 	context->dev_priv = dev_priv;
 
 	ret = kgsl_sync_timeline_create(context);
 	if (ret) {
+		write_lock(&device->context_lock);
 		idr_remove(&dev_priv->device->context_idr, id);
+		write_unlock(&device->context_lock);
 		goto func_end;
 	}
 
@@ -544,8 +546,14 @@ kgsl_context_detach(struct kgsl_context *context)
 	 * it is still in use by the GPU.
 	 */
 	kgsl_context_cancel_events(device, context);
-	idr_remove(&device->context_idr, id);
+
+	write_lock(&device->context_lock);
 	context->id = KGSL_CONTEXT_INVALID;
+	idr_remove(&device->context_idr, id);
+	write_unlock(&device->context_lock);
+
+	context->dev_priv = NULL;
+
 	kgsl_context_put(context);
 }
 
@@ -830,8 +838,6 @@ static void kgsl_destroy_process_private(struct kref *kref)
 		mutex_unlock(&kgsl_driver.process_mutex);
 		return;
 	}
-	list_del(&private->list);
-	mutex_unlock(&kgsl_driver.process_mutex);
 
 	if (private->kobj.parent)
 		kgsl_process_uninit_sysfs(private);
@@ -854,6 +860,9 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	}
 	kgsl_mmu_putpagetable(private->pagetable);
 	idr_destroy(&private->mem_idr);
+
+	list_del(&private->list);
+	mutex_unlock(&kgsl_driver.process_mutex);
 
 	kfree(private);
 	return;
@@ -929,13 +938,12 @@ kgsl_get_process_private(struct kgsl_device_private *cur_dev_priv)
 
 	private = kgsl_find_process_private(cur_dev_priv);
 
+	if (!private)
+		return NULL;
+
 	mutex_lock(&private->process_private_mutex);
 
-	/*
-	 * If debug root initialized then it means the rest of the fields
-	 * are also initialized
-	 */
-	if (private->debug_root)
+	if (test_bit(KGSL_PROCESS_INIT, &private->priv))
 		goto done;
 
 	private->mem_rb = RB_ROOT;
@@ -956,6 +964,8 @@ kgsl_get_process_private(struct kgsl_device_private *cur_dev_priv)
 
 	kgsl_process_init_sysfs(private);
 	kgsl_process_init_debugfs(private);
+
+	set_bit(KGSL_PROCESS_INIT, &private->priv);
 
 done:
 	mutex_unlock(&private->process_private_mutex);
@@ -978,7 +988,10 @@ static int kgsl_release(struct inode *inodep, struct file *filep)
 	kgsl_active_count_get(device);
 
 	while (1) {
+		read_lock(&device->context_lock);
 		context = idr_get_next(&device->context_idr, &next);
+		read_unlock(&device->context_lock);
+
 		if (context == NULL)
 			break;
 
@@ -3286,6 +3299,8 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 		"dev_id %d regs phys 0x%08lx size 0x%08x virt %p\n",
 		device->id, device->reg_phys, device->reg_len,
 		device->reg_virt);
+
+	rwlock_init(&device->context_lock);
 
 	result = kgsl_drm_init(pdev);
 	if (result)

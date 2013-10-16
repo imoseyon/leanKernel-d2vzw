@@ -517,7 +517,11 @@ unknown_command:
 	return 0;
 }
 
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 static unsigned char first_on;
+#else
+static unsigned char first_on = true;
+#endif
 
 #if  defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT) \
@@ -821,10 +825,10 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 	}
 #endif
 
-	if (unlikely(first_on)) {
+/*	if (unlikely(first_on)) {
 		first_on = false;
 		return 0;
-	}
+	} */
 
 	mipi_samsung_disp_send_cmd(mfd, PANEL_READY_TO_ON, false);
 	if (mipi->mode == DSI_VIDEO_MODE)
@@ -855,7 +859,11 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 	} else
 		pr_info("%s ESD FUNCTION NOT QUEUED", __func__);
 
-	wake_lock(&(msd.mpd->esd_wake_lock));
+	if (likely(!first_on)) {
+		wake_lock(&(msd.mpd->esd_wake_lock));
+	} else {
+		first_on = false
+	}
 #else
 	queue_delayed_work(msd.mpd->esd_workqueue,
 				&(msd.mpd->esd_work), ESD_INTERVAL * HZ);
@@ -1500,7 +1508,7 @@ static int __devinit mipi_samsung_disp_probe(struct platform_device *pdev)
 		printk(KERN_DEBUG "Is_There_cmc624 : CMC624 is not there!!!!");
 		first_on = false;
 	}
-#else
+#elif !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 		first_on = false;
 #endif
 		return 0;

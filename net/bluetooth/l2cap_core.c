@@ -813,15 +813,12 @@ static inline int l2cap_mode_supported(__u8 mode, __u32 feat_mask)
 void l2cap_send_disconn_req(struct l2cap_conn *conn, struct sock *sk, int err)
 {
 	struct l2cap_disconn_req req;
-	u8 ident;
 
 	if (!conn)
 		return;
 
 	sk->sk_send_head = NULL;
 	skb_queue_purge(TX_QUEUE(sk));
-	ident = l2cap_get_ident(conn);
-	spin_lock_bh(&conn->lock);
 
 	if (l2cap_pi(sk)->mode == L2CAP_MODE_ERTM) {
 		skb_queue_purge(SREJ_QUEUE(sk));
@@ -833,17 +830,8 @@ void l2cap_send_disconn_req(struct l2cap_conn *conn, struct sock *sk, int err)
 
 	req.dcid = cpu_to_le16(l2cap_pi(sk)->dcid);
 	req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
-
-	if (sk->sk_state != BT_CONNECTED && sk->sk_state != BT_CONFIG) {
-		BT_ERR("Avoid to send the disconnect req, As connection is already LOST"
-			"sk = %p sk->sk_state = %d sk->sk_err = %d, err = %d, conn = %p",
-			sk, sk->sk_state, sk->sk_err, err, conn);
-		spin_unlock_bh(&conn->lock);
-		return;
-	}
-	l2cap_send_cmd(conn, ident,
+	l2cap_send_cmd(conn, l2cap_get_ident(conn),
 			L2CAP_DISCONN_REQ, sizeof(req), &req);
-	spin_unlock_bh(&conn->lock);
 
 	sk->sk_state = BT_DISCONN;
 	sk->sk_err = err;
@@ -1058,7 +1046,6 @@ static void l2cap_le_conn_ready(struct l2cap_conn *conn)
 	write_lock_bh(&list->lock);
 
 	hci_conn_hold(conn->hcon);
-	conn->hcon->disc_timeout = HCI_DISCONN_TIMEOUT;
 
 	l2cap_sock_init(sk, parent);
 	bacpy(&bt_sk(sk)->src, conn->src);
@@ -1082,11 +1069,10 @@ static void l2cap_conn_ready(struct l2cap_conn *conn)
 {
 	struct l2cap_chan_list *l = &conn->chan_list;
 	struct sock *sk;
-	struct hci_conn *hcon = conn->hcon;
 
 	BT_DBG("conn %p", conn);
 
-	if (!hcon->out && hcon->type == LE_LINK)
+	if (!conn->hcon->out && conn->hcon->type == LE_LINK)
 		l2cap_le_conn_ready(conn);
 
 	read_lock(&l->lock);
@@ -1218,11 +1204,14 @@ void l2cap_conn_del(struct hci_conn *hcon, int err, u8 is_process)
 		if ((conn->hcon == hcon) || (l2cap_pi(sk)->ampcon == hcon)) {
 			next = l2cap_pi(sk)->next_c;
 			if (is_process)
-				bh_lock_sock_nested(sk);
+				lock_sock(sk);
 			else
 				bh_lock_sock(sk);
 			l2cap_chan_del(sk, err);
-			bh_unlock_sock(sk);
+			if (is_process)
+				release_sock(sk);
+			else
+				bh_unlock_sock(sk);
 			l2cap_sock_kill(sk);
 			sk = next;
 		} else

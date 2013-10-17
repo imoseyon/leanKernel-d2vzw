@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd.h 406704 2013-06-10 09:42:09Z $
+ * $Id: dhd.h 411129 2013-07-05 01:24:07Z $
  */
 
 /****************
@@ -384,6 +384,11 @@ typedef struct dhd_pub {
 #undef	SPINWAIT_SLEEP
 #define SPINWAIT_SLEEP(a, exp, us) SPINWAIT(exp, us)
 #endif /* DHDTHREAD */
+
+#ifndef OSL_SLEEP
+#define OSL_SLEEP(ms)		OSL_DELAY(ms*1000)
+#endif /* OSL_SLEEP */
+
 #define DHD_IF_VIF	0x01	/* Virtual IF (Hidden from user) */
 
 unsigned long dhd_os_spin_lock(dhd_pub_t *pub);
@@ -778,7 +783,7 @@ extern uint dhd_force_tx_queueing;
 
 #ifdef RXFRAME_THREAD
 #ifndef CUSTOM_RXF_PRIO_SETTING
-#define CUSTOM_RXF_PRIO_SETTING 	(DEFAULT_DHP_DPC_PRIO + 1)
+#define CUSTOM_RXF_PRIO_SETTING		(DEFAULT_DHP_DPC_PRIO + 1)
 #endif
 #endif /* RXFRAME_THREAD */
 
@@ -982,4 +987,19 @@ int dhd_ioctl_process(dhd_pub_t *pub, int ifidx, struct dhd_ioctl *ioc);
 extern int
 concate_revision(struct dhd_bus *bus, char *fwpath, int fw_path_len, char *nvpath, int nv_path_len);
 #endif /* CUSTOMER_HW4 && SUPPORT_MULTIPLE_REVISION */
+
+#if defined(CUSTOMER_HW4) && defined(USE_WFA_CERT_CONF)
+enum {
+	SET_PARAM_BUS_TXGLOM_MODE,
+	SET_PARAM_ROAMOFF,
+#ifdef USE_WL_FRAMEBURST
+	SET_PARAM_FRAMEBURST,
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+	SET_PARAM_TXBF,
+#endif /* USE_WL_TXBF */
+	PARAM_LAST_VALUE
+};
+extern int sec_get_param(dhd_pub_t *dhd, int mode);
+#endif /* CUSTOMER_HW4 && USE_WFA_CERT_CONF */
 #endif /* _dhd_h_ */

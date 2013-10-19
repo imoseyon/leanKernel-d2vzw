@@ -862,7 +862,7 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 	if (likely(!first_on)) {
 		wake_lock(&(msd.mpd->esd_wake_lock));
 	} else {
-		first_on = false
+		first_on = false;
 	}
 #else
 	queue_delayed_work(msd.mpd->esd_workqueue,

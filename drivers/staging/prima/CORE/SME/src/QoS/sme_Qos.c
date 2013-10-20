@@ -39,13 +39,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-
 /**=========================================================================
   
   \file  sme_Qos.c
   
   \brief implementation for SME QoS APIs
   
+   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
+   
+   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 /* $Header$ */
@@ -162,7 +164,7 @@ typedef enum
   Table to map user priority passed in as an argument to appropriate Access 
   Category as specified in 802.11e/WMM
 ---------------------------------------------------------------------------*/
-sme_QosEdcaAcType sme_QosUPtoACMap[SME_QOS_WMM_UP_MAX] =
+sme_QosEdcaAcType sme_QosUPtoACMap[SME_QOS_WMM_UP_MAX] = 
 {
    SME_QOS_EDCA_AC_BE, /* User Priority 0 */
    SME_QOS_EDCA_AC_BK, /* User Priority 1 */
@@ -2791,10 +2793,14 @@ sme_QosStatusType sme_QosSetup(tpAniSirGlobal pMac,
       //notify HDD through the synchronous status msg
       return SME_QOS_STATUS_SETUP_NOT_QOS_AP_RSP;
    }
-
-   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-             "%s: UAPSD/PSB set %d: ", __func__, __LINE__,
-             pTspec_Info->ts_info.psb);
+   if(pTspec_Info->max_service_interval || pTspec_Info->min_service_interval)
+   {
+      pTspec_Info->ts_info.psb = 1;
+   }
+   else
+   {
+      pTspec_Info->ts_info.psb = 0;
+   }
 
    pACInfo = &pSession->ac_info[ac];
    do
@@ -2976,7 +2982,6 @@ eHalStatus sme_QosProcessSetKeySuccessInd(tpAniSirGlobal pMac, v_U8_t sessionId,
 {
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
             "########### Set Key Complete #############");
-    (void)sme_QosProcessBufferedCmd(sessionId);
     return eHAL_STATUS_SUCCESS;
 }
 #endif
@@ -3238,7 +3243,7 @@ eHalStatus sme_QosCreateTspecRICIE(tpAniSirGlobal pMac, sme_QosWmmTspecInfo *pTs
     ricIE.TSPEC.max_msdu_size = pTspec_Info->maximum_msdu_size;
     ricIE.TSPEC.max_service_int = pTspec_Info->max_service_interval;
     ricIE.TSPEC.mean_data_rate = pTspec_Info->mean_data_rate;
-    ricIE.TSPEC.medium_time = 0;
+    ricIE.TSPEC.medium_time = pTspec_Info->medium_time;
     ricIE.TSPEC.min_data_rate = pTspec_Info->min_data_rate;
     ricIE.TSPEC.min_phy_rate = pTspec_Info->min_phy_rate;
     ricIE.TSPEC.min_service_int = pTspec_Info->min_service_interval;
@@ -3282,7 +3287,7 @@ eHalStatus sme_QosCreateTspecRICIE(tpAniSirGlobal pMac, sme_QosWmmTspecInfo *pTs
     ricIE.WMMTSPEC.max_msdu_size = pTspec_Info->maximum_msdu_size;
     ricIE.WMMTSPEC.max_service_int = pTspec_Info->max_service_interval;
     ricIE.WMMTSPEC.mean_data_rate = pTspec_Info->mean_data_rate;
-    ricIE.WMMTSPEC.medium_time = 0;
+    ricIE.WMMTSPEC.medium_time = pTspec_Info->medium_time;
     ricIE.WMMTSPEC.min_data_rate = pTspec_Info->min_data_rate;
     ricIE.WMMTSPEC.min_phy_rate = pTspec_Info->min_phy_rate;
     ricIE.WMMTSPEC.min_service_int = pTspec_Info->min_service_interval;
@@ -3970,9 +3975,6 @@ eHalStatus sme_QosProcessAddTsRsp(tpAniSirGlobal pMac, void *pMsgBuf)
     sme_QosACInfo *pACInfo;
     sme_QosEdcaAcType ac;
 #endif
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    WLAN_VOS_DIAG_EVENT_DEF(qos, vos_event_wlan_qos_payload_type);
-#endif
 
     pSession = &sme_QosCb.sessionInfo[sessionId];
 
@@ -4001,6 +4003,9 @@ eHalStatus sme_QosProcessAddTsRsp(tpAniSirGlobal pMac, void *pMsgBuf)
     }
 #endif
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+   WLAN_VOS_DIAG_EVENT_DEF(qos, vos_event_wlan_qos_payload_type);
+#endif
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
              "%s: %d: Invoked on session %d with return code %d",
              __func__, __LINE__,
@@ -5262,6 +5267,8 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
                 "%s: %d: On session %d an AddTS is not pending on AC %d",
                 __func__, __LINE__,
                 sessionId, ac);
+      //ASSERT
+      VOS_ASSERT(0);
       return eHAL_STATUS_FAILURE;
    }
    //App is looking for APSD or the App which was looking for APSD has been 
@@ -5293,56 +5300,8 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
          return eHAL_STATUS_FAILURE;
       }
    }
-
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.burst_size_defn =
-                              pRsp->tspec.tsinfo.traffic.burstSizeDefn;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.ack_policy =
-                              pRsp->tspec.tsinfo.traffic.ackPolicy;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.up =
-                              pRsp->tspec.tsinfo.traffic.userPrio;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.psb =
-                                        pRsp->tspec.tsinfo.traffic.psb;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.direction =
-                                  pRsp->tspec.tsinfo.traffic.direction;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.tid =
-                                       pRsp->tspec.tsinfo.traffic.tsid;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].nominal_msdu_size =
-                                       pRsp->tspec.nomMsduSz;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].maximum_msdu_size =
-                                                 pRsp->tspec.maxMsduSz;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].min_service_interval =
-                                            pRsp->tspec.minSvcInterval;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].max_service_interval =
-                                            pRsp->tspec.maxSvcInterval;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].inactivity_interval =
-                                             pRsp->tspec.inactInterval;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].suspension_interval =
-                                           pRsp->tspec.suspendInterval;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].svc_start_time =
-                                              pRsp->tspec.svcStartTime;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].min_data_rate =
-                                              pRsp->tspec.minDataRate;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].mean_data_rate =
-                                             pRsp->tspec.meanDataRate;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].peak_data_rate =
-                                             pRsp->tspec.peakDataRate;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].max_burst_size =
-                                               pRsp->tspec.maxBurstSz;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].delay_bound =
-                                               pRsp->tspec.delayBound;
-
-   pACInfo->curr_QoSInfo[tspec_pending - 1].min_phy_rate =
-                                               pRsp->tspec.minPhyRate;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].surplus_bw_allowance =
-                                                pRsp->tspec.surplusBw;
-   pACInfo->curr_QoSInfo[tspec_pending - 1].medium_time =
-                                               pRsp->tspec.mediumTime;
-
-   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-             "%s: %d: On session %d AddTspec Medium Time %d",
-             __func__, __LINE__,
-             sessionId, pRsp->tspec.mediumTime);
-
+   pACInfo->curr_QoSInfo[tspec_pending - 1] = 
+      pACInfo->requested_QoSInfo[tspec_pending - 1];
    /* Check if the current flow is for bi-directional. If so, update the number of flows
     * to reflect that all flows are aggregated into tspec index 0. */
    if((pACInfo->curr_QoSInfo[pACInfo->tspec_pending - 1].ts_info.direction == SME_QOS_WMM_TS_DIR_BOTH) &&
@@ -5483,6 +5442,7 @@ eHalStatus sme_QosAggregateParams(
    }
    vos_mem_copy(&TspecInfo, pCurrent_Tspec_Info, 
                 sizeof(sme_QosWmmTspecInfo));
+   TspecInfo.ts_info.psb = pInput_Tspec_Info->ts_info.psb;
    /*-------------------------------------------------------------------------
      APSD preference is only meaningful if service interval was set by app
    -------------------------------------------------------------------------*/
@@ -7342,8 +7302,9 @@ eHalStatus sme_QosProcessIntoUapsdMode(tpAniSirGlobal pMac)
       flow_info = GET_BASE_ADDR( pEntry, sme_QosFlowInfoEntry, link );
       pSession = &sme_QosCb.sessionInfo[flow_info->sessionId];
       //only notify the flows which already successfully setup UAPSD
-      if( (flow_info->QoSInfo.ts_info.psb) &&
-         (SME_QOS_REASON_REQ_SUCCESS == flow_info->reason) )
+      if((flow_info->QoSInfo.max_service_interval ||
+          flow_info->QoSInfo.min_service_interval) &&
+         (SME_QOS_REASON_REQ_SUCCESS == flow_info->reason))
       {
          flow_info->QoSCallback(pMac, flow_info->HDDcontext, 
                                 &pSession->ac_info[flow_info->ac_type].curr_QoSInfo[flow_info->tspec_mask - 1],
@@ -7642,7 +7603,8 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                         tspec1 = SME_QOS_TSPEC_MASK_BIT_1_2_SET & pACInfo->tspec_mask_status;
                      }
                      // Does TSPEC 1 really require UAPSD?
-                     fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec1 - 1].ts_info.psb);
+                     fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec1 - 1].max_service_interval || 
+                                                 pACInfo->curr_QoSInfo[tspec1 - 1].min_service_interval);
                      //double check whether we need to do anything
                      if( fIsUapsdNeeded )
                      {
@@ -7657,7 +7619,8 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                      if( tspec2 )
                      {
                         // Does TSPEC 2 really require UAPSD?
-                        fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec2 - 1].ts_info.psb);
+                        fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec2 - 1].max_service_interval || 
+                                                    pACInfo->curr_QoSInfo[tspec2 - 1].min_service_interval);
                         if( fIsUapsdNeeded )
                         {
                            //No need to inform HDD
@@ -7684,7 +7647,8 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                else
                {
                   //Since ACM bit is not set, there should be only one QoS information for both directions.
-                  fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[0].ts_info.psb);
+                  fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[0].max_service_interval || 
+                                              pACInfo->curr_QoSInfo[0].min_service_interval);
                   if(fIsUapsdNeeded)
                   {
                      // we need UAPSD on this AC (and we may not currently have it)

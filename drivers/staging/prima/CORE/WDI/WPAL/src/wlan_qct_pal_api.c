@@ -430,7 +430,7 @@ void wpalWcnssResetIntr(void)
 
 /*---------------------------------------------------------------------------
     wpalFwDumpReq -  Trigger the dump commands to Firmware
-     
+
     Param:
        cmd - Command No. to execute
        arg1 - argument 1 to cmd

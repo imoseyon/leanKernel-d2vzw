@@ -84,15 +84,15 @@ tSirRetStatus macPreStart(tHalHandle hHal)
 
    for(i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
    {
-      pMac->dumpTableEntry[i] = vos_mem_malloc(sizeof(tDumpModuleEntry));
-      if ( NULL == pMac->dumpTableEntry[i] )
+      if(palAllocateMemory(pMac->hHdd, ((void *)&pMac->dumpTableEntry[i]), sizeof(tDumpModuleEntry))
+          != eHAL_STATUS_SUCCESS)
       {
          memAllocFailed = eANI_BOOLEAN_TRUE;
          break;
       }
       else
       {
-         vos_mem_set(pMac->dumpTableEntry[i], sizeof(tSirMbMsg), 0);
+         palZeroMemory(pMac->hHdd, pMac->dumpTableEntry[i], sizeof(tSirMbMsg));
       }
    }
    if( memAllocFailed )
@@ -100,7 +100,7 @@ tSirRetStatus macPreStart(tHalHandle hHal)
       while(i>0)
       {
          i--;
-         vos_mem_free(pMac->dumpTableEntry[i]);
+         palFreeMemory(pMac, pMac->dumpTableEntry[i]);
       }
       sysLog(pMac, LOGE, FL("pMac->dumpTableEntry is NULL\n"));
       status = eSIR_FAILURE;
@@ -138,8 +138,7 @@ tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
       macTraceInit(pMac);
 #endif
 
-      pMac->pResetMsg = vos_mem_malloc(sizeof(tSirMbMsg));
-      if ( NULL == pMac->pResetMsg )
+      if (!HAL_STATUS_SUCCESS(palAllocateMemory(pMac->hHdd, ((void *)&pMac->pResetMsg), sizeof(tSirMbMsg))))
       {
          sysLog(pMac, LOGE, FL("pMac->pResetMsg is NULL\n"));
          status = eSIR_FAILURE;
@@ -147,7 +146,7 @@ tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
       }
       else
       {
-         vos_mem_set(pMac->pResetMsg, sizeof(tSirMbMsg), 0);
+         palZeroMemory(pMac->hHdd, pMac->pResetMsg, sizeof(tSirMbMsg));
       }
 
       if (pMac->gDriverType != eDRIVER_TYPE_MFG)
@@ -181,13 +180,13 @@ tSirRetStatus macStop(tHalHandle hHal, tHalStopType stopType)
     // in reset context this memory will be freed by HDD.
     if(false == pMac->sys.abort)
     {
-        vos_mem_free(pMac->pResetMsg);
+        palFreeMemory(pMac->hHdd, pMac->pResetMsg);
         pMac->pResetMsg = NULL;
     }
     /* Free the DumpTableEntry */
     for(i=0; i<MAX_DUMP_TABLE_ENTRY; i++)
     {
-        vos_mem_free(pMac->dumpTableEntry[i]);
+        palFreeMemory(pMac, pMac->dumpTableEntry[i]);
     }
 
     return eSIR_SUCCESS;
@@ -218,12 +217,11 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
      */
 
     /* Allocate pMac */
-    pMac = vos_mem_malloc(sizeof(tAniSirGlobal));
-    if ( NULL == pMac )
+    if (palAllocateMemory(hHdd, ((void **)&pMac), sizeof(tAniSirGlobal)) != eHAL_STATUS_SUCCESS)
         return eSIR_FAILURE;
 
     /* Initialize the pMac structure */
-    vos_mem_set(pMac, sizeof(tAniSirGlobal), 0);
+    palZeroMemory(hHdd, pMac, sizeof(tAniSirGlobal));
 
     /** Store the Driver type in pMac Global.*/
     //pMac->gDriverType = pMacOpenParms->driverType;
@@ -274,7 +272,7 @@ tSirRetStatus macClose(tHalHandle hHal)
     logDeinit(pMac);
 
     // Finally, de-allocate the global MAC datastructure:
-    vos_mem_free( pMac );
+    palFreeMemory( pMac->hHdd, pMac );
 
     return eSIR_SUCCESS;
 }

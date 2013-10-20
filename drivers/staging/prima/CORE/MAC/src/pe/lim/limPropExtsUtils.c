@@ -99,16 +99,14 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 #if !defined WLAN_FEATURE_VOWIFI
     tANI_U32            localPowerConstraints = 0;
 #endif
-    
-    pBeaconStruct = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-
-    if ( NULL == pBeaconStruct )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pBeaconStruct, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limExtractApCapability") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limExtractApCapability") );
         return;
     }
 
-    vos_mem_set( (tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon), 0);
+    palZeroMemory( pMac->hHdd, (tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon));
     *qosCap = 0;
     *propCap = 0;
     *uapsd = 0;
@@ -182,7 +180,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
         }
 #endif
     }
-    vos_mem_free(pBeaconStruct);
+    palFreeMemory(pMac->hHdd, pBeaconStruct);
     return;
 } /****** end limExtractApCapability() ******/
 

@@ -39,7 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-
 #ifndef WLAN_QCT_WDI_I_H
 #define WLAN_QCT_WDI_I_H
 
@@ -55,8 +54,8 @@ DESCRIPTION
   module to be used by the DAL Data Path Core. 
   
       
-  Copyright (c) 2010 Qualcomm Technologies, Inc. All Rights Reserved.
-  Qualcomm Technologies Confidential and Proprietary
+  Copyright (c) 2010 QUALCOMM Incorporated. All Rights Reserved.
+  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 
@@ -446,12 +445,6 @@ typedef enum
   /*WLAN DAL Set Tx Power Request*/
   WDI_SET_TX_POWER_REQ                          = 82,
   WDI_ROAM_SCAN_OFFLOAD_REQ                     = 83,
-
-  WDI_TDLS_LINK_ESTABLISH_REQ                   = 84,
-
-  /* WLAN FW LPHB config request */
-  WDI_LPHB_CFG_REQ                              = 85,
-
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -459,21 +452,6 @@ typedef enum
 
   /* Send a traffic stats indication to HAL */
   WDI_TRAFFIC_STATS_IND,
-
-  /* DHCP Start Indication */
-  WDI_DHCP_START_IND,
-
-  /* DHCP Stop Indication */
-  WDI_DHCP_STOP_IND,
-
-  /* Drop/Receive unencrypted frames indication to HAL */
-  WDI_EXCLUDE_UNENCRYPTED_IND,
-
-  /* Send an add periodic Tx pattern indication to HAL */
-  WDI_ADD_PERIODIC_TX_PATTERN_IND,
-
-  /* Send a delete periodic Tx pattern indicationto HAL */
-  WDI_DEL_PERIODIC_TX_PATTERN_IND,
 
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
@@ -730,12 +708,6 @@ typedef enum
 
   WDI_SET_TX_POWER_RESP                         = 81,
   WDI_ROAM_SCAN_OFFLOAD_RESP                    = 82,
-
-  WDI_TDLS_LINK_ESTABLISH_REQ_RESP              = 83,
-
-  /* WLAN FW LPHB Config response */
-  WDI_LPHB_CFG_RESP                             = 84,
-
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -782,18 +754,6 @@ typedef enum
 
   /* NOA Start Indication from FW to Host */
   WDI_HAL_P2P_NOA_START_IND            = WDI_HAL_IND_MIN + 12,
-
-  /* TDLS Indication from FW to Host */
-  WDI_HAL_TDLS_IND                     = WDI_HAL_IND_MIN + 13,
-
-  /* LPHB timeout indication */
-  WDI_HAL_LPHB_WAIT_TIMEOUT_IND        = WDI_HAL_IND_MIN + 14,
-
-  /* IBSS Peer Inactivity Indication from FW to Host */
-  WDI_HAL_IBSS_PEER_INACTIVITY_IND     = WDI_HAL_IND_MIN + 15,
-
-  /* Periodic Tx Pattern Indication from FW to Host */
-  WDI_HAL_PERIODIC_TX_PTRN_FW_IND     = WDI_HAL_IND_MIN + 16,
 
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
@@ -2257,23 +2217,6 @@ WDI_ProcessP2PGONOAReq
 );
 
 /**
- @brief Process TDLS Link Establish Request function (called when Main FSM
-        allows it)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessTdlsLinkEstablishReq
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
  @brief Process Enter IMPS Request function (called when 
         Main FSM allows it)
  
@@ -2750,24 +2693,6 @@ WDI_ProcessSetTmLevelReq
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef FEATURE_WLAN_LPHB
-/**
- @brief WDI_ProcessLPHBConfReq -
-    LPHB configuration request to FW
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
-
- @see
- @return esult of the function call
-*/
-WDI_Status WDI_ProcessLPHBConfReq
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif /* FEATURE_WLAN_LPHB */
-
 /*=========================================================================
                              Indications
 =========================================================================*/
@@ -2788,38 +2713,6 @@ WDI_ProcessHostSuspendInd
   WDI_EventInfoType*     pEventData
 );
 
-/**
- @brief DHCP Start Event Indication
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessDHCPStartInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
- @brief DHCP Stop Event Indication
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessDHCPStopInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
 
 /**
  @brief Process Traffic Stats Indications function (called when Main FSM allows it)
@@ -2836,60 +2729,6 @@ WDI_ProcessTrafficStatsInd
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-
-#ifdef WLAN_FEATURE_11W
-/**
- @brief Process Exclude Unencrypted Indications function (called
-        when Main FSM allows it)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-              pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessExcludeUnencryptInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif
-
-/**
- @brief Process Add Periodic Tx Pattern Indication function (called when
-           Main FSM allows it)
-
- @param  pWDICtx:        pointer to the WLAN DAL context
-         pEventData:     pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessAddPeriodicTxPtrnInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
- @brief Process Delete Periodic Tx Pattern Indication function (called when
-           Main FSM allows it)
-
- @param  pWDICtx:        pointer to the WLAN DAL context
-         pEventData:     pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessDelPeriodicTxPtrnInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
 /*========================================================================
           Main DAL Control Path Response Processing API 
 ========================================================================*/
@@ -3539,23 +3378,6 @@ WDI_ProcessSetMaxTxPowerRsp
 */
 WDI_Status
 WDI_ProcessSetTxPowerRsp
-(
-  WDI_ControlBlockType*          pWDICtx,
-  WDI_EventInfoType*             pEventData
-);
-
-  /**
- @brief Process TDLS Link Establish Req Rsp function (called when a response
-        is being received over the bus from HAL)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessLinkEstablishReqRsp
 (
   WDI_ControlBlockType*          pWDICtx,
   WDI_EventInfoType*             pEventData
@@ -4224,24 +4046,6 @@ WDI_ProcessTxCompleteInd
 );
 
 /**
-*@brief Process Tdls Indication function (called when
-        an indication of this kind is being received over the
-        bus from HAL)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-         pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessTdlsInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-/**
 *@brief Process Noa Start Indication function (called when
         an indication of this kind is being received over the
         bus from HAL)
@@ -4291,42 +4095,6 @@ WDI_ProcessP2pNoaAttrInd
 WDI_Status
 WDI_ProcessTxPerHitInd
 ( 
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-#ifdef FEATURE_WLAN_LPHB
-/**
- @brief WDI_ProcessLphbWaitTimeoutInd -
-    This function will be invoked when FW detects low power
-    heart beat failure
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessLphbWaitTimeoutInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif /* FEATURE_WLAN_LPHB */
-
-/**
- @brief Process Periodic Tx Pattern Fw Indication function
-
- @param  pWDICtx:        pointer to the WLAN DAL context
-         pEventData:     pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessPeriodicTxPtrnFwInd
-(
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
@@ -4434,26 +4202,6 @@ WDI_ProcessHALDumpCmdRsp
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-
-/**
- @brief WDI_ProcessIbssPeerInactivityInd
-        Process peer inactivity indication coming from HAL.
-
-  @param  pWDICtx:         pointer to the WLAN DAL context
-          pEventData:      pointer to the event information structure
-
-  @see
-  @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessIbssPeerInactivityInd
-
-(
- WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-
-
 /*========================================================================
          Internal Helper Routines 
 ========================================================================*/
@@ -4828,24 +4576,19 @@ WDI_FindEmptySession
 );
 
 /**
- @brief Helper routine used to get the total count of active
+ @brief Helper routine used to get the total count of active 
         sessions
-
-
- @param  pWDICtx:       pointer to the WLAN DAL context
-         macBSSID:      pointer to BSSID. If NULL, get all the session.
-                        If not NULL, count ActiveSession by excluding (TRUE) or including (FALSE) skipBSSID.
-         skipBSSID:     if TRUE, get all the sessions except matching to macBSSID. If FALSE, get all session.
-                        This argument is ignored if macBSSID is NULL.
+  
+ 
+ @param  pWDICtx:       pointer to the WLAN DAL context 
+  
  @see
  @return Number of sessions in use
 */
 wpt_uint8
 WDI_GetActiveSessionsCount
-(
-  WDI_ControlBlockType*   pWDICtx,
-  wpt_macAddr             macBSSID,
-  wpt_boolean             skipBSSID
+( 
+  WDI_ControlBlockType*   pWDICtx
 );
 
 /**
@@ -5103,7 +4846,6 @@ WDI_ProcessUpdateScanParamsRsp
 );
 #endif // FEATURE_WLAN_SCAN_PNO
 
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /**
  @brief Process Start Roam Candidate Lookup Request function
@@ -5137,7 +4879,6 @@ WDI_ProcessRoamScanOffloadRsp
   WDI_EventInfoType*     pEventData
 );
 #endif
-
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 /**
@@ -5392,7 +5133,6 @@ WDI_ProcessUpdateVHTOpModeRsp
   WDI_EventInfoType*     pEventData
 );
 #endif
-
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /**
  *  @brief WDI_wdiEdTypeEncToEdTypeEnc -
@@ -5410,24 +5150,6 @@ WDI_wdiEdTypeEncToEdTypeEnc
  WDI_EdType wdiEdType
 );
 #endif
-
-#ifdef FEATURE_WLAN_LPHB
-/**
- @brief WDI_ProcessLphbCfgRsp -
-    LPHB configuration response from FW
-
- @param  pWDICtx : wdi context
-         pEventData : indication data
-
- @see
- @return Result of the function call
-*/
-WDI_Status WDI_ProcessLphbCfgRsp
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif /* FEATURE_WLAN_LPHB */
 
 #endif /*WLAN_QCT_WDI_I_H*/
 

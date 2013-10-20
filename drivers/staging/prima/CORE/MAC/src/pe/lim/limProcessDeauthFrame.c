@@ -1,23 +1,56 @@
 /*
-  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
-  *
-  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
-  *
-  *
-  * Permission to use, copy, modify, and/or distribute this software for
-  * any purpose with or without fee is hereby granted, provided that the
-  * above copyright notice and this permission notice appear in all
-  * copies.
-  *
-  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
-  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
-  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  * PERFORMANCE OF THIS SOFTWARE.
-*/
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ *
+ * Airgo Networks, Inc proprietary. All rights reserved.
+ * This file limProcessDeauthFrame.cc contains the code
+ * for processing Deauthentication Frame.
+ * Author:        Chandra Modumudi
+ * Date:          03/24/02
+ * History:-
+ * Date           Modified by    Modification Information
+ * --------------------------------------------------------------------
+ *
+ */
 #include "palTypes.h"
 #include "aniGlobal.h"
 
@@ -61,9 +94,6 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     tpDphHashNode     pStaDs;
     tpPESession       pRoamSessionEntry=NULL;
     tANI_U8           roamSessionId;
-#ifdef WLAN_FEATURE_11W
-    tANI_U32          frameLen;
-#endif
 
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -73,19 +103,8 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
     if ((eLIM_STA_ROLE == psessionEntry->limSystemRole) && (eLIM_SME_WT_DEAUTH_STATE == psessionEntry->limSmeState))
     {
-        /*Every 15th deauth frame will be logged in kmsg*/
-        if(!(pMac->lim.deauthMsgCnt & 0xF))
-        {
-            PELOGE(limLog(pMac, LOGE,
-             FL("received Deauth frame in DEAUTH_WT_STATE"
-                "(already processing previously received DEAUTH frame).."
-                "Dropping this.. Deauth Failed %d \n "),++pMac->lim.deauthMsgCnt);)
-        }
-        else
-        {
-            pMac->lim.deauthMsgCnt++;
-        }
-        return;
+       MTRACE(macTrace(pMac, TRACE_CODE_INFO_LOG, 0, eLOG_PROC_DEAUTH_FRAME_SCENARIO));
+       return;
     }
 
     if (limIsGroupAddr(pHdr->sa))
@@ -107,24 +126,6 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
         return;
     }
-
-#ifdef WLAN_FEATURE_11W
-    /* PMF: If this session is a PMF session, then ensure that this frame was protected */
-    if(psessionEntry->limRmfEnabled  && (WDA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) & DPU_FEEDBACK_UNPROTECTED_ERROR))
-    {
-        PELOGE(limLog(pMac, LOGE, FL("received an unprotected deauth from AP"));)
-        // If the frame received is unprotected, forward it to the supplicant to initiate
-        // an SA query
-        frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-
-        //send the unprotected frame indication to SME
-        limSendSmeUnprotectedMgmtFrameInd( pMac, pHdr->fc.subType,
-                                           (tANI_U8*)pHdr, (frameLen + sizeof(tSirMacMgmtHdr)),
-                                           psessionEntry->smeSessionId, psessionEntry);
-        return;
-    }
-#endif
-
     // Get reasonCode from Deauthentication frame body
     reasonCode = sirReadU16(pBody);
 
@@ -287,9 +288,10 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                     case eLIM_MLM_AUTHENTICATED_STATE:
                         /// Issue Deauth Indication to SME.
-                        vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
-                                     pHdr->sa,
-                                     sizeof(tSirMacAddr));
+                        palCopyMemory( pMac->hHdd,
+                               (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+                               pHdr->sa,
+                               sizeof(tSirMacAddr));
                         mlmDeauthInd.reasonCode = reasonCode;
 
                         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
@@ -312,7 +314,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                        if (psessionEntry->pLimMlmJoinReq)
                         {
-                            vos_mem_free(psessionEntry->pLimMlmJoinReq);
+                            palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmJoinReq);
                             psessionEntry->pLimMlmJoinReq = NULL;
                         }
 
@@ -353,15 +355,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         }
                         else
                         {
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-                            if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
-                                (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
-                                    limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
-                                    return;
-                            }
-#endif
-
-                            limDeleteTDLSPeers(pMac, psessionEntry);
+                           limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
                            /**
                             * This could be Deauthentication frame from
@@ -433,7 +427,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     pStaDs->mlmStaContext.cleanupTrigger = eLIM_PEER_ENTITY_DEAUTH;
 
     /// Issue Deauth Indication to SME.
-    vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
                   pStaDs->staAddr,
                   sizeof(tSirMacAddr));
     mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
@@ -456,7 +450,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             limDeletePreAuthNode(pMac, pHdr->sa);
 
         if (psessionEntry->limAssocResponseData) {
-            vos_mem_free(psessionEntry->limAssocResponseData);
+            palFreeMemory(pMac->hHdd, psessionEntry->limAssocResponseData);
             psessionEntry->limAssocResponseData = NULL;                            
         }
 
@@ -471,12 +465,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
         return;
     }
-    /* reset the deauthMsgCnt here since we are able to Process
-     * the deauth frame and sending up the indication as well */
-    if(pMac->lim.deauthMsgCnt != 0)
-    {
-        pMac->lim.deauthMsgCnt = 0;
-    }
+
     /// Deauthentication from peer MAC entity
     limPostSmeMessage(pMac, LIM_MLM_DEAUTH_IND, (tANI_U32 *) &mlmDeauthInd);
 

@@ -1242,8 +1242,8 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
     tSirProbeRespBeacon *pBeaconStruct;
     tpAniSirGlobal  pMac = (tpAniSirGlobal) halHandle;
 
-    pBeaconStruct = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-    if ( NULL == pBeaconStruct )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pBeaconStruct, sizeof(tSirProbeRespBeacon)))
     {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                    "Unable to allocate memory in sapComputeSpectWeight\n");
@@ -1269,8 +1269,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         if (pScanResult->BssDescriptor.ieFields != NULL)
         {
             ieLen = (pScanResult->BssDescriptor.length + sizeof(tANI_U16) + sizeof(tANI_U32) - sizeof(tSirBssDescription));
-            vos_mem_set((tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon), 0);
-
+            palZeroMemory(pMac->hHdd, (tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon));
             if ((sirParseBeaconIE(pMac, pBeaconStruct,(tANI_U8 *)( pScanResult->BssDescriptor.ieFields), ieLen)) == eSIR_SUCCESS)
             {
                 if (pBeaconStruct->HTCaps.present && pBeaconStruct->HTInfo.present)
@@ -1560,7 +1559,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         //------ Debug Info ------
         pSpectCh++;
     }
-    vos_mem_free(pBeaconStruct);
+    palFreeMemory(pMac->hHdd, pBeaconStruct);
 }
 
 /*==========================================================================

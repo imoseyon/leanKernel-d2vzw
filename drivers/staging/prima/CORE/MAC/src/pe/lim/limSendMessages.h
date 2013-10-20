@@ -101,7 +101,6 @@ void limSetActiveEdcaParams(tpAniSirGlobal pMac, tSirMacEdcaParamRecord *plocalE
 #define HT_BYTE2_FILTER_MASK    0xEB
 #define HT_BYTE5_FILTER_MASK    0xFD
 #define DS_PARAM_CHANNEL_MASK   0x0
-#define VHTOP_CHWIDTH_MASK      0xFC
 
 tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
@@ -110,9 +109,5 @@ tSirRetStatus limSendTdlsLinkEstablish(tpAniSirGlobal pMac, tANI_U8 bIsPeerRespo
                 tANI_U8 ptiBufStatusOffset, tANI_U8 ptiFrameLen, tANI_U8 *ptiFrame, tANI_U8 *extCapability);
 tSirRetStatus limSendTdlsLinkTeardown(tpAniSirGlobal pMac, tANI_U16 staId);
 #endif
-#ifdef WLAN_FEATURE_11W
-tSirRetStatus limSendExcludeUnencryptInd(tpAniSirGlobal pMac,
-                                         tANI_BOOLEAN excludeUnenc,
-                                         tpPESession  psessionEntry );
-#endif
+
 #endif

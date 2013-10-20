@@ -52,7 +52,6 @@
 #include <vos_timer.h>
 #include <vos_memory.h>
 
-#ifndef FEATURE_WLAN_PAL_TIMER_DISABLE
 typedef struct sPalTimer
 {   
     palTimerCallback timerCallback;
@@ -246,7 +245,7 @@ eHalStatus palTimerStop(tHddHandle hHdd, tPalTimerHandle hPalTimer)
    return( status );
 }   
 
-#endif
+
 
 
 

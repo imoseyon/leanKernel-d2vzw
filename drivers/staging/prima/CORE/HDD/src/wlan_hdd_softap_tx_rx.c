@@ -589,6 +589,10 @@ VOS_STATUS hdd_softap_init_tx_rx( hdd_adapter_t *pAdapter )
       }
    }
 
+   /* Update the AC weights suitable for SoftAP mode of operation */
+   WLANTL_SetACWeights((WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pACWeights);
+
+   /* Initialize SAP/P2P-GO traffin monitor */
    pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
    if (NULL == pHddCtx)
    {
@@ -596,11 +600,6 @@ VOS_STATUS hdd_softap_init_tx_rx( hdd_adapter_t *pAdapter )
                  "%s: Invalid HDD cntxt", __func__ );
       return VOS_STATUS_E_INVAL;
    }
-
-   /* Update the AC weights suitable for SoftAP mode of operation */
-   WLANTL_SetACWeights((WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pACWeights);
-
-   /* Initialize SAP/P2P-GO traffin monitor */
    if ((pHddCtx->cfg_ini->enableTrafficMonitor) &&
        (!pHddCtx->traffic_monitor.isInitialized))
    {
@@ -1360,7 +1359,6 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
          if (NET_RX_SUCCESS == rxstat)
          {
             ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
-            ++pAdapter->hdd_stats.hddTxRxStats.pkt_rx_count;
          }
          else
          {
@@ -1545,15 +1543,6 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
       return vosStatus;      
    }
 
-   //Timer value should be in milliseconds
-   if ( pHddCtx->cfg_ini->dynSplitscan &&
-      ( VOS_TIMER_STATE_RUNNING !=
-                      vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr)))
-   {
-        vos_timer_start(&pHddCtx->tx_rx_trafficTmr,
-                        pHddCtx->cfg_ini->trafficMntrTmrForSplitScan);
-   }
-
    // if ( WPA ), tell TL to go to 'connected' and after keys come to the driver, 
    // then go to 'authenticated'.  For all other authentication types (those that do 
    // not require upper layer authentication) we can put TL directly into 'authenticated'
@@ -1707,3 +1696,18 @@ VOS_STATUS hdd_softap_GetStaId(hdd_adapter_t *pAdapter, v_MACADDR_t *pMacAddress
     return VOS_STATUS_E_FAILURE;
 }
 
+VOS_STATUS hdd_softap_GetConnectedStaId(hdd_adapter_t *pAdapter, v_U8_t *staId)
+{
+    v_U8_t i;
+
+    for (i = 0; i < WLAN_MAX_STA_COUNT; i++)
+    {
+        if (pAdapter->aStaInfo[i].isUsed)
+        {
+            *staId = i;
+            return VOS_STATUS_SUCCESS;
+        }
+    }
+
+    return VOS_STATUS_E_FAILURE;
+}

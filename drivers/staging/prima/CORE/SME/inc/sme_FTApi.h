@@ -88,7 +88,7 @@ typedef struct sFTSMEContext
     v_BOOL_t          setFTPTKState;
 
     // Time to trigger reassoc once pre-auth is successful
-    vos_timer_t       preAuthReassocIntvlTimer;
+    tPalTimerHandle   preAuthReassocIntvlTimer;
     tCsrRoamSetKey    *pCsrFTKeyInfo;
 
 } tftSMEContext, *tpftSMEContext;

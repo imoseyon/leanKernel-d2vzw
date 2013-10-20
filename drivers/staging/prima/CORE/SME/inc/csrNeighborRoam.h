@@ -84,6 +84,9 @@ typedef struct sCsrNeighborRoamCfgParams
     tANI_U32        minChannelScanTime;
     tANI_U32        maxChannelScanTime;
     tANI_U16        neighborResultsRefreshPeriod;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    tCsrCountryChannelInfo countryChannelInfo;
+#endif
     tANI_U16        emptyScanRefreshPeriod;
 } tCsrNeighborRoamCfgParams, *tpCsrNeighborRoamCfgParams;
 
@@ -179,9 +182,9 @@ typedef struct sCsrNeighborRoamControlInfo
     tCsrNeighborRoamCfgParams   cfgParams;
     tCsrBssid                   currAPbssid; // current assoc AP
     tANI_U8                     currAPoperationChannel; // current assoc AP
-    vos_timer_t                 neighborScanTimer;
-    vos_timer_t                 neighborResultsRefreshTimer;
-    vos_timer_t                 emptyScanRefreshTimer;
+    tPalTimerHandle             neighborScanTimer;
+    tPalTimerHandle             neighborResultsRefreshTimer;
+    tPalTimerHandle             emptyScanRefreshTimer;
     tCsrTimerInfo               neighborScanTimerInfo;
     tCsrNeighborRoamChannelInfo roamChannelInfo;
     tANI_U8                     currentNeighborLookupThreshold;
@@ -207,13 +210,6 @@ typedef struct sCsrNeighborRoamControlInfo
                                                     we re-initialize occupied channel list */
     tANI_S8                     lookupDOWNRssi;
     tANI_U8                     uScanMode;
-    tANI_U8                     uOsRequestedHandoff; /* upper layer requested
-                                                        a reassoc */
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    tCsrHandoffRequest          handoffReqInfo; /* handoff related info came
-                                                   with upper layer's req for
-                                                   reassoc */
-#endif
 #endif
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
@@ -269,15 +265,8 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
 #define REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW     12
 #define REASON_NPROBES_CHANGED                      13
 #define REASON_HOME_AWAY_TIME_CHANGED               14
-#define REASON_OS_REQUESTED_ROAMING_NOW             15
-#define REASON_SCAN_CH_TIME_CHANGED                 16
-#define REASON_SCAN_HOME_TIME_CHANGED               17
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason);
 eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg);
-eHalStatus csrNeighborRoamHandoffReqHdlr(tpAniSirGlobal pMac, void* pMsg);
-eHalStatus csrNeighborRoamProceedWithHandoffReq(tpAniSirGlobal pMac);
-eHalStatus csrNeighborRoamSssidScanDone(tpAniSirGlobal pMac, eHalStatus status);
-eHalStatus csrNeighborRoamStartLfrScan(tpAniSirGlobal pMac);
 #endif
 
 

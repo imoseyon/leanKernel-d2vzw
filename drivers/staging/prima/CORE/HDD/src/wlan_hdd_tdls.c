@@ -25,6 +25,8 @@
 
   \brief WLAN Host Device Driver implementation for TDLS
 
+  Copyright (c) 2013 Qualcomm Atheros, Inc. All Rights Reserved.
+  Qualcomm Atheros Confidential and Proprietary.
   ========================================================================*/
 
 #include <wlan_hdd_includes.h>
@@ -928,7 +930,7 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
         }
         else
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, 
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
             "Rssi Threshold not met: "MAC_ADDRESS_STR" rssi = %d threshold = %d ",
             MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->rssi,
             pHddTdlsCtx->threshold_config.rssi_trigger_threshold);
@@ -941,40 +943,6 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
     }
 
     curr_peer->tdls_support = eTDLS_CAP_SUPPORTED;
-    return 0;
-}
-
-int wlan_hdd_tdls_set_peer_caps(hdd_adapter_t *pAdapter,
-                                u8 *mac,
-                                tANI_U8 uapsdQueues,
-                                tANI_U8 maxSp,
-                                tANI_BOOLEAN isBufSta)
-{
-    hddTdlsPeer_t *curr_peer;
-
-    curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
-    if (curr_peer == NULL)
-        return -1;
-
-    curr_peer->uapsdQueues = uapsdQueues;
-    curr_peer->maxSp = maxSp;
-    curr_peer->isBufSta = isBufSta;
-    return 0;
-}
-
-int wlan_hdd_tdls_get_link_establish_params(hdd_adapter_t *pAdapter, u8 *mac,
-                                            tCsrTdlsLinkEstablishParams* tdlsLinkEstablishParams)
-{
-    hddTdlsPeer_t *curr_peer;
-
-    curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
-    if (curr_peer == NULL)
-        return -1;
-
-    tdlsLinkEstablishParams->isResponder = curr_peer->is_responder;
-    tdlsLinkEstablishParams->uapsdQueues = curr_peer->uapsdQueues;
-    tdlsLinkEstablishParams->maxSp = curr_peer->maxSp;
-    tdlsLinkEstablishParams->isBufSta = curr_peer->isBufSta;
     return 0;
 }
 
@@ -1438,9 +1406,6 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
         pHddTdlsCtx->threshold_config.tx_period_t,
         pHddTdlsCtx->threshold_config.discovery_period_t);
 
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-    pHddTdlsCtx->defer_link_lost_indication = FALSE;
-#endif
     if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
     {
        wlan_hdd_tdls_peer_reset_discovery_processed(pHddTdlsCtx);
@@ -1477,9 +1442,6 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
         mutex_unlock(&tdls_lock);
         return;
     }
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-    pHddTdlsCtx->defer_link_lost_indication = FALSE;
-#endif
     pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 
@@ -1947,6 +1909,9 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
 #endif
                                 struct cfg80211_scan_request *request)
 {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+    struct net_device *dev = request->wdev->netdev;
+#endif
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     u16 connectedTdlsPeers;
     hddTdlsPeer_t *curr_peer;

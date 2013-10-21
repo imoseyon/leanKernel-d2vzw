@@ -29,6 +29,7 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
+#include <linux/sched.h>
 
 #include <trace/events/power.h>
 #include <linux/semaphore.h>
@@ -444,10 +445,20 @@ static ssize_t show_##file_name				\
 }
 
 show_one(cpuinfo_min_freq, cpuinfo.min_freq);
-show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
 show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
+
+static ssize_t show_cpuinfo_max_freq(struct cpufreq_policy *policy, char *buf)
+{
+	unsigned int newfreq = 0;
+	if (!strcmp(current->comm, "thermald")) {
+		newfreq = max(policy->max, (unsigned int)1512000);
+		pr_info("[imoseyon] thermald read maxfreq %d!\n", newfreq);
+	} else newfreq = policy->cpuinfo.max_freq;
+	return sprintf(buf, "%u\n", newfreq);
+}
+
 show_one(scaling_cur_freq, cur);
 #if defined(__MP_DECISION_PATCH__)
 show_one(cpu_utilization, utils);
@@ -510,6 +521,14 @@ static ssize_t store_scaling_max_freq
 	ret = sscanf(buf, "%u", &value);
 	if (ret != 1)
 		return -EINVAL;
+
+	// restart thermald when something else changes maxfreq
+        if (strcmp(current->comm, "thermald")) {
+		struct task_struct *tsk;
+		for_each_process(tsk)
+		  if (!strcmp(tsk->comm,"thermald")) send_sig(SIGKILL, tsk, 0);
+		pr_info("[imoseyon] thermald restarting.\n");
+	}
 
 	if (policy->cpu == BOOT_CPU) {
 		if (value >= MAX_FREQ_LIMIT)

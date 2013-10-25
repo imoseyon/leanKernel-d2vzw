@@ -850,16 +850,17 @@ static int mipi_samsung_disp_on(struct platform_device *pdev)
 
 #ifdef READ_REGISTER_ESD
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
-	id2 = (msd.mpd->manufacture_id>>8) & 0xFF;
-
-	if ((id2 == 0xA6) || (id2 == 0xB6)) {
-		queue_delayed_work(msd.mpd->esd_workqueue,
-				&(msd.mpd->esd_work), ESD_INTERVAL * HZ);
-		pr_info("%s ESD FUNCTION QUEUED", __func__);
-	} else
-		pr_info("%s ESD FUNCTION NOT QUEUED", __func__);
-
 	if (likely(!first_on)) {
+		id2 = (msd.mpd->manufacture_id>>8) & 0xFF;
+
+		if ((id2 == 0xA6) || (id2 == 0xB6)) {
+			queue_delayed_work(msd.mpd->esd_workqueue,
+					&(msd.mpd->esd_work), ESD_INTERVAL * HZ);
+			pr_info("%s ESD FUNCTION QUEUED", __func__);
+		} else {
+			pr_info("%s ESD FUNCTION NOT QUEUED", __func__);
+		}
+
 		wake_lock(&(msd.mpd->esd_wake_lock));
 	} else {
 		first_on = false;

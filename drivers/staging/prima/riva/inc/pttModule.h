@@ -66,9 +66,6 @@
 #include "wlan_hal_msg.h"       // it is needed to build qwptt static lib
 #endif
 
-// Max NV fragment size
-#define MAX_NV_BIN_SIZE 2000
-
 enum
 {
    PTT_STATUS_SUCCESS = 0,
@@ -141,20 +138,6 @@ typedef PACKED_PRE struct PACKED_POST {
    tTxChainPower txChains[PHY_MAX_TX_CHAINS];   //output power for Tx chains
 } tTxPowerReport;
 
-#define RXP_MAX_FILTER_IDX                64
-
-typedef PACKED_PRE struct PACKED_POST
-{
-   uint32 rxpFilterForFTMPER[RXP_MAX_FILTER_IDX];
-   uint32 max_pktlen;
-   uint32 flt_disable0;
-   uint32 flt_disable1;
-   uint32 config2;
-   uint32 push_wq_ctrl;
-   uint32 push_wq_ctrl2;
-   uint32 extra_frame_flt;
-} sMACConfig;
-
 
 typedef PACKED_PRE struct PACKED_POST {
    /*
@@ -182,7 +165,7 @@ typedef PACKED_PRE struct PACKED_POST {
    // for FTM PER feature
    tANI_U8 tx_mode;
    
-   tANI_BOOLEAN ftm_per_settings_saved;
+   tANI_U8 reserved[1];
 
    //Rx Gain Service
    sRxChainsAgcEnable agcEnables;
@@ -193,9 +176,5 @@ typedef PACKED_PRE struct PACKED_POST {
 
    sRxChainsRssi rssi;
 } tPttModuleVariables;
-
-#ifdef WCN_PRONTO
-extern sMACConfig macConfig;
-#endif
 
 #endif /* PTTMODULE_H */

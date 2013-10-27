@@ -62,7 +62,9 @@
 #include "wniCfgSta.h"
 #include "csrApi.h"
 #include "sapApi.h"
+#ifdef FEATURE_WLAN_TDLS
 #include "dot11f.h"
+#endif
 
 /// Maximum number of scan hash table entries
 #define LIM_MAX_NUM_OF_SCAN_RESULTS 256
@@ -99,8 +101,6 @@
 
 #define GET_TIM_WAIT_COUNT(LIntrvl)        ((LIntrvl * LIM_TIM_WAIT_COUNT_FACTOR) > LIM_MIN_TIM_WAIT_COUNT ? \
                                                                     (LIntrvl * LIM_TIM_WAIT_COUNT_FACTOR) : LIM_MIN_TIM_WAIT_COUNT)
-#define IS_5G_BAND(__rfBand)     ((__rfBand & 0x3) == 0x2)
-#define IS_24G_BAND(__rfBand)    ((__rfBand & 0x3) == 0x1)
 
 // enums exported by LIM are as follows
 
@@ -503,9 +503,7 @@ struct tLimIbssPeerNode
     tANI_U8                       wmeEdcaPresent:1;
     tANI_U8                       wmeInfoPresent:1;
     tANI_U8                       htCapable:1;
-    tANI_U8                       vhtCapable:1;
-    tANI_U8                       rsvd:1;
-    tANI_U8                       htSecondaryChannelOffset;
+    tANI_U8                       rsvd:2;
     tSirMacCapabilityInfo    capabilityInfo;
     tSirMacRateSet           supportedRates;
     tSirMacRateSet           extendedRates;
@@ -557,12 +555,7 @@ struct tLimIbssPeerNode
 
     tANI_U8 *beacon; //Hold beacon to be sent to HDD/CSR
     tANI_U16 beaconLen;
-
-#ifdef WLAN_FEATURE_11AC
-    tDot11fIEVHTCaps VHTCaps;
-    tANI_U8 vhtSupportedChannelWidthSet;
-    tANI_U8 vhtBeamFormerCapable;
-#endif
+    
 };
 
 // Enums used for channel switching.

@@ -462,8 +462,8 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
 
    /* Resume TX flow */
     
-   netif_tx_wake_all_queues(staAdapater->dev);
-   pHddCtx->tmInfo.qBlocked = VOS_FALSE;
+   netif_tx_start_all_queues(staAdapater->dev);
+
    mutex_unlock(&pHddCtx->tmInfo.tmOperationLock);
 
    return;
@@ -500,16 +500,6 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   /* Only STA mode support TM now
-    * all other mode, TM feature should be disabled */
-   if (~VOS_STA & pHddCtx->concurrency_mode)
-   {
-      VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                "%s: CMODE 0x%x, TM disable",
-                __func__, pHddCtx->concurrency_mode);
-      newTmLevel = WLAN_HDD_TM_LEVEL_0;
-   }
-
    if ((newTmLevel < WLAN_HDD_TM_LEVEL_0) ||
        (newTmLevel >= WLAN_HDD_TM_LEVEL_MAX))
    {
@@ -519,8 +509,8 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   if (newTmLevel != WLAN_HDD_TM_LEVEL_4)
-      sme_SetTmLevel(pHddCtx->hHal, newTmLevel, 0);
+   if (changedTmLevel != WLAN_HDD_TM_LEVEL_4)
+      sme_SetTmLevel(pHddCtx->hHal, changedTmLevel, 0);
 
    if (mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
@@ -529,7 +519,7 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   pHddCtx->tmInfo.currentTmLevel = newTmLevel;
+   pHddCtx->tmInfo.currentTmLevel = changedTmLevel;
    pHddCtx->tmInfo.txFrameCount = 0;
    vos_mem_copy(&pHddCtx->tmInfo.tmAction,
                 &thermalMigrationAction[newTmLevel],
@@ -585,7 +575,7 @@ VOS_STATUS hddDevTmRegisterNotifyCallback(hdd_context_t *pHddCtx)
    mutex_init(&pHddCtx->tmInfo.tmOperationLock);
    pHddCtx->tmInfo.txFrameCount = 0;
    pHddCtx->tmInfo.blockedQueue = NULL;
-   pHddCtx->tmInfo.qBlocked     = VOS_FALSE;
+
    return VOS_STATUS_SUCCESS;
 }
 

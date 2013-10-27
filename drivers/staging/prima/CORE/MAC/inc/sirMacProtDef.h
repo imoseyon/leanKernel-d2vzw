@@ -262,9 +262,7 @@
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
-#define SIR_MAC_ACTION_SA_QUERY          8
-#define SIR_MAC_SA_QUERY_REQ             0
-#define SIR_MAC_SA_QUERY_RSP             1
+#define SIR_MAC_ACTION_SA_QUERY               8 
 #endif
 
 #ifdef FEATURE_WLAN_TDLS
@@ -632,6 +630,9 @@
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
   ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
 
+#define IS_WES_MODE_ENABLED(x) \
+                    ((x)->roam.configParam.isWESModeEnabled)
+
 #define BA_RECIPIENT       1
 #define BA_INITIATOR       2
 #define BA_BOTH_DIRECTIONS 3
@@ -758,10 +759,7 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25, //TDLS direct link teardown due to TDLS peer STA unreachable via the TDLS direct link
     eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26, //TDLS direct link teardown for unspecified reason
 #endif
-    // reserved                                        27 - 30
-#ifdef WLAN_FEATURE_11W
-    eSIR_MAC_ROBUST_MGMT_FRAMES_POLICY_VIOLATION     = 31, //Robust management frames policy violation
-#endif
+    // reserved                                        27 - 31
     eSIR_MAC_QOS_UNSPECIFIED_REASON                  = 32, //Disassociated for unspecified, QoS-related reason
     eSIR_MAC_QAP_NO_BANDWIDTH_REASON                 = 33, //Disassociated because QoS AP lacks sufficient bandwidth for this QoS STA
     eSIR_MAC_XS_UNACKED_FRAMES_REASON                = 34, //Disassociated because excessive number of frames need to be acknowledged, but are not

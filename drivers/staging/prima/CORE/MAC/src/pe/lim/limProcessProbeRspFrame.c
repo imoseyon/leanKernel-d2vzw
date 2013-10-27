@@ -115,10 +115,10 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     tANI_U8 qosEnabled =    false;
     tANI_U8 wmeEnabled =    false;
 
-    pProbeRsp = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-    if ( NULL == pProbeRsp )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limProcessProbeRspFrame") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame") );
         return;
     }
 
@@ -135,21 +135,17 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
              WDA_GET_RX_MPDU_LEN(pRxPacketInfo));
     limPrintMacAddr(pMac, pHdr->sa, LOG2);)
 
-   if (!pMac->fScanOffload)
+   if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
    {
-       if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
-       {
-           vos_mem_free(pProbeRsp);
-           return;
-       }
+       palFreeMemory(pMac->hHdd, pProbeRsp);    
+       return;
    }
-
    // Validate IE information before processing Probe Response Frame
    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
    {
        PELOG1(limLog(pMac, LOG1,
                  FL("Parse error ProbeResponse, length=%d"), frameLen);)
-       vos_mem_free(pProbeRsp);
+       palFreeMemory(pMac->hHdd, pProbeRsp);
        return;
    }
 
@@ -169,16 +165,14 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
      *
      * Ignore Probe Response frame in all other states
      */
-        /*  */
-   // TO SUPPORT BT-AMP
+        // TO SUPPORT BT-AMP
     if (((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||   //mlm state check should be global - 18th oct
         (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) ||     //mlm state check should be global - 18th oct
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) ||            //mlm state check should be global - 18th oct 
         (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE) ||
         (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE) )||
         ((GET_LIM_SYSTEM_ROLE(psessionEntry) == eLIM_STA_IN_IBSS_ROLE) &&
-        (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE)) ||
-        pMac->fScanOffload)
+         (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE)))
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
@@ -199,17 +193,10 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             PELOG1(limLog(pMac, LOG1,
                FL("Parse error ProbeResponse, length=%d"),
                frameLen);)
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
-
-        if (pMac->fScanOffload)
-        {
-            limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo,
-                    eANI_BOOLEAN_FALSE, eANI_BOOLEAN_TRUE);
-        }
-
-        //To Support BT-AMP
+                                                                            //To Support BT-AMP                    
         if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||    //mlm state check should be global - 18th oct
             (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE))
             limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, 
@@ -222,13 +209,13 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         {
             if( psessionEntry->beacon != NULL )//Either Beacon/probe response is required. Hence store it in same buffer.
             {
-                vos_mem_free(psessionEntry->beacon);
+                palFreeMemory(pMac->hHdd, psessionEntry->beacon);
                 psessionEntry->beacon = NULL;
             }
             psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-
-            psessionEntry->beacon = vos_mem_malloc(psessionEntry->bcnLen);
-            if ( NULL == psessionEntry->beacon )
+            if ((palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon,
+                                   psessionEntry->bcnLen))
+                != eHAL_STATUS_SUCCESS)
             {
                 PELOGE(limLog(pMac, LOGE,
                               FL("Unable to allocate memory to store beacon"));)
@@ -236,9 +223,9 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             else
             {
                 //Store the Beacon/ProbeRsp. This is sent to csr/hdd in join cnf response. 
-                vos_mem_copy(psessionEntry->beacon,
-                             WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
-                             psessionEntry->bcnLen);
+                palCopyMemory(pMac->hHdd, psessionEntry->beacon,
+                              WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
+                              psessionEntry->bcnLen);
             }
 
             // STA in WT_JOIN_BEACON_STATE
@@ -264,9 +251,9 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             #endif //TO SUPPORT BT-AMP
             sirCopyMacAddr(currentBssId,psessionEntry->bssId);
 
-            if ( !vos_mem_compare(currentBssId, pHdr->bssId, sizeof(tSirMacAddr)) )
+            if ( !palEqualMemory( pMac->hHdd,currentBssId, pHdr->bssId, sizeof(tSirMacAddr)) )
             {
-                vos_mem_free(pProbeRsp);
+                palFreeMemory(pMac->hHdd, pProbeRsp);    
                 return;
             }
 
@@ -344,7 +331,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 limHandleIBSScoalescing(pMac, pProbeRsp, pRxPacketInfo,psessionEntry);
     } // if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) || ...
 
-    vos_mem_free(pProbeRsp);
+    palFreeMemory(pMac->hHdd, pProbeRsp);
     // Ignore Probe Response frame in all other states
     return;
 } /*** end limProcessProbeRspFrame() ***/
@@ -358,10 +345,10 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     tpSirMacMgmtHdr         pHdr;
     tSirProbeRespBeacon    *pProbeRsp;
 
-    pProbeRsp = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
-    if ( NULL == pProbeRsp )
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limProcessProbeRspFrameNoSession") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession") );
         return;
     }
 
@@ -383,14 +370,11 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
           WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo)))
     {
 #endif
-        if (!pMac->fScanOffload)
-        {
-            if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
-            {
-                vos_mem_free(pProbeRsp);
-                return;
-            }
-        }
+       if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
+       {
+          palFreeMemory(pMac->hHdd, pProbeRsp);
+          return;
+       }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     }
 #endif
@@ -399,7 +383,15 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     {
        PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
               frameLen);)
-       vos_mem_free(pProbeRsp);
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+    }
+     // Validate IE information before processing Probe Response Frame
+    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+    {
+       PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
+              frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
        return;
     }
     /*  Since there is no psessionEntry, PE cannot be in the following states:
@@ -431,7 +423,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
         {
             limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d\n"), frameLen);
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
         limLog( pMac, LOG2, FL("Save this probe rsp in LFR cache"));
@@ -440,25 +432,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     }
     else
 #endif
-    if (pMac->fScanOffload)
-    {
-        frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-
-        // Get pointer to Probe Response frame body
-        pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
-
-        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp)
-                == eSIR_FAILURE)
-        {
-            limLog(pMac, LOG1,
-                    FL("Parse error ProbeResponse, length=%d\n"), frameLen);
-            vos_mem_free(pProbeRsp);
-            return;
-        }
-        limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo,
-                eANI_BOOLEAN_FALSE, eANI_BOOLEAN_TRUE);
-    }
-    else if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
+    if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
         (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE)  ||     //mlm state check should be global - 18th oct
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) )
     {
@@ -478,7 +452,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
         {
             limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d"), frameLen);
-            vos_mem_free(pProbeRsp);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
 
@@ -489,6 +463,6 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         {
         }
     } 
-    vos_mem_free(pProbeRsp);
+    palFreeMemory(pMac->hHdd, pProbeRsp);
     return;
 } /*** end limProcessProbeRspFrameNew() ***/

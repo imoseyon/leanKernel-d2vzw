@@ -46,9 +46,9 @@
 #define ESD_EXCEPT_CNT 0
 #define LP11_RECOVERY 0
 
-#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
-#define READ_REGISTER_ESD
-#endif
+//#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+//#define READ_REGISTER_ESD
+//#endif
 
 extern void set_esd_refresh(boolean status);
 extern struct class *sec_class;

@@ -1,29 +1,43 @@
 /*
-  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
-  *
-  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
-  *
-  *
-  * Permission to use, copy, modify, and/or distribute this software for
-  * any purpose with or without fee is hereby granted, provided that the
-  * above copyright notice and this permission notice appear in all
-  * copies.
-  *
-  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
-  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
-  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  * PERFORMANCE OF THIS SOFTWARE.
-*/
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 /*
-* Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
-* All Rights Reserved.
-* Qualcomm Atheros Confidential and Proprietary.
-*/
-
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file schBeaconProcess.cc contains beacon processing related
@@ -338,9 +352,10 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     tpSirMacMgmtHdr    pMh = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     tANI_U16  aid;
     tANI_U8  operMode;
-    tANI_U8  chWidth = 0;
 #endif
-
+#if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_VOWIFI
+     tPowerdBm regMax = 0,maxTxPower = 0;
+#endif
 
     beaconParams.paramChangeBitmap = 0;
 
@@ -356,11 +371,9 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         *  -- Infra STA receving beacons from AP  
         *  -- BTAMP_STA receving beacons from BTAMP_AP
         */
-        
-    
         //Always save the beacon into LIM's cached scan results
         limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_FALSE, eANI_BOOLEAN_FALSE);
-        
+
         /**
                * This is the Beacon received from the AP  we're currently associated with. Check
                * if there are any changes in AP's capabilities 
@@ -376,8 +389,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         if(limGetStaHashBssidx(pMac, DPH_STA_HASH_INDEX_PEER, &bssIdx, psessionEntry) != eSIR_SUCCESS)
             goto fail;
         beaconParams.bssIdx = bssIdx;
-        vos_mem_copy(( tANI_U8* )&psessionEntry->lastBeaconTimeStamp,
-                     ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64));
+        palCopyMemory( pMac->hHdd, ( tANI_U8* )&psessionEntry->lastBeaconTimeStamp, ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64) );
         psessionEntry->lastBeaconDtimCount = pBeacon->tim.dtimCount;
         psessionEntry->lastBeaconDtimPeriod= pBeacon->tim.dtimPeriod;
         psessionEntry->currentBssBeaconCnt++;
@@ -413,7 +425,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
             //SMAC already parses TIM bit.
         }
 
-        
         if(pMac->lim.gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
 
         limDecideStaProtection(pMac, pBeacon, &beaconParams, psessionEntry);
@@ -470,28 +481,21 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         else if (psessionEntry->gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING)
         {
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
-        }   
+        }
     }
 
 #ifdef WLAN_FEATURE_11AC
-    if ((psessionEntry->limSystemRole == eLIM_STA_ROLE) ||
-        (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||
-        (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE))
+    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) || (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) ) 
     {
         // check for VHT capability
-        pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
-                                    &psessionEntry->dph.dphHashTable);
-        if (psessionEntry->vhtCapability && pBeacon->OperatingMode.present)
+        if(psessionEntry->vhtCapability && pBeacon->OperatingMode.present)
         {
-            operMode = pStaDs->vhtSupportedChannelWidthSet ?
-                       eHT_CHANNEL_WIDTH_80MHZ :
-                       pStaDs->htSupportedChannelWidthSet ?
-                       eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
-            if (operMode != pBeacon->OperatingMode.chanWidth)
+            pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid, &psessionEntry->dph.dphHashTable);
+            operMode = pStaDs->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pStaDs->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+            if( operMode != pBeacon->OperatingMode.chanWidth)
             {
-                PELOG1(limLog(pMac, LOG1,
-                              FL(" received OpMode Chanwidth %d, staIdx = %d"),
-                                          pBeacon->OperatingMode.chanWidth,
+                PELOG1(limLog(pMac, LOG1, FL(" received Chanwidth %d, staIdx = %d"),
+                                          pBeacon->OperatingMode.chanWidth, 
                                           pStaDs->staIndex);)
                 PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
                                           pMh->sa[0],
@@ -500,143 +504,73 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
                                           pMh->sa[3],
                                           pMh->sa[4],
                                           pMh->sa[5]);)
-
-                if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+                
+                if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
                 {
-                    PELOG1(limLog(pMac, LOG1,
-                                 FL("Updating the CH Width to 80MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                         WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                    pStaDs->vhtSupportedChannelWidthSet =  WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ ;
+                }
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
                     pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
                 }
-                else if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_20MHZ)
                 {
-                    PELOG1(limLog(pMac, LOG1,
-                                  FL("Updating the CH Width to 40MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                             WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
-                }
-                else if (pBeacon->OperatingMode.chanWidth ==
-                                eHT_CHANNEL_WIDTH_20MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
-                                  FL("Updating the CH Width to 20MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                            WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
                     pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
                 }
-                limCheckVHTOpModeChange(pMac, psessionEntry,
-                                        pBeacon->OperatingMode.chanWidth,
-                                        pStaDs->staIndex);
-            }
-        }
-        else if (psessionEntry->vhtCapability && pBeacon->VHTOperation.present)
-        {
-            operMode = pStaDs->vhtSupportedChannelWidthSet;
-            if (operMode != pBeacon->VHTOperation.chanWidth)
-            {
-                PELOG1(limLog(pMac, LOG1,
-                       FL(" received VHTOP CHWidth %d staIdx = %d"),
-                                          pBeacon->VHTOperation.chanWidth,
-                                          pStaDs->staIndex);)
-                PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
-                                          pMh->sa[0],
-                                          pMh->sa[1],
-                                          pMh->sa[2],
-                                          pMh->sa[3],
-                                          pMh->sa[4],
-                                          pMh->sa[5]);)
-
-                if (pBeacon->VHTOperation.chanWidth ==
-                                WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
-                                  FL("Updating the CH Width to 80MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                                 WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
-                    chWidth = eHT_CHANNEL_WIDTH_80MHZ;
-                }
-                else if (pBeacon->VHTOperation.chanWidth ==
-                                WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ)
-                {
-                    pStaDs->vhtSupportedChannelWidthSet =
-                            WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-                    if (pBeacon->HTCaps.supportedChannelWidthSet)
-                    {
-                        PELOG1(limLog(pMac, LOG1,
-                                      FL("Updating the CH Width to 40MHz"));)
-                        pStaDs->htSupportedChannelWidthSet =
-                                                     eHT_CHANNEL_WIDTH_40MHZ;
-                        chWidth = eHT_CHANNEL_WIDTH_40MHZ;
-                    }
-                    else
-                    {
-                        PELOG1(limLog(pMac, LOG1,
-                                      FL("Updating the CH Width to 20MHz"));)
-                        pStaDs->htSupportedChannelWidthSet =
-                                                     eHT_CHANNEL_WIDTH_20MHZ;
-                        chWidth = eHT_CHANNEL_WIDTH_20MHZ;
-                    }
-                }
-                limCheckVHTOpModeChange(pMac, psessionEntry,
-                                chWidth, pStaDs->staIndex);
+                limCheckVHTOpModeChange(pMac, psessionEntry, pBeacon->OperatingMode.chanWidth, pStaDs->staIndex); 
             }
         }
     }
 #endif
 
+#if defined (FEATURE_WLAN_CCX) || defined (FEATURE_WLAN_VOWIFI)
+    /* Obtain the Max Tx power for the current regulatory  */
+    regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel );
+#endif
+
+#if defined FEATURE_WLAN_VOWIFI
+    {
+        tPowerdBm  localRRMConstraint = 0;
+        if ( pMac->rrm.rrmPEContext.rrmEnable && pBeacon->powerConstraintPresent )
+        {
+            localRRMConstraint = pBeacon->localPowerConstraint.localPowerConstraints;
+        }
+        else
+        {
+            localRRMConstraint = 0;
+        }
+        maxTxPower = VOS_MIN(regMax,(regMax - localRRMConstraint));
+    }
+#elif defined FEATURE_WLAN_CCX
+    maxTxPower = regMax;
+#endif
+
 #if defined FEATURE_WLAN_CCX
-        if( psessionEntry->isCCXconnection )
+    if( psessionEntry->isCCXconnection )
+    {
+        tPowerdBm  localCCXConstraint = 0;
+        if (pBeacon->ccxTxPwr.present)
         {
-           tPowerdBm  localConstraint = 0, regMax = 0, maxTxPower = 0;
-           if (pBeacon->ccxTxPwr.present)
-           {
-              localConstraint = pBeacon->ccxTxPwr.power_limit;
-              regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel ); 
-              maxTxPower = limGetMaxTxPower(regMax, localConstraint, pMac->roam.configParam.nTxPowerCap);
+            localCCXConstraint = pBeacon->ccxTxPwr.power_limit;
+            maxTxPower = limGetMaxTxPower(maxTxPower, localCCXConstraint, pMac->roam.configParam.nTxPowerCap);
+        }
+        limLog( pMac, LOG1, "RegMax = %d, localCcxCons = %d, MaxTx = %d", regMax, localCCXConstraint, maxTxPower );
+    }
+#endif
 
-              //If maxTxPower is increased or decreased
-             if( maxTxPower != psessionEntry->maxTxPower )
-             {
-                limLog( pMac, LOG1, "RegMax = %d, lpc = %d, MaxTx = %d", regMax, localConstraint, maxTxPower );
-                limLog( pMac, LOG1, "Local power constraint change..updating new maxTx power to HAL");
-                if( limSendSetMaxTxPowerReq ( pMac, maxTxPower, psessionEntry ) == eSIR_SUCCESS )
+#if defined (FEATURE_WLAN_CCX) || defined (FEATURE_WLAN_VOWIFI)
+    {
+        //If maxTxPower is increased or decreased
+        if( maxTxPower != psessionEntry->maxTxPower )
+        {
+             limLog( pMac, LOG1, "Local power constraint change..updating new maxTx power %d to HAL",maxTxPower);
+             if( limSendSetMaxTxPowerReq ( pMac, maxTxPower, psessionEntry ) == eSIR_SUCCESS )
                    psessionEntry->maxTxPower = maxTxPower;
-             }
-           }
         }
-#endif
-
-
-#if defined WLAN_FEATURE_VOWIFI
-        if( pMac->rrm.rrmPEContext.rrmEnable )
-        {
-           tPowerdBm  localConstraint = 0, regMax = 0, maxTxPower = 0;
-           if (pBeacon->powerConstraintPresent && pMac->rrm.rrmPEContext.rrmEnable)
-           {
-              localConstraint = pBeacon->localPowerConstraint.localPowerConstraints;
-           }
-           else
-           {
-              localConstraint = 0;
-           }
-           regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel );
-           //Get the maxTxPower in the range of 13 to 19
-           maxTxPower = rrmGetMinOfMaxTxPower(regMax, (regMax - localConstraint));
-           //If maxTxPower is increased or decreased
-           if( maxTxPower != psessionEntry->maxTxPower )
-           {
-#if defined WLAN_VOWIFI_DEBUG
-              limLog( pMac, LOGE, "Regulatory max = %d, local power constraint = %d, max tx = %d", regMax, localConstraint, maxTxPower );
-              limLog( pMac, LOGE, "Local power constraint change..updating mew maxTx power to HAL");
-#endif
-              if( rrmSendSetMaxTxPowerReq ( pMac, maxTxPower, psessionEntry ) == eSIR_SUCCESS )
-                 psessionEntry->maxTxPower = maxTxPower;
-
-           }
-        }
+    }
 #endif
 
     // Indicate to LIM that Beacon is received

@@ -648,9 +648,6 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->txLdpcIniFeatureEnabled = 
                                     pSmeStartBssReq->txLdpcIniFeatureEnabled;
 
-        psessionEntry->oxygenNwkIniFeatureEnabled =
-                                    pSmeStartBssReq->oxygenNwkIniFeatureEnabled;
-
         palCopyMemory(pMac->hHdd, (void*)&psessionEntry->rateSet,
             (void*)&pSmeStartBssReq->operationalRateSet,
             sizeof(tSirMacRateSet));
@@ -841,7 +838,7 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
              *reserved reserved RIFS Lsig n-GF ht20 11g 11b*/
             palCopyMemory( pMac->hHdd, (void *) &psessionEntry->cfgProtection,
                           (void *) &pSmeStartBssReq->ht_capab,
-                          sizeof( tANI_U16 ));
+                          sizeof( tCfgProtection ));
             psessionEntry->pAPWPSPBCSession = NULL; // Initialize WPS PBC session link list
         }
 
@@ -1068,91 +1065,6 @@ void limGetRandomBssid(tpAniSirGlobal pMac, tANI_U8 *data)
      palCopyMemory(pMac->hHdd, data, (tANI_U8*)random, sizeof(tSirMacAddr));
 }
 
-static eHalStatus limSendHalStartScanOffloadReq(tpAniSirGlobal pMac,
-        tpSirSmeScanReq pScanReq)
-{
-    tSirScanOffloadReq *pScanOffloadReq;
-    tANI_U8 *p;
-    tSirMsgQ msg;
-    eHalStatus status;
-    tANI_U16 i, len;
-    tSirRetStatus rc = eSIR_SUCCESS;
-
-    /* The tSirScanOffloadReq will reserve the space for first channel,
-       so allocate the memory for (numChannels - 1) and uIEFieldLen */
-    len = sizeof(tSirScanOffloadReq) + (pScanReq->channelList.numChannels - 1) +
-        pScanReq->uIEFieldLen;
-
-    status = palAllocateMemory(pMac->hHdd, (void **) &pScanOffloadReq, len);
-    if (status != eHAL_STATUS_SUCCESS)
-    {
-        limLog(pMac, LOGE,
-                FL("palAllocateMemory failed for pScanOffloadReq"));
-        return eHAL_STATUS_FAILURE;
-    }
-
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pScanOffloadReq, len);
-
-    msg.type = WDA_START_SCAN_OFFLOAD_REQ;
-    msg.bodyptr = pScanOffloadReq;
-    msg.bodyval = 0;
-
-    palCopyMemory(pMac->hHdd, (tANI_U8 *) pScanOffloadReq->bssId,
-            (tANI_U8*) pScanReq->bssId,
-            sizeof(tSirMacAddr));
-
-    if (pScanReq->numSsid > SIR_SCAN_MAX_NUM_SSID)
-    {
-        limLog(pMac, LOGE,
-                FL("Invalid value (%d) for numSsid"), SIR_SCAN_MAX_NUM_SSID);
-        palFreeMemory(pMac->hHdd, (void *)pScanOffloadReq);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    pScanOffloadReq->numSsid = pScanReq->numSsid;
-    for (i = 0; i < pScanOffloadReq->numSsid; i++)
-    {
-        pScanOffloadReq->ssId[i].length = pScanReq->ssId[i].length;
-        palCopyMemory(pMac->hHdd, (tANI_U8 *) pScanOffloadReq->ssId[i].ssId,
-                (tANI_U8 *) pScanReq->ssId[i].ssId,
-                pScanOffloadReq->ssId[i].length);
-    }
-
-    pScanOffloadReq->hiddenSsid = pScanReq->hiddenSsid;
-    palCopyMemory(pMac->hHdd, (tANI_U8 *) pScanOffloadReq->selfMacAddr,
-            (tANI_U8 *) pScanReq->selfMacAddr,
-            sizeof(tSirMacAddr));
-    pScanOffloadReq->bssType = pScanReq->bssType;
-    pScanOffloadReq->dot11mode = pScanReq->dot11mode;
-    pScanOffloadReq->scanType = pScanReq->scanType;
-    pScanOffloadReq->minChannelTime = pScanReq->minChannelTime;
-    pScanOffloadReq->maxChannelTime = pScanReq->maxChannelTime;
-    pScanOffloadReq->p2pSearch = pScanReq->p2pSearch;
-    pScanOffloadReq->sessionId = pScanReq->sessionId;
-    pScanOffloadReq->channelList.numChannels =
-        pScanReq->channelList.numChannels;
-    p = &(pScanOffloadReq->channelList.channelNumber[0]);
-    for (i = 0; i < pScanOffloadReq->channelList.numChannels; i++)
-        p[i] = pScanReq->channelList.channelNumber[i];
-
-    pScanOffloadReq->uIEFieldLen = pScanReq->uIEFieldLen;
-    pScanOffloadReq->uIEFieldOffset = len - pScanOffloadReq->uIEFieldLen;
-    palCopyMemory(pMac->hHdd, (tANI_U8 *) p + i,
-            (tANI_U8 *) pScanReq + pScanReq->uIEFieldOffset,
-            pScanOffloadReq->uIEFieldLen);
-
-    rc = wdaPostCtrlMsg(pMac, &msg);
-    if (rc != eSIR_SUCCESS)
-    {
-        limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"),
-               pMac);
-        palFreeMemory(pMac->hHdd, (void *)pScanOffloadReq);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    return eHAL_STATUS_SUCCESS;
-}
-
 /**
  * __limProcessSmeScanReq()
  *
@@ -1249,164 +1161,163 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
      */
   if (__limFreshScanReqd(pMac, pScanReq->returnFreshResults))
   {
-      if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
-      {
-          // Discard previously cached scan results
-          limReInitScanResults(pMac);
-      }
+        #if 0   
+        // Update global SME state
+        pMac->lim.gLimPrevSmeState = pMac->lim.gLimSmeState;
+        if ((pMac->lim.gLimSmeState == eLIM_SME_IDLE_STATE) ||
+            (pMac->lim.gLimSmeState == eLIM_SME_JOIN_FAILURE_STATE))
+            pMac->lim.gLimSmeState = eLIM_SME_WT_SCAN_STATE;
+        else if (pMac->lim.gLimSmeState == eLIM_SME_NORMAL_STATE)
+            pMac->lim.gLimSmeState = eLIM_SME_NORMAL_CHANNEL_SCAN_STATE;
+        else
+            
+        #endif //TO SUPPORT BT-AMP
 
-      pMac->lim.gLim24Band11dScanDone     = 0;
-      pMac->lim.gLim50Band11dScanDone     = 0;
-      pMac->lim.gLimReturnAfterFirstMatch =
-          pScanReq->returnAfterFirstMatch;
-      pMac->lim.gLimBackgroundScanMode =
-          pScanReq->backgroundScanMode;
+        /*Change Global SME state  */
 
-      pMac->lim.gLimReturnUniqueResults   =
-          ((pScanReq->returnUniqueResults) > 0 ? true : false);
-      /* De-activate Heartbeat timers for connected sessions while
-       * scan is in progress if the system is in Active mode *
-       * AND it is not a ROAMING ("background") scan */
-      if(((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
-                  (ePMM_STATE_READY == pMac->pmm.gPmmState)) &&
-              (pScanReq->backgroundScanMode != eSIR_ROAMING_SCAN ) &&
-              (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
-      {
+        /* Store the previous SME state */
+
+         pMac->lim.gLimPrevSmeState = pMac->lim.gLimSmeState;
+        
+        pMac->lim.gLimSmeState = eLIM_SME_WT_SCAN_STATE;
+        MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, pScanReq->sessionId, pMac->lim.gLimSmeState));
+
+        if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
+        {
+            // Discard previously cached scan results
+            limReInitScanResults(pMac);
+        }
+
+        pMac->lim.gLim24Band11dScanDone     = 0;
+        pMac->lim.gLim50Band11dScanDone     = 0;
+        pMac->lim.gLimReturnAfterFirstMatch =
+                                    pScanReq->returnAfterFirstMatch;
+        pMac->lim.gLimBackgroundScanMode =
+                                    pScanReq->backgroundScanMode;
+
+        pMac->lim.gLimReturnUniqueResults   =
+              ((pScanReq->returnUniqueResults) > 0 ? true : false);
+        /* De-activate Heartbeat timers for connected sessions while
+         * scan is in progress if the system is in Active mode *
+         * AND it is not a ROAMING ("background") scan */
+        if(((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
+           (ePMM_STATE_READY == pMac->pmm.gPmmState)) &&
+           (pScanReq->backgroundScanMode != eSIR_ROAMING_SCAN ) &&
+           (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
+        {
           for(i=0;i<pMac->lim.maxBssId;i++)
           {
-              if((peFindSessionBySessionId(pMac,i) != NULL) &&
-                      (pMac->lim.gpSession[i].valid == TRUE) &&
-                      (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[i].limMlmState))
-              {
-                  limHeartBeatDeactivateAndChangeTimer(pMac, peFindSessionBySessionId(pMac,i));
-              }
+            if((peFindSessionBySessionId(pMac,i) != NULL) &&
+               (pMac->lim.gpSession[i].valid == TRUE) &&
+               (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[i].limMlmState))
+            {
+               limHeartBeatDeactivateAndChangeTimer(pMac, peFindSessionBySessionId(pMac,i));
+            }   
           }
-      }
+        }
 
-      if (pMac->fScanOffload)
-      {
-          if (eHAL_STATUS_SUCCESS !=
-                  limSendHalStartScanOffloadReq(pMac, pScanReq))
-          {
-              limSendSmeScanRsp(pMac,
-                      offsetof(tSirSmeScanRsp, bssDescription[0]),
-                      eSIR_SME_INVALID_PARAMETERS,
-                      pScanReq->sessionId,
-                      pScanReq->transactionId);
-              return;
-          }
-      }
-      else
-      {
-
-          /*Change Global SME state  */
-          /* Store the previous SME state */
-          pMac->lim.gLimPrevSmeState = pMac->lim.gLimSmeState;
-          pMac->lim.gLimSmeState = eLIM_SME_WT_SCAN_STATE;
-          MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, pScanReq->sessionId, pMac->lim.gLimSmeState));
-
-          if (pScanReq->channelList.numChannels == 0)
-          {
-              tANI_U32            cfg_len;
-              // Scan all channels
-              len = sizeof(tLimMlmScanReq) +
+        if (pScanReq->channelList.numChannels == 0)
+        {
+            tANI_U32            cfg_len;
+            // Scan all channels
+            len = sizeof(tLimMlmScanReq) + 
                   (sizeof( pScanReq->channelList.channelNumber ) * (WNI_CFG_VALID_CHANNEL_LIST_LEN - 1)) +
                   pScanReq->uIEFieldLen;
-              if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmScanReq, len) )
-              {
-                  // Log error
-                  limLog(pMac, LOGP,
-                          FL("call to palAllocateMemory failed for mlmScanReq (%d)"), len);
+            if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmScanReq, len) )
+            {
+                // Log error
+                limLog(pMac, LOGP,
+                       FL("call to palAllocateMemory failed for mlmScanReq (%d)"), len);
 
-                  return;
-              }
+                return;
+            }
 
-              // Initialize this buffer
-              palZeroMemory( pMac->hHdd, (tANI_U8 *) pMlmScanReq, len );
+            // Initialize this buffer
+            palZeroMemory( pMac->hHdd, (tANI_U8 *) pMlmScanReq, len );
 
-              cfg_len = WNI_CFG_VALID_CHANNEL_LIST_LEN;
-              if (wlan_cfgGetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST,
+            cfg_len = WNI_CFG_VALID_CHANNEL_LIST_LEN;
+            if (wlan_cfgGetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST,
                           pMlmScanReq->channelList.channelNumber,
                           &cfg_len) != eSIR_SUCCESS)
-              {
-                  /**
-                   * Could not get Valid channel list from CFG.
-                   * Log error.
-                   */
-                  limLog(pMac, LOGP,
-                          FL("could not retrieve Valid channel list"));
-              }
-              pMlmScanReq->channelList.numChannels = (tANI_U8) cfg_len;
-          }
-          else
-          {
-              len = sizeof( tLimMlmScanReq ) - sizeof( pScanReq->channelList.channelNumber ) +
-                  (sizeof( pScanReq->channelList.channelNumber ) * pScanReq->channelList.numChannels ) +
-                  pScanReq->uIEFieldLen;
+            {
+                /**
+                 * Could not get Valid channel list from CFG.
+                 * Log error.
+                 */
+                limLog(pMac, LOGP,
+                       FL("could not retrieve Valid channel list"));
+            }
+            pMlmScanReq->channelList.numChannels = (tANI_U8) cfg_len;
+        }
+        else
+        {
+            len = sizeof( tLimMlmScanReq ) - sizeof( pScanReq->channelList.channelNumber ) + 
+                   (sizeof( pScanReq->channelList.channelNumber ) * pScanReq->channelList.numChannels ) +
+                   pScanReq->uIEFieldLen;
 
-              if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmScanReq, len) )
-              {
-                  // Log error
-                  limLog(pMac, LOGP,
-                          FL("call to palAllocateMemory failed for mlmScanReq(%d)"), len);
+            if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmScanReq, len) )
+            {
+                // Log error
+                limLog(pMac, LOGP,
+                    FL("call to palAllocateMemory failed for mlmScanReq(%d)"), len);
 
-                  return;
-              }
+                return;
+            }
 
-              // Initialize this buffer
-              palZeroMemory( pMac->hHdd, (tANI_U8 *) pMlmScanReq, len);
-              pMlmScanReq->channelList.numChannels =
-                  pScanReq->channelList.numChannels;
+            // Initialize this buffer
+            palZeroMemory( pMac->hHdd, (tANI_U8 *) pMlmScanReq, len);
+            pMlmScanReq->channelList.numChannels =
+                            pScanReq->channelList.numChannels;
 
-              palCopyMemory( pMac->hHdd, pMlmScanReq->channelList.channelNumber,
-                      pScanReq->channelList.channelNumber,
-                      pScanReq->channelList.numChannels);
-          }
+            palCopyMemory( pMac->hHdd, pMlmScanReq->channelList.channelNumber,
+                          pScanReq->channelList.channelNumber,
+                          pScanReq->channelList.numChannels);
+        }
 
-          pMlmScanReq->uIEFieldLen = pScanReq->uIEFieldLen;
-          pMlmScanReq->uIEFieldOffset = len - pScanReq->uIEFieldLen;
+        pMlmScanReq->uIEFieldLen = pScanReq->uIEFieldLen;
+        pMlmScanReq->uIEFieldOffset = len - pScanReq->uIEFieldLen;
+        
+        if(pScanReq->uIEFieldLen)
+        {
+            palCopyMemory( pMac->hHdd, (tANI_U8 *)pMlmScanReq+ pMlmScanReq->uIEFieldOffset,
+                          (tANI_U8 *)pScanReq+(pScanReq->uIEFieldOffset),
+                          pScanReq->uIEFieldLen);
+        }
 
-          if(pScanReq->uIEFieldLen)
-          {
-              palCopyMemory( pMac->hHdd, (tANI_U8 *)pMlmScanReq+ pMlmScanReq->uIEFieldOffset,
-                      (tANI_U8 *)pScanReq+(pScanReq->uIEFieldOffset),
-                      pScanReq->uIEFieldLen);
-          }
+        pMlmScanReq->bssType = pScanReq->bssType;
+        palCopyMemory( pMac->hHdd, pMlmScanReq->bssId,
+                      pScanReq->bssId,
+                      sizeof(tSirMacAddr));
+        pMlmScanReq->numSsid = pScanReq->numSsid;
 
-          pMlmScanReq->bssType = pScanReq->bssType;
-          palCopyMemory( pMac->hHdd, pMlmScanReq->bssId,
-                  pScanReq->bssId,
-                  sizeof(tSirMacAddr));
-          pMlmScanReq->numSsid = pScanReq->numSsid;
-
-          i = 0;
-          while (i < pMlmScanReq->numSsid)
-          {
-              palCopyMemory( pMac->hHdd, (tANI_U8 *) &pMlmScanReq->ssId[i],
+        i = 0;
+        while (i < pMlmScanReq->numSsid)
+        {
+            palCopyMemory( pMac->hHdd, (tANI_U8 *) &pMlmScanReq->ssId[i],
                       (tANI_U8 *) &pScanReq->ssId[i],
                       pScanReq->ssId[i].length + 1);
 
-              i++;
-          }
+            i++;
+        } 
+       
 
+        pMlmScanReq->scanType = pScanReq->scanType;
+        pMlmScanReq->backgroundScanMode = pScanReq->backgroundScanMode;
+        pMlmScanReq->minChannelTime = pScanReq->minChannelTime;
+        pMlmScanReq->maxChannelTime = pScanReq->maxChannelTime;
+        pMlmScanReq->minChannelTimeBtc = pScanReq->minChannelTimeBtc;
+        pMlmScanReq->maxChannelTimeBtc = pScanReq->maxChannelTimeBtc;
+        pMlmScanReq->dot11mode = pScanReq->dot11mode;
+        pMlmScanReq->p2pSearch = pScanReq->p2pSearch;
 
-          pMlmScanReq->scanType = pScanReq->scanType;
-          pMlmScanReq->backgroundScanMode = pScanReq->backgroundScanMode;
-          pMlmScanReq->minChannelTime = pScanReq->minChannelTime;
-          pMlmScanReq->maxChannelTime = pScanReq->maxChannelTime;
-          pMlmScanReq->minChannelTimeBtc = pScanReq->minChannelTimeBtc;
-          pMlmScanReq->maxChannelTimeBtc = pScanReq->maxChannelTimeBtc;
-          pMlmScanReq->dot11mode = pScanReq->dot11mode;
-          pMlmScanReq->p2pSearch = pScanReq->p2pSearch;
+        //Store the smeSessionID and transaction ID for later use.
+        pMac->lim.gSmeSessionId = pScanReq->sessionId;
+        pMac->lim.gTransactionId = pScanReq->transactionId;
 
-          //Store the smeSessionID and transaction ID for later use.
-          pMac->lim.gSmeSessionId = pScanReq->sessionId;
-          pMac->lim.gTransactionId = pScanReq->transactionId;
+        // Issue LIM_MLM_SCAN_REQ to MLM
+        limPostMlmMessage(pMac, LIM_MLM_SCAN_REQ, (tANI_U32 *) pMlmScanReq);
 
-          // Issue LIM_MLM_SCAN_REQ to MLM
-          limPostMlmMessage(pMac, LIM_MLM_SCAN_REQ, (tANI_U32 *) pMlmScanReq);
-      }
-  } // if ((pMac->lim.gLimSmeState == eLIM_SME_IDLE_STATE) || ...
+    } // if ((pMac->lim.gLimSmeState == eLIM_SME_IDLE_STATE) || ...
     
     else
     {
@@ -1736,18 +1647,6 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->htSupportedChannelWidthSet = (pSmeJoinReq->cbMode)?1:0; // This is already merged value of peer and self - done by csr in csrGetCBModeFromIes
         psessionEntry->htRecommendedTxWidthSet = psessionEntry->htSupportedChannelWidthSet;
         psessionEntry->htSecondaryChannelOffset = pSmeJoinReq->cbMode;
-
-        /* Record if management frames need to be protected */
-#ifdef WLAN_FEATURE_11W
-        if(eSIR_ED_AES_128_CMAC == pSmeJoinReq->MgmtEncryptionType)
-        {
-            psessionEntry->limRmfEnabled = 1;
-        }
-        else
-        {
-            psessionEntry->limRmfEnabled = 0;
-        }
-#endif
 
         /*Store Persona */
         psessionEntry->pePersona = pSmeJoinReq->staPersona;
@@ -4482,11 +4381,6 @@ limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
 #if defined(WLAN_VOWIFI_DEBUG) || defined(FEATURE_WLAN_CCX)
    PELOG1(limLog( pMac, LOG1, "%s:%d: Allocated memory for pMaxTxParams...will be freed in other module", __func__, __LINE__ );)
 #endif
-   if( pMaxTxParams == NULL )
-   {
-      limLog( pMac, LOGE, "%s:%d: pMaxTxParams is NULL", __func__, __LINE__);
-      return eSIR_FAILURE;
-   }
    pMaxTxParams->power = txPower;
    palCopyMemory( pMac->hHdd, pMaxTxParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
    palCopyMemory( pMac->hHdd, pMaxTxParams->selfStaMacAddr, pSessionEntry->selfMacAddr, sizeof(tSirMacAddr) );
@@ -4539,7 +4433,7 @@ __limProcessSmeAddStaSelfReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
    }
 
    palCopyMemory( pMac->hHdd, pAddStaSelfParams->selfMacAddr, pSmeReq->selfMacAddr, sizeof(tSirMacAddr) ); 
-   pAddStaSelfParams->currDeviceMode = pSmeReq->currDeviceMode;
+
    msg.type = SIR_HAL_ADD_STA_SELF_REQ;
    msg.reserved = 0;
    msg.bodyptr =  pAddStaSelfParams;
@@ -5527,9 +5421,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             break;
         case eWNI_SME_TDLS_DEL_STA_REQ:
             limProcessSmeTdlsDelStaReq(pMac, pMsgBuf);
-            break;
-        case eWNI_SME_TDLS_LINK_ESTABLISH_REQ:
-            limProcesSmeTdlsLinkEstablishReq(pMac, pMsgBuf);
             break;
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

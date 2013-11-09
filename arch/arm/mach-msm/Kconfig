@@ -950,6 +950,13 @@ config MACH_APEXQ
         bool "MSM8960 Samsung ApexQ"
         help
           Support for Samsung ApexQ device.
+
+config MACH_EXPRESS
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung EXPRESS"
+        help
+          Support for the Samsung EXPRESS(AT&T) device.
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"
@@ -2017,6 +2024,12 @@ config MSM_PIL_RIVA
 	  Support for booting and shutting down the RIVA processor (WCNSS).
 	  Riva is the wireless subsystem processor used in bluetooth, wireless
 	  LAN, and FM software applications.
+
+config MSM_INSECURE_PIL_RIVA
+	bool "Force Riva PIL to insecure mode"
+	depends on MSM_PIL_RIVA
+	help
+	  Force Riva PIL to use non-secure boot.
 
 config MSM_PIL_TZAPPS
 	tristate "TZApps Boot Support"

@@ -488,6 +488,9 @@ struct mipi_dsi_platform_data {
 	int target_type;
 	void (*lcd_rst_up)(void);
 	void (*lcd_rst_down)(void);
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+	void (*active_reset)(void);
+#endif
 
 };
 

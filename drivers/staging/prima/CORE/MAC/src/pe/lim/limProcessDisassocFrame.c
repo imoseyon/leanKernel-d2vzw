@@ -1,23 +1,46 @@
 /*
-  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
-  *
-  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
-  *
-  *
-  * Permission to use, copy, modify, and/or distribute this software for
-  * any purpose with or without fee is hereby granted, provided that the
-  * above copyright notice and this permission notice appear in all
-  * copies.
-  *
-  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
-  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
-  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  * PERFORMANCE OF THIS SOFTWARE.
-*/
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+
+
+
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessDisassocFrame.cc contains the code
@@ -71,9 +94,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     tpSirMacMgmtHdr    pHdr;
     tpDphHashNode      pStaDs;
     tLimMlmDisassocInd mlmDisassocInd;
-#ifdef WLAN_FEATURE_11W
-    tANI_U32            frameLen;
-#endif
+
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
@@ -98,22 +119,6 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
 
         return;
     }
-
-#ifdef WLAN_FEATURE_11W
-    /* PMF: If this session is a PMF session, then ensure that this frame was protected */
-    if(psessionEntry->limRmfEnabled  && (WDA_GET_RX_DPU_FEEDBACK(pRxPacketInfo) & DPU_FEEDBACK_UNPROTECTED_ERROR))
-    {
-        PELOGE(limLog(pMac, LOGE, FL("received an unprotected disassoc from AP"));)
-        // If the frame received is unprotected, forward it to the supplicant to initiate
-        // an SA query
-        frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-        //send the unprotected frame indication to SME
-        limSendSmeUnprotectedMgmtFrameInd( pMac, pHdr->fc.subType,
-                                           (tANI_U8*)pHdr, (frameLen + sizeof(tSirMacMgmtHdr)),
-                                           psessionEntry->smeSessionId, psessionEntry);
-        return;
-    }
-#endif
 
     // Get reasonCode from Disassociation frame body
     reasonCode = sirReadU16(pBody);
@@ -216,7 +221,6 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
             case eSIR_MAC_GR_KEY_UPDATE_TIMEOUT_REASON:
             case eSIR_MAC_RSN_IE_MISMATCH_REASON:
             case eSIR_MAC_1X_AUTH_FAILURE_REASON:
-            case eSIR_MAC_PREV_AUTH_NOT_VALID_REASON:
                 // Valid reasonCode in received Disassociation frame
                 break;
 
@@ -294,9 +298,9 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     pStaDs->mlmStaContext.disassocReason = (tSirMacReasonCodes) reasonCode;
 
     // Issue Disassoc Indication to SME.
-    vos_mem_copy((tANI_U8 *) &mlmDisassocInd.peerMacAddr,
-                 (tANI_U8 *) pStaDs->staAddr,
-                 sizeof(tSirMacAddr));
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocInd.peerMacAddr,
+                  (tANI_U8 *) pStaDs->staAddr,
+                  sizeof(tSirMacAddr));
     mlmDisassocInd.reasonCode =
         (tANI_U8) pStaDs->mlmStaContext.disassocReason;
     mlmDisassocInd.disassocTrigger = eLIM_PEER_ENTITY_DISASSOC;
@@ -314,20 +318,13 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
         PELOGE(limLog(pMac, LOGE, FL("received Disassoc from AP while waiting for Reassoc Rsp"));)
      
         if (psessionEntry->limAssocResponseData) {
-            vos_mem_free(psessionEntry->limAssocResponseData);
+            palFreeMemory(pMac->hHdd, psessionEntry->limAssocResponseData);
             psessionEntry->limAssocResponseData = NULL;                            
         }
 
         limRestorePreReassocState(pMac,eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
         return;
     }
-#if defined(FEATURE_WLAN_TDLS) && defined(FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP)
-    if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
-        (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
-            limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
-            return;
-    }
-#endif
 
     limPostSmeMessage(pMac, LIM_MLM_DISASSOC_IND,
                       (tANI_U32 *) &mlmDisassocInd);

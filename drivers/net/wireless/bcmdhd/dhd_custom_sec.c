@@ -1361,30 +1361,98 @@ int dhd_sel_ant_from_file(dhd_pub_t *dhd)
 	return 0;
 }
 #endif /* MIMO_ANTENNA_SETTING */
-#ifdef USE_WL_FRAMEBURST
-uint32 sec_control_frameburst(void)
+
+#ifdef USE_WFA_CERT_CONF
+int sec_get_param(dhd_pub_t *dhd, int mode)
 {
 	struct file *fp = NULL;
-	char *filepath = "/data/.frameburst.info";
-	char frameburst_val = 0;
-	uint32 frameburst = 1; /* default enabled */
-	int ret = 0;
+	char *filepath = NULL;
+	int val, ret = 0;
+
+	if (!dhd || (mode < SET_PARAM_BUS_TXGLOM_MODE) ||
+		(mode >= PARAM_LAST_VALUE)) {
+		DHD_ERROR(("[WIFI] %s: invalid argument\n", __FUNCTION__));
+		return -EINVAL;
+	}
+
+	switch (mode) {
+		case SET_PARAM_BUS_TXGLOM_MODE:
+			filepath = "/data/.bustxglom.info";
+			break;
+		case SET_PARAM_ROAMOFF:
+			filepath = "/data/.roamoff.info";
+			break;
+#ifdef USE_WL_FRAMEBURST
+		case SET_PARAM_FRAMEBURST:
+			filepath = "/data/.frameburst.info";
+			break;
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+		case SET_PARAM_TXBF:
+			filepath = "/data/.txbf.info";
+			break;
+#endif /* USE_WL_TXBF */
+		default:
+			return -EINVAL;
+	}
 
 	fp = filp_open(filepath, O_RDONLY, 0);
 	if (IS_ERR(fp) || (fp == NULL)) {
-		DHD_INFO(("[WIFI] %s: File open failed, so enable frameburst as a default.\n",
-			__FUNCTION__));
+		ret = -EIO;
 	} else {
-		ret = kernel_read(fp, fp->f_pos, &frameburst_val, 1);
-		if (ret > 0 && frameburst_val == '0') {
-			/* Set frameburst to disable */
-			frameburst = 0;
-		}
-
-		DHD_INFO(("set frameburst value = %d\n", frameburst));
+		ret = kernel_read(fp, fp->f_pos, (char *)&val, 4);
 		filp_close(fp, NULL);
 	}
-	return frameburst;
-}
+
+	if (ret < 0) {
+		/* File operation is failed so we will return default value */
+		switch (mode) {
+			case SET_PARAM_BUS_TXGLOM_MODE:
+				val = CUSTOM_GLOM_SETTING;
+				break;
+			case SET_PARAM_ROAMOFF:
+#ifdef ROAM_ENABLE
+				val = 0;
+#elif defined(DISABLE_BUILTIN_ROAM)
+				val = 1;
+#else
+				val = 0;
+#endif /* ROAM_ENABLE */
+				break;
+#ifdef USE_WL_FRAMEBURST
+			case SET_PARAM_FRAMEBURST:
+				val = 1;
+				break;
 #endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+			case SET_PARAM_TXBF:
+				val = 1;
+				break;
+#endif /* USE_WL_TXBF */
+		}
+
+		DHD_INFO(("[WIFI] %s: File open failed, file path=%s,"
+			" default value=%d\n",
+			__FUNCTION__, filepath, val));
+		return val;
+	}
+
+	val = bcm_atoi((char *)&val);
+	DHD_INFO(("[WIFI] %s: %s = %d\n", __FUNCTION__, filepath, val));
+
+	switch (mode) {
+		case SET_PARAM_ROAMOFF:
+#ifdef USE_WL_FRAMEBURST
+		case SET_PARAM_FRAMEBURST:
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+		case SET_PARAM_TXBF:
+#endif /* USE_WL_TXBF */
+			val = val ? 1 : 0;
+			break;
+	}
+
+	return val;
+}
+#endif /* USE_WFA_CERT_CONF */
 #endif /* CUSTOMER_HW4 */

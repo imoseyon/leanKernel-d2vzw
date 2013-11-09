@@ -2028,9 +2028,6 @@ static int msm_hs_startup(struct uart_port *uport)
 		return ret;
 	}
 
-	/* Stop remote UART to send data by setting RFR GPIO to LOW. */
-	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_HIGH);
-
 	if (pdata && pdata->config_gpio) {
 		ret = msm_hs_config_uart_gpios(uport);
 		if (ret)
@@ -2139,9 +2136,6 @@ static int msm_hs_startup(struct uart_port *uport)
 	spin_lock_irqsave(&uport->lock, flags);
 
 	msm_hs_start_rx_locked(uport);
-
-	/* Allow remote UART to send data by setting RFR GPIO to HIGH. */
-	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_LOW);
 
 	spin_unlock_irqrestore(&uport->lock, flags);
 

@@ -370,7 +370,7 @@ bool sec_hal_chg_get_property(struct i2c_client *client,
 		if (charger->charging_current) {
 			/* Rsns 0.068 Ohm */
 			bq24157_i2c_read(client, BQ24157_CURRENT, &data);
-			val->intval = ((data & 0x78) >> 3) * 100;
+			val->intval = (((data & 0x70) >> 4) * 100) + 550;
 		} else
 			val->intval = 0;
 		dev_dbg(&client->dev,

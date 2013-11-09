@@ -1057,10 +1057,6 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
        goto err_ftm_register_wext_close;
     }
 
-#ifdef WLAN_KD_READY_NOTIFIER
-   pHddCtx->kd_nl_init = 1;
-#endif /* WLAN_KD_READY_NOTIFIER */
-
 #ifdef PTT_SOCK_SVC_ENABLE
     //Initialize the PTT service
     if(ptt_sock_activate_svc(pHddCtx) != 0)
@@ -1112,11 +1108,8 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     return VOS_STATUS_SUCCESS;
 
 err_nl_srv_init:
-#ifdef WLAN_KD_READY_NOTIFIER
-nl_srv_exit(pHddCtx->ptt_pid);
-#else
 nl_srv_exit();
-#endif /* WLAN_KD_READY_NOTIFIER */
+
 err_ftm_register_wext_close:
 hdd_UnregisterWext(pAdapter->dev);
 
@@ -1161,11 +1154,8 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
 
     vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
-#ifdef WLAN_KD_READY_NOTIFIER
-    nl_srv_exit(pHddCtx->ptt_pid);
-#else
     nl_srv_exit();
-#endif /* WLAN_KD_READY_NOTIFIER */
+
     //TODO----------
     //Deregister the device with the kernel
     hdd_UnregisterWext(pAdapter->dev);
@@ -2095,22 +2085,22 @@ int wlan_hdd_ftm_set_nv_field
          /* If Last byte is larger than 252 (0xFC), return Error,
           * Since 3MACs should be derived from first MAC */
          if(QWLAN_MAX_MAC_LAST_BYTE_VALUE <
-            nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1])
+            nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1])
          {
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                        "Last Byte of the seed MAC is too large 0x%x",
-                        nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1]);
+                        nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1]);
             return -EILSEQ;
          }
 
          pNVMac = (v_U8_t *)nvContents->fields.macAddr;
-         lastByteMAC = nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1];
+         lastByteMAC = nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1];
          for(macLoop = 0; macLoop < VOS_MAX_CONCURRENCY_PERSONA; macLoop++)
          {
-            nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1] =
+            nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1] =
                                                lastByteMAC + macLoop;
             vos_mem_copy(pNVMac + (macLoop * NV_FIELD_MAC_ADDR_SIZE),
-                         &nvField->fieldData.macAddr.macAddr1[0],
+                         &nvField->fieldData.macAddr[0],
                          NV_FIELD_MAC_ADDR_SIZE);
          }
          break;
@@ -3729,7 +3719,7 @@ static VOS_STATUS wlan_ftm_priv_set_mac_address(hdd_adapter_t *pAdapter,char *bu
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "MacAddress = %02x:%02x:%02x:%02x:%02x:%02x",MAC_ADDR_ARRAY(macAddr));
 
 
-    pMacAddress = &pMsgBody->SetNvField.fieldData.macAddr.macAddr1[0];
+    pMacAddress = &pMsgBody->SetNvField.fieldData.macAddr[0];
 
     for(ii = 0; ii < VOS_MAC_ADDRESS_LEN; ii++)
        pMacAddress[ii] = (v_U8_t)macAddr[ii];

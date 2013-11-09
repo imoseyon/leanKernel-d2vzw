@@ -19,6 +19,7 @@ obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) += mdp4_video_enhance.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) += mdp4_video_enhance.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) += mdp4_video_enhance.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT) += mdp4_video_enhance.o
+obj-$(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT) += mdp4_video_enhance.o
 else
 obj-y += mdp_hw_init.o
 obj-y += mdp_ppp.o
@@ -165,6 +166,7 @@ obj-$(CONFIG_SAMSUNG_CMC624) += samsung_cmc624.o cmc624_sysfs.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) += mipi_samsung_oled_video_hd_pt.o smart_mtp_s6e8aa0x01.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) += mipi_samsung_oled_video_wvga_pt.o smart_mtp_s6e63m0.o
 obj-$(CONFIG_FB_MSM_MIPI_SAMSUNG_TFT_VIDEO_WXGA_PT) += mipi_samsung_tft_video_wxga_pt.o
+obj-$(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT) += mipi_magna_oled_video_wvga_pt.o smart_mtp_ea8868.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o

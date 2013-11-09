@@ -47,8 +47,6 @@
 
 static int smp_distribute_keys(struct l2cap_conn *conn, __u8 force);
 
-#define AUTH_REQ_MASK   0x07
-
 static inline void swap128(u8 src[16], u8 dst[16])
 {
 	int i;
@@ -744,7 +742,7 @@ invalid_key:
 
 int smp_conn_security(struct l2cap_conn *conn, __u8 sec_level)
 {
-	struct  hci_conn *hcon = conn->hcon;
+	struct hci_conn *hcon = conn->hcon;
 	__u8 authreq;
 
 	BT_DBG("conn %p hcon %p %d req: %d",
@@ -879,19 +877,6 @@ int smp_sig_channel(struct l2cap_conn *conn, struct sk_buff *skb)
 
 	hcon->smp_conn = conn;
 	skb_pull(skb, sizeof(code));
-
-	/*
-	 * The SMP context must be initialized for all other PDUs except
-	 * pairing and security requests. If we get any other PDU when
-	 * not initialized simply disconnect (done if this function
-	 * returns an error).
-	 */
-	if (code != SMP_CMD_PAIRING_REQ && code != SMP_CMD_SECURITY_REQ &&
-	    !conn->smp_chan) {
-		BT_ERR("Unexpected SMP command 0x%02x. Disconnecting.", code);
-		kfree_skb(skb);
-		return -ENOTSUPP;
-	}
 
 	switch (code) {
 	case SMP_CMD_PAIRING_REQ:

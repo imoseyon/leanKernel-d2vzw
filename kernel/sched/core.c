@@ -91,6 +91,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
+
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
 	unsigned long delta;
@@ -1593,15 +1595,17 @@ static int
 try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 {
 	unsigned long flags;
-	int cpu, success = 0;
+	int cpu, src_cpu, success = 0;
 
 	smp_wmb();
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	src_cpu = task_cpu(p);
+	cpu = src_cpu;
+
 	if (!(p->state & state))
 		goto out;
 
 	success = 1; /* we're going to change ->state */
-	cpu = task_cpu(p);
 
 	if (p->on_rq && ttwu_remote(p, wake_flags))
 		goto stat;
@@ -1638,7 +1642,7 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
 		p->sched_class->task_waking(p);
 
 	cpu = select_task_rq(p, SD_BALANCE_WAKE, wake_flags);
-	if (task_cpu(p) != cpu) {
+	if (src_cpu != cpu) {
 		wake_flags |= WF_MIGRATED;
 		set_task_cpu(p, cpu);
 	}
@@ -1650,6 +1654,9 @@ stat:
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
+	if (src_cpu != cpu && task_notify_on_migrate(p))
+		atomic_notifier_call_chain(&migration_notifier_head,
+					   cpu, (void *)src_cpu);
 	return success;
 }
 
@@ -1665,8 +1672,8 @@ static void try_to_wake_up_local(struct task_struct *p)
 {
 	struct rq *rq = task_rq(p);
 
-	if (WARN_ON_ONCE(rq != this_rq()) ||
-	    WARN_ON_ONCE(p == current))
+	if (WARN_ON(rq != this_rq()) ||
+	    WARN_ON(p == current))
 		return;
 
 	lockdep_assert_held(&rq->lock);
@@ -5215,6 +5222,7 @@ EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr);
 static int __migrate_task(struct task_struct *p, int src_cpu, int dest_cpu)
 {
 	struct rq *rq_dest, *rq_src;
+	bool moved = false;
 	int ret = 0;
 
 	if (unlikely(!cpu_active(dest_cpu)))
@@ -5241,12 +5249,16 @@ static int __migrate_task(struct task_struct *p, int src_cpu, int dest_cpu)
 		set_task_cpu(p, dest_cpu);
 		enqueue_task(rq_dest, p, 0);
 		check_preempt_curr(rq_dest, p, 0);
+		moved = true;
 	}
 done:
 	ret = 1;
 fail:
 	double_rq_unlock(rq_src, rq_dest);
 	raw_spin_unlock(&p->pi_lock);
+	if (moved && task_notify_on_migrate(p))
+		atomic_notifier_call_chain(&migration_notifier_head,
+					   dest_cpu, (void *)src_cpu);
 	return ret;
 }
 
@@ -5334,9 +5346,6 @@ static void migrate_tasks(unsigned int dead_cpu)
 	 * done here.
 	 */
 	rq->stop = NULL;
-
-	/* Ensure any throttled groups are reachable by pick_next_task */
-	unthrottle_offline_cfs_rqs(rq);
 
 	for ( ; ; ) {
 		/*
@@ -6025,6 +6034,7 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 	struct sched_domain *tmp;
+	unsigned long next_balance = rq->next_balance;
 
 	/* Remove the sched domains which do not contribute to scheduling. */
 	for (tmp = sd; tmp; ) {
@@ -6048,6 +6058,17 @@ cpu_attach_domain(struct sched_domain *sd, struct root_domain *rd, int cpu)
 		if (sd)
 			sd->child = NULL;
 	}
+
+	for (tmp = sd; tmp; ) {
+		unsigned long interval;
+
+		interval = msecs_to_jiffies(tmp->balance_interval);
+		if (time_after(next_balance, tmp->last_balance + interval))
+			next_balance = tmp->last_balance + interval;
+
+		tmp = tmp->parent;
+	}
+	rq->next_balance = next_balance;
 
 	sched_domain_debug(sd, cpu);
 
@@ -7922,6 +7943,24 @@ cpu_cgroup_exit(struct cgroup *cgrp, struct cgroup *old_cgrp,
 	sched_move_task(task);
 }
 
+static u64 cpu_notify_on_migrate_read_u64(struct cgroup *cgrp,
+					  struct cftype *cft)
+{
+	struct task_group *tg = cgroup_tg(cgrp);
+
+	return tg->notify_on_migrate;
+}
+
+static int cpu_notify_on_migrate_write_u64(struct cgroup *cgrp,
+					   struct cftype *cft, u64 notify)
+{
+	struct task_group *tg = cgroup_tg(cgrp);
+
+	tg->notify_on_migrate = (notify > 0);
+
+	return 0;
+}
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 static int cpu_shares_write_u64(struct cgroup *cgrp, struct cftype *cftype,
 				u64 shareval)
@@ -8193,6 +8232,11 @@ static u64 cpu_rt_period_read_uint(struct cgroup *cgrp, struct cftype *cft)
 #endif /* CONFIG_RT_GROUP_SCHED */
 
 static struct cftype cpu_files[] = {
+	{
+		.name = "notify_on_migrate",
+		.read_u64 = cpu_notify_on_migrate_read_u64,
+		.write_u64 = cpu_notify_on_migrate_write_u64,
+	},
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	{
 		.name = "shares",

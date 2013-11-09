@@ -91,7 +91,6 @@ typedef enum eSmeCommandType
     eSmeCommandTdlsSendMgmt, 
     eSmeCommandTdlsAddPeer, 
     eSmeCommandTdlsDelPeer, 
-    eSmeCommandTdlsLinkEstablish,
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
     eSmeCommandTdlsDiscovery,
     eSmeCommandTdlsLinkSetup,
@@ -156,10 +155,6 @@ typedef struct tagSmeStruct
     tDblLinkList smeCmdFreeList;   //preallocated roam cmd list
     void (*pTxPerHitCallback) (void *pCallbackContext); /* callback for Tx PER hit to HDD */ 
     void *pTxPerHitCbContext;
-    tVOS_CON_MODE currDeviceMode;
-#ifdef FEATURE_WLAN_LPHB
-    void (*pLphbWaitTimeoutCb) (void *pAdapter, void *indParam);
-#endif /* FEATURE_WLAN_LPHB */
 } tSmeStruct, *tpSmeStruct;
 
 

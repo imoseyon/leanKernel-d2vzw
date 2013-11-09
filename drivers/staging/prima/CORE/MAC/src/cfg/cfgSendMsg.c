@@ -109,8 +109,7 @@ cfgSendHostMsg(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 msgLen, tANI_U32 
     }
 
     // Allocate message buffer
-    pMsg = vos_mem_malloc(msgLen);
-    if ( NULL == pMsg )
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMsg, msgLen))
     {
         PELOGE(cfgLog(pMac, LOGE,
                       FL("Memory allocation failure!"));)
@@ -155,7 +154,7 @@ cfgSendHostMsg(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 msgLen, tANI_U32 
         default:
            PELOGE(cfgLog(pMac, LOGE,
                          FL("Unknown msg %d!"), (int) msgType);)
-            vos_mem_free( pMsg);
+            palFreeMemory( pMac->hHdd, pMsg);
             return;
     }
 

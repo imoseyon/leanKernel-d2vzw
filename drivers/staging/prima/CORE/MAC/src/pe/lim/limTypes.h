@@ -739,8 +739,6 @@ tSirRetStatus limProcessSmeTdlsMgmtSendReq(tpAniSirGlobal pMac,
                                                            tANI_U32 *pMsgBuf);
 tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac, 
                                                            tANI_U32 *pMsgBuf);
-tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
-                                                           tANI_U32 *pMsgBuf);
 tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac, 
                                                            tANI_U32 *pMsgBuf);
 void limSendSmeTDLSDeleteAllPeerInd(tpAniSirGlobal pMac, tpPESession psessionEntry);
@@ -748,10 +746,6 @@ void limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
                                 tpPESession psessionEntry,
                                 tANI_U32 txCompleteStatus);
 tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-void limTDLSDisappearAPTrickInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry);
-int limGetTDLSPeerCount(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#endif
 eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,
@@ -877,7 +871,7 @@ void limProcessLearnIntervalTimeout(tpAniSirGlobal pMac);
 #ifdef WLAN_FEATURE_11W
 //11w SA query request action frame handler
 tSirRetStatus limSendSaQueryResponseFrame( tpAniSirGlobal pMac, 
-                   tANI_U8 *transId, tSirMacAddr peer,tpPESession psessionEntry);
+                   tANI_U16 transId, tSirMacAddr peer,tpPESession psessionEntry);
 #endif
 // Inline functions
 

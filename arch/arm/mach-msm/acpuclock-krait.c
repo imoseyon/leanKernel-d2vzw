@@ -499,7 +499,7 @@ static int acpuclk_krait_set_rate(int cpu, unsigned long rate,
 	strt_acpu_s = drv.scalable[cpu].cur_speed;
 
 	/* Return early if rate didn't change. */
-	if (rate == strt_acpu_s->khz)
+	if (rate == strt_acpu_s->khz && reason != SETRATE_HOTPLUG)
 		goto out;
 
 	/* Find target frequency. */
@@ -1129,6 +1129,11 @@ static int __init sec_pvs_setup(char *str)
 
 __setup("sec_pvs=", sec_pvs_setup);
 
+static void boost_vdd_core(struct acpu_level *tbl)
+{
+	for (; tbl->speed.khz != 0; tbl++)
+		tbl->vdd_core += 50000;
+}
 #endif
 
 static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
@@ -1136,6 +1141,9 @@ static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
 {
 	void __iomem *pte_efuse;
 	u32 pte_efuse_val, tbl_idx, bin_idx;
+#if defined(CONFIG_MACH_APEXQ)
+	u32 fmax, pvs_leakage;
+#endif
 
 	pte_efuse = ioremap(pte_efuse_phys, 4);
 	if (!pte_efuse) {
@@ -1151,8 +1159,22 @@ static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
 	tbl_idx = get_pvs_bin(pte_efuse_val);
 
 #if defined(CONFIG_MACH_APEXQ)
+	pte_efuse = ioremap(pte_efuse_phys-4, 4);
+	pte_efuse_val = readl_relaxed(pte_efuse);
+	fmax = (pte_efuse_val >> 20) & 0x3;
+	pvs_leakage = (pte_efuse_val >> 16) & 0x3;
+	iounmap(pte_efuse);
+
+	dev_warn(drv.dev, "ACPU PVS_LEAKAGE: %d\n",pvs_leakage);
+	dev_warn(drv.dev, "ACPU PVS FMAX: %d\n",fmax);
+
 	if (global_sec_pvs_value == 0xfafa) {
-		tbl_idx = 0;
+		dev_warn(drv.dev, "ACPU PVS: Your SoC sucks, boosting the crap out of it!!");
+		tbl_idx=0;
+		boost_vdd_core(&pvs_tables[bin_idx][tbl_idx]);
+	} else if (tbl_idx > 1) {
+		dev_warn(drv.dev, "ACPU PVS: Found %d, defaulting to 1.",tbl_idx);
+		tbl_idx = 1;
 	}
 #endif 
 

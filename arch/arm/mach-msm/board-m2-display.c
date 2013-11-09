@@ -1100,9 +1100,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL) \
-	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_QHD_PT) \
-	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
-
+	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_QHD_PT)
 		udelay(10);
 		active_reset_ldi();
 #endif
@@ -1171,6 +1169,8 @@ static int mipi_dsi_cdp_panel_power(int on)
 		} else {
 			gpio_direction_output(gpio43, 1);
 		}
+#elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+		/* magna panel gpio43 don't turn on */
 #else
 		gpio_direction_output(gpio43, 1);
 #endif
@@ -1265,6 +1265,8 @@ static int mipi_dsi_cdp_panel_power(int on)
 		} else {
 			active_reset_ldi();
 		}
+#elif defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+		/* nothing to do */
 #else
 		active_reset_ldi();
 #endif
@@ -1392,6 +1394,9 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 #endif /* CONFIG_FB_MSM_MIPI_PANEL_POWERON_LP11 */
 	.lcd_rst_up = pull_ldi_reset_up,
 	.lcd_rst_down = pull_ldi_reset_down,
+#if defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+	.active_reset = active_reset_ldi,
+#endif
 };
 #ifdef CONFIG_MSM_BUS_SCALING
 static struct msm_bus_vectors mdp_init_vectors[] = {

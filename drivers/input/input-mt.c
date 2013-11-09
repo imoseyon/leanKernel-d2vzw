@@ -93,11 +93,11 @@ void input_mt_report_slot_state(struct input_dev *dev,
 
 	mt = &dev->mt[dev->slot];
 	id = input_mt_get_value(mt, ABS_MT_TRACKING_ID);
-	if (id < 0 || input_mt_get_value(mt, ABS_MT_TOOL_TYPE) != tool_type)
+	if (id < 0 /*|| input_mt_get_value(mt, ABS_MT_TOOL_TYPE) != tool_type*/)
 		id = input_mt_new_trkid(dev);
 
 	input_event(dev, EV_ABS, ABS_MT_TRACKING_ID, id);
-	input_event(dev, EV_ABS, ABS_MT_TOOL_TYPE, tool_type);
+	//input_event(dev, EV_ABS, ABS_MT_TOOL_TYPE, tool_type);
 }
 EXPORT_SYMBOL(input_mt_report_slot_state);
 

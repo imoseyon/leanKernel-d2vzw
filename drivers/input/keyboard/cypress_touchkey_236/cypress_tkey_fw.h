@@ -35,6 +35,12 @@
 #include "apexq_tkey_fw.h"
 #endif
 
+#elif defined(CONFIG_MACH_EXPRESS)
+#define BIN_FW_VERSION		0x09
+#ifdef _CYPRESS_TKEY_FW_H
+#include "express_tkey_fw.h"
+#endif
+
 #else
 #define BIN_FW_VERSION		0x00
 #ifdef _CYPRESS_TKEY_FW_H

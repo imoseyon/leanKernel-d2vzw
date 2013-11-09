@@ -63,7 +63,6 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/wireless.h>
-#include <macTrace.h>
 #include <wlan_hdd_includes.h>
 #include <wlan_btc_svc.h>
 #include <wlan_nlink_common.h>
@@ -211,10 +210,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef FEATURE_WLAN_TDLS
 #define WE_GET_TDLS_PEERS    8
 #endif
-#ifdef WLAN_FEATURE_11W
-#define WE_GET_11W_INFO      9
-#endif
-#define WE_GET_STATES        10
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -349,9 +344,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define TX_PER_TRACKING_DEFAULT_RATIO             5
 #define TX_PER_TRACKING_MAX_RATIO                10
 #define TX_PER_TRACKING_DEFAULT_WATERMARK         5
-
-#define WLAN_ADAPTER 0
-#define P2P_ADAPTER  1
 
 /*MCC Configuration parameters */
 enum {
@@ -544,9 +536,6 @@ hdd_IsAuthTypeRSN( tHalHandle halHandle, eCsrAuthType authType)
         case eCSR_AUTH_TYPE_FT_RSN_PSK:
 #endif
         case eCSR_AUTH_TYPE_RSN_PSK:
-#ifdef WLAN_FEATURE_11W
-        case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
-#endif
             rsnType = eANI_BOOLEAN_TRUE;
             break;
         //case eCSR_AUTH_TYPE_FAILED:
@@ -918,11 +907,6 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
    pWextState->roamProfile.nRSNReqIELength = 0;
    pWextState->roamProfile.pRSNReqIE = (tANI_U8 *)NULL;
 
-#ifdef FEATURE_WLAN_WAPI
-   pWextState->roamProfile.nWAPIReqIELength = 0;
-   pWextState->roamProfile.pWAPIReqIE = (tANI_U8 *)NULL;
-#endif
-
    pWextState->roamProfile.bWPSAssociation = VOS_FALSE;
    pWextState->roamProfile.pAddIEScan = (tANI_U8 *)NULL;
    pWextState->roamProfile.nAddIEScanLength = 0;
@@ -939,12 +923,6 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
 
    pWextState->roamProfile.AuthType.numEntries = 1;
    pWextState->roamProfile.AuthType.authType[0] = eCSR_AUTH_TYPE_OPEN_SYSTEM;
-
-#ifdef WLAN_FEATURE_11W
-   pWextState->roamProfile.MFPEnabled = eANI_BOOLEAN_FALSE;
-   pWextState->roamProfile.MFPRequired = 0;
-   pWextState->roamProfile.MFPCapable = 0;
-#endif
 
    pWextState->authKeyMgmt = 0;
 
@@ -1118,7 +1096,6 @@ static int iw_set_mode(struct net_device *dev,
         // Set the phymode correctly for IBSS.
         pConfig  = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
         pWextState->roamProfile.phyMode = hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
-        pAdapter->device_mode = WLAN_HDD_IBSS;
         wdev->iftype = NL80211_IFTYPE_ADHOC;
         break;
     case IW_MODE_INFRA:
@@ -2662,6 +2639,7 @@ void* wlan_hdd_change_country_code_callback(void *pAdapter)
 {
 
     hdd_adapter_t *call_back_pAdapter = pAdapter;
+  
     complete(&call_back_pAdapter->change_country_code);
 
     return NULL;
@@ -2773,8 +2751,7 @@ static int iw_set_priv(struct net_device *dev,
                                             (void *)(tSmeChangeCountryCallback)wlan_hdd_change_country_code_callback,
                                             country_code,
                                             pAdapter,
-                                            pHddCtx->pvosContext,
-                                            eSIR_TRUE);
+                                            pHddCtx->pvosContext);
 
         /* Wait for completion */
         lrc = wait_for_completion_interruptible_timeout(&pAdapter->change_country_code,
@@ -3143,8 +3120,7 @@ static int iw_get_encodeext(struct net_device *dev,
     {
         dwrq->flags |= IW_ENCODE_ENABLED;
         dwrq->length = pRoamProfile->Keys.KeyLength[keyId];
-        vos_mem_copy(extra, &(pRoamProfile->Keys.KeyMaterial[keyId][0]),
-                     pRoamProfile->Keys.KeyLength[keyId]);
+        palCopyMemory(dev,extra,&(pRoamProfile->Keys.KeyMaterial[keyId][0]),pRoamProfile->Keys.KeyLength[keyId]);
     }
     else
     {
@@ -3979,8 +3955,9 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
         case WE_GET_11D_STATE:
         {
            tSmeConfigParams smeConfig;
+           
            sme_GetConfigParam(hHal,&smeConfig);
-
+           
            *value = smeConfig.csrConfig.Is11dSupportEnabled;
 
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, ("11D state=%ld!!\n"),*value);
@@ -4104,9 +4081,6 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int sub_cmd = wrqu->data.flags;
-#ifdef WLAN_FEATURE_11W
-    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-#endif
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -4219,134 +4193,6 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             break;
         }
 
-/* The case prints the current state of the HDD, SME, CSR, PE, TL
-   *it can be extended for WDI Global State as well.
-   *And currently it only checks P2P_CLIENT adapter.
-   *P2P_DEVICE and P2P_GO have not been added as of now.
-*/
-        case WE_GET_STATES:
-        {
-            int buf = 0, len = 0;
-            int adapter_num = 0;
-            int count = 0, check = 1;
-
-            tANI_U16 tlState;
-            tHalHandle hHal;
-            tpAniSirGlobal pMac;
-            hdd_station_ctx_t *pHddStaCtx;
-
-            hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
-            hdd_adapter_t *useAdapter = NULL;
-
-            /* Print wlan0 or p2p0 states based on the adapter_num
-              *by using the correct adapter
-            */
-            while ( adapter_num < 2 )
-            {
-                if ( WLAN_ADAPTER == adapter_num )
-                {
-                    useAdapter = pAdapter;
-                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                            "\n\n wlan0 States:-");
-                    len += buf;
-                }
-                else if ( P2P_ADAPTER == adapter_num )
-                {
-                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                            "\n\n p2p0 States:-");
-                    len += buf;
-
-                    if( !pHddCtx )
-                    {
-                        buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                                "\n pHddCtx is NULL");
-                        len += buf;
-                        break;
-                    }
-
-                    /*Printing p2p0 states only in the case when the device is
-                      configured as a p2p_client*/
-                    useAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_CLIENT);
-                    if ( !useAdapter )
-                    {
-                        buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                                "\n Device not configured as P2P_CLIENT.");
-                        len += buf;
-                        break;
-                    }
-                }
-
-                hHal = WLAN_HDD_GET_HAL_CTX( useAdapter );
-                pMac = PMAC_STRUCT( hHal );
-                pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR( useAdapter );
-                if( !pHddStaCtx )
-                {
-                    buf = snprintf(extra + len,  WE_MAX_STR_LEN - len,
-                            "\n pHddStaCtx is NULL");
-                    len += buf;
-                    break;
-                }
-
-                tlState = smeGetTLSTAState(hHal, pHddStaCtx->conn_info.staId[0]);
-
-                buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                        "\n HDD Conn State - %s "
-                        "\n \n SME State:"
-                        "\n Neighbour Roam State - %s"
-                        "\n CSR State - %s"
-                        "\n CSR Substate - %s"
-                        "\n \n TL STA %d State: %s",
-                        macTraceGetHDDWlanConnState(
-                                pHddStaCtx->conn_info.connState),
-                        macTraceGetNeighbourRoamState(
-                                pMac->roam.neighborRoamInfo.neighborRoamState),
-                        macTraceGetcsrRoamState(
-                                pMac->roam.curState[useAdapter->sessionId]),
-                        macTraceGetcsrRoamSubState(
-                                pMac->roam.curSubState[useAdapter->sessionId]),
-                        pHddStaCtx->conn_info.staId[0],
-                        macTraceGetTLState(tlState)
-                        );
-                len += buf;
-                adapter_num++;
-            }
-
-            /* Printing Lim State starting with global lim states */
-            buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                    "\n \n LIM STATES:-"
-                    "\n Global Sme State - %s "\
-                    "\n Global mlm State - %s "\
-                    "\n",
-                    macTraceGetLimSmeState(pMac->lim.gLimSmeState),
-                    macTraceGetLimMlmState(pMac->lim.gLimMlmState)
-                    );
-            len += buf;
-
-            /*printing the PE Sme and Mlm states for valid lim sessions*/
-            while ( check < 3 && count < 255)
-            {
-                if ( pMac->lim.gpSession[count].valid )
-                {
-                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
-                    "\n Lim Valid Session %d:-"
-                    "\n PE Sme State - %s "
-                    "\n PE Mlm State - %s "
-                    "\n",
-                    check,
-                    macTraceGetLimSmeState(pMac->lim.gpSession[count].limSmeState),
-                    macTraceGetLimMlmState(pMac->lim.gpSession[count].limMlmState)
-                    );
-
-                    len += buf;
-                    check++;
-                }
-                count++;
-            }
-
-            wrqu->data.length = strlen(extra)+1;
-            break;
-        }
-
         case WE_GET_CFG:
         {
             hdd_cfg_get_config(WLAN_HDD_GET_CTX(pAdapter), extra, WE_MAX_STR_LEN);
@@ -4363,7 +4209,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             break;
         }
 #endif
-
+           
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
         case WE_GET_ROAM_RSSI:
         {
@@ -4447,26 +4293,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             break;
         }
 #endif
-#ifdef WLAN_FEATURE_11W
-       case WE_GET_11W_INFO:
-       {
-           hddLog(LOGE, "WE_GET_11W_ENABLED = %d",  pWextState->roamProfile.MFPEnabled );
-
-           snprintf(extra, WE_MAX_STR_LEN,
-                    "\n BSSID %02X:%02X:%02X:%02X:%02X:%02X, Is PMF Assoc? %d"
-                    "\n Number of Unprotected Disassocs %d"
-                    "\n Number of Unprotected Deauths %d",
-                    (*pWextState->roamProfile.BSSIDs.bssid)[0], (*pWextState->roamProfile.BSSIDs.bssid)[1],
-                    (*pWextState->roamProfile.BSSIDs.bssid)[2], (*pWextState->roamProfile.BSSIDs.bssid)[3],
-                    (*pWextState->roamProfile.BSSIDs.bssid)[4], (*pWextState->roamProfile.BSSIDs.bssid)[5],
-                    pWextState->roamProfile.MFPEnabled, pAdapter->hdd_stats.hddPmfStats.numUnprotDisassocRx,
-                    pAdapter->hdd_stats.hddPmfStats.numUnprotDeauthRx);
-
-           wrqu->data.length = strlen(extra)+1;
-           break;
-       }
-#endif
-        default:
+        default:  
         {
             hddLog(LOGE, "Invalid IOCTL command %d  \n",  sub_cmd );
             break;
@@ -4612,7 +4439,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             sme_RoamReassoc(pMac, pAdapter->sessionId, NULL, modProfileFields, &roamId, 1);
             return 0;
         }
-
+        
 
         default:
         {
@@ -4887,6 +4714,8 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
 
+   tSpec.ts_info.psb = params[HDD_WLAN_WMM_PARAM_APSD];
+
    // validate the user priority
    if (params[HDD_WLAN_WMM_PARAM_USER_PRIORITY] >= SME_QOS_WMM_UP_MAX)
    {
@@ -4895,6 +4724,10 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
    tSpec.ts_info.up = params[HDD_WLAN_WMM_PARAM_USER_PRIORITY];
+
+   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+             "%s:TS_INFO PSB %d UP %d !!!", __func__,
+             tSpec.ts_info.psb, tSpec.ts_info.up);
 
    tSpec.nominal_msdu_size = params[HDD_WLAN_WMM_PARAM_NOMINAL_MSDU_SIZE];
    tSpec.maximum_msdu_size = params[HDD_WLAN_WMM_PARAM_MAXIMUM_MSDU_SIZE];
@@ -5916,87 +5749,43 @@ int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType,
 
 void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
 {
+    v_U8_t filterAction;
+    tPacketFilterCfg request;
     v_U8_t i;
-    tpSirRcvFltMcAddrList pMulticastAddrs = NULL;
-    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-    if (NULL == hHal)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HAL Handle is NULL"));
-        return;
-    }
-    if (NULL == pHddCtx)
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD CTX is NULL"));
-        return;
-    }
+    filterAction = set ? HDD_RCV_FILTER_SET : HDD_RCV_FILTER_CLEAR;
 
-    /* Check if INI is enabled or not, other wise just return
-     */
-    if (pHddCtx->cfg_ini->isMcAddrListFilter)
+    /*set mulitcast addr list*/
+    for (i = 0; i < pAdapter->mc_addr_list.mc_cnt; i++)
     {
-        pMulticastAddrs = vos_mem_malloc(sizeof(tSirRcvFltMcAddrList));
-        if (NULL == pMulticastAddrs)
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Could not allocate Memory"));
-            return;
-        }
-
+        memset(&request, 0, sizeof (tPacketFilterCfg));
+        request.filterAction = filterAction;
+        request.filterId = i; 
         if (set)
         {
-            /* Following pre-conditions should be satisfied before wei
-             * configure the MC address list.
-             */
-            if (((pAdapter->device_mode == WLAN_HDD_INFRA_STATION) ||
-               (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
-               && pAdapter->mc_addr_list.mc_cnt
-               && (eConnectionState_Associated ==
-               (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
-            {
-                pMulticastAddrs->ulMulticastAddrCnt =
-                                 pAdapter->mc_addr_list.mc_cnt;
-                for (i = 0; i < pAdapter->mc_addr_list.mc_cnt; i++)
-                {
-                    memcpy(&(pMulticastAddrs->multicastAddr[i][0]),
-                            &(pAdapter->mc_addr_list.addr[i][0]),
-                            sizeof(pAdapter->mc_addr_list.addr[i]));
-                    hddLog(VOS_TRACE_LEVEL_INFO,
-                            "%s: %s multicast filter: addr ="
-                            MAC_ADDRESS_STR,
-                            __func__, set ? "setting" : "clearing",
-                            MAC_ADDR_ARRAY(pMulticastAddrs->multicastAddr[i]));
-                }
-                /* Set multicast filter */
-                sme_8023MulticastList(hHal, pAdapter->sessionId,
-                                      pMulticastAddrs);
-            }
+            request.numParams = 1; 
+            request.paramsData[0].protocolLayer = HDD_FILTER_PROTO_TYPE_MAC; 
+            request.paramsData[0].cmpFlag = HDD_FILTER_CMP_TYPE_EQUAL;   
+            request.paramsData[0].dataOffset = WLAN_HDD_80211_FRM_DA_OFFSET;
+            request.paramsData[0].dataLength = ETH_ALEN;
+            memcpy(&(request.paramsData[0].compareData[0]), 
+                    &(pAdapter->mc_addr_list.addr[i][0]), ETH_ALEN);
+            /*set mulitcast filters*/
+            hddLog(VOS_TRACE_LEVEL_INFO, 
+                    "%s: %s multicast filter: addr =" 
+                    MAC_ADDRESS_STR,
+                    __func__, set ? "setting" : "clearing", 
+                    MAC_ADDR_ARRAY(request.paramsData[0].compareData));
         }
-        else
-        {
-            /* Need to clear only if it was previously configured
-             */
-            if (pAdapter->mc_addr_list.isFilterApplied)
-            {
-                pMulticastAddrs->ulMulticastAddrCnt = 0;
-                sme_8023MulticastList(hHal, pAdapter->sessionId,
-                                      pMulticastAddrs);
-            }
-
-        }
-        pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
+        wlan_hdd_set_filter(pHddCtx, &request, pAdapter->sessionId);
     }
-    else
-    {
-        hddLog(VOS_TRACE_LEVEL_INFO,
-                FL("isMcAddrListFilter is not enabled in INI"));
-    }
-    return;
+    pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
 }
 
 static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
-{
+{   
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tpPacketFilterCfg pRequest = (tpPacketFilterCfg)wrqu->data.pointer;
 
@@ -6551,10 +6340,10 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
         return -EIO;
     }
 
-    if ( (band == eCSR_BAND_24 && pHddCtx->cfg_ini->nBandCapability==2) ||
-         (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) ||
-         (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0))
-    {
+    if ( (band == eCSR_BAND_24 && pHddCtx->cfg_ini->nBandCapability==2) || 
+         (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) || 
+         (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0)) 
+    {       
          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
              "%s: band value %u violate INI settings %u", __func__,
              band, pHddCtx->cfg_ini->nBandCapability);
@@ -6610,7 +6399,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
                      &pAdapter->disconnect_comp_var,
                      msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
 
-             if(lrc <= 0) {
+             if (lrc <= 0) {
 
                 hddLog(VOS_TRACE_LEVEL_ERROR,"%s: %s while waiting for csrRoamDisconnect ",
                  __func__, (0 == lrc) ? "Timeout" : "Interrupt");
@@ -6624,7 +6413,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         sme_UpdateBgScanConfigIniChannelList(hHal, (eCsrBand) band);
 #endif
-        if(eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
+        if (eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
         {
              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                      "%s: failed to set the band value to %u ",
@@ -6957,15 +6746,6 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         0,
         "setMaxTxPower" },
-
-    /* SAP has TxMax whereas STA has MaxTx, adding TxMax for STA
-     * as well to keep same syntax as in SAP. Now onwards, STA
-     * will support both */
-    {   WE_SET_MAX_TX_POWER,
-        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
-        0,
-        "setTxMaxPower" },
-
     /* set Higher DTIM Transition (DTIM1 to DTIM3)
      * 1 = enable and 0 = disable */
     {
@@ -7102,10 +6882,6 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getStats" },
-    {   WE_GET_STATES,
-        0,
-        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
-        "getHostStates" },
     {   WE_GET_CFG,
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
@@ -7128,7 +6904,7 @@ static const struct iw_priv_args we_private_args[] = {
         "getWmmStatus" },
     {
         WE_GET_CHANNEL_LIST,
-        0,
+        0, 
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getChannelList" },
 #ifdef FEATURE_WLAN_TDLS
@@ -7137,13 +6913,6 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getTdlsPeers" },
-#endif
-#ifdef WLAN_FEATURE_11W
-    {
-        WE_GET_11W_INFO,
-        0,
-        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
-        "getPMFInfo" },
 #endif
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_NONE,
@@ -7354,6 +7123,7 @@ static const struct iw_priv_args we_private_args[] = {
         WLAN_GET_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
         IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
+   
 };
 
 

@@ -762,7 +762,14 @@ static void qup_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
 recovery_end:
 	enable_irq(dev->err_irq);
 }
-
+#if defined(CONFIG_MACH_M2)
+void qup_i2c_bwreset(struct i2c_adapter *adap) {
+	struct qup_i2c_dev *dev = i2c_get_adapdata(adap);
+	mutex_lock(&dev->mlock);
+	dev->clk_ctl = 0;
+	mutex_unlock(&dev->mlock);
+}
+#endif
 static int
 qup_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 {
@@ -1205,9 +1212,11 @@ blsp_core_init:
 		goto err_clk_get_failed;
 	}
 
-	/* We support frequencies upto FAST Mode(400KHz) */
+	/* We support frequencies upto FAST Mode(400KHz)
+	 * ...or, we could have some fun!  2 MHz seems stable enough.
+	 */
 	if (pdata->clk_freq <= 0 ||
-			pdata->clk_freq > 400000) {
+			pdata->clk_freq > 2000000) {
 		dev_err(&pdev->dev, "clock frequency not supported\n");
 		ret = -EIO;
 		goto err_config_failed;

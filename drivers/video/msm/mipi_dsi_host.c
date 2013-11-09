@@ -913,7 +913,8 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 		dsi_ctrl |= BIT(4);
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT) ||\
-	defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
+	defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) ||\
+	defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 	/* send commands in High Speed Mode */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
 #else

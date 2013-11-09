@@ -135,6 +135,15 @@ config USB_MSM_OTG
 	  This driver is not supported on boards like trout which
 	  has an external PHY.
 
+config USB_MSM_USE_POWER_SUPPLY_API
+	bool "USB OTG power controlled by chip other than PM8921"
+	depends on USB_MSM_OTG
+	default n
+	help
+	  Enable this to have power control for USB OTG port handled
+	  by PM8921 power management IC rather than separate charger
+	  IC such as BQ24157.
+
 config USB_MSM_ACA
 	bool "Support for Accessory Charger Adapter (ACA)"
 	depends on (USB_MSM_OTG || USB_MSM_OTG_72K) && ARCH_MSM

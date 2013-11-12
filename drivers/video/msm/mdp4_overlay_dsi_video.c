@@ -1185,6 +1185,12 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	mutex_lock(&mfd->dma->ov_mutex);
 
 	vctrl = &vsync_ctrl_db[cndx];
+
+	if (!vctrl->inited) {
+		mutex_unlock(&mfd->dma->ov_mutex);
+		return;
+	}
+
 	pipe = vctrl->base_pipe;
 
 	if (!pipe || !mfd->panel_power_on) {

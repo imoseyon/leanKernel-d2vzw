@@ -1,7 +1,8 @@
-LOCAL_PATH:= $(call my-dir)
-
 ifeq ($(BOARD_VENDOR),samsung)
 ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
+ifeq ($(TARGET_PRODUCT),$(filter $(TARGET_PRODUCT),cm_apexqtmo cm_expressatt))
+
+LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
 
@@ -29,5 +30,6 @@ LOCAL_SRC_FILES    := WCNSS_qcom_wlan_nv.bin
 LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)/firmware/wlan/prima
 include $(BUILD_PREBUILT)
 
+endif
 endif
 endif

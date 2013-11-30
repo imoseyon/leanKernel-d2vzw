@@ -1649,10 +1649,6 @@ static int adreno_start(struct kgsl_device *device)
 
 	/* Set up a2xx special case */
 
-	/* Certain targets need the fixup.  You know who you are */
-	if (adreno_is_a305(adreno_dev) || adreno_is_a320(adreno_dev))
-		adreno_a3xx_pwron_fixup_init(adreno_dev);
-
 	/* Set the bit to indicate that we've just powered on */
 	set_bit(ADRENO_DEVICE_PWRON, &adreno_dev->priv);
 
@@ -3097,7 +3093,7 @@ err:
 	KGSL_DRV_ERR(device, "spun too long waiting for RB to idle\n");
 	if (KGSL_STATE_DUMP_AND_FT != device->state &&
 		!adreno_dump_and_exec_ft(device)) {
-		wait_time = jiffies + ADRENO_IDLE_TIMEOUT;
+		wait_time = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 		goto retry;
 	}
 	return -ETIMEDOUT;

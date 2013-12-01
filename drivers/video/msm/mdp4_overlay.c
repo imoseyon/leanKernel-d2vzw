@@ -30,7 +30,6 @@
 #include <linux/fb.h>
 #include <linux/msm_mdp.h>
 #include <linux/file.h>
-#include <linux/android_pmem.h>
 #include <linux/major.h>
 #include <asm/system.h>
 #include <asm/mach-types.h>
@@ -334,7 +333,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 		pipe->pipe_ndx, plane);
 	if (ion_map_iommu(display_iclient, *srcp_ihdl,
 		DISPLAY_READ_DOMAIN, GEN_POOL, SZ_4K, 0, start,
-		len, 0, 0)) {
+		len, 0, ION_IOMMU_UNMAP_DELAYED)) {
 		ion_free(display_iclient, *srcp_ihdl);
 		pr_err("ion_map_iommu() failed\n");
 		return -EINVAL;
@@ -3399,9 +3398,6 @@ static int get_img(struct msmfb_data *img, struct fb_info *info,
 {
 	struct file *file;
 	int put_needed, ret = 0, fb_num;
-#ifdef CONFIG_ANDROID_PMEM
-	unsigned long vstart;
-#endif
 	*p_need = 0;
 
 	if (img->flags & MDP_BLIT_SRC_GEM) {
@@ -3435,13 +3431,6 @@ static int get_img(struct msmfb_data *img, struct fb_info *info,
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	return mdp4_overlay_iommu_map_buf(img->memory_id, pipe, plane,
 		start, len, srcp_ihdl);
-#endif
-#ifdef CONFIG_ANDROID_PMEM
-	if (!get_pmem_file(img->memory_id, start, &vstart,
-					    len, srcp_file))
-		return 0;
-	else
-		return -EINVAL;
 #endif
 }
 
@@ -4009,7 +3998,7 @@ int mdp4_overlay_commit(struct fb_info *info)
 		mdp4_dsi_cmd_pipe_commit(0, 1, &release_busy);
 		break;
 	case MIPI_VIDEO_PANEL:
-		mdp4_dsi_video_pipe_commit(0, 1);
+		mdp4_dsi_video_pipe_commit(0, 1, &release_busy);
 		break;
 	case LVDS_PANEL:
 	case LCDC_PANEL:

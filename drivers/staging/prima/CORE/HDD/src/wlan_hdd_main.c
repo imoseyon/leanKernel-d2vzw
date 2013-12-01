@@ -167,6 +167,13 @@ static int wlan_hdd_inited;
 #define SIZE_OF_SETROAMMODE             11    /* size of SETROAMMODE */
 #define SIZE_OF_GETROAMMODE             11    /* size of GETROAMMODE */
 
+/*
+ * Driver miracast parameters 0-Disabled
+ * 1-Source, 2-Sink
+ */
+#define WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL 0
+#define WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL 2
+
 #ifdef WLAN_OPEN_SOURCE
 static struct wake_lock wlan_wake_lock;
 #endif
@@ -2050,6 +2057,37 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
           pHddCtx->scan_info.scan_mode = eSIR_PASSIVE_SCAN;
        }
+       else if ( strncasecmp(command, "MIRACAST", 8) == 0 )
+       {
+           tANI_U8 filterType = 0;
+           tANI_U8 *value;
+           value = command + 9;
+
+           /* Convert the value from ascii to integer */
+           ret = kstrtou8(value, 10, &filterType);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype,
+                * then also kstrtou8 fails
+                */
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: kstrtou8 failed range ", __func__);
+              ret = -EINVAL;
+              goto exit;
+           }
+           if ((filterType < WLAN_HDD_DRIVER_MIRACAST_CFG_MIN_VAL ) ||
+               (filterType > WLAN_HDD_DRIVER_MIRACAST_CFG_MAX_VAL))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Accepted Values are 0 to 2. 0-Disabled, 1-Source,"
+                      " 2-Sink ", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+           //Filtertype value should be either 0-Disabled, 1-Source, 2-sink
+           pHddCtx->drvr_miracast = filterType;
+           hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
+        }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
@@ -3728,6 +3766,18 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          if( NULL == pAdapter )
             return NULL;
 
+#ifdef FEATURE_WLAN_TDLS
+         /* A Mutex Lock is introduced while changing/initializing the mode to
+          * protect the concurrent access for the Adapters by TDLS module.
+          */
+         if (mutex_lock_interruptible(&pHddCtx->tdls_lock))
+         {
+             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "%s: unable to lock list", __func__);
+             return NULL;
+         }
+#endif
+
          pAdapter->wdev.iftype = (session_type == WLAN_HDD_P2P_CLIENT) ?
                                   NL80211_IFTYPE_P2P_CLIENT:
                                   NL80211_IFTYPE_STATION;
@@ -3735,6 +3785,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          pAdapter->device_mode = session_type;
 
          status = hdd_init_station_mode( pAdapter );
+#ifdef FEATURE_WLAN_TDLS
+         mutex_unlock(&pHddCtx->tdls_lock);
+#endif
          if( VOS_STATUS_SUCCESS != status )
             goto err_free_netdev;
 
@@ -3828,6 +3881,12 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          pAdapter->wdev.iftype = NL80211_IFTYPE_STATION;
          pAdapter->device_mode = session_type;
          status = hdd_register_interface( pAdapter, rtnl_held );
+
+         hdd_init_tx_rx( pAdapter );
+
+         //Stop the Interface TX queue.
+         netif_tx_disable(pAdapter->dev);
+         netif_carrier_off(pAdapter->dev);
       }
          break;
       default:
@@ -3923,8 +3982,26 @@ VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
    {
       wlan_hdd_clear_concurrency_mode(pHddCtx, pAdapter->device_mode);
       hdd_cleanup_adapter( pHddCtx, pAdapterNode->pAdapter, rtnl_held );
+
+#ifdef FEATURE_WLAN_TDLS
+
+      /* A Mutex Lock is introduced while changing/initializing the mode to
+       * protect the concurrent access for the Adapters by TDLS module.
+       */
+       if (mutex_lock_interruptible(&pHddCtx->tdls_lock))
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: unable to lock list", __func__);
+           return VOS_STATUS_E_FAILURE;
+       }
+#endif
+
       hdd_remove_adapter( pHddCtx, pAdapterNode );
       vos_mem_free( pAdapterNode );
+
+#ifdef FEATURE_WLAN_TDLS
+       mutex_unlock(&pHddCtx->tdls_lock);
+#endif
 
 
       /* If there is a single session of STA/P2P client, re-enable BMPS */
@@ -4939,6 +5016,21 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    // all scans will be cancelled.
    hdd_abort_mac_scan( pHddCtx );
 
+   //Stop the traffic monitor timer
+   if ( VOS_TIMER_STATE_RUNNING ==
+                        vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr))
+   {
+        vos_timer_stop(&pHddCtx->tx_rx_trafficTmr);
+   }
+
+   // Destroy the traffic monitor timer
+   if (!VOS_IS_STATUS_SUCCESS(vos_timer_destroy(
+                         &pHddCtx->tx_rx_trafficTmr)))
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+           "%s: Cannot deallocate Traffic monitor timer", __func__);
+   }
+
    //Disable IMPS/BMPS as we do not want the device to enter any power
    //save mode during shutdown
    sme_DisablePowerSave(pHddCtx->hHal, ePMC_IDLE_MODE_POWER_SAVE);
@@ -5080,7 +5172,12 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 
 free_hdd_ctx:
-   wiphy_unregister(wiphy) ;
+   /* FTM mode, WIPHY did not registered
+      If un-register here, system crash will happen */
+   if (VOS_FTM_MODE != hdd_get_conparam())
+   {
+      wiphy_unregister(wiphy) ;
+   }
    wiphy_free(wiphy) ;
    if (hdd_is_ssr_required())
    {
@@ -5463,11 +5560,21 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->req_bmps_comp_var);
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
    init_completion(&pHddCtx->scan_info.abortscan_event_var);
+   init_completion(&pHddCtx->wiphy_channel_update_event);
 
    spin_lock_init(&pHddCtx->schedScan_lock);
 
    hdd_list_init( &pHddCtx->hddAdapters, MAX_NUMBER_OF_ADAPTERS );
 
+#ifdef FEATURE_WLAN_TDLS
+   /* tdls_lock is initialized before an hdd_open_adapter ( which is
+    * invoked by other instances also) to protect the concurrent
+    * access for the Adapters by TDLS module.
+    */
+   mutex_init(&pHddCtx->tdls_lock);
+#endif
+
+   pHddCtx->nEnableStrictRegulatoryForFCC = TRUE;
    // Load all config first as TL config is needed during vos_open
    pHddCtx->cfg_ini = (hdd_config_t*) kmalloc(sizeof(hdd_config_t), GFP_KERNEL);
    if(pHddCtx->cfg_ini == NULL)
@@ -5527,6 +5634,8 @@ int hdd_wlan_startup(struct device *dev )
                         pHddCtx->cfg_ini->vosTraceEnableSME);
    hdd_vos_trace_enable(VOS_MODULE_ID_PE,
                         pHddCtx->cfg_ini->vosTraceEnablePE);
+   hdd_vos_trace_enable(VOS_MODULE_ID_PMC,
+                         pHddCtx->cfg_ini->vosTraceEnablePMC);
    hdd_vos_trace_enable(VOS_MODULE_ID_WDA,
                         pHddCtx->cfg_ini->vosTraceEnableWDA);
    hdd_vos_trace_enable(VOS_MODULE_ID_SYS,
@@ -5932,6 +6041,14 @@ int hdd_wlan_startup(struct device *dev )
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
 
+   //Register the traffic monitor timer now
+   if ( pHddCtx->cfg_ini->dynSplitscan)
+   {
+       vos_timer_init(&pHddCtx->tx_rx_trafficTmr,
+                     VOS_TIMER_TYPE_SW,
+                     hdd_tx_rx_pkt_cnt_stat_timer_handler,
+                     (void *)pHddCtx);
+   }
    goto success;
 
 err_nl_srv:

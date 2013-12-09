@@ -262,6 +262,7 @@ static u32 ddl_handle_core_recoverable_errors(
 		break;
 	}
 
+	ddl_calc_core_proc_time(__func__, DEC_OP_TIME, ddl);
 	if (((vcd_status) || (vcd_event != VCD_EVT_RESP_INPUT_DONE)) &&
 		!status) {
 				ddl->input_frame.frm_trans_end = true;

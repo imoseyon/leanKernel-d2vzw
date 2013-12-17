@@ -153,7 +153,10 @@ struct fsa9485_usbsw {
 	struct input_dev	*input;
 	int			previous_key;
 
+	int			dock_ready;
+
 	struct delayed_work	init_work;
+	struct delayed_work	audio_work;
 	struct mutex		mutex;
 	int				adc;
 	int				deskdock;
@@ -208,6 +211,38 @@ static void EnableFSA9480Interrupts(void)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 }
+
+#if defined(CONFIG_MACH_AEGIS2)
+void fsa9485_checkandhookaudiodockfornoise(int value)
+{
+	struct i2c_client *client = local_usbsw->client;
+	int ret = 0;
+
+	if (isDeskdockconnected) {
+		ret = i2c_smbus_write_byte_data(client,
+			FSA9485_REG_MANSW1, value);
+
+		if (ret < 0)
+			dev_err(&client->dev, "%s: err %d\n",
+						__func__, ret);
+
+		ret = i2c_smbus_read_byte_data(client,
+						FSA9485_REG_CTRL);
+
+		if (ret < 0)
+			dev_err(&client->dev, "%s: err %d\n",
+						__func__, ret);
+
+		ret = i2c_smbus_write_byte_data(client,
+					FSA9485_REG_CTRL,
+					ret & ~CON_MANUAL_SW & ~CON_RAW_DATA);
+		if (ret < 0)
+			dev_err(&client->dev,
+					"%s: err %d\n", __func__, ret);
+		} else
+			pr_info("Dock is not connect\n");
+}
+#endif
 
 void FSA9485_CheckAndHookAudioDock(int value)
 {
@@ -632,12 +667,19 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 	if (usbsw->dock_attached)
 		pdata->dock_cb(FSA9485_DETACHED_DOCK);
 
-	if (adc == 0x10)
-		val2 = DEV_SMARTDOCK;
-	else if (adc == 0x12)
-		val2 = DEV_AUDIO_DOCK;
+	if (local_usbsw->dock_ready == 1)
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
+		if (adc == 0x10)
+			val2 = DEV_SMARTDOCK;
+		else if (adc == 0x12)
+			val2 = DEV_AUDIO_DOCK;
+#else
+		if (adc == 0x12)
+			val2 = DEV_AUDIO_DOCK;
+#endif
 
-	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x adc : 0x%x\n", val1, val2, adc);
+	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x adc : 0x%x\n",
+		val1, val2, adc);
 
 	/* Attached */
 	if (val1 || val2) {
@@ -764,6 +806,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 			usbsw->dock_attached = FSA9485_ATTACHED;
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		/* SmartDock */
 		} else if (val2 & DEV_SMARTDOCK) {
 			usbsw->adc = adc;
@@ -791,6 +834,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 			mhl_onoff_ex(1);
 #endif
+#endif
 		} else if (val2 & DEV_AUDIO_DOCK) {
 			usbsw->adc = adc;
 			dev_info(&client->dev, "audio dock connect\n");
@@ -812,7 +856,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 
-			if (pdata->smartdock_cb)
+			if (pdata->audio_dock_cb)
 				pdata->audio_dock_cb(FSA9485_ATTACHED);
 		}
 	/* Detached */
@@ -885,6 +929,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 				usbsw->dock_attached = FSA9485_DETACHED;
+#if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		} else if (usbsw->adc == 0x10) {
 			dev_info(&client->dev, "smart dock disconnect\n");
 
@@ -904,7 +949,12 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				pdata->smartdock_cb(FSA9485_DETACHED);
 			usbsw->adc = 0;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
+#if defined CONFIG_MHL_D3_SUPPORT
 			mhl_onoff_ex(false);
+			detached_status = 1;
+#endif
+			isDeskdockconnected = 0;
+#endif
 #endif
 		} else if (usbsw->adc == 0x12) {
 			dev_info(&client->dev, "audio dock disconnect\n");
@@ -921,7 +971,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 
-			if (pdata->smartdock_cb)
+			if (pdata->audio_dock_cb)
 				pdata->audio_dock_cb(FSA9485_DETACHED);
 			usbsw->adc = 0;
 		}
@@ -949,8 +999,8 @@ static int fsa9485_handle_dock_vol_key(struct fsa9485_usbsw *info, int adc)
 {
 	struct input_dev *input = info->input;
 	int pre_key = info->previous_key;
-	unsigned int code=0;
-	int state=0;
+	unsigned int code;
+	int state;
 
 	if (adc == ADC_OPEN) {
 		switch (pre_key) {
@@ -1115,7 +1165,6 @@ static irqreturn_t fsa9485_irq_thread(int irq, void *data)
 		}
 		return IRQ_HANDLED;
 	}
-
 	return IRQ_HANDLED;
 }
 
@@ -1158,6 +1207,20 @@ static void fsa9485_init_detect(struct work_struct *work)
 	if (ret)
 		dev_info(&usbsw->client->dev,
 				"failed to enable  irq init %s\n", __func__);
+}
+
+static void fsa9485_delayed_audio(struct work_struct *work)
+{
+	struct fsa9485_usbsw *usbsw = container_of(work,
+			struct fsa9485_usbsw, audio_work.work);
+
+	dev_info(&usbsw->client->dev, "%s\n", __func__);
+
+	local_usbsw->dock_ready = 1;
+
+	mutex_lock(&usbsw->mutex);
+	fsa9485_detect_dev(usbsw);
+	mutex_unlock(&usbsw->mutex);
 }
 
 static int __devinit fsa9485_probe(struct i2c_client *client,
@@ -1271,10 +1334,13 @@ static int __devinit fsa9485_probe(struct i2c_client *client,
 	if (usbsw->pdata->set_init_flag)
 		usbsw->pdata->set_init_flag();
 
+
+	local_usbsw->dock_ready = 0;
 	/* initial cable detection */
 	INIT_DELAYED_WORK(&usbsw->init_work, fsa9485_init_detect);
 	schedule_delayed_work(&usbsw->init_work, msecs_to_jiffies(2700));
-
+	INIT_DELAYED_WORK(&usbsw->audio_work, fsa9485_delayed_audio);
+	schedule_delayed_work(&usbsw->audio_work, msecs_to_jiffies(20000));
 	return 0;
 
 err_create_file_reset_switch:
@@ -1289,6 +1355,7 @@ fail2:
 fail1:
 	input_unregister_device(input);
 	mutex_destroy(&usbsw->mutex);
+	i2c_set_clientdata(client, NULL);
 	kfree(usbsw);
 	return ret;
 }
@@ -1298,11 +1365,13 @@ static int __devexit fsa9485_remove(struct i2c_client *client)
 	struct fsa9485_usbsw *usbsw = i2c_get_clientdata(client);
 
 	cancel_delayed_work(&usbsw->init_work);
+	cancel_delayed_work(&usbsw->audio_work);
 	if (client->irq) {
 		disable_irq_wake(client->irq);
 		free_irq(client->irq, usbsw);
 	}
 	mutex_destroy(&usbsw->mutex);
+	i2c_set_clientdata(client, NULL);
 
 	sysfs_remove_group(&client->dev.kobj, &fsa9485_group);
 	kfree(usbsw);
@@ -1343,7 +1412,17 @@ static struct i2c_driver fsa9485_i2c_driver = {
 	.id_table = fsa9485_id,
 };
 
-module_i2c_driver(fsa9485_i2c_driver);
+static int __init fsa9485_init(void)
+{
+	return i2c_add_driver(&fsa9485_i2c_driver);
+}
+module_init(fsa9485_init);
+
+static void __exit fsa9485_exit(void)
+{
+	i2c_del_driver(&fsa9485_i2c_driver);
+}
+module_exit(fsa9485_exit);
 
 MODULE_AUTHOR("Minkyu Kang <mk7.kang@samsung.com>");
 MODULE_DESCRIPTION("FSA9485 USB Switch driver");

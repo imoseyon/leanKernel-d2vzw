@@ -388,6 +388,7 @@ struct ddl_decoder_data {
 	u32  field_needed_for_prev_ip;
 	u32  prev_ip_frm_tag;
 	u32  cont_mode;
+	u32  dvb_cont_mode;
 	u32  reconfig_detected;
 	u32  dmx_disable;
 	int avg_dec_time;

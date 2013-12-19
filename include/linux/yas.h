@@ -39,10 +39,6 @@
 /* Debugging */
 #define DEBUG                               (0)
 
-#ifndef CONFIG_MACH_EXPRESS
-#define YAS_SENSOR_KERNEL_DEVFILE_INTERFACE	1
-#endif
-
 #if DEBUG
 #include <linux/kernel.h>
 #define YLOGD(args) (printk args)

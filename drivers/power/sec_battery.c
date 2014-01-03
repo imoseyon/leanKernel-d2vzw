@@ -25,7 +25,7 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
-#include <linux/android_alarm.h>
+#include <linux/hrtimer.h>
 #include <linux/msm_adc.h>
 #include <linux/earlysuspend.h>
 #include <linux/sec_battery.h>
@@ -129,9 +129,9 @@ struct sec_bat_info {
 	struct wake_lock measure_wake_lock;
 
 #if defined(CONFIG_BATTERY_CTIA)
-	struct alarm		event_alarm;
+	struct hrtimer		event_timer;
 #endif /*CONFIG_BATTERY_CTIA*/
-	struct alarm		alarm;
+	struct hrtimer		hrtimer;
 
 	enum cable_type_t cable_type;
 	enum cable_type_t prev_cable;
@@ -246,21 +246,27 @@ static void  sec_bat_monitoring_alarm(struct sec_bat_info *info,
 							int sec)
 {
 	ktime_t low_interval = ktime_set(sec - 10, 0);
-	ktime_t slack = ktime_set(20, 0);
+//	ktime_t slack = ktime_set(20, 0);
 	ktime_t next;
 
 	next = ktime_add(info->cur_monitor_time, low_interval);
-	alarm_start_range(&info->alarm, next, ktime_add(next, slack));
+	/* The original slack time called for, 20 seconds, exceeds
+        * the length allowed for an unsigned long in nanoseconds. Use
+        * ULONG_MAX instead
+        */
+        hrtimer_start_range_ns(&info->hrtimer,
+                next, ULONG_MAX, HRTIMER_MODE_ABS);
 }
 
-static void sec_bat_monitor_queue(struct alarm *alarm)
+enum hrtimer_restart sec_bat_monitor_queue(struct hrtimer *hrtimer)
 {
 	struct sec_bat_info *info =
-		container_of(alarm, struct sec_bat_info, alarm);
+		container_of(hrtimer, struct sec_bat_info, hrtimer);
 
 	queue_delayed_work(info->monitor_wqueue, &info->measure_work, 0);
 
 	queue_work(info->monitor_wqueue, &info->monitor_work);
+	return HRTIMER_NORESTART;
 }
 
 static int sec_bat_check_vf(struct sec_bat_info *info)
@@ -1156,11 +1162,11 @@ static int sec_bat_enable_charging(struct sec_bat_info *info, bool enable)
 	    val_vcell;
 	int ret;
 
-	ktime_t current_time;
+	// ktime_t current_time;
 	struct timespec ts;
 
-	current_time = alarm_get_elapsed_realtime();
-	ts = ktime_to_timespec(current_time);
+	// current_time = alarm_get_elapsed_realtime();
+	get_monotonic_boottime(&ts);
 
 	if (!psy) {
 		dev_err(info->dev, "%s: fail to get charger ps\n", __func__);
@@ -1494,11 +1500,11 @@ cable_skip:
 static void sec_bat_charging_time_management(struct sec_bat_info *info)
 {
 	unsigned long charging_time=0;
-	ktime_t	current_time;
+	// ktime_t	current_time;
 	struct timespec ts;
 
-	current_time = alarm_get_elapsed_realtime();
-	ts = ktime_to_timespec(current_time);
+	// current_time = alarm_get_elapsed_realtime();
+	get_monotonic_boottime(&ts);
 
 	/* If timeout_chgstop is already set, then re-start charging */
 	if (info->is_timeout_chgstop) {
@@ -1744,7 +1750,7 @@ static void sec_bat_monitor_work(struct work_struct *work)
 	power_supply_changed(&info->psy_bat);
 
 monitoring_skip:
-	info->cur_monitor_time = alarm_get_elapsed_realtime();
+	info->cur_monitor_time = ktime_get_boottime();
 	ts = ktime_to_timespec(info->cur_monitor_time);
 
 	sec_bat_monitoring_alarm(info, CHARGING_ALARM_INTERVAL);
@@ -1973,19 +1979,25 @@ static void  sec_bat_program_alarm(struct sec_bat_info *info,
 								int seconds)
 {
 	ktime_t low_interval = ktime_set(seconds - 10, 0);
-	ktime_t slack = ktime_set(20, 0);
+	// ktime_t slack = ktime_set(20, 0);
 	ktime_t next;
 
 	next = ktime_add(info->cur_time, low_interval);
-	alarm_start_range(&info->event_alarm, next, ktime_add(next, slack));
+	/* The original slack time called for, 20 seconds, exceeds
+        * the length allowed for an unsigned long in nanoseconds. Use
+        * ULONG_MAX instead
+        */
+        hrtimer_start_range_ns(&info->event_timer,
+                next, ULONG_MAX, HRTIMER_MODE_ABS);
 }
 
-static void sec_bat_use_timer_func(struct alarm *alarm)
+enum hrtimer_restart sec_bat_use_timer_func(struct hrtimer *hrtimer)
 {
 	struct sec_bat_info *info =
-		container_of(alarm, struct sec_bat_info, event_alarm);
+		container_of(hrtimer, struct sec_bat_info, event_timer);
 	info->batt_use &= (~info->batt_use_wait);
 	pr_info("/BATT_USE/ timer expired (0x%x)\n", info->batt_use);
+	return HRTIMER_NORESTART;
 }
 
 static void sec_bat_use_module(struct sec_bat_info *info,
@@ -2000,7 +2012,7 @@ static void sec_bat_use_module(struct sec_bat_info *info,
 	}
 
 	/*del_timer_sync(&info->bat_use_timer);*/
-	alarm_cancel(&info->event_alarm);
+	hrtimer_cancel(&info->event_timer);
 	info->batt_use &= (~info->batt_use_wait);
 
 	if (enable) {
@@ -2032,7 +2044,7 @@ static void sec_bat_use_module(struct sec_bat_info *info,
 			return;	/* nothing to clear */
 		}
 		info->batt_use_wait = module;
-		info->cur_time = alarm_get_elapsed_realtime();
+		info->cur_time = ktime_get_boottime();
 		ts = ktime_to_timespec(info->cur_time);
 
 		sec_bat_program_alarm(info, TOTAL_EVENT_TIME);
@@ -2489,11 +2501,11 @@ static int sec_bat_read_proc(char *buf, char **start,
 {
 	struct sec_bat_info *info = data;
 	struct timespec cur_time;
-	ktime_t ktime;
+	// ktime_t ktime;
 	int len = 0;
 
-	ktime = alarm_get_elapsed_realtime();
-	cur_time = ktime_to_timespec(ktime);
+	// ktime = alarm_get_elapsed_realtime();
+	get_monotonic_boottime(&cur_time);
 
 	len = sprintf(buf,
 		"%lu, %u, %u, %u, %u, %d, %u, %d, %d, %d, %u, %u, %u, %d, %u, %u, 0x%04x, %u, %lu\n",
@@ -2759,13 +2771,15 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 	}
 
 #if defined(CONFIG_BATTERY_CTIA)
-	alarm_init(&info->event_alarm,
-			ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
-			sec_bat_use_timer_func);
+	hrtimer_init(&info->event_timer,
+			CLOCK_BOOTTIME,
+			HRTIMER_MODE_ABS);
+	info->event_timer.function = &sec_bat_use_timer_func;
 #endif /*CONFIG_BATTERY_CTIA*/
-	alarm_init(&info->alarm,
-			ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
-			sec_bat_monitor_queue);
+	hrtimer_init(&info->hrtimer,
+			CLOCK_BOOTTIME,
+			HRTIMER_MODE_ABS);
+	info->hrtimer.function = &sec_bat_monitor_queue;
 
 	if (pdata->batt_int != 0) {
 		info->batt_int = pdata->batt_int;
@@ -2856,9 +2870,9 @@ static int __devexit sec_bat_remove(struct platform_device *pdev)
 	wake_lock_destroy(&info->measure_wake_lock);
 
 #if defined(CONFIG_BATTERY_CTIA)
-	alarm_cancel(&info->event_alarm);
+	hrtimer_cancel(&info->event_timer);
 #endif /*CONFIG_BATTERY_CTIA*/
-	alarm_cancel(&info->alarm);
+	hrtimer_cancel(&info->hrtimer);
 	kfree(info);
 
 	return 0;
@@ -2873,7 +2887,7 @@ static int sec_bat_suspend(struct device *dev)
 	cancel_delayed_work(&info->measure_work);
 	cancel_delayed_work(&info->otg_work);
 	/*add alarm monitoring */
-	info->cur_monitor_time = alarm_get_elapsed_realtime();
+	info->cur_monitor_time = ktime_get_boottime();
 
 	if (info->cable_type == CABLE_TYPE_NONE) {
 		sec_bat_monitoring_alarm(info, ALARM_INTERVAL);

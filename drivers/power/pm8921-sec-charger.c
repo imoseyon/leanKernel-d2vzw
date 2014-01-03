@@ -32,7 +32,7 @@
 #include <mach/msm_xo.h>
 #include <mach/msm_hsusb.h>
 #include <linux/mfd/pm8xxx/pm8921-sec-charger.h>
-#include <linux/android_alarm.h>
+#include <linux/hrtimer.h>
 #include <linux/proc_fs.h>
 #include <linux/fs.h>
 
@@ -3797,11 +3797,11 @@ pm8921_bat_read_proc(char *buf, char **start, off_t offset,
 {
 	struct pm8921_chg_chip *chip = data;
 	struct timespec cur_time;
-	ktime_t ktime;
+	// ktime_t ktime;
 	int len = 0;
 
-	ktime = alarm_get_elapsed_realtime();
-	cur_time = ktime_to_timespec(ktime);
+	// ktime = alarm_get_elapsed_realtime();
+	get_monotonic_boottime(&cur_time);
 
 	len = sprintf(buf, "%lu\t%d\t%d\t%d\t%d\t%d",
 		cur_time.tv_sec,

@@ -107,7 +107,7 @@ enum sec_battery_monitor_polling {
 	SEC_BATTERY_MONITOR_WORKQUEUE,
 	/* alarm polling */
 	SEC_BATTERY_MONITOR_ALARM,
-	/* timer polling */
+	/* timer polling (NOT USE) */
 	SEC_BATTERY_MONITOR_TIMER,
 };
 #define sec_battery_monitor_polling_t \
@@ -263,9 +263,13 @@ enum sec_battery_temp_check {
  * by ADC
  */
 #define	SEC_BATTERY_CABLE_SOURCE_ADC		4
+/* SEC_BATTERY_CABLE_SOURCE_EXTENDED
+ * use extended cable type
+ */
+#define SEC_BATTERY_CABLE_SOURCE_EXTENDED	8
 
 /* capacity calculation type (can be used overlapped) */
-#define sec_fuelgauge_capacity_type_t unsigned int
+#define sec_fuelgauge_capacity_type_t int
 /* SEC_FUELGAUGE_CAPACITY_TYPE_RESET
   * use capacity information to reset fuel gauge
   * (only for driver algorithm, can NOT be set by user)
@@ -274,21 +278,21 @@ enum sec_battery_temp_check {
 /* SEC_FUELGAUGE_CAPACITY_TYPE_RAW
   * use capacity information from fuel gauge directly
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_RAW		0
+#define SEC_FUELGAUGE_CAPACITY_TYPE_RAW		1
 /* SEC_FUELGAUGE_CAPACITY_TYPE_SCALE
   * rescale capacity by scaling, need min and max value for scaling
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_SCALE	1
+#define SEC_FUELGAUGE_CAPACITY_TYPE_SCALE	2
 /* SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE
   * change only maximum capacity dynamically
   * to keep time for every SOC unit
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE	2
+#define SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE	4
 /* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC
   * change capacity value by only -1 or +1
   * no sudden change of capacity
   */
-#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	4
+#define SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC	8
 
 /* charger function settings (can be used overlapped) */
 #define sec_charger_functions_t unsigned int
@@ -335,10 +339,14 @@ struct sec_battery_platform_data {
 	bool (*fg_gpio_init)(void);
 	bool (*chg_gpio_init)(void);
 	bool (*is_lpm)(void);
+	int jig_irq;
+	unsigned long jig_irq_attr;
 	bool (*check_jig_status) (void);
+	bool (*is_interrupt_cable_check_possible)(int);
 	int (*check_cable_callback)(void);
-	void (*cable_switch_check)(void);
-	void (*cable_switch_normal)(void);
+	int (*get_cable_from_extended_cable_type)(int);
+	bool (*cable_switch_check)(void);
+	bool (*cable_switch_normal)(void);
 	bool (*check_cable_result_callback)(int);
 	bool (*check_battery_callback)(void);
 	bool (*check_battery_result_callback)(void);
@@ -441,6 +449,7 @@ struct sec_battery_platform_data {
 	unsigned int full_condition_avgvcell;
 	unsigned int full_condition_ocv;
 
+	unsigned int recharge_check_count;
 	sec_battery_recharge_condition_t recharge_condition_type;
 	unsigned int recharge_condition_soc;
 	unsigned int recharge_condition_avgvcell;
@@ -533,5 +542,12 @@ static inline struct power_supply *get_power_supply_by_name(char *name)
 #define get_battery_data(driver)	\
 	(((struct battery_data_t *)(driver)->pdata->battery_data)	\
 	[(driver)->pdata->battery_type])
+
+#define GET_MAIN_CABLE_TYPE(extended)	\
+	((extended >> ONLINE_TYPE_MAIN_SHIFT)&0xf)
+#define GET_SUB_CABLE_TYPE(extended)	\
+	((extended >> ONLINE_TYPE_SUB_SHIFT)&0xf)
+#define GET_POWER_CABLE_TYPE(extended)	\
+	((extended >> ONLINE_TYPE_PWR_SHIFT)&0xf)
 
 #endif /* __SEC_CHARGING_COMMON_H */

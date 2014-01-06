@@ -32,6 +32,9 @@ static int smb347_i2c_read(struct i2c_client *client,
 	return ret;
 }
 
+#if !defined (CONFIG_MACH_ESPRESSO10_ATT) && !defined (CONFIG_MACH_ESPRESSO10_SPR) && !defined (CONFIG_MACH_ESPRESSO10_VZW)\
+	&& !defined (CONFIG_MACH_ESPRESSO_VZW)
+
 static void smb347_i2c_write_array(struct i2c_client *client,
 				u8 *buf, int size)
 {
@@ -39,6 +42,8 @@ static void smb347_i2c_write_array(struct i2c_client *client,
 	for (i = 0; i < size; i += 3)
 		smb347_i2c_write(client, (u8) (*(buf + i)), (buf + i) + 1);
 }
+
+#endif
 
 static void smb347_set_command(struct i2c_client *client,
 				int reg, int datum)
@@ -399,6 +404,18 @@ static void smb347_charger_function_conrol(
 			/* Enable Current Termination */
 			data &= 0xBF;
 			break;
+		/* Added to remove the warnings */
+		case SEC_BATTERY_FULLCHARGED_ADC:
+			break;
+		case SEC_BATTERY_FULLCHARGED_ADC_DUAL:
+			break;
+		case SEC_BATTERY_FULLCHARGED_FG_CURRENT:
+			break;
+		case SEC_BATTERY_FULLCHARGED_FG_CURRENT_DUAL:
+			break;
+		default: // added for the warning
+			break;
+
 		}
 		smb347_set_command(client,
 			SMB347_CHARGE_CONTROL, data);
@@ -656,7 +673,7 @@ ssize_t sec_hal_chg_store_attrs(struct device *dev,
 
 	switch (offset) {
 	case CHG_REG:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			chg->reg_addr = x;
 			smb347_i2c_read(chg->client,
 				chg->reg_addr, &data);
@@ -667,7 +684,7 @@ ssize_t sec_hal_chg_store_attrs(struct device *dev,
 		}
 		break;
 	case CHG_DATA:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			data = (u8)x;
 			dev_dbg(dev, "%s: (write) addr = 0x%x, data = 0x%x\n",
 				__func__, chg->reg_addr, data);

@@ -29,7 +29,7 @@ void sec_getlog_supply_fbinfo(void *p_fb, u32 xres, u32 yres, u32 bpp,
 	if (p_fb) {
 		pr_info("%s: 0x%p %d %d %d %d\n", __func__, p_fb, xres, yres,
 			bpp, frames);
-		frame_buf_mark.p_fb = (unsigned int)p_fb;
+		frame_buf_mark.p_fb = p_fb;
 		frame_buf_mark.xres = xres;
 		frame_buf_mark.yres = yres;
 		frame_buf_mark.bpp = bpp;
@@ -88,19 +88,24 @@ static struct {
 	.special_mark_4 = (('p' << 24) | ('l' << 16) | ('o' << 8) | ('g' << 0)),
 };
 
+static void sec_getlog_trim(unsigned int *val)
+{
+	*val = (*val) & 0x0FFFFFFF;
+}
+
 void sec_getlog_supply_loggerinfo(void *p_main,
 				  void *p_radio, void *p_events, void *p_system)
 {
 	pr_info("%s: 0x%p 0x%p 0x%p 0x%p\n", __func__, p_main, p_radio,
 		p_events, p_system);
-	plat_log_mark.p_main = (unsigned int)p_main +
-		(CONFIG_PHYS_OFFSET)&0x0FFFFFFF;
-	plat_log_mark.p_radio = (unsigned int)p_radio +
-		(CONFIG_PHYS_OFFSET)&0x0FFFFFFF;
-	plat_log_mark.p_events = (unsigned int)p_events +
-		(CONFIG_PHYS_OFFSET)&0x0FFFFFFF;
-	plat_log_mark.p_system = (unsigned int)p_system +
-		(CONFIG_PHYS_OFFSET)&0x0FFFFFFF;
+	plat_log_mark.p_main = p_main + CONFIG_PHYS_OFFSET;
+	sec_getlog_trim((unsigned int *)&plat_log_mark.p_main);
+	plat_log_mark.p_radio = p_radio + CONFIG_PHYS_OFFSET;
+	sec_getlog_trim((unsigned int *)&plat_log_mark.p_radio);
+	plat_log_mark.p_events = p_events + CONFIG_PHYS_OFFSET;
+	sec_getlog_trim((unsigned int *)&plat_log_mark.p_events);
+	plat_log_mark.p_system = p_system + CONFIG_PHYS_OFFSET;
+	sec_getlog_trim((unsigned int *)&plat_log_mark.p_system);
 }
 EXPORT_SYMBOL(sec_getlog_supply_loggerinfo);
 
@@ -120,7 +125,7 @@ static struct {
 void sec_getlog_supply_kloginfo(void *klog_buf)
 {
 	pr_info("%s: 0x%p\n", __func__, klog_buf);
-	kernel_log_mark.klog_buf = (unsigned int)klog_buf +
-		(CONFIG_PHYS_OFFSET)&0x0FFFFFFF;
+	kernel_log_mark.klog_buf = klog_buf + CONFIG_PHYS_OFFSET;
+	sec_getlog_trim((unsigned int *)&kernel_log_mark.klog_buf);
 }
 EXPORT_SYMBOL(sec_getlog_supply_kloginfo);

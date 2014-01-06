@@ -681,6 +681,10 @@ config USB_SWITCH_FSA9485
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
 
+config USB_SWITCH_SMART_DOCK_ENABLE
+	bool "Smartdock support"
+	default n
+
 config MPU_411_ENABLE
 	bool "mpu gyro sensor MPL 4.1.1"
 	depends on I2C
@@ -744,12 +748,30 @@ config ADC_STMPE811
 	help
 	  This option enables ADC checking driver. stmpe811.
 
+config ADC_DATA_CHANNEL_FOR_ACCESSORY_ID
+	int "ADC_DATA Channel No. for ACCESSORY_ID"
+	default "7"
+	depends on ADC_STMPE811
+	help
+	  This option selects ADC_DATA CHANNEL for ACCESSORY ID.
+
 config SAMSUNG_JACK
 	bool "3.5 PI JACK driver for Samsung devices"
 	depends on INPUT
 	default n
 	help
 	  This is 3.5 PI JACK driver for Samsung devices.
+config TIMA_LOG
+	tristate "Support for dumping TIMA log"
+	default y
+	help
+	  This option enables support for dumping TIMA log
+
+config TIMA_TEST
+	tristate "Tima Test Suite"
+	default n
+	help
+	  This option enables kernel component of tima test suite
 
 config SAMSUNG_JACK_GNDLDET
 	bool "GND plus L Detection for Earjack"
@@ -763,6 +785,11 @@ config SAMSUNG_JACK_GNDLDET
 
 config OPTICAL_BH1721
 	tristate "Rohm bh1721 Optical Sensor"
+	default n
+	depends on I2C
+
+config SENSORS_AK8963
+	tristate "AKM Geomagnetic Sensor"
 	default n
 	depends on I2C
 

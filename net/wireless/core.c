@@ -488,6 +488,10 @@ int wiphy_register(struct wiphy *wiphy)
 	int i;
 	u16 ifmodes = wiphy->interface_modes;
 
+	if (WARN_ON(wiphy->ap_sme_capa &&
+		!(wiphy->flags & WIPHY_FLAG_HAVE_AP_SME)))
+		return -EINVAL;
+
 	if (WARN_ON(wiphy->addresses && !wiphy->n_addresses))
 		return -EINVAL;
 
@@ -495,6 +499,11 @@ int wiphy_register(struct wiphy *wiphy)
 		    !is_zero_ether_addr(wiphy->perm_addr) &&
 		    memcmp(wiphy->perm_addr, wiphy->addresses[0].addr,
 			   ETH_ALEN)))
+		return -EINVAL;
+
+	if (WARN_ON(wiphy->max_acl_mac_addrs &&
+		    (!(wiphy->flags & WIPHY_FLAG_HAVE_AP_SME) ||
+		     !rdev->ops->set_mac_acl)))
 		return -EINVAL;
 
 	if (wiphy->addresses)

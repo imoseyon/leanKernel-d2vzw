@@ -326,7 +326,6 @@ static void smb347_set_command_reg(struct i2c_client *client)
 
 static void smb347_enter_suspend(struct i2c_client *client)
 {
-	int val, reg;
 	u8 data = 0;
 
 	pr_info("%s: ENTER SUSPEND\n", __func__);
@@ -450,8 +449,13 @@ static void smb347_charger_function_conrol(struct i2c_client *client)
 			pr_err("%s : error!\n", __func__);
 	}
 
-	/* Float voltage : 4.36V Vprechg : 2.4V */
+#ifdef CONFIG_MACH_JASPER
+	/* Float voltage : 4.35V Vprechg : 2.4V   */
+	smb347_write_reg(client, SMB347_FLOAT_VOLTAGE, 0x2A);
+#else
+	/* Float voltage : 4.36V Vprechg : 2.4V  */
 	smb347_write_reg(client, SMB347_FLOAT_VOLTAGE, 0x2B);
+#endif
 
 	/* Charge control (Auto Recharge)
 	 * Automatic Recharge Disabled , Current Termination Enabled,
@@ -505,6 +509,17 @@ static void smb347_charger_function_conrol(struct i2c_client *client)
 	smb347_write_reg(client, SMB347_STATUS_INTERRUPT, 0x02);
 	/* smb347_write_reg(client, SMB347_STATUS_INTERRUPT, 0x00); */
 
+	/* read FLOAT voltage setting */
+	reg = SMB347_FLOAT_VOLTAGE;
+	val = smb347_read_reg(client, reg);
+	pr_err("[battery]%s Float voltage reg(%x)=(%x)\n",
+                        __func__,reg,val);
+
+	/* read current settings */
+	reg = SMB347_CHARGE_CURRENT;
+	val = smb347_read_reg(client, reg);
+	pr_err("[battery]%s Charge current reg(%x)=(%x)\n",
+                        __func__,reg,val);
 }
 
 static int smb347_watchdog_control(struct i2c_client *client, bool enable)
@@ -733,6 +748,19 @@ static int smb347_set_top_off(struct i2c_client *client, int top_off)
 		data = smb347_read_reg(client, reg);
 		pr_info("%s : => reg (0x%x) = 0x%x\n", __func__, reg, data);
 	}
+
+	/* read FLOAT voltage setting */
+	reg = SMB347_FLOAT_VOLTAGE;
+	val = smb347_read_reg(client, reg);
+	pr_err("[battery]%s Float voltage reg(%x)=(%x)\n",
+		__func__,reg,val);
+
+	/* read current settings */
+	reg = SMB347_CHARGE_CURRENT;
+	val = smb347_read_reg(client, reg);
+	pr_err("[battery]%s Charge current reg(%x)=(%x)\n",
+		__func__,reg,val);
+
 	return 0;
 }
 
@@ -1685,7 +1713,7 @@ static int __devinit smb347_probe(struct i2c_client *client,
 	mutex_init(&chip->mutex);
 
 	chip->psy_bat.name = "sec-charger",
-	chip->psy_bat.type = POWER_SUPPLY_TYPE_BATTERY,
+	chip->psy_bat.type = POWER_SUPPLY_TYPE_UNKNOWN,
 	chip->psy_bat.properties = smb347_battery_props,
 	chip->psy_bat.num_properties = ARRAY_SIZE(smb347_battery_props),
 	chip->psy_bat.get_property = smb347_chg_get_property,
@@ -1702,7 +1730,7 @@ static int __devinit smb347_probe(struct i2c_client *client,
 	ret =
 		smb347_write_reg(client, SMB347_SYSOK_USB30_SELECTION, value);
 	if (ret < 0) {
-		pr_err("%s: INOK polarity setting error!\n");
+		pr_err("%s: INOK polarity setting error!\n", __func__);
 	}
 
 	ret =

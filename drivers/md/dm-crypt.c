@@ -1195,6 +1195,7 @@ static void kcryptd_async_done(struct crypto_async_request *async_req,
 	struct convert_context *ctx = dmreq->ctx;
 	struct dm_crypt_io *io = container_of(ctx, struct dm_crypt_io, ctx);
 	struct crypt_config *cc = io->target->private;
+	struct crypt_cpu *this_cc = this_crypt_config(cc);
 
 	if (error == -EINPROGRESS) {
 		complete(&ctx->restart);
@@ -1208,6 +1209,7 @@ static void kcryptd_async_done(struct crypto_async_request *async_req,
 		io->error = -EIO;
 
 	mempool_free(req_of_dmreq(cc, dmreq), cc->req_pool);
+	this_cc->req = NULL;
 
 	if (!atomic_dec_and_test(&ctx->pending))
 		return;
@@ -1378,8 +1380,10 @@ static void crypt_dtr(struct dm_target *ti)
 	if (cc->cpu)
 		for_each_possible_cpu(cpu) {
 			cpu_cc = per_cpu_ptr(cc->cpu, cpu);
-			if (cpu_cc->req)
+			if (cpu_cc->req) {
 				mempool_free(cpu_cc->req, cc->req_pool);
+				cpu_cc->req = NULL;
+			}
 			crypt_free_tfms(cc, cpu);
 		}
 

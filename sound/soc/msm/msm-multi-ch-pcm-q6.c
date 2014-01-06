@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,11 +39,17 @@ struct snd_msm {
 	struct snd_pcm *pcm;
 };
 
+struct snd_msm_volume {
+	struct msm_audio *prtd;
+	unsigned volume;
+};
+static struct snd_msm_volume multi_ch_pcm_audio = {NULL, 0x2000};
+
 #define PLAYBACK_NUM_PERIODS	8
 #define PLAYBACK_PERIOD_SIZE	4032
 #define CAPTURE_NUM_PERIODS	16
 #define CAPTURE_PERIOD_SIZE	320
-
+ 
 static struct snd_pcm_hardware msm_pcm_hardware_capture = {
 	.info =                 (SNDRV_PCM_INFO_MMAP |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -318,6 +324,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 		kfree(prtd);
 		return -ENOMEM;
 	}
+	prtd->audio_client->perf_mode = false;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		runtime->hw = msm_pcm_hardware_playback;
 		ret = q6asm_open_write(prtd->audio_client,
@@ -345,6 +352,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 
 	prtd->session_id = prtd->audio_client->session;
 	msm_pcm_routing_reg_phy_stream(soc_prtd->dai_link->be_id,
+			prtd->audio_client->perf_mode,
 			prtd->session_id, substream->stream);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -365,6 +373,24 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	runtime->private_data = prtd;
 
 	return 0;
+}
+
+int multi_ch_pcm_set_volume(unsigned volume)
+{
+	int rc = 0;
+	pr_err("multi_ch_pcm_set_volume\n");
+
+	if (multi_ch_pcm_audio.prtd && multi_ch_pcm_audio.prtd->audio_client) {
+		pr_err("%s q6asm_set_volume\n", __func__);
+		rc = q6asm_set_volume(multi_ch_pcm_audio.prtd->audio_client,
+								volume);
+		if (rc < 0) {
+			pr_err("%s: Send Volume command failed"
+				" rc=%d\n", __func__, rc);
+		}
+	}
+	multi_ch_pcm_audio.volume = volume;
+	return rc;
 }
 
 static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,

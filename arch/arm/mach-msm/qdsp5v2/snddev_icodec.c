@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1143,10 +1143,10 @@ static int __init snddev_icodec_init(void)
 	debugfs_sdev_dent = debugfs_create_dir("snddev_icodec", 0);
 	if (debugfs_sdev_dent) {
 		debugfs_afelb = debugfs_create_file("afe_loopback",
-		S_IFREG | S_IWUGO, debugfs_sdev_dent,
+		S_IFREG | S_IWUSR | S_IWGRP, debugfs_sdev_dent,
 		(void *) "afe_loopback", &snddev_icodec_debug_fops);
 		debugfs_adielb = debugfs_create_file("adie_loopback",
-		S_IFREG | S_IWUGO, debugfs_sdev_dent,
+		S_IFREG | S_IWUSR | S_IWGRP, debugfs_sdev_dent,
 		(void *) "adie_loopback", &snddev_icodec_debug_fops);
 	}
 #endif

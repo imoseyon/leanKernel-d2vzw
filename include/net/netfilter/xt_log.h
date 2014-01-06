@@ -41,13 +41,14 @@ static struct sbuff *sb_open(void)
 
 static void sb_close(struct sbuff *m)
 {
+	void* ret;
 	m->buf[m->count] = 0;
 	printk("%s\n", m->buf);
 
 	if (likely(m != &emergency))
 		kfree(m);
 	else {
-		xchg(&emergency_ptr, m);
+		ret = xchg(&emergency_ptr, m);
 		local_bh_enable();
 	}
 }

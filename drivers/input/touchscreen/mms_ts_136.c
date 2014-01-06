@@ -185,7 +185,7 @@ struct mms_ts_info {
 	bool	use_touchkey;
 	unsigned char	keycode[NUM_OF_KEY];
 
-	void (*register_cb)(void *);
+	void (*register_cb)(struct tsp_callbacks *);
 	struct tsp_callbacks callbacks;
 	bool			ta_status;
 	bool			noise_mode;

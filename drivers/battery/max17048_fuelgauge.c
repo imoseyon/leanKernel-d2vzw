@@ -18,6 +18,7 @@
 
 #include <linux/battery/sec_fuelgauge.h>
 
+#if !defined (CONFIG_MACH_COMANCHE) && !defined (CONFIG_MACH_APEXQ) && !defined(CONFIG_MACH_EXPRESS)
 static int max17048_write_reg(struct i2c_client *client, int reg, u8 value)
 {
 	int ret;
@@ -29,7 +30,6 @@ static int max17048_write_reg(struct i2c_client *client, int reg, u8 value)
 
 	return ret;
 }
-
 static int max17048_read_reg(struct i2c_client *client, int reg)
 {
 	int ret;
@@ -41,6 +41,7 @@ static int max17048_read_reg(struct i2c_client *client, int reg)
 
 	return ret;
 }
+#endif
 
 static int max17048_read_word(struct i2c_client *client, int reg)
 {
@@ -83,7 +84,7 @@ static int max17048_get_vcell(struct i2c_client *client)
 	return vcell;
 }
 
-/* soc should be 0.1% unit */
+/* soc should be 0.01% unit */
 static int max17048_get_soc(struct i2c_client *client)
 {
 	struct sec_fuelgauge_info *fuelgauge =
@@ -102,12 +103,11 @@ static int max17048_get_soc(struct i2c_client *client)
 		psoc64 = temp64 * 1953125;
 		psoc64 = div_u64(psoc64, divisor);
 		soc = psoc64 & 0xffff;
-		soc /= 10;
 	} else {
 		data[0] = temp & 0xff;
 		data[1] = (temp & 0xff00) >> 8;
 
-		soc = ((data[0] * 100) + (data[1] * 100 / 256)) / 10;
+		soc = (data[0] * 100) + (data[1] * 100 / 256);
 	}
 
 	dev_dbg(&client->dev,
@@ -165,9 +165,9 @@ static void max17048_rcomp_update(struct i2c_client *client, int temp)
 	rcomp_current = max17048_get_rcomp(client);
 
 	psy_do_property("battery", get,
-		POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+		POWER_SUPPLY_PROP_STATUS, value);
 
-	if (value.intval) /* in charging */
+	if (value.intval == POWER_SUPPLY_STATUS_CHARGING) /* in charging */
 		starting_rcomp = get_battery_data(fuelgauge).RCOMP_charging;
 	else
 		starting_rcomp = get_battery_data(fuelgauge).RCOMP0;
@@ -221,9 +221,10 @@ static void fg_read_regs(struct i2c_client *client, char *str)
 
 bool sec_hal_fg_init(struct i2c_client *client)
 {
+	#if !defined (CONFIG_MACH_COMANCHE) && !defined (CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_EXPRESS)
 	struct sec_fuelgauge_info *fuelgauge =
 				i2c_get_clientdata(client);
-
+        #endif
 	max17048_get_version(client);
 
 	return true;
@@ -312,7 +313,10 @@ bool sec_hal_fg_get_property(struct i2c_client *client,
 		break;
 		/* SOC (%) */
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = max17048_get_soc(client);
+		if (val->intval == SEC_FUELGAUGE_CAPACITY_TYPE_RAW)
+			val->intval = max17048_get_soc(client);
+		else
+			val->intval = max17048_get_soc(client) / 10;
 		break;
 		/* Battery Temperature */
 	case POWER_SUPPLY_PROP_TEMP:

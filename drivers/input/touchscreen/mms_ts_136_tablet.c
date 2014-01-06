@@ -157,6 +157,8 @@ struct mms_ts_info {
 
 	bool				invert_x;
 	bool				invert_y;
+	bool				flip_xy;
+
 	const u8			*config_fw_version;
 	int				irq;
 
@@ -301,7 +303,7 @@ static void set_dvfs_off(struct work_struct *work)
 {
 	struct mms_ts_info *info = container_of(work,
 				struct mms_ts_info, work_dvfs_off.work);
-	int ret;
+//	int ret; for avoid build errors
 	mutex_lock(&info->dvfs_lock);
 	cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
 	cpufreq_set_limit(TOUCH_BOOSTER_SECOND_STOP, 0);
@@ -411,7 +413,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			.buf    = buf,
 		},
 	};
-
 	sz = i2c_smbus_read_byte_data(client, MMS_INPUT_EVENT_PKT_SZ);
 	if (sz < 0) {
 		dev_err(&client->dev, "%s bytes=%d\n", __func__, sz);
@@ -478,6 +479,11 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 			if (y < 0)
 				y = 0;
 		}
+		if (info->flip_xy) {
+			int t = x;
+			x = y;
+			y = t;
+		}
 
 		if (id >= MAX_FINGERS) {
 			dev_dbg(&client->dev,
@@ -487,7 +493,6 @@ static irqreturn_t mms_ts_interrupt(int irq, void *dev_id)
 
 		if ((tmp[0] & 0x80) == 0) {
 			dev_dbg(&client->dev, "finger [%d] up\n", id);
-
 			input_mt_slot(info->input_dev, id);
 			input_mt_report_slot_state(info->input_dev,
 				MT_TOOL_FINGER, false);
@@ -2239,6 +2244,7 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 		info->max_y = info->pdata->max_y;
 		info->invert_x = info->pdata->invert_x;
 		info->invert_y = info->pdata->invert_y;
+		info->flip_xy = info->pdata->flip_xy;
 		info->config_fw_version = info->pdata->config_fw_version;
 	} else {
 		info->max_x = 1024;
@@ -2257,13 +2263,22 @@ static int __devinit mms_ts_probe(struct i2c_client *client,
 	__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, MAX_WIDTH, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_PRESSURE, 0, MAX_PRESSURE, 0, 0);
+
+	if(info->flip_xy){
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
+			     0, info->max_y, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
+			     0, info->max_x, 0, 0);
+	}
+	else{
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
 			     0, info->max_x, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
 			     0, info->max_y, 0, 0);
+	}
+
 	input_set_abs_params(input_dev, ABS_MT_TRACKING_ID, 0,
 			9, 0, 0);
-
 	input_set_drvdata(input_dev, info);
 
 	ret = input_register_device(input_dev);

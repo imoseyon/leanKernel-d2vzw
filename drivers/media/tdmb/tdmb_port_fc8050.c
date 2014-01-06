@@ -177,13 +177,26 @@ static bool fc8050_set_ch(unsigned long freq,
 
 	fc8050_on_air = false;
 
-	if (dmb_drv_set_ch(freq_temp, sub_ch_id_temp, svc_type_temp) == 1) {
-		DPRINTK("dmb_drv_set_ch Success\n");
-		fc8050_on_air = true;
-		return true;
+	if (factory_test) {
+		if (dmb_drv_set_ch_factory(freq_temp, sub_ch_id_temp, \
+				svc_type_temp) == 1) {
+			DPRINTK("dmb_drv_set_ch_factory Success\n");
+			fc8050_on_air = true;
+			return true;
+		} else {
+			DPRINTK("dmb_drv_set_ch_factory Fail\n");
+			return false;
+		}
 	} else {
-		DPRINTK("dmb_drv_set_ch Fail\n");
-		return false;
+		if (dmb_drv_set_ch(freq_temp, sub_ch_id_temp, \
+				svc_type_temp) == 1) {
+			DPRINTK("dmb_drv_set_ch Success\n");
+			fc8050_on_air = true;
+			return true;
+		} else {
+			DPRINTK("dmb_drv_set_ch Fail\n");
+			return false;
+		}
 	}
 }
 

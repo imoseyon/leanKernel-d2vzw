@@ -26,9 +26,16 @@
 #define MIN 1
 struct taos_platform_data {
 	int als_int;
+#if defined(CONFIG_MACH_COMANCHE)|| defined(CONFIG_MACH_APEXQ) || defined (CONFIG_MACH_EXPRESS)\
+    || defined(CONFIG_MACH_JASPER) || defined(CONFIG_MACH_GOGH)
+	void (*power)(int);
+	void (*led_on)(int);
+#else
 	int (*power)(bool);
-	int (*light_adc_value)(void);
 	int (*led_on)(bool);
+#endif
+	int (*light_adc_value)(void);
+	
 	int prox_thresh_hi;
 	int prox_thresh_low;
 	int prox_th_hi_cal;

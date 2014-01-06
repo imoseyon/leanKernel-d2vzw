@@ -48,9 +48,30 @@ typedef struct {
 static int n_roam_cache = 0;
 static int roam_band = WLC_BAND_AUTO;
 static roam_channel_cache roam_cache[MAX_ROAM_CACHE];
+static uint band2G, band5G, band_bw;
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
 static int roamscan_mode = 0;
 #endif
+
+void init_roam(int ioctl_ver)
+{
+#ifdef D11AC_IOTYPES
+	if (ioctl_ver == 1) {
+		/* legacy chanspec */
+		band2G = WL_LCHANSPEC_BAND_2G;
+		band5G = WL_LCHANSPEC_BAND_5G;
+		band_bw = WL_LCHANSPEC_BW_20 | WL_LCHANSPEC_CTL_SB_NONE;
+	} else {
+		band2G = WL_CHANSPEC_BAND_2G;
+		band5G = WL_CHANSPEC_BAND_5G;
+		band_bw = WL_CHANSPEC_BW_20;
+	}
+#else
+	band2G = WL_CHANSPEC_BAND_2G;
+	band5G = WL_CHANSPEC_BAND_5G;
+	band_bw = WL_CHANSPEC_BW_20 | WL_CHANSPEC_CTL_SB_NONE;
+#endif /* D11AC_IOTYPES */
+}
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
 int get_roamscan_mode(struct net_device *dev, int *mode)
@@ -99,36 +120,19 @@ int set_roamscan_channel_list(struct net_device *dev,
 		chanspec_t channels[20];
 	} channel_list;
 	char iobuf[200];
-	uint band, band2G, band5G, bw;
+
 	roamscan_mode = 1;
 
 	if (n > 20)
 		n = 20;
 
-#ifdef D11AC_IOTYPES
-	if (ioctl_ver == 1) {
-		/* legacy chanspec */
-		band2G = WL_LCHANSPEC_BAND_2G;
-		band5G = WL_LCHANSPEC_BAND_5G;
-		bw = WL_LCHANSPEC_BW_20 | WL_LCHANSPEC_CTL_SB_NONE;
-	} else {
-		band2G = WL_CHANSPEC_BAND_2G;
-		band5G = WL_CHANSPEC_BAND_5G;
-		bw = WL_CHANSPEC_BW_20;
-	}
-#else
-	band2G = WL_CHANSPEC_BAND_2G;
-	band5G = WL_CHANSPEC_BAND_5G;
-	bw = WL_CHANSPEC_BW_20 | WL_CHANSPEC_CTL_SB_NONE;
-#endif /* D11AC_IOTYPES */
-
 	for (i = 0; i < n; i++) {
 		chanspec_t chanspec;
 
 		if (channels[i] <= 14) {
-			chanspec = band2G | bw | channels[i];
+			chanspec = band2G | band_bw | channels[i];
 		} else {
-			chanspec = band5G | bw | channels[i];
+			chanspec = band5G | band_bw | channels[i];
 		}
 		roam_cache[i].chanspec = chanspec;
 		channel_list.channels[i] = chanspec;
@@ -174,7 +178,7 @@ void add_roam_cache(wl_bss_info_t *bi)
 		return;
 #endif
 
-	if (n_roam_cache == MAX_ROAM_CACHE)
+	if (n_roam_cache >= MAX_ROAM_CACHE)
 		return;
 
 	for (i = 0; i < n_roam_cache; i++) {
@@ -188,59 +192,49 @@ void add_roam_cache(wl_bss_info_t *bi)
 
 	roam_cache[n_roam_cache].ssid_len = bi->SSID_len;
 	channel = (bi->ctl_ch == 0) ? CHSPEC_CHANNEL(bi->chanspec) : bi->ctl_ch;
-	roam_cache[n_roam_cache].chanspec =
-		WL_CHANSPEC_BW_20 |
-		(channel <= 14 ? WL_CHANSPEC_BAND_2G : WL_CHANSPEC_BAND_5G) |
-		channel;
+	roam_cache[n_roam_cache].chanspec = (channel <= 14 ? band2G : band5G) | band_bw | channel;
 	memcpy(roam_cache[n_roam_cache].ssid, bi->SSID, bi->SSID_len);
 
 	n_roam_cache++;
+}
+
+static bool is_duplicated_channel(const chanspec_t *channels, int n_channels, chanspec_t new)
+{
+	int i;
+
+	for (i = 0; i < n_channels; i++) {
+		if (channels[i] == new)
+			return TRUE;
+	}
+
+	return FALSE;
 }
 
 int get_roam_channel_list(int target_chan,
 	chanspec_t *channels, const wlc_ssid_t *ssid, int ioctl_ver)
 {
 	int i, n = 1;
-	uint band, band2G, band5G, bw;
 
-#ifdef D11AC_IOTYPES
-	if (ioctl_ver == 1) {
-		/* legacy chanspec */
-		band2G = WL_LCHANSPEC_BAND_2G;
-		band5G = WL_LCHANSPEC_BAND_5G;
-		bw = WL_LCHANSPEC_BW_20 | WL_LCHANSPEC_CTL_SB_NONE;
-	} else {
-		band2G = WL_CHANSPEC_BAND_2G;
-		band5G = WL_CHANSPEC_BAND_5G;
-		bw = WL_CHANSPEC_BW_20;
-	}
-#else
-	band2G = WL_CHANSPEC_BAND_2G;
-	band5G = WL_CHANSPEC_BAND_5G;
-	bw = WL_CHANSPEC_BW_20 | WL_CHANSPEC_CTL_SB_NONE;
-#endif /* D11AC_IOTYPES */
+	/* first index is filled with the given target channel */
+	channels[0] = (target_chan & WL_CHANSPEC_CHAN_MASK) |
+		(target_chan <= 14 ? band2G : band5G) | band_bw;
 
-	if (target_chan <= 14)
-		band = band2G;
-	else
-		band = band5G;
-	*channels = (target_chan & WL_CHANSPEC_CHAN_MASK) | band | bw;
-	WL_DBG((" %s: %02d 0x%04X\n", __FUNCTION__, target_chan, *channels));
-	++channels;
+	WL_DBG((" %s: %03d 0x%04X\n", __FUNCTION__, target_chan, channels[0]));
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
 	if (roamscan_mode) {
 		for (i = 0; i < n_roam_cache; i++) {
-			if ((roam_cache[i].chanspec & WL_CHANSPEC_CHAN_MASK) != target_chan) {
-				*channels = roam_cache[i].chanspec & WL_CHANSPEC_CHAN_MASK;
-				WL_DBG((" %s: %02d\n", __FUNCTION__, *channels));
-				if (*channels <= 14)
-					*channels |= band2G | bw;
-				else
-					*channels |= band5G | bw;
+			chanspec_t ch = roam_cache[i].chanspec;
+			bool is_2G = ioctl_ver == 1 ? LCHSPEC_IS2G(ch) : CHSPEC_IS2G(ch);
+			bool is_5G = ioctl_ver == 1 ? LCHSPEC_IS5G(ch) : CHSPEC_IS5G(ch);
+			bool band_match = ((roam_band == WLC_BAND_AUTO) ||
+				((roam_band == WLC_BAND_2G) && is_2G) ||
+				((roam_band == WLC_BAND_5G) && is_5G));
 
-				channels++;
-				n++;
+			ch = CHSPEC_CHANNEL(ch) | (is_2G ? band2G : band5G) | band_bw;
+			if (band_match && !is_duplicated_channel(channels, n, ch)) {
+				WL_DBG((" %s: %03d(0x%X)\n", __FUNCTION__, CHSPEC_CHANNEL(ch), ch));
+				channels[n++] = ch;
 			}
 		}
 
@@ -250,23 +244,20 @@ int get_roam_channel_list(int target_chan,
 
 	for (i = 0; i < n_roam_cache; i++) {
 		chanspec_t ch = roam_cache[i].chanspec;
+		bool is_2G = ioctl_ver == 1 ? LCHSPEC_IS2G(ch) : CHSPEC_IS2G(ch);
+		bool is_5G = ioctl_ver == 1 ? LCHSPEC_IS5G(ch) : CHSPEC_IS5G(ch);
+		bool band_match = ((roam_band == WLC_BAND_AUTO) ||
+			((roam_band == WLC_BAND_2G) && is_2G) ||
+			((roam_band == WLC_BAND_5G) && is_5G));
+
+		ch = CHSPEC_CHANNEL(ch) | (is_2G ? band2G : band5G) | band_bw;
 		if ((roam_cache[i].ssid_len == ssid->SSID_len) &&
-			((ch & WL_CHANSPEC_CHAN_MASK) != target_chan) &&
-			((roam_band == WLC_BAND_AUTO) ||
-			((roam_band == WLC_BAND_2G) && CHSPEC_IS2G(ch)) ||
-			((roam_band == WLC_BAND_5G) && CHSPEC_IS5G(ch))) &&
+			band_match && !is_duplicated_channel(channels, n, ch) &&
 			(memcmp(roam_cache[i].ssid, ssid->SSID, ssid->SSID_len) == 0)) {
 			/* match found, add it */
-			*channels = ch & WL_CHANSPEC_CHAN_MASK;
-			if (*channels <= 14)
-				*channels |= band2G | bw;
-			else
-				*channels |= band5G | bw;
-
-			WL_DBG((" %s: %02d 0x%04X\n", __FUNCTION__,
-				ch & WL_CHANSPEC_CHAN_MASK, *channels));
-
-			channels++; n++;
+			WL_DBG((" %s: %03d(0x%04X)\n", __FUNCTION__,
+				CHSPEC_CHANNEL(ch), ch));
+			channels[n++] = ch;
 		}
 	}
 

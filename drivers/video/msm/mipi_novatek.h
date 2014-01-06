@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,7 +17,7 @@
 #define NOVATEK_TWO_LANE
 #include "mipi_dsi.h"
 
-#if defined(CONFIG_MACH_APEXQ) || \
+#if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_JASPER) ||\
 	defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
 #define MAX_BL_LEVEL 225
 #define MAX_GAMMA_VALUE 25
@@ -29,7 +29,8 @@
 #define MIN_BL_LEVEL 0
 #define INDEX_OFFSET 0
 #endif
-#define JASPER_MANUFACTURE_ID 0x556CC0
+#define JASPER_MANUFACTURE_ID_BOE 0x55BCC0
+#define JASPER_MANUFACTURE_ID_HYDIS 0x556CC0
 
 enum mipi_novatek_cmd_list {
 	PANEL_READY_TO_ON,

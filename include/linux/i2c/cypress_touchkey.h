@@ -33,8 +33,11 @@ struct cypress_touchkey_platform_data {
 #define CYPRESS_RAW_DATA_BACK  0x10
 #define CYPRESS_RAW_DATA_HOME  0
 #define CYPRESS_RAW_DATA_RECENT    0
+
+#if !defined (CONFIG_MACH_EXPRESS)
 #define CYPRESS_IDAC_MENU 0x06
 #define CYPRESS_IDAC_BACK 0x07
+#endif
 
 #elif defined(CONFIG_MACH_AEGIS2)
 #define CYPRESS_DIFF_BACK      0x10

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,9 @@
 #include "devices.h"
 #include "board-8960.h"
 #include "board-storage-common-a.h"
-
+#if !defined(CONFIG_MACH_ESPRESSO10_ATT) && !defined(CONFIG_MACH_AEGIS2) && !defined (CONFIG_MACH_ESPRESSO10_SPR)\
+	&& !defined(CONFIG_MACH_JASPER) && !defined(CONFIG_MACH_GOGH) && !defined (CONFIG_MACH_ESPRESSO10_VZW)\
+	&& !defined (CONFIG_MACH_ESPRESSO_VZW)
 static struct msm_bus_vectors sdcc_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_SPS,
@@ -48,6 +50,7 @@ static struct msm_bus_vectors sdcc_perf_vectors[] = {
 	},
 };
 
+#if !defined(CONFIG_MACH_ESPRESSO_VZW)
 static struct msm_bus_paths sdcc_bus_scale_usecases[] = {
 	{
 		ARRAY_SIZE(sdcc_init_vectors),
@@ -64,7 +67,9 @@ static struct msm_bus_scale_pdata sdcc_bus_scale_pdata = {
 	ARRAY_SIZE(sdcc_bus_scale_usecases),
 	.name = "sdcc",
 };
+#endif
 
+#endif
 /* MSM8960 has 5 SDCC controllers */
 enum sdcc_controllers {
 	SDCC1,
@@ -321,6 +326,7 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 	},
 };
 
+
 static unsigned int sdc1_sup_clk_rates[] = {
 	400000, 24000000, 48000000, 96000000
 };
@@ -329,9 +335,13 @@ static unsigned int sdc3_sup_clk_rates[] = {
 	400000, 24000000, 48000000, 96000000, 192000000
 };
 
+#if !defined (CONFIG_MACH_AEGIS2) && !defined (CONFIG_MACH_ESPRESSO10_SPR)\
+	&& !defined(CONFIG_MACH_JASPER) && !defined(CONFIG_MACH_GOGH) && !defined (CONFIG_MACH_ESPRESSO10_VZW)\
+	&& !defined(CONFIG_MACH_ESPRESSO_VZW)
 static unsigned int sdc4_sup_clk_rates[] = {
 	400000, 24000000, 48000000
 };
+#endif
 
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 static struct mmc_platform_data msm8960_sdc1_data = {
@@ -372,9 +382,12 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.is_status_gpio_active_low = true,
 #endif
 	.xpc_cap	= 1,
-	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
-			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600 | MMC_CAP_1_8V_DDR),
+	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
+#if (!defined CONFIG_MACH_M2_SPR) && (!defined CONFIG_MACH_M2_ATT) && (!defined CONFIG_MACH_M2_SKT) && (!defined CONFIG_MACH_M2_VZW)	/* D2 (ATT, SKT, SPR, VZW) do not support SD 3.0 (refer JB CL 799054) */
+			| MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 
+			| MMC_CAP_UHS_SDR104 | MMC_CAP_1_8V_DDR
+#endif
+			| MMC_CAP_MAX_CURRENT_600),
 			.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };
 #endif

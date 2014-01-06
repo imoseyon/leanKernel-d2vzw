@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1313,7 +1313,6 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 			vreg->rdev_pc = rdev;
 	}
 
-bail:
 	if (rc)
 		pr_err("error for %s, rc=%d\n", vreg->rdesc.name, rc);
 

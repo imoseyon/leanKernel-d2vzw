@@ -1199,8 +1199,7 @@ static int gp2a_opt_remove(struct platform_device *pdev)
 			kfree(gp2a->proximity_input_dev);
 	}
 
-	cancel_delayed_work(&gp2a->light_work);
-	flush_scheduled_work();
+	cancel_delayed_work_sync(&gp2a->light_work);
 	mutex_destroy(&gp2a->light_mutex);
 
 	if (gp2a->light_input_dev != NULL) {
@@ -1253,8 +1252,7 @@ static void gp2a_opt_shutdown(struct platform_device *pdev)
 			kfree(gp2a->proximity_input_dev);
 	}
 
-	cancel_delayed_work(&gp2a->light_work);
-	flush_scheduled_work();
+	cancel_delayed_work_sync(&gp2a->light_work);
 	mutex_destroy(&gp2a->light_mutex);
 
 	if (gp2a->light_input_dev != NULL) {

@@ -802,63 +802,10 @@ static void dbs_refresh_callback(struct work_struct *unused)
 	}
 	unlock_policy_rwsem_write(cpu);
 }
-
-static void dbs_input_event(struct input_handle *handle, unsigned int type,
-		unsigned int code, int value)
-{
-	return;
-}
-
-static int dbs_input_connect(struct input_handler *handler,
-		struct input_dev *dev, const struct input_device_id *id)
-{
-	struct input_handle *handle;
-	int error;
-
-	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
-	if (!handle)
-		return -ENOMEM;
-
-	handle->dev = dev;
-	handle->handler = handler;
-	handle->name = "cpufreq";
-
-	error = input_register_handle(handle);
-	if (error)
-		goto err2;
-
-	error = input_open_device(handle);
-	if (error)
-		goto err1;
-
-	return 0;
-err1:
-	input_unregister_handle(handle);
-err2:
-	kfree(handle);
-	return error;
-}
-
-static void dbs_input_disconnect(struct input_handle *handle)
-{
-	input_close_device(handle);
-	input_unregister_handle(handle);
-	kfree(handle);
-}
-
 static const struct input_device_id dbs_ids[] = {
 	{ .driver_info = 1 },
 	{ },
 };
-
-static struct input_handler dbs_input_handler = {
-	.event		= dbs_input_event,
-	.connect	= dbs_input_connect,
-	.disconnect	= dbs_input_disconnect,
-	.name		= "cpufreq_ond",
-	.id_table	= dbs_ids,
-};
-
 static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 				   unsigned int event)
 {
@@ -949,13 +896,13 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 
 	case CPUFREQ_GOV_LIMITS:
 		mutex_lock(&this_dbs_info->timer_mutex);
-		if (policy->max < this_dbs_info->cur_policy->cur)
+		if (this_dbs_info->cur_policy && policy->max < this_dbs_info->cur_policy->cur)
 			__cpufreq_driver_target(this_dbs_info->cur_policy,
 				policy->max, CPUFREQ_RELATION_H);
-		else if (policy->min > this_dbs_info->cur_policy->cur)
+		else if (this_dbs_info->cur_policy && policy->min > this_dbs_info->cur_policy->cur)
 			__cpufreq_driver_target(this_dbs_info->cur_policy,
 				policy->min, CPUFREQ_RELATION_L);
-		else if (dbs_tuners_ins.powersave_bias != 0)
+		else if (this_dbs_info->cur_policy && dbs_tuners_ins.powersave_bias != 0)
 			ondemand_powersave_bias_setspeed(
 				this_dbs_info->cur_policy,
 				policy,

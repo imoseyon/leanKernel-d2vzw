@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -864,9 +864,8 @@ void kgsl_pwrctrl_wake(struct kgsl_device *device)
 		mod_timer(&device->idle_timer,
 				jiffies + device->pwrctrl.interval_timeout);
 		wake_lock(&device->idle_wakelock);
-		if (device->pwrctrl.restore_slumber == false)
-			pm_qos_update_request(&device->pm_qos_req_dma,
-						GPU_SWFI_LATENCY);
+		pm_qos_update_request(&device->pm_qos_req_dma,
+					GPU_SWFI_LATENCY);
 	case KGSL_STATE_ACTIVE:
 		break;
 	default:

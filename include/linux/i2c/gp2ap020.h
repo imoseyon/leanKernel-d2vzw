@@ -55,7 +55,7 @@ int opt_i2c_read(u8 reg, unsigned char *rbuf, int len, u16 addr, int adapt_num);
 int opt_i2c_write(u8 reg, u8 *val, u16 addr, int adapt_num);
 
 struct gp2a_platform_data {
-	int (*gp2a_led_on) (int);
+	void (*gp2a_led_on) (int);
 	void (*power_on) (int);
 	int p_out; /* proximity-sensor-output gpio */
 	int adapt_num;

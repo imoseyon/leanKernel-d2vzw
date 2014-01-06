@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,7 +47,8 @@ extern struct regulator_init_data msm_saw_regulator_pdata_s6;
 extern struct rpm_regulator_platform_data msm_rpm_regulator_pdata __devinitdata;
 #if defined(CONFIG_TOUCHSCREEN_MMS144) || \
 	defined(CONFIG_TOUCHSCREEN_MMS136) || \
-	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)
+	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET) || \
+	defined(CONFIG_TOUCHSCREEN_MMS134S)
 extern void __init mms_tsp_input_init(void);
 #endif
 
@@ -55,6 +56,7 @@ extern void __init mms_tsp_input_init(void);
 				|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
 				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
 				|| defined(CONFIG_MACH_ESPRESSO10_ATT) \
+				|| defined(CONFIG_MACH_KONA) \
 				|| defined(CONFIG_MACH_ESPRESSO_SPR)
 extern void __init usb_switch_init(void);
 #endif
@@ -91,9 +93,14 @@ enum {
 
 #endif
 
+#ifdef CONFIG_WACOM_W9001
+void __init input_wacom_init(void);
+#endif
+
 extern int samsung_cmc624_on(int enable);
 extern int samsung_has_cmc624(void);
 extern int gpio_rev(unsigned int);
+extern void msm_otg_set_cable_state(int);
 extern void msm_otg_set_vbus_state(int);
 extern void msm_otg_set_charging_state(bool enable);
 extern void msm_otg_set_id_state(bool enable);

@@ -32,6 +32,7 @@ static inline void memcpy_dir(void *buf, void *sgdata, size_t nbytes, int out)
 
 void scatterwalk_start(struct scatter_walk *walk, struct scatterlist *sg)
 {
+	BUG_ON(!sg);
 	walk->sg = sg;
 
 	BUG_ON(!sg->length);

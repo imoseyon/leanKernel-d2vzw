@@ -332,7 +332,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 };
 
 
-#define MSM_PMEM_ADSP_SIZE         0x5100000 /* 81 Mbytes */
+#define MSM_PMEM_ADSP_SIZE         0x4100000 /* 81 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
 #define MSM_LIQUID_PMEM_SIZE 0x4000000 /* 64 Mbytes */
@@ -340,13 +340,20 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 #define MSM_PMEM_KERNEL_EBI1_SIZE  0x280000 /* 2.5MB */
-#define MSM_ION_SF_SIZE		0x2D00000 /* 45MB */
-#define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
+#ifdef CONFIG_MSM_IOMMU
+#define MSM_ION_MM_SIZE		0x3800000
+#define MSM_ION_SF_SIZE		0x0
+#define MSM_ION_HEAP_NUM	7
+#else
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
+#define MSM_ION_SF_SIZE		0x2D00000 /* 45MB */
+#define MSM_ION_HEAP_NUM	8
+#endif
+#define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
 #define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
-#define MSM_ION_HEAP_NUM	8
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE /* 4KB */
+
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
@@ -428,7 +435,6 @@ static struct platform_device android_pmem_adsp_device = {
 	.id = 2,
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
-#endif
 
 static struct android_pmem_platform_data android_pmem_audio_pdata = {
 	.name = "pmem_audio",
@@ -442,7 +448,8 @@ static struct platform_device android_pmem_audio_device = {
 	.id = 4,
 	.dev = { .platform_data = &android_pmem_audio_pdata },
 };
-#endif
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 
 struct fmem_platform_data fmem_pdata = {
 };
@@ -523,15 +530,19 @@ static void __init size_pmem_devices(void)
 	}
 
 	android_pmem_pdata.size = pmem_size;
-#endif
 	android_pmem_audio_pdata.size = MSM_PMEM_AUDIO_SIZE;
-#endif
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 }
 
+#ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
 	msm8960_reserve_table[p->memory_type].size += p->size;
 }
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 
 static void __init reserve_pmem_memory(void)
 {
@@ -539,8 +550,8 @@ static void __init reserve_pmem_memory(void)
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-#endif
 	reserve_memory_for(&android_pmem_audio_pdata);
+#endif
 	msm8960_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }
@@ -628,6 +639,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &cp_mfc_ion_pdata,
 		},
+#ifndef CONFIG_MSM_IOMMU
 		{
 			.id	= ION_SF_HEAP_ID,
 			.type	= ION_HEAP_TYPE_CARVEOUT,
@@ -636,6 +648,7 @@ static struct ion_platform_data ion_pdata = {
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &co_ion_pdata,
 		},
+#endif
 		{
 			.id	= ION_IOMMU_HEAP_ID,
 			.type	= ION_HEAP_TYPE_IOMMU,
@@ -1862,12 +1875,11 @@ void max17040_hw_init(void)
 
 static int max17040_low_batt_cb(void)
 {
-	pr_err("%s: Low battery alert\n", __func__);
-
 #ifdef CONFIG_BATTERY_SEC
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
+	pr_err("%s: Low battery alert\n", __func__);
 	if (!psy) {
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return -ENODEV;
@@ -3245,7 +3257,7 @@ static struct msm_bus_scale_pdata usb_bus_scale_pdata = {
 
 static int phy_settings[] = {
 	0x44, 0x80,
-	0x6F, 0x81,
+	0x7F, 0x81,
 	0x3C, 0x82,
 	0x13, 0x83,
 	-1,
@@ -4193,7 +4205,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.type			= EV_KEY,
 		.gpio			= NULL,
 		.active_low		= 1,
-		.wakeup			= 0,
+		.wakeup			= 1,
 		.debounce_interval	= 5, /* ms */
 		.desc			= "Vol Up",
 	},
@@ -4202,7 +4214,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.type			= EV_KEY,
 		.gpio			= NULL,
 		.active_low		= 1,
-		.wakeup			= 0,
+		.wakeup			= 1,
 		.debounce_interval	= 5, /* ms */
 		.desc			= "Vol Down",
 	},
@@ -4488,8 +4500,8 @@ static struct platform_device *common_devices[] __initdata = {
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-#endif
 	&android_pmem_audio_device,
+#endif
 #endif
 #ifdef CONFIG_KEYBOARD_GPIO
 	&msm8960_gpio_keys_device,
@@ -4548,6 +4560,7 @@ static struct platform_device *jaguar_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 	&msm_cpudai0,
 	&msm_cpudai1,

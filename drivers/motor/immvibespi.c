@@ -38,7 +38,6 @@
 #define PWM_DEVICE	1
 
 static bool g_bampenabled;
-static u8 pwr_on;
 
 static int32_t vibe_set_pwm_freq(int nForce)
 {
@@ -109,20 +108,24 @@ static int32_t ImmVibeSPI_ForceOut_AmpDisable(u_int8_t nActuatorIndex)
 	if (g_bampenabled) {
 		g_bampenabled = false;
 		if (vibrator_drvdata.vib_model == HAPTIC_PWM) {
-			gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.\
-			vib_pwm_gpio, 0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, \
-			GPIO_CFG_2MA), 1);
+			gpio_tlmm_config(
+				GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,
+					0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
+					GPIO_CFG_2MA),
+				1);
 			gpio_set_value(vibrator_drvdata.vib_pwm_gpio, \
 			    VIBRATION_OFF);
 			gpio_direction_output(vibrator_drvdata.vib_en_gpio,\
 			    VIBRATION_OFF);
 		}
+#ifndef CONFIG_HAPTIC_DRV2603
 		gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.haptic_pwr_en_gpio,\
 		0, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
 		if (vibrator_drvdata.is_pmic_haptic_pwr_en)
 			gpio_direction_output(vibrator_drvdata.haptic_pwr_en_gpio,1);
 		else
 			gpio_direction_output(vibrator_drvdata.haptic_pwr_en_gpio,0);
+#endif
 		printk(KERN_DEBUG "tspdrv: %s\n", __func__);
 #if defined(CONFIG_MOTOR_DRV_MAX77693)
 		max77693_vibtonz_en(0);
@@ -140,16 +143,20 @@ static int32_t ImmVibeSPI_ForceOut_AmpEnable(u_int8_t nActuatorIndex)
 	if (!g_bampenabled) {
 		g_bampenabled = true;
 		if (vibrator_drvdata.vib_model == HAPTIC_PWM) {
-			gpio_tlmm_config(GPIO_CFG(vibrator_drvdata.\
-			vib_pwm_gpio, 2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN, \
-			GPIO_CFG_2MA), 1);
+			gpio_tlmm_config(
+				GPIO_CFG(vibrator_drvdata.vib_pwm_gpio,
+					2, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_DOWN,
+					GPIO_CFG_2MA),
+				1);
 			gpio_direction_output(vibrator_drvdata.vib_en_gpio,\
 				VIBRATION_ON);
 		}
+#ifndef CONFIG_HAPTIC_DRV2603
 		if (vibrator_drvdata.is_pmic_haptic_pwr_en)
 			gpio_direction_output(vibrator_drvdata.haptic_pwr_en_gpio,0);
 		else
 			gpio_direction_output(vibrator_drvdata.haptic_pwr_en_gpio,1);
+#endif
 		printk(KERN_DEBUG "tspdrv: %s\n", __func__);
 #if defined(CONFIG_MOTOR_DRV_MAX77693)
 		max77693_vibtonz_en(1);
@@ -247,13 +254,22 @@ static int32_t ImmVibeSPI_ForceOut_Initialize(void)
 				printk(KERN_ERR "vib enable gpio_request is failed\n");
 				goto err2;
 			}
+#ifdef CONFIG_HAPTIC_DRV2603
+			gpio_tlmm_config(
+				GPIO_CFG(vibrator_drvdata.vib_en_gpio, 0,
+					GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+				1);
+
+#endif
 		}
 	}
 	ImmVibeSPI_ForceOut_AmpDisable(0);
 	return VIBE_S_SUCCESS;
 
 err2:
+#ifndef CONFIG_HAPTIC_DRV2603
 	gpio_free(vibrator_drvdata.haptic_pwr_en_gpio);
+#endif
 err1:
 	;
 	return VIBE_E_FAIL;

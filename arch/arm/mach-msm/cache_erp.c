@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -348,8 +348,13 @@ static irqreturn_t msm_l1_erp_irq(int irq, void *dev_id)
 	if (print_regs)
 		sec_l1_dcache_check_fail();
 #else
-	if (print_regs)
-		ERP_L1_ERR("L1 cache error detected");
+	if (print_regs) {
+		if ((cesr & (~CESR_I_MASK & CESR_VALID_MASK)) ||
+			cpu_is_krait_v1() || cpu_is_krait_v2())
+				ERP_L1_ERR("L1 nonrecoverable cache error detected");
+		else
+			ERP_L1_RECOV_ERR("L1 recoverable error detected\n");
+	}
 #endif
 
 	return IRQ_HANDLED;
@@ -365,7 +370,6 @@ static irqreturn_t msm_l2_erp_irq(int irq, void *dev_id)
 	int soft_error = 0;
 	int port_error = 0;
 	int unrecoverable = 0;
-	int print_alert;
 
 	l2esr = get_l2_indirect_reg(L2ESR_IND_ADDR);
 	l2esynr0 = get_l2_indirect_reg(L2ESYNR0_IND_ADDR);

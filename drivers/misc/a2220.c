@@ -31,6 +31,7 @@
 #include <mach/msm_xo.h>
 
 #define ENABLE_DIAG_IOCTLS	(0)
+#define ENABDIAG_IOCTLS (0)
 
 struct a2220_data {
 	struct i2c_client *this_client;
@@ -599,7 +600,7 @@ static unsigned char pcm_reset[] = {
 
 static ssize_t chk_wakeup_a2220(struct a2220_data *a2220)
 {
-	int i, rc = 0, retry = 4;
+	int rc = 0, retry = 4;
 
 	if (a2220->suspended == 1) {
 		mdelay(1);

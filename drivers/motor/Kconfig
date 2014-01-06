@@ -11,3 +11,7 @@ config MOTOR_DRV_MAX77693
 	tristate "Maxim MAX77693 motor"
 	default n
 	depends on MFD_MAX77693
+
+config HAPTIC_DRV2603
+	bool "TI DRV2603 haptic motor"
+	default n

@@ -223,6 +223,35 @@ config SEC_DEBUG_LOW_LOG
 	 when an exception occurs, when the debug level is low.
 	 The file I/O is added in kernel driver level
 	 so that kernel messages are logged on next reboot.
+config SEC_DEBUG_DOUBLE_FREE
+	bool "Enable double free detection"
+	default n
+	help
+	 Detect a erraneous codes that frees a kmalloced node
+	 twice. When kfree(p) is called, p is not freed right away.
+	 Instead, it is pushed into a circular buffer. What it frees
+	 is the oldest pointer that was pushed into the buffer.
+	 If someone tries to free the same pointer p, *p
+	 is read and checks for magic codes that is written
+	 when it was first freed. If it matches, the whole
+	 circular buffer is searched. Panic will happend when
+	 a match is found.
+
+comment "PowerManagement Feature"
+menuconfig SEC_PM
+	bool "Samsung TN PowerManagement Feature"
+	default y
+	help
+	  Samsung TN PowerManagement Feature.
+
+if SEC_PM
+config SEC_PM_DEBUG
+	bool "Samsung TN PowerManagement Debug Feature"
+	default n
+	help
+	  Samsung TN PowerManagement Debug Feature.
+
+endif
 
 config PID_IN_CONTEXTIDR
 	bool "Write the current PID to the CONTEXTIDR register"
@@ -232,5 +261,38 @@ config PID_IN_CONTEXTIDR
 	  the PROCID field of the CONTEXTIDR register, at the expense of some
 	  additional instructions during context switch. Say Y here only if you
 	  are planning to use hardware trace tools with this kernel.
+
+comment "Samsung Rooting Restriction Feature"
+config SEC_RESTRICT_ROOTING
+	bool "Samsung Rooting Restriction Feature"
+	default n
+	help
+	  Restrict unauthorized executions with root permission.
+
+config SEC_RESTRICT_SETUID
+	bool "Restrict changing root privilege except allowed process"
+	depends on SEC_RESTRICT_ROOTING
+	default y
+	help
+	  Say Y here if you want to restrict functions related setuid. Only allowed
+	  process can chanage ROOT privilege. Saying N will not restrict changing
+	  permission.
+
+config SEC_RESTRICT_FORK
+	bool "Restrict forking process except allowed process"
+	depends on SEC_RESTRICT_ROOTING
+	default y
+	help
+	  Say Y here if you want to restrict function related fork. Process matched
+	  special condition will be not forked. Saying N will not restrict forking
+	  process.
+
+config SEC_RESTRICT_ROOTING_LOG
+	bool "Print restricted result to kernel log"
+	depends on SEC_RESTRICT_ROOTING
+	default n
+	help
+	   Say Y here if you want to see result of restricting SETUID or FORK. It will
+	   be displayed by kernel error log. Saying N will not be displayed anything.
 
 endmenu

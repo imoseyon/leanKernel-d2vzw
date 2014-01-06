@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/smd_tty.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -507,7 +507,7 @@ static int __init smd_tty_init(void)
 	int ret;
 	int n;
 	int idx;
-
+	struct device *dev;
 	smd_tty_driver = alloc_tty_driver(MAX_SMD_TTYS);
 	if (smd_tty_driver == 0)
 		return -ENOMEM;
@@ -555,15 +555,15 @@ static int __init smd_tty_init(void)
 			/*
 			 * use legacy mode for 8660 Standalone (subtype 0)
 			 */
-			legacy_ds |= cpu_is_msm8960() || cpu_is_msm8x60() &&
-					(socinfo_get_platform_subtype() == 0x0);
+			legacy_ds |=((cpu_is_msm8960() || cpu_is_msm8x60()) &&
+					(socinfo_get_platform_subtype() == 0x0));
 
 			if (!legacy_ds)
 				continue;
 		}
 
-		ret = tty_register_device(smd_tty_driver, idx, 0);
-		if (IS_ERR(ret)) {
+		dev = tty_register_device(smd_tty_driver, idx, 0);
+		if (IS_ERR(dev)) {
 			pr_err("%s: init failed %d (%d)\n", __func__, idx, ret);
 			goto out;
 		}

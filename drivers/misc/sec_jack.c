@@ -105,7 +105,7 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	 */
 
 	if (jack_type == hi->cur_jack_type) {
-		pr_debug(MODULE_NAME "%s return, same type reason\n", __func__);
+		pr_err(MODULE_NAME "%s return, same type reason\n", __func__);
 		return;
 	}
 
@@ -150,6 +150,7 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 
 static void handle_jack_not_inserted(struct sec_jack_info *hi)
 {
+	pr_info(MODULE_NAME "Jack not inserted properly\n");
 	sec_jack_set_type(hi, SEC_JACK_NO_DEVICE);
 	hi->pdata->set_micbias_state(false);
 }
@@ -190,7 +191,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 					if (recheck_jack == true && i == 5) {
 #endif
 #endif
-						pr_debug(MODULE_NAME "something wrong connectoin!\n");
+						pr_err(MODULE_NAME "something wrong connectoin!\n");
 						handle_jack_not_inserted(hi);
 						recheck_jack = false;
 						return;
@@ -310,7 +311,6 @@ static ssize_t reselect_jack_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct sec_jack_info *hi = dev_get_drvdata(dev);
-	struct sec_jack_platform_data *pdata = hi->pdata;
 	int value = 0;
 
 

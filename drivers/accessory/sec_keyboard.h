@@ -48,7 +48,7 @@
 #define KEYBOARD_MAX   0x7f
 
 enum KEY_LAYOUT {
-	UNKOWN_KEYLAYOUT = 0,
+	UNKNOWN_KEYLAYOUT = 0,
 	US_KEYLAYOUT,
 	UK_KEYLAYOUT,
 };
@@ -73,6 +73,7 @@ struct sec_keyboard_drvdata {
 	struct delayed_work remap_dwork;
 	struct delayed_work power_dwork;
 	struct delayed_work handledata_dwork;
+	struct delayed_work ack_dwork;
 	struct sec_keyboard_callbacks callbacks;
 	struct serio *serio;
 	struct serio_driver serio_driver;
@@ -81,20 +82,24 @@ struct sec_keyboard_drvdata {
 #endif
 	void	(*acc_power)(u8 token, bool active);
 	void (*check_uart_path)(bool en);
+	int (*noti_univ_kbd_dock)(unsigned int code);
 	bool led_on;
 	bool dockconnected;
 	bool pre_connected;
 	bool pressed[KEYBOARD_SIZE];
 	bool pre_uart_path;
 	bool tx_ready;
+	bool univ_kbd_dock;
 	int acc_int_gpio;
 	unsigned int remap_key;
 	unsigned int kl;
 	unsigned int pre_kl;
+	unsigned int ack_code;
 	unsigned short keycode[KEYBOARD_SIZE];
 	unsigned long connected_time;
 	unsigned long disconnected_time;
 	unsigned char scan_code;
+	int suspend_state;
 };
 
 static const unsigned short sec_keycodes[KEYBOARD_SIZE] = {

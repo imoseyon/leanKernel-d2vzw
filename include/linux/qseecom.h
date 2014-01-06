@@ -107,6 +107,16 @@ struct qseecom_qseos_version_req {
 	unsigned int qseos_version; /* in */
 };
 
+/*
+ * struct qseecom_qseos_app_load_query - verify if app is loaded in qsee
+ * @app_name[MAX_APP_NAME_SIZE]-  name of the app.
+ * @app_id - app id.
+ */
+struct qseecom_qseos_app_load_query {
+	char app_name[MAX_APP_NAME_SIZE]; /* in */
+	int app_id; /* out */
+};
+
 #define QSEECOM_IOC_MAGIC    0x97
 
 
@@ -145,5 +155,15 @@ struct qseecom_qseos_version_req {
 
 #define QSEECOM_IOCTL_PERF_DISABLE_REQ \
 	_IO(QSEECOM_IOC_MAGIC, 12)
+
+#define QSEECOM_IOCTL_LOAD_EXTERNAL_ELF_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 13, struct qseecom_load_img_req)
+
+#define QSEECOM_IOCTL_UNLOAD_EXTERNAL_ELF_REQ \
+	_IO(QSEECOM_IOC_MAGIC, 14)
+
+#define QSEECOM_IOCTL_APP_LOADED_QUERY_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 15, struct qseecom_qseos_app_load_query)
+
 
 #endif /* __QSEECOM_H_ */

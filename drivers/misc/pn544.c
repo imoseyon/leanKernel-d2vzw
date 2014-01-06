@@ -48,7 +48,7 @@ struct pn544_dev {
 	struct mutex read_mutex;
 	struct i2c_client *client;
 	struct miscdevice pn544_device;
-	void (*conf_gpio) (void);
+	int (*conf_gpio) (void);
 	unsigned int ven_gpio;
 	unsigned int firm_gpio;
 	unsigned int irq_gpio;

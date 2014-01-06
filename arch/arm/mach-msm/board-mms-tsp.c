@@ -70,7 +70,6 @@ void  melfas_vdd_on(bool onoff)
 	int ret = 0;
 	/* 3.3V */
 	static struct regulator *reg_l17;
-	static struct regulator *reg_l11;
 	/* 1.8V */
 #ifdef CONFIG_MACH_M2_VZW
 	if (system_rev < BOARD_REV02) {
@@ -147,6 +146,7 @@ void  melfas_vdd_on(bool onoff)
 		pr_info("tsp 3.3V off is finished.\n");
 	}
 #else
+		static struct regulator *reg_l11;
 		/* 2.8V */
 		if (machine_is_ESPRESSO_VZW() && system_rev < BOARD_REV03) {
 			if (!reg_l17) {
@@ -232,10 +232,10 @@ int is_melfas_vdd_on(void)
 	int ret;
 	/* 3.3V */
 	static struct regulator *reg_l17;
-	static struct regulator *reg_l11;
 #if defined(CONFIG_MACH_ESPRESSO_VZW) || defined(CONFIG_MACH_ESPRESSO_ATT) \
 				|| defined(CONFIG_MACH_ESPRESSO10_VZW) \
 				|| defined(CONFIG_MACH_ESPRESSO_SPR)
+	static struct regulator *reg_l11;				
 	if (system_rev < BOARD_REV03) {
 		if (!reg_l17) {
 			reg_l17 = regulator_get(NULL, "8921_l17");
@@ -304,17 +304,22 @@ int is_melfas_vdd_on(void)
 #endif
 }
 
+
+#if defined(CONFIG_TOUCHSCREEN_MMS136) ||defined(CONFIG_TOUCHSCREEN_MMS144)
 static void melfas_register_callback(struct tsp_callbacks *cb)
 {
 	charger_callbacks = cb;
 	pr_debug("[TSP] melfas_register_callback\n");
 }
+#endif
 
 #if defined(CONFIG_TOUCHSCREEN_MMS136) || \
 	defined(CONFIG_TOUCHSCREEN_MMS136_TABLET)
 #define USE_TOUCHKEY 1
 static u8 touchkey_keycode[] = {KEY_MENU, KEY_HOMEPAGE, KEY_BACK};
+#if !defined(CONFIG_MACH_ESPRESSO_VZW)
 static u8 touchkey_keycode_4key[] = {KEY_BACK, KEY_HOMEPAGE, KEY_F3, KEY_MENU};
+#endif
 #endif
 
 static struct mms_ts_platform_data mms_ts_pdata = {
@@ -337,7 +342,7 @@ static struct mms_ts_platform_data mms_ts_pdata = {
 	.max_x		= 720,
 	.max_y		= 1280,
 	.gpio_lcd_type = GPIO_LCD_TYPE,
-	.config_fw_version = "I747_Me_0507",
+	.config_fw_version = "I747_Me_0924",
 	.register_cb = melfas_register_callback,
 #endif
 	.mux_fw_flash	= melfas_mux_fw_flash,
@@ -347,6 +352,10 @@ static struct mms_ts_platform_data mms_ts_pdata = {
 	.gpio_scl	= GPIO_TOUCH_SCL,
 	.gpio_sda	= GPIO_TOUCH_SDA,
 	.check_module_type = false,
+#if defined(CONFIG_MACH_ESPRESSO_VZW)
+	.invert_y	= true,
+	.flip_xy	= true,
+#endif
 };
 
 static struct i2c_board_info __initdata mms_i2c3_boardinfo_final[] = {

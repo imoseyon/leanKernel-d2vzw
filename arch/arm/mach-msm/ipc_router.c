@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -457,8 +457,12 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
+	snprintf(port_ptr->rx_wakelock_name, MAX_WAKELOCK_NAME_SZ,
+		 "ipc%08x_%s",
+		 port_ptr->this_port.port_id,
+		 current->comm);
 	wake_lock_init(&port_ptr->port_rx_wake_lock,
-			WAKE_LOCK_SUSPEND, "msm_ipc_read");
+			WAKE_LOCK_SUSPEND, port_ptr->rx_wakelock_name);
 
 	port_ptr->endpoint = endpoint;
 	port_ptr->notify = notify;
@@ -2534,15 +2538,15 @@ static int __init msm_ipc_router_init(void)
 	if (!routing_table_inited) {
 		init_routing_table();
 		rt_entry = alloc_routing_table_entry(IPC_ROUTER_NID_LOCAL);
-		ret = add_routing_table_entry(rt_entry); 
-		if (ret) { 
-			pr_err("%s: add_routing_table_entry failed\n", 
-					__func__); 
-			mutex_unlock(&routing_table_lock); 
-			/* destroy_workqueue */ 
-			destroy_workqueue(msm_ipc_router_workqueue); 
-			return ret; 
-		} 
+		ret = add_routing_table_entry(rt_entry);
+		if (ret) {
+			pr_err("%s: add_routing_table_entry failed\n",
+					__func__);
+			mutex_unlock(&routing_table_lock);
+			/* destroy_workqueue */
+			destroy_workqueue(msm_ipc_router_workqueue);
+			return ret;
+		}
 		routing_table_inited = 1;
 	}
 	mutex_unlock(&routing_table_lock);

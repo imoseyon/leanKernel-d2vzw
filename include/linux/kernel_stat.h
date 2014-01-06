@@ -42,7 +42,7 @@ DECLARE_PER_CPU(struct kernel_stat, kstat);
 #define kstat_cpu(cpu)	per_cpu(kstat, cpu)
 /* Must have preemption disabled for this to be meaningful. */
 #define kstat_this_cpu	__get_cpu_var(kstat)
-
+#define kcpustat_cpu(cpu) per_cpu(kstat, cpu)
 extern unsigned long long nr_context_switches(void);
 
 #ifndef CONFIG_GENERIC_HARDIRQS

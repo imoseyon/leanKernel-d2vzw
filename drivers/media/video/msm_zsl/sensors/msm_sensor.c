@@ -246,15 +246,14 @@ int32_t msm_sensor_set_sensor_mode(struct msm_sensor_ctrl_t *s_ctrl,
 int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 			int mode, struct sensor_init_cfg *init_info)
 {
-	int32_t rc = 0;
-	s_ctrl->fps_divider = Q10;
-	s_ctrl->cam_mode = MSM_SENSOR_MODE_INVALID;
-	uint8_t uOTPData[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	uint8_t uReadCheckSum = 0;
 	uint16_t uOTPStartAddr;
 	uint16_t uOTPEndAddr;
+	uint8_t uReadCheckSum = 0;
+	int32_t rc = 0;
 	int i = 0;
-
+	uint8_t uOTPData[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+	s_ctrl->fps_divider = Q10;
+	s_ctrl->cam_mode = MSM_SENSOR_MODE_INVALID;
 	CDBG("%s: %d\n", __func__, __LINE__);
 
 	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,	OTP_PAGE,
@@ -271,11 +270,11 @@ int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 
 	for (i = uOTPStartAddr; i <= uOTPEndAddr; i++)	{
 		msm_camera_i2c_read(s_ctrl->sensor_i2c_client, i,
-				&uOTPData[i-uOTPStartAddr],
+				(uint16_t *)&uOTPData[i-uOTPStartAddr],
 				MSM_CAMERA_I2C_BYTE_DATA);
 		uReadCheckSum += uOTPData[i-uOTPStartAddr];
-		printk(KERN_DEBUG "uOPTData[0x%x] = 0x%x...Sum = %d...\n",
-				i, uOTPData[i-uOTPStartAddr], uReadCheckSum);
+		/*printk(KERN_DEBUG "uOPTData[0x%x] = 0x%x...Sum = %d...\n",
+				i, uOTPData[i-uOTPStartAddr], uReadCheckSum);*/
 	}
 
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client, READ_MODE,

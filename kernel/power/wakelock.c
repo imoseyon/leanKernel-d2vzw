@@ -31,7 +31,8 @@ enum {
 	DEBUG_EXPIRE = 1U << 3,
 	DEBUG_WAKE_LOCK = 1U << 4,
 };
-static int debug_mask = DEBUG_SUSPEND | DEBUG_EXIT_SUSPEND | DEBUG_WAKEUP;
+static int debug_mask = DEBUG_EXIT_SUSPEND |
+				DEBUG_WAKEUP | DEBUG_SUSPEND | DEBUG_EXPIRE;  
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 #define WAKE_LOCK_TYPE_MASK              (0x0f)
@@ -233,6 +234,43 @@ static void print_active_locks(int type)
 		}
 	}
 }
+
+#ifdef CONFIG_SEC_PM_DEBUG
+static void debug_wake_locks(unsigned long notuse)
+{
+	/* Print active wakelocks */
+	struct wake_lock *lock;
+	unsigned long irqflags;
+
+	spin_lock_irqsave(&list_lock, irqflags);
+	list_for_each_entry(lock, &active_wake_locks[WAKE_LOCK_SUSPEND], link) {
+		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
+			long timeout = lock->expires - jiffies;
+			if (timeout > 0)
+				pr_info("[%s]active wake lock %s, time left %ld\n",
+					__func__, lock->name, timeout);
+		} else
+			pr_info("[%s]active wake lock %s\n",
+					__func__, lock->name);
+	}
+	spin_unlock_irqrestore(&list_lock, irqflags);
+
+	/* Restart debug timer with 3seconds timeout */
+	set_debug_lock_timer(1, msecs_to_jiffies(3000));
+}
+static DEFINE_TIMER(debug_locks_timer, debug_wake_locks, 0, 0);
+
+void set_debug_lock_timer(int enable, unsigned int timeout)
+{
+	/* Delete timer first */
+	del_timer(&debug_locks_timer);
+
+	/* Set new timer with timeout */
+	if (enable)
+		mod_timer(&debug_locks_timer, jiffies + timeout);
+}
+EXPORT_SYMBOL(set_debug_lock_timer);
+#endif
 
 static long has_wake_lock_locked(int type)
 {

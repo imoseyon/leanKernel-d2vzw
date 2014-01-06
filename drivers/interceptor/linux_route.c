@@ -40,11 +40,13 @@ static struct dst_entry *
 interceptor_route_create_child_dst(struct dst_entry *dst, Boolean ipv6)
 {
   struct dst_entry *child;
-#ifdef LINUX_HAS_DST_COPY_METRICS
-  SshUInt32 set;
+#ifdef LINUX_DST_ALLOC_REQUIRES_ZEROING
   struct rt6_info *rt6;
   struct rtable *rt;
-#endif /* LINUX_HAS_DST_COPY_METRICS */
+#endif /* LINUX_DST_ALLOC_REQUIRES_ZEROING */
+#ifdef LINUX_HAS_DST_METRICS_ACCESSORS
+  SshUInt32 set;
+#endif /* LINUX_HAS_DST_METRICS_ACCESSORS */
 
   /* Allocate a dst_entry and copy relevant fields from dst. */
   child = SSH_DST_ALLOC(dst);
@@ -57,8 +59,11 @@ interceptor_route_create_child_dst(struct dst_entry *dst, Boolean ipv6)
   /* Child is not added to dst hash, and linux native IPsec is disabled. */
   child->flags |= (DST_NOHASH | DST_NOPOLICY | DST_NOXFRM);
   
-  /* Copy route metrics and lock MTU to interface MTU. */
-#ifdef LINUX_HAS_DST_COPY_METRICS
+#ifdef LINUX_DST_ALLOC_REQUIRES_ZEROING
+  /* Starting from kernel version 3.0 the dst entries are allocated
+     using kmem_cache_alloc() instead of kmem_cache_zalloc(). Therefore
+     the caller is responsible for initializing the rest of the data
+     after the common dst_entry part. */
   if (ipv6 == TRUE)
     {
       rt6 = (struct rt6_info *)child;
@@ -70,15 +75,24 @@ interceptor_route_create_child_dst(struct dst_entry *dst, Boolean ipv6)
       memset(&SSH_RTABLE_FIRST_MEMBER(rt), 0, 
 	     sizeof(*rt) - sizeof(struct dst_entry));
     }
+#endif /* LINUX_DST_ALLOC_REQUIRES_ZEROING */
   
+  /* Copy route metrics and lock MTU to interface MTU. */
+#ifdef LINUX_HAS_DST_METRICS_ACCESSORS
   dst_copy_metrics(child, dst);
   set = dst_metric(child, RTAX_LOCK);
   set |= 1 << RTAX_MTU;
   dst_metric_set(child, RTAX_LOCK, set);
-#else  /* LINUX_HAS_DST_COPY_METRICS */
+  if (dst->dev != NULL)
+    dst_metric_set(child, RTAX_MTU, dst->dev->mtu);
+#else  /* LINUX_HAS_DST_METRICS_ACCESSORS */
   memcpy(child->metrics, dst->metrics, sizeof(child->metrics));
   child->metrics[RTAX_LOCK-1] |= 1 << RTAX_MTU;
-#endif /* LINUX_HAS_DST_COPY_METRICS */
+  if (dst->dev != NULL)
+    child->metrics[RTAX_MTU-1] = dst->dev->mtu;
+#endif /* LINUX_HAS_DST_METRICS_ACCESSORS */
+  if (dst->expires > 0)
+    child->expires = dst->expires;
   
 #ifdef CONFIG_NET_CLS_ROUTE  
   child->tclassid = dst->tclassid;
@@ -96,13 +110,11 @@ interceptor_route_create_child_dst(struct dst_entry *dst, Boolean ipv6)
     }
 #endif /* LINUX_HAS_HH_CACHE */
 
-#ifdef LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS
-  if (dst_get_neighbour(dst) != NULL)
-    dst_set_neighbour(child, neigh_clone(dst_get_neighbour(dst)));
-#else  /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
-  if (dst->neighbour != NULL)
-    child->neighbour = neigh_clone(dst->neighbour);
-#endif /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
+  SSH_DST_NEIGHBOUR_READ_LOCK();
+  if (SSH_DST_GET_NEIGHBOUR(dst) != NULL)
+    SSH_DST_SET_NEIGHBOUR(child,
+                          neigh_clone(SSH_DST_GET_NEIGHBOUR(dst)));
+  SSH_DST_NEIGHBOUR_READ_UNLOCK();
     
   if (dst->dev)
     {
@@ -567,8 +579,8 @@ ssh_interceptor_route_input_ipv4(SshInterceptor interceptor,
 
   /* Release the routing table entry ; otherwise a memory leak occurs
      in the route entry table. */
-  dst_release(SSH_SKB_DST(skbp));
-  SSH_SKB_DST_SET(skbp, NULL);
+  SSH_SKB_DST_DROP(skbp);
+  
   dev_kfree_skb(skbp);
   
   /* Assert that ifnum fits into the SshInterceptorIfnum data type. */
@@ -669,16 +681,14 @@ ssh_interceptor_route_output_ipv6(SshInterceptor interceptor,
   /* For an example of retrieving routing information for IPv6
      within Linux kernel (2.4.19) see inet6_rtm_getroute()
      in /usr/src/linux/net/ipv6/route.c */
-#ifdef LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS
-  neigh = dst_get_neighbour(&rt->dst);
-#else  /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
-  neigh = rt->rt6i_nexthop;
-#endif /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
 
+  SSH_DST_NEIGHBOUR_READ_LOCK();
+  neigh = SSH_DST_GET_NEIGHBOUR(dst);
   if (neigh != NULL)
     SSH_IP6_DECODE(result->gw, &neigh->primary_key);
   else
       SSH_IP6_DECODE(result->gw, &rt_key.fl6_dst.s6_addr);
+  SSH_DST_NEIGHBOUR_READ_UNLOCK();
   
   result->mtu = SSH_DST_MTU(&SSH_RT_DST(rt)); 
  
@@ -847,9 +857,7 @@ ssh_interceptor_reroute_skb_ipv4(SshInterceptor interceptor,
 
   /* Release old dst_entry */
   if (SSH_SKB_DST(skbp))
-    dst_release(SSH_SKB_DST(skbp));
-
-  SSH_SKB_DST_SET(skbp, NULL);
+    SSH_SKB_DST_DROP(skbp);
 
   if ((route_selector & SSH_INTERCEPTOR_ROUTE_KEY_SRC)
       && (route_selector & SSH_INTERCEPTOR_ROUTE_KEY_FLAG_LOCAL_SRC) == 0
@@ -898,7 +906,13 @@ ssh_interceptor_reroute_skb_ipv4(SshInterceptor interceptor,
 #endif /* (SSH_INTERCEPTOR_NUM_EXTENSION_SELECTORS > 0) */
       
       /* Call ip_route_input */
-      if (ip_route_input(skbp, iph->daddr, saddr, tos, dev) < 0)
+      if (
+#ifdef LINUX_USE_SKB_DST_NOREF
+          ip_route_input_noref(skbp, iph->daddr, saddr, tos, dev)
+#else /* LINUX_USE_SKB_DST_NOREF */
+          ip_route_input(skbp, iph->daddr, saddr, tos, dev)
+#endif /* LINUX_USE_SKB_DST_NOREF */
+          < 0)
 	{
 	  SSH_DEBUG(SSH_D_FAIL, 
 		    ("ip_route_input failed. (0x%08x -> 0x%08x)",
@@ -997,7 +1011,11 @@ ssh_interceptor_reroute_skb_ipv4(SshInterceptor interceptor,
 	}
 
       /* Make a new dst because we just rechecked the route. */
-      SSH_SKB_DST_SET(skbp, dst_clone(&SSH_RT_DST(rt)));
+#ifdef LINUX_USE_SKB_DST_NOREF
+      skb_dst_set_noref(skbp, &SSH_RT_DST(rt));
+#else /* LINUX_USE_SKB_DST_NOREF */
+      skb_dst_set(skbp, dst_clone(&SSH_RT_DST(rt)));
+#endif /* LINUX_USE_SKB_DST_NOREF */
       
       /* Release the routing table entry ; otherwise a memory leak occurs
 	 in the route entry table. */
@@ -1010,26 +1028,39 @@ ssh_interceptor_reroute_skb_ipv4(SshInterceptor interceptor,
 #ifdef LINUX_FRAGMENTATION_AFTER_NF_POST_ROUTING
   if (route_selector & SSH_INTERCEPTOR_ROUTE_KEY_FLAG_TRANSFORM_APPLIED)
     {
+      struct dst_entry *dst;
+
       /* Check if need to create a child dst_entry with interface MTU. */
-      if (SSH_SKB_DST(skbp)->child == NULL)
+      dst = SSH_SKB_DST(skbp);
+      if (dst->child == NULL)
 	{
-          if (interceptor_route_create_child_dst(SSH_SKB_DST(skbp), FALSE) 
-	      == NULL)
+          if (interceptor_route_create_child_dst(dst, FALSE) == NULL)
 	    {
 	      SSH_DEBUG(SSH_D_ERROR,
 			("Could not create child dst_entry for dst %p",
-			 SSH_SKB_DST(skbp)));
+			 dst));
 	      return FALSE;
 	    }
 	}
+      else if (dst->child->dev != NULL
+               && dst_mtu(dst->child) < dst->child->dev->mtu)
+        {
+          SSH_DEBUG(SSH_D_LOWOK,
+                    ("Adjusting child dst_entry mtu from %d to %d",
+                     dst_mtu(dst->child), dst->child->dev->mtu));
+#ifdef LINUX_HAS_DST_METRICS_ACCESSORS
+          dst_metric_set(dst->child, RTAX_MTU, dst->child->dev->mtu);
+#else /* LINUX_HAS_DST_METRICS_ACCESSORS */
+          dst->child->metrics[RTAX_MTU-1] = dst->child->dev->mtu;
+#endif /* LINUX_HAS_DST_METRICS_ACCESSORS */
+        }
      
       /* Pop dst stack and use the child entry with interface MTU 
 	 for sending the packet. */
-#ifdef LINUX_DST_POP_IS_SKB_DST_POP
-      SSH_SKB_DST_SET(skbp, dst_clone(skb_dst_pop(skbp)));
-#else /* LINUX_DST_POP_IS_SKB_DST_POP */
-      SSH_SKB_DST_SET(skbp, dst_pop(SSH_SKB_DST(skbp)));
-#endif /*LINUX_DST_POP_IS_SKB_DST_POP */ 
+      dst = dst->child;
+      dst_clone(dst);
+      SSH_SKB_DST_DROP(skbp);
+      skb_dst_set(skbp, dst);      
     }
 #endif /* LINUX_FRAGMENTATION_AFTER_NF_POST_ROUTING */
 #endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
@@ -1095,16 +1126,12 @@ ssh_interceptor_reroute_skb_ipv6(SshInterceptor interceptor,
       return FALSE;
     }
   if (SSH_SKB_DST(skbp))
-    dst_release(SSH_SKB_DST(skbp));
+    SSH_SKB_DST_DROP(skbp);
 
 #ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
 #ifdef LINUX_FRAGMENTATION_AFTER_NF6_POST_ROUTING
   if (route_selector & SSH_INTERCEPTOR_ROUTE_KEY_FLAG_TRANSFORM_APPLIED)
     {
-      SSH_DEBUG(SSH_D_LOWOK, 
-		("Creating a new child entry for dst %p, child %p %lu",
-		 dst, dst->child, skbp->_skb_refdst));
-      
       /* Check if need to create a child dst_entry with interface MTU. */
       if (dst->child == NULL)
 	{
@@ -1118,8 +1145,22 @@ ssh_interceptor_reroute_skb_ipv6(SshInterceptor interceptor,
 	      return FALSE;
 	    }
 	}
+      else if (dst->child->dev != NULL
+               && dst_mtu(dst->child) < dst->child->dev->mtu)
+        {
+          SSH_DEBUG(SSH_D_LOWOK,
+                    ("Adjusting child dst_entry mtu from %d to %d",
+                     dst_mtu(dst->child), dst->child->dev->mtu));
+#ifdef LINUX_HAS_DST_METRICS_ACCESSORS
+          dst_metric_set(dst->child, RTAX_MTU, dst->child->dev->mtu);
+#else /* LINUX_HAS_DST_METRICS_ACCESSORS */
+          dst->child->metrics[RTAX_MTU-1] = dst->child->dev->mtu;
+#endif /* LINUX_HAS_DST_METRICS_ACCESSORS */
+        }
 
-      SSH_SKB_DST_SET(skbp, dst_clone(dst->child));
+      /* Pop dst stack and use the child entry with interface MTU 
+	 for sending the packet. */
+      skb_dst_set(skbp, dst_clone(dst->child));
       dst_release(dst);
     }
   else

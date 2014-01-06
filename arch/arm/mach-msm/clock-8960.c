@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3133,12 +3133,36 @@ static struct clk_freq_tbl clk_tbl_dsi_byte[] = {
 	F_END
 };
 
+static struct branch_clk dsi1_reset_clk = {
+	.b = {
+		.reset_reg = SW_RESET_CORE_REG,
+		.reset_mask = BIT(7),
+		.halt_check = NOCHECK,
+	},
+	.c = {
+		.dbg_name = "dsi1_reset_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(dsi1_reset_clk.c),
+	},
+};
+
+static struct branch_clk dsi2_reset_clk = {
+	.b = {
+		.reset_reg = SW_RESET_CORE_REG,
+		.reset_mask = BIT(25),
+		.halt_check = NOCHECK,
+	},
+	.c = {
+		.dbg_name = "dsi2_reset_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(dsi2_reset_clk.c),
+	},
+};
+
 static struct rcg_clk dsi1_byte_clk = {
 	.b = {
 		.ctl_reg = DSI1_BYTE_CC_REG,
 		.en_mask = BIT(0),
-		.reset_reg = SW_RESET_CORE_REG,
-		.reset_mask = BIT(7),
 		.halt_reg = DBG_BUS_VEC_B_REG,
 		.halt_bit = 21,
 		.retain_reg = DSI1_BYTE_CC_REG,
@@ -3161,8 +3185,6 @@ static struct rcg_clk dsi2_byte_clk = {
 	.b = {
 		.ctl_reg = DSI2_BYTE_CC_REG,
 		.en_mask = BIT(0),
-		.reset_reg = SW_RESET_CORE_REG,
-		.reset_mask = BIT(25),
 		.halt_reg = DBG_BUS_VEC_B_REG,
 		.halt_bit = 20,
 		.retain_reg = DSI2_BYTE_CC_REG,
@@ -3185,7 +3207,6 @@ static struct rcg_clk dsi1_esc_clk = {
 	.b = {
 		.ctl_reg = DSI1_ESC_CC_REG,
 		.en_mask = BIT(0),
-		.reset_reg = SW_RESET_CORE_REG,
 		.halt_reg = DBG_BUS_VEC_I_REG,
 		.halt_bit = 1,
 	},
@@ -5145,6 +5166,9 @@ static struct clk_lookup msm_clocks_8064[] = {
 
 	CLK_LOOKUP("mem_clk",		ebi1_adm_clk.c, "msm_dmov"),
 
+	CLK_LOOKUP("reset1_clk",	dsi1_reset_clk.c, "footswitch-8x60.4"),
+	CLK_LOOKUP("reset2_clk",	dsi2_reset_clk.c, "footswitch-8x60.4"),
+
 	CLK_LOOKUP("l2_mclk",		l2_m_clk,     NULL),
 	CLK_LOOKUP("krait0_mclk",	krait0_m_clk, NULL),
 	CLK_LOOKUP("krait1_mclk",	krait1_m_clk, NULL),
@@ -5457,6 +5481,9 @@ static struct clk_lookup msm_clocks_8960_v1[] __initdata = {
 	CLK_LOOKUP("bus_clk",		dfab_qseecom_clk.c,	"qseecom"),
 	CLK_LOOKUP("mem_clk",		ebi1_adm_clk.c, "msm_dmov"),
 
+	CLK_LOOKUP("reset1_clk",	dsi1_reset_clk.c, "footswitch-8x60.4"),
+	CLK_LOOKUP("reset2_clk",	dsi2_reset_clk.c, "footswitch-8x60.4"),
+
 	CLK_LOOKUP("l2_mclk",		l2_m_clk,     NULL),
 	CLK_LOOKUP("krait0_mclk",	krait0_m_clk, NULL),
 	CLK_LOOKUP("krait1_mclk",	krait1_m_clk, NULL),
@@ -5667,7 +5694,11 @@ static void __init reg_init(void)
 	rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
 
 	/* Source the dsi1_esc_clk from the DSI1 PHY PLLs */
+#if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+	rmwreg(0x0, DSI1_ESC_NS_REG, 0x7);
+#else
 	rmwreg(0x1, DSI1_ESC_NS_REG, 0x7);
+#endif
 
 	/* Source the sata_phy_ref_clk from PXO */
 	if (cpu_is_apq8064())

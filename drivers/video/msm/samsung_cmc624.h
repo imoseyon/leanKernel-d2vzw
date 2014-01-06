@@ -17,8 +17,11 @@
 */
 
 #include "cmc624.h"
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
+#include "samsung_cmc624_tune_konalte.h"
+#else
 #include "samsung_cmc624_tune.h"
-
+#endif
 #define CMC624_INITSEQ cmc624_init
 /*#define CMC624_INITSEQ cmc624_bypass*/
 #define CMC624_MAX_SETTINGS	 100
@@ -60,6 +63,7 @@ struct cmc624_state_type {
 };
 
 /*  CMC624 function */
+extern int cmc624_set_pwm_backlight(int level);
 int cmc624_sysfs_init(void);
 void bypass_onoff_ctrl(int value);
 void cabc_onoff_ctrl(int value);
@@ -87,6 +91,7 @@ void Check_Prog(void);
 void change_mon_clk(void);
 void cmc624_Set_Region_Ext(int enable, int hStart, int hEnd, int vStart,
 			   int vEnd);
+int cmc624_set_pwm_backlight( int level);
 unsigned char LCD_Get_Value(void);
 unsigned char LCD_ID3(void);
 bool Is_4_8LCD_cmc(void);

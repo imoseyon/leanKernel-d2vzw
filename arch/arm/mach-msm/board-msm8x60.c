@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2635,7 +2635,7 @@ static void __init msm8x60_init_dsps(void)
 #define MSM_FB_EXT_BUF_SIZE  \
 		(roundup((720 * 576 * 2), 4096) * 2) /* 2 bpp x 2 pages */
 #else
-#define MSM_FB_EXT_BUFT_SIZE	0
+#define MSM_FB_EXT_BUF_SIZE	0
 #endif
 
 /* Note: must be multiple of 4096 */
@@ -9743,6 +9743,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #else
 	.mem_hid = MEMTYPE_EBI1,
 #endif
+	.mdp_iommu_split_domain = 0,
 };
 
 static void __init reserve_mdp_memory(void)

@@ -191,8 +191,8 @@ static void sec_bat_initial_check(void)
 }
 
 static bool sec_bat_check_jig_status(void) {return false; }
-static void sec_bat_switch_to_check(void) {}
-static void sec_bat_switch_to_normal(void) {}
+static bool sec_bat_switch_to_check(void) {return true; }
+static bool sec_bat_switch_to_normal(void) {return true; }
 
 static int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 static int sec_bat_check_cable_callback(void)

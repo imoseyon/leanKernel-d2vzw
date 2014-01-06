@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,6 +34,7 @@ VREG_CONSUMERS(L1) = {
 VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("8921_l2",		NULL),
 	REGULATOR_SUPPLY("dsi_vdda",		"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vdda",	"mdp.0"),
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csid.0"),
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csid.1"),
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csid.2"),
@@ -143,8 +144,8 @@ VREG_CONSUMERS(L22) = {
 VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("8921_l23",		NULL),
 	REGULATOR_SUPPLY("dsi_vddio",		"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vddio",	"mdp.0"),
 	REGULATOR_SUPPLY("hdmi_avdd",		"hdmi_msm.0"),
-	REGULATOR_SUPPLY("hdmi_pll_fs",		"mdp.0"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.1"),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_qdsp6v4.2"),
@@ -272,6 +273,9 @@ VREG_CONSUMERS(LVS6) = {
 };
 VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("8921_lvs7",		NULL),
+#if defined (CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
+	REGULATOR_SUPPLY("cmc624_vdd1_8",		"mipi_dsi.1"),	
+#endif	
 };
 VREG_CONSUMERS(USB_OTG) = {
 	REGULATOR_SUPPLY("8921_usb_otg",	NULL),
@@ -614,7 +618,8 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	|| defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
 	|| defined(CONFIG_MACH_ESPRESSO_SPR) \
 	|| defined(CONFIG_MACH_ESPRESSO10_SPR) \
-	|| defined(CONFIG_MACH_ESPRESSO10_ATT)
+	|| defined(CONFIG_MACH_ESPRESSO10_ATT) \
+	|| defined(CONFIG_MACH_KONA)
 	PM8XXX_LDO(L29,      "8921_l29", 0, 1, 1800000, 2050000, 200, "8921_s8",
 		0, 4),
 #else
@@ -657,7 +662,11 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L5,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L6,	 0, 1, 0, 2950000, 2950000, NULL,      0, 0),
 	RPM_LDO(L7,	 1, 1, 0, 1850000, 2950000, NULL,      10000, 10000),
-	RPM_LDO(L8,	 0, 1, 0, 3000000, 3100000, NULL,      0, 0),
+#if defined(CONFIG_MACH_KONA)
+	RPM_LDO(L8,	 0, 1, 0, 2800000, 3100000, NULL,      0, 0),
+#else
+	RPM_LDO(L8,  0, 1, 0, 3000000, 3100000, NULL,	   0, 0),
+#endif
 	RPM_LDO(L9,	 0, 1, 0, 2850000, 2850000, NULL,      0, 0),
 #ifdef CONFIG_MACH_JAGUAR
 	RPM_LDO(L10,	 0, 1, 0, 2900000, 2900000, NULL,      0, 0),
@@ -700,7 +709,11 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_VS(LVS5,	 0, 1, 0,		    "8921_s4"),
 	RPM_VS(LVS6,	 0, 1, 0,		    "8921_s4"),
 #endif
+#if defined (CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
+	RPM_VS(LVS7,	 0, 1, 1,			NULL),
+#else
 	RPM_VS(LVS7,	 0, 1, 0,		    "8921_s4"),
+#endif	
 
 	/*	 ID      a_on  ss min_uV   max_uV   supply        freq */
 	RPM_NCP(NCP,	 0,    0, 1800000, 1800000, "8921_l6",    1p60),

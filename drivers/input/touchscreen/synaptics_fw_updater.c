@@ -32,7 +32,12 @@ SOFTWARE.
 #include <linux/syscalls.h>
 
 #include "synaptics_fw_updater.h"
+
+#ifdef CONFIG_MACH_KONA
+#include "synaptics_fw_kona.h"
+#else
 #include "synaptics_fw.h"
+#endif
 
 /* Variables for F34 functionality */
 static unsigned short SynaF34DataBase;
@@ -314,7 +319,7 @@ static void SynaWaitATTN(void)
 	u8 uStatus;
 	int cnt = 1;
 
-	while (gpio_get_value(35) && cnt < 30) {
+	while (gpio_get_value(11) && cnt < 30) {
 		mdelay(20);
 		cnt++;
 	}
@@ -445,7 +450,7 @@ static void SynaProgramFirmware(void)
 	SynaWaitATTN();
 	SynaFlashFirmwareWrite();
 }
-
+#if !defined (CONFIG_MACH_ESPRESSO10_SPR) && !defined (CONFIG_MACH_ESPRESSO10_VZW)
 /* eraseConfigBlock erases the config block */
 static void eraseConfigBlock(void)
 {
@@ -463,7 +468,7 @@ static void eraseConfigBlock(void)
 
 	SynaWaitATTN();
 }
-
+#endif
 void set_fw_version(char *FW_KERNEL_VERSION, char* FW_DATE)
 {
 	FW_KERNEL_VERSION[0] = SynaFirmware[0xb100];

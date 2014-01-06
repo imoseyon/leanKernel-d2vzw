@@ -49,7 +49,8 @@ static int sr030pc50_regs_table_size;
 static int sr030pc50_write_regs_from_sd(char *name);
 static int sr030pc50_i2c_write_multi(unsigned short addr, unsigned int w_data);
 #endif
-static int sr030pc50_sensor_config(void __user *argp);
+static int sr030pc50_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+     void __user *argp);
 static void sr030pc50_set_ev(int ev);
 DEFINE_MUTEX(sr030pc50_mut);
 
@@ -180,7 +181,7 @@ static int sr030pc50_write_regs_from_sd(char *name)
 {
 	char *start, *end, *reg, *size;
 	unsigned short addr;
-	unsigned int len, value;
+	unsigned int value;
 	char reg_buf[7], data_buf1[5], data_buf2[7];
 
 
@@ -238,7 +239,7 @@ static int sr030pc50_write_regs_from_sd(char *name)
 #endif
 
 static DECLARE_WAIT_QUEUE_HEAD(sr030pc50_wait_queue);
-
+#if 0
 /**
  * sr030pc50_i2c_read_multi: Read (I2C) multiple bytes to the camera sensor
  * @client: pointer to i2c_client
@@ -283,7 +284,7 @@ static int sr030pc50_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 
 	return err;
 }
-
+#endif
 
 /**
  * sr030pc50_i2c_read: Read (I2C) multiple bytes to the camera sensor
@@ -579,12 +580,17 @@ void sr030pc50_set_capture(void)
 
 static int32_t sr030pc50_sensor_setting(int update_type, int rt)
 {
-	CAM_DEBUG("Start");
 
-	int32_t rc = 0;
+	int32_t rc;
 	u8 read_value1, sleep_mode;
 	struct msm_camera_csid_params sr030pc50_csid_params;
 	struct msm_camera_csiphy_params sr030pc50_csiphy_params;
+
+	 struct msm_camera_csid_vc_cfg sr030pc50_vccfg[] = {{0, 0x1E, CSI_DECODE_8BIT},
+														/* {0, CSI_RAW10, CSI_DECODE_10BIT}, */
+														{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
+														};
+	CAM_DEBUG("Start");
 	switch (update_type) {
 	case REG_INIT:
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE)
@@ -608,13 +614,6 @@ static int32_t sr030pc50_sensor_setting(int update_type, int rt)
 			sr030pc50_i2c_write_multi(0x01, sleep_mode);
 			msleep(100);
 
-/*			if (config_csi2 == 0) { */
-				struct msm_camera_csid_vc_cfg
-							sr030pc50_vccfg[] = {
-					{0, 0x1E, CSI_DECODE_8BIT},
-					/* {0, CSI_RAW10, CSI_DECODE_10BIT}, */
-					{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
-					};
 			sr030pc50_csid_params.lane_cnt = 1;
 			sr030pc50_csid_params.lane_assign = 0xe4;
 			sr030pc50_csid_params.lut_params.num_cid =
@@ -622,10 +621,7 @@ static int32_t sr030pc50_sensor_setting(int update_type, int rt)
 			sr030pc50_csid_params.lut_params.vc_cfg =
 				&sr030pc50_vccfg[0];
 			sr030pc50_csiphy_params.lane_cnt = 1;
-			if (system_rev <= 1)
-				sr030pc50_csiphy_params.settle_cnt = 0x11;
-			else
-				sr030pc50_csiphy_params.settle_cnt = 0x11;
+			sr030pc50_csiphy_params.settle_cnt = 0x11;
 			v4l2_subdev_notify(sr030pc50_ctrl->sensor_dev,
 					NOTIFY_CSID_CFG,
 					&sr030pc50_csid_params);
@@ -701,12 +697,13 @@ static struct msm_cam_clk_info cam_clk_info[] = {
 #if defined(CONFIG_S5K5CCGX) && defined(CONFIG_SR030PC50) /* Espresso */
 static int sr030pc50_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CAM_DEBUG("=== Start ===");
 
 	int rc = 0;
 	int temp = 0;
 
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+    CAM_DEBUG("=== Start ===");
+
 
 	rc = msm_camera_request_gpio_table(data, 1);
 	if (rc < 0)
@@ -790,8 +787,6 @@ static int sr030pc50_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	int rc = 0;
 	int temp = 0;
-	int status = 0;
-	int count = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
 	rc = msm_camera_request_gpio_table(data, 1);
@@ -856,6 +851,7 @@ static int sr030pc50_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	printk(KERN_DEBUG "sr030pc50_sensor_power_up");
 }
 #endif
+#if 0
 static void sr030pc50_check_dataline(int val)
 {
 	if (val) {
@@ -932,7 +928,7 @@ static int sr030pc50_set_whitebalance(int wb)
 	}
 	return 0;
 }
-
+#endif
 static void sr030pc50_set_ev(int ev)
 {
 	CAM_DEBUG("[sr030pc50] %s : %d", __func__, ev);
@@ -1044,13 +1040,14 @@ long sr030pc50_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	CAM_DEBUG("sr030pc50_sensor_subdev_ioctl\n");
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_CFG:
-		return sr030pc50_sensor_config(argp);
+		return sr030pc50_sensor_config(&sr030pc50_s_ctrl,argp); 
 	default:
 		return -ENOIOCTLCMD;
 	}
 }
 
-int sr030pc50_sensor_config(void __user *argp)
+int sr030pc50_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+		void __user *argp) 
 {
 	struct sensor_cfg_data cfg_data;
 	long   rc = 0;
@@ -1121,7 +1118,7 @@ static int sr030pc50_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
-static struct sr030pc50_format sr030pc50_subdev_info[] = {
+static struct v4l2_subdev_info sr030pc50_subdev_info[] = {	//haarika
 	{
 	.code   = V4L2_MBUS_FMT_YUYV8_2X8,
 	.colorspace = V4L2_COLORSPACE_JPEG,

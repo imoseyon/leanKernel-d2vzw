@@ -3451,15 +3451,6 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 				spin_lock_irq(&device_state_lock);
 				hdev->children[port1-1] = NULL;
 				spin_unlock_irq(&device_state_lock);
-#ifdef CONFIG_USB_HOST_NOTIFY
-				struct otg_transceiver *otg =
-					otg_get_transceiver();
-				struct msm_otg *motg =
-					container_of(otg, struct msm_otg, otg);
-				host_state_notify(&motg->ndev,
-					NOTIFY_HOST_UNKNOWN);
-				motg->ndev.state = NOTIFY_HOST_NONE;
-#endif
 			}
 		}
 

@@ -101,6 +101,11 @@ static void early_suspend(struct work_struct *work)
 			pos->suspend(pos);
 		}
 	}
+
+#ifdef CONFIG_SEC_PM_DEBUG
+	set_debug_lock_timer(1, msecs_to_jiffies(5000));
+#endif
+
 	mutex_unlock(&early_suspend_lock);
 
 	suspend_sys_sync_queue();
@@ -128,6 +133,10 @@ static void late_resume(struct work_struct *work)
 	else
 		abort = 1;
 	spin_unlock_irqrestore(&state_lock, irqflags);
+
+#ifdef CONFIG_SEC_PM_DEBUG
+	set_debug_lock_timer(0, 0);
+#endif
 
 	if (abort) {
 		if (debug_mask & DEBUG_SUSPEND)

@@ -197,7 +197,6 @@ static void reactive_work_func(struct work_struct *work)
 	int err = 0;
 	unsigned char reg_data = 0;
 
-	char dummy_data = 1;
 	struct i2c_adapter *slave_adapter;
 	struct ext_slave_platform_data **pdata_slave = mldl_cfg->pdata_slave;
 	slave_adapter =

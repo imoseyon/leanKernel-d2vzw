@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -160,7 +160,7 @@ static int modem_shutdown(const struct subsys_data *subsys)
 	return 0;
 }
 
-#define MODEM_WDOG_CHECK_TIMEOUT_MS 10000
+#define MODEM_WDOG_CHECK_TIMEOUT_MS 15000
 
 static int modem_powerup(const struct subsys_data *subsys)
 {

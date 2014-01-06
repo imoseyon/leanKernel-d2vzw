@@ -14,6 +14,29 @@
 
 #include <linux/battery/sec_fuelgauge.h>
 
+#if defined (CONFIG_MACH_COMANCHE) || defined (CONFIG_MACH_ESPRESSO10_ATT) || defined (CONFIG_MACH_APEXQ)\
+	|| defined (CONFIG_MACH_EXPRESS) || defined (CONFIG_MACH_ESPRESSO10_SPR) || defined (CONFIG_MACH_ESPRESSO10_VZW)\
+	|| defined (CONFIG_MACH_ESPRESSO_VZW)
+static enum power_supply_property sec_fuelgauge_props[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_AVG,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CURRENT_AVG,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_ENERGY_NOW,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TEMP_AMBIENT,
+};
+
+static struct device_attribute sec_fg_attrs[] = {
+	SEC_FG_ATTR(reg),
+	SEC_FG_ATTR(data),
+	SEC_FG_ATTR(regs),
+};
+#endif
+
 /* capacity is  0.1% unit */
 static void sec_fg_get_scaled_capacity(
 				struct sec_fuelgauge_info *fuelgauge,
@@ -48,6 +71,7 @@ static int sec_fg_get_property(struct power_supply *psy,
 {
 	struct sec_fuelgauge_info *fuelgauge =
 		container_of(psy, struct sec_fuelgauge_info, psy_fg);
+	int soc_type = val->intval;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
@@ -61,6 +85,9 @@ static int sec_fg_get_property(struct power_supply *psy,
 		if (!sec_hal_fg_get_property(fuelgauge->client, psp, val))
 			return -EINVAL;
 		if (psp == POWER_SUPPLY_PROP_CAPACITY) {
+			if (soc_type == SEC_FUELGAUGE_CAPACITY_TYPE_RAW)
+				break;
+
 			if (fuelgauge->pdata->capacity_calculation_type &
 				(SEC_FUELGAUGE_CAPACITY_TYPE_SCALE |
 				 SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE))
@@ -75,7 +102,6 @@ static int sec_fg_get_property(struct power_supply *psy,
 				val->intval = 0;
 
 			/* get only integer part */
-			if (val->intval > 0)
 				val->intval /= 10;
 
 			/* (Only for atomic capacity)
@@ -312,7 +338,7 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, fuelgauge);
 
 	fuelgauge->psy_fg.name		= "sec-fuelgauge";
-	fuelgauge->psy_fg.type		= POWER_SUPPLY_TYPE_BATTERY;
+	fuelgauge->psy_fg.type		= POWER_SUPPLY_TYPE_UNKNOWN;
 	fuelgauge->psy_fg.get_property	= sec_fg_get_property;
 	fuelgauge->psy_fg.set_property	= sec_fg_set_property;
 	fuelgauge->psy_fg.properties	= sec_fuelgauge_props;
@@ -340,6 +366,9 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 	}
 
 	if (fuelgauge->pdata->fg_irq) {
+		INIT_DELAYED_WORK_DEFERRABLE(
+			&fuelgauge->isr_work, sec_fg_isr_work);
+
 		ret = request_threaded_irq(fuelgauge->pdata->fg_irq,
 				NULL, sec_fg_irq_thread,
 				fuelgauge->pdata->fg_irq_attr,
@@ -355,9 +384,6 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 			dev_err(&client->dev,
 				"%s: Failed to Enable Wakeup Source(%d)\n",
 				__func__, ret);
-
-		INIT_DELAYED_WORK_DEFERRABLE(
-			&fuelgauge->isr_work, sec_fg_isr_work);
 	}
 
 	fuelgauge->is_fuel_alerted = false;
@@ -388,6 +414,8 @@ static int __devinit sec_fuelgauge_probe(struct i2c_client *client,
 	return 0;
 
 err_irq:
+	if (fuelgauge->pdata->fg_irq)
+		free_irq(fuelgauge->pdata->fg_irq, fuelgauge);
 	wake_lock_destroy(&fuelgauge->fuel_alert_wake_lock);
 err_supply_unreg:
 	power_supply_unregister(&fuelgauge->psy_fg);

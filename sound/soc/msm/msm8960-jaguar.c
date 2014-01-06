@@ -358,7 +358,8 @@ static int msm8960_ear_switch_event(struct snd_soc_dapm_widget *w,
 }
 #endif
 
-#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) || defined(CONFIG_MACH_KONA)
 static int msm8960_lineout_switch_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *k, int event)
 {
@@ -440,11 +441,13 @@ static const struct snd_soc_dapm_widget msm8960_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SPK("Ext Spk Top Pos", msm8960_spkramp_event),
 	SND_SOC_DAPM_SPK("Ext Spk Top Neg", msm8960_spkramp_event),
-#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) || defined(CONFIG_MACH_KONA)
 	SND_SOC_DAPM_SPK("LINEOUT Switch", msm8960_lineout_switch_event),
 #endif
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("Sub Mic", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 	SND_SOC_DAPM_MIC("ANCRight Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("ANCLeft Headset Mic", NULL),
@@ -498,7 +501,8 @@ static const struct snd_soc_dapm_route common_audio_map[] = {
 
 	{"Ext Spk Top Pos", NULL, "LINEOUT2"},
 	{"Ext Spk Top Neg", NULL, "LINEOUT4"},
-#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) || defined(CONFIG_MACH_KONA)
 	/*
 	 * ESPRESSO10_ATT has analog switch for
 	 * reducing the pop noise on dock path
@@ -510,11 +514,19 @@ static const struct snd_soc_dapm_route common_audio_map[] = {
 	 *Samsung uses AMIC4 for Handset sub Mic
 	 *AMIC4 uses external MIC BIAS1
 	 */
+#if defined(CONFIG_MACH_KONA)
+	{"AMIC4", NULL, "MIC BIAS2 External"},
+	{"MIC BIAS2 External", NULL, "Sub Mic"},
+
+	{"AMIC2", NULL, "MIC BIAS3 External"},
+	{"MIC BIAS3 External", NULL, "Headset Mic"},
+#else
 	{"AMIC4", NULL, "MIC BIAS1 External"},
 	{"MIC BIAS1 External", NULL, "Handset Mic"},
 
 	{"AMIC2", NULL, "MIC BIAS2 External"},
 	{"MIC BIAS2 External", NULL, "Headset Mic"},
+#endif
 
 	/**
 	 * AMIC3 and AMIC4 inputs are connected to ANC microphones
@@ -1120,6 +1132,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			&& !machine_is_ESPRESSO10_SPR()
 			&& !machine_is_ESPRESSO10_ATT()
 			&& !machine_is_ESPRESSO_SPR()
+			&& !machine_is_KONA()
 		&& !machine_is_APEXQ())) {
 		/* using mbhc driver for earjack */
 		if (GPIO_DETECT_USED) {
@@ -1135,7 +1148,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 				return err;
 			}
 		}
-		err = tabla_hs_detect(codec, &mbhc_cfg);
+		tabla_hs_detect(codec, &mbhc_cfg);
 
 	}
 
@@ -1257,7 +1270,7 @@ static int msm8960_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-
+#if defined (CONFIG_SND_SOC_MSM_QDSP6_HDMI_AUDIO)
 static int msm8960_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1274,7 +1287,7 @@ static int msm8960_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-
+#endif
 static int msm8960_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1575,6 +1588,8 @@ static int msm8960_startup(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+#if !defined(CONFIG_MACH_ESPRESSO10_ATT) && !defined(CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_ESPRESSO10_SPR) \
+	&& !defined (CONFIG_MACH_ESPRESSO10_VZW) && !defined (CONFIG_MACH_ESPRESSO_VZW)
 static int msm8960_auxpcm_startup(struct snd_pcm_substream *substream)
 {
 	int ret = 0;
@@ -1587,13 +1602,17 @@ static int msm8960_auxpcm_startup(struct snd_pcm_substream *substream)
 	}
 	return 0;
 }
+#endif
 
+#if !defined(CONFIG_MACH_ESPRESSO10_ATT) && !defined(CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_ESPRESSO10_SPR) \
+	&& !defined (CONFIG_MACH_ESPRESSO10_VZW) && !defined (CONFIG_MACH_ESPRESSO_VZW)
 static void msm8960_auxpcm_shutdown(struct snd_pcm_substream *substream)
 {
 
 	pr_debug("%s(): substream = %s\n", __func__, substream->name);
 	msm8960_aux_pcm_free_gpios();
 }
+#endif
 
 static void msm8960_shutdown(struct snd_pcm_substream *substream)
 {
@@ -1612,10 +1631,13 @@ static struct snd_soc_ops msm8960_i2s_be_ops = {
 	.hw_params = msm8660_i2s_hw_params,
 };
 
+#if !defined(CONFIG_MACH_ESPRESSO10_ATT) && !defined(CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_ESPRESSO10_SPR) \
+	&& !defined (CONFIG_MACH_ESPRESSO10_VZW) && !defined (CONFIG_MACH_ESPRESSO_VZW)
 static struct snd_soc_ops msm8960_auxpcm_be_ops = {
 	.startup = msm8960_auxpcm_startup,
 	.shutdown = msm8960_auxpcm_shutdown,
 };
+#endif
 
 static struct snd_soc_dai_link *msm8960_dai_list;
 
@@ -2044,7 +2066,8 @@ else
 	}
 #endif
 
-#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) || defined(CONFIG_MACH_KONA)
 	ret = gpio_request(GPIO_CRADLE_SW_EN, "CRADLE_SW_EN");
 	if (ret) {
 		pr_err("%s: Failed to request gpio %d\n", __func__,
@@ -2068,7 +2091,8 @@ static void msm8960_free_headset_mic_gpios(void)
 		gpio_free(PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_USEURO_SWITCH));
 		gpio_free(top_spk_pamp_gpio);
 		gpio_free(bottom_spk_pamp_gpio);
-#if defined(CONFIG_MACH_ESPRESSO10_ATT)
+#if defined(CONFIG_MACH_ESPRESSO10_ATT) || defined(CONFIG_MACH_ESPRESSO10_VZW) \
+	|| defined(CONFIG_MACH_ESPRESSO10_SPR) || defined(CONFIG_MACH_KONA)
 		gpio_free(GPIO_CRADLE_SW_EN);
 #endif
 	}
@@ -2129,7 +2153,6 @@ static int __init msm8960_audio_init(void)
 	
 	INIT_DELAYED_WORK(&ext_amp_dwork.dwork,
 			external_speaker_amp_work);
-	mutex_init(&cdc_mclk_mutex);
 	return ret;
 
 }

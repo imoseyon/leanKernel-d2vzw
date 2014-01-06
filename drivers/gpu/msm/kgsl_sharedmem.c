@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -152,7 +152,7 @@ static struct mem_entry_stats mem_stats[] = {
 #endif
 	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_USER, user),
 #ifdef CONFIG_ION
-	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_USER, ion),
+	MEM_ENTRY_STAT(KGSL_MEM_ENTRY_ION, ion),
 #endif
 };
 
@@ -463,6 +463,7 @@ _kgsl_sharedmem_vmalloc(struct kgsl_memdesc *memdesc,
 	memdesc->priv = KGSL_MEMFLAGS_CACHED;
 	memdesc->ops = &kgsl_vmalloc_ops;
 
+	memdesc->sglen = sglen;
 	memdesc->sg = kgsl_sg_alloc(sglen);
 
 	if (memdesc->sg == NULL) {
@@ -472,7 +473,6 @@ _kgsl_sharedmem_vmalloc(struct kgsl_memdesc *memdesc,
 
 	kmemleak_not_leak(memdesc->sg);
 
-	memdesc->sglen = sglen;
 	sg_init_table(memdesc->sg, sglen);
 
 	for (i = 0; i < memdesc->sglen; i++) {

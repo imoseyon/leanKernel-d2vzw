@@ -609,6 +609,109 @@ int cmc624_I2cRead16(u8 reg, u16 *val)
   #####################################################
 */
 
+static int cmc624_set_tune_value(const struct cmc624RegisterSet *value,
+				 int array_size)
+{
+	int ret = 0;
+	unsigned int num;
+	unsigned int i = 0;
+
+	mutex_lock(&tuning_mutex);
+	num = array_size;
+
+	for (i = 0; i < num; i++) {
+		ret = cmc624_I2cWrite16(value[i].RegAddr, value[i].Data);
+		pr_info("\naddr =%x , data = %d",value[i].RegAddr,value[i].Data);
+		if (ret != 0) {
+			pr_debug
+			    ("[CMC624:ERROR]:cmc624_I2cWrite16 failed : %d\n",
+			     ret);
+			goto set_error;
+		}
+	}
+
+ set_error:
+	mutex_unlock(&tuning_mutex);
+	return ret;
+}
+
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
+#define DUTY_DIM 13
+#define DUTY_MIN 20
+#define DUTY_25  120
+#define DUTY_DEFAULT 900
+#define DUTY_MAX 1450
+#define PWM_DUTY_MAX 1	
+	
+	
+	/* Backlight levels */
+#define BRIGHTNESS_OFF   0
+#define BRIGHTNESS_DIM   20
+#define BRIGHTNESS_MIN   30
+#define BRIGHTNESS_25   86
+#define BRIGHTNESS_DEFAULT  140
+#define BRIGHTNESS_MAX   255
+/*
+ * CMC624 PWM control
+ */
+static struct cmc624RegisterSet pwm_cabcoff[] = {
+	{0x00, 0x0001}, /* BANK 1 */
+	{0xF8, 0x0011}, /* PWM HIGH ACTIVE, USE REGISTER VALUE */
+	{0xF9, },	/* PWM Counter */
+
+	{0x00, 0x0000}, /* BANK 0 */
+	{0xFD, 0xFFFF}, /* MODULE REG MASK RELEASE */
+	{0xFE, 0xFFFF}, /* MODULE REG MASK RELEASE */
+	{0xFF, 0x0000}, /* MASK RELEASE */
+};
+static int cmc624_scale_pwm_dutycycle(int level)
+{
+	int scaled_level = 0;
+	if (level == BRIGHTNESS_OFF)
+		scaled_level = BRIGHTNESS_OFF;
+	else if (level <= BRIGHTNESS_DIM)
+		scaled_level = PWM_DUTY_MAX*DUTY_DIM;
+	else if (level <= BRIGHTNESS_MIN)
+		scaled_level = (level - BRIGHTNESS_DIM) *
+			(PWM_DUTY_MAX * DUTY_MIN - PWM_DUTY_MAX * DUTY_DIM) /
+			(BRIGHTNESS_MIN - BRIGHTNESS_DIM) +
+			PWM_DUTY_MAX * DUTY_DIM;
+	else if (level <= BRIGHTNESS_25)
+		scaled_level = (level - BRIGHTNESS_MIN) *
+			(PWM_DUTY_MAX * DUTY_25 - PWM_DUTY_MAX * DUTY_MIN) /
+			(BRIGHTNESS_25 - BRIGHTNESS_MIN) +
+			PWM_DUTY_MAX * DUTY_MIN;
+	else if (level <= BRIGHTNESS_DEFAULT)
+		scaled_level = (level - BRIGHTNESS_25) *
+			(PWM_DUTY_MAX * DUTY_DEFAULT - PWM_DUTY_MAX * DUTY_25)
+			/ (BRIGHTNESS_DEFAULT - BRIGHTNESS_25) +
+			PWM_DUTY_MAX * DUTY_25;
+	else if (level <= BRIGHTNESS_MAX)
+		scaled_level = (level - BRIGHTNESS_DEFAULT) *
+			(PWM_DUTY_MAX * DUTY_MAX - PWM_DUTY_MAX * DUTY_DEFAULT)
+			/ (BRIGHTNESS_MAX - BRIGHTNESS_DEFAULT) +
+			PWM_DUTY_MAX * DUTY_DEFAULT;
+	 pr_debug("%s: level: %d, scaled_level: %d, proc:%s, pid: %d, tgid:%d\n",
+		__func__, level, scaled_level, current->comm,
+		current->pid, current->tgid);
+	return scaled_level;
+}
+
+int cmc624_set_pwm_backlight( int level)
+{	
+	int ret;
+	/* set pwm counter value for cabc-off pwm */
+	pwm_cabcoff[2].Data = cmc624_scale_pwm_dutycycle(level);
+	pr_debug("%s: cabc off: intensity=%d,  pwm cnt=%d\n",
+			__func__, level, pwm_cabcoff[2].Data);
+	
+	ret = cmc624_set_tune_value(pwm_cabcoff, ARRAY_SIZE(pwm_cabcoff));
+	return 0;
+}
+#endif
+
+
+
 /* value: 0 ~ 1600*/
 
 int Islcdonoff(void)
@@ -735,32 +838,6 @@ void cabc_onoff_ctrl(int value)
 			 __func__);
 		return;
 	}
-}
-
-static int cmc624_set_tune_value(const struct cmc624RegisterSet *value,
-				 int array_size)
-{
-	int ret = 0;
-	unsigned int num;
-	unsigned int i = 0;
-
-	mutex_lock(&tuning_mutex);
-
-	num = array_size;
-
-	for (i = 0; i < num; i++) {
-		ret = cmc624_I2cWrite16(value[i].RegAddr, value[i].Data);
-		if (ret != 0) {
-			pr_debug
-			    ("[CMC624:ERROR]:cmc624_I2cWrite16 failed : %d\n",
-			     ret);
-			goto set_error;
-		}
-	}
-
- set_error:
-	mutex_unlock(&tuning_mutex);
-	return ret;
 }
 
 static struct cmc624RegisterSet cmc624_TuneSeq[CMC624_MAX_SETTINGS];
@@ -1777,6 +1854,11 @@ bool samsung_has_cmc624(void)
 		return false;
 	else
 		return true;
+#elif defined(CONFIG_MACH_KONA)
+	if(system_rev >= 3)
+		return true;
+	else 
+		return false;
 #else
 	return false;
 #endif

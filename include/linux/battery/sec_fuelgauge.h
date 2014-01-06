@@ -37,6 +37,10 @@ struct sec_fuelgauge_reg_data {
 	u8 reg_data2;
 };
 
+#if !defined (CONFIG_MACH_COMANCHE) &&  !defined (CONFIG_MACH_ESPRESSO10_ATT) && !defined (CONFIG_MACH_APEXQ)\
+	&& !defined (CONFIG_MACH_ESPRESSO10_SPR) && !defined (CONFIG_MACH_ESPRESSO10_VZW)  && !defined (CONFIG_MACH_EXPRESS)\
+	&& !defined (CONFIG_MACH_ESPRESSO_VZW)
+
 static enum power_supply_property sec_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
@@ -49,7 +53,7 @@ static enum power_supply_property sec_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_AMBIENT,
 };
-
+#endif
 struct sec_fuelgauge_info {
 	struct i2c_client		*client;
 	sec_battery_platform_data_t *pdata;
@@ -115,12 +119,15 @@ ssize_t sec_fg_store_attrs(struct device *dev,
 	.store = sec_fg_store_attrs,			\
 }
 
+#if !defined (CONFIG_MACH_COMANCHE) &&  !defined (CONFIG_MACH_ESPRESSO10_ATT) && !defined (CONFIG_MACH_APEXQ)\
+	&& !defined (CONFIG_MACH_ESPRESSO10_SPR) && !defined (CONFIG_MACH_ESPRESSO10_VZW)  && !defined (CONFIG_MACH_EXPRESS)\
+	&& !defined (CONFIG_MACH_ESPRESSO_VZW)
 static struct device_attribute sec_fg_attrs[] = {
 	SEC_FG_ATTR(reg),
 	SEC_FG_ATTR(data),
 	SEC_FG_ATTR(regs),
 };
-
+#endif
 enum {
 	FG_REG = 0,
 	FG_DATA,

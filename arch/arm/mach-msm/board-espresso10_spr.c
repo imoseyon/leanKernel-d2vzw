@@ -180,7 +180,7 @@
 int uart_connecting;
 EXPORT_SYMBOL(uart_connecting);
 #endif
-
+#define TEMP_REMOVE 0
 static struct platform_device msm_fm_platform_init = {
 	.name = "iris_fm",
 	.id   = -1,
@@ -189,7 +189,7 @@ static struct platform_device msm_fm_platform_init = {
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
-
+static int secjack_gpio_init(void);
 unsigned int gpio_table[][GPIO_REV_MAX] = {
 	/* GPIO_INDEX   Rev {#00,#01,#02 }, */
 	/* MDP_VSYNC    */      {  0,  0,  0 },
@@ -286,19 +286,21 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 #define MSM_8960_GSBI10_QUP_I2C_BUS_ID 10
 
 #endif
-
+/*
 static struct gpiomux_setting sec_ts_ldo_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_UP,
 };
-
+*/
+/*
 static struct gpiomux_setting sec_ts_ldo_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
-
+*/
+#if !defined (CONFIG_MACH_ESPRESSO10_SPR)
 static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 	{	/* TS LDO EN */
 		.gpio = 10,
@@ -308,7 +310,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 		},
 	},
 };
-
+#endif
 
 #define MSM_PMEM_ADSP_SIZE         0x5200000 /* 82 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
@@ -339,7 +341,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #define MSM8960_FIXED_AREA_START 0xb0000000
 #define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		0x280000
+#define MSM_MM_FW_SIZE		0x200000
 #define MSM8960_FW_START	(MSM8960_FIXED_AREA_START - MSM_MM_FW_SIZE)
 
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
@@ -1615,7 +1617,7 @@ static void irda_wake_en(bool onoff)
 
 static void irda_device_init(void)
 {
-	int ret;
+
 
 	printk(KERN_ERR "%s called!\n", __func__);
 	gpio_tlmm_config(GPIO_CFG(GPIO_IRDA_I2C_SDA, 0, GPIO_CFG_INPUT,
@@ -1977,6 +1979,17 @@ static struct mpu_platform_data mpu_data_00 = {
 };
 #endif /*CONFIG_MPU_SENSORS_MPU6050B1 */
 
+#ifdef CONFIG_INPUT_YAS_SENSORS
+static struct yas_platform_data geomagnetic_pdata;
+static int __init yas_platform_data_init(void)
+{
+	if (system_rev < BOARD_REV05)
+		geomagnetic_pdata.mag_orientation = YAS532_POSITION_7;
+	else
+		geomagnetic_pdata.mag_orientation = YAS532_POSITION_3;
+	return 0;
+}
+#endif
 #if defined(CONFIG_SENSORS_AK8975) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1) || \
 	defined(CONFIG_INPUT_BMP180) || \
@@ -2021,6 +2034,7 @@ static struct i2c_board_info sns_i2c_borad_info[] = {
 	},
 	{
 		I2C_BOARD_INFO("geomagnetic", 0x2e),
+		.platform_data = &geomagnetic_pdata
 	},
 
 #endif
@@ -2812,14 +2826,15 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
+/*
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
-
+*/
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
 #else
-static int msm_hsusb_otg_en(bool on)
+int msm_hsusb_otg_en(bool on)
 {
 	int enable = 0;
 
@@ -2835,19 +2850,25 @@ static int msm_hsusb_otg_en(bool on)
 	return 0;
 }
 
-static void msm_acc_power(u8 token, bool active);
-static int msm_hsusb_vbus_power(bool on)
+int msm_hsusb_usb_en(bool on)
 {
 	int enable = 0;
-
 	enable = on;
+	pr_info("%s, enable %d\n", __func__, on);
+	msm_otg_set_vbus_state(enable);
+	msleep(100);
+	msm_otg_set_cable_state(POWER_SUPPLY_TYPE_USB);
+	return 0;
+}
 
+static void msm_acc_power(u8 token, bool active);
+static void msm_hsusb_vbus_power(bool on)
+{
 	pr_info("%s, attached %d\n", __func__, on);
 	if (on)
 		msm_acc_power(1, true);
 	else
 		msm_acc_power(1, false);
-	return 0;
 }
 
 static void msm_acc_power(u8 token, bool active)
@@ -2892,6 +2913,21 @@ static int check_sec_keyboard_dock(bool attached)
 	return 0;
 }
 
+/* call 30pin func. from sec_keyboard */
+static struct sec_30pin_callbacks *s30pin_callbacks;
+static int noti_sec_univ_kbd_dock(unsigned int code)
+{
+	if (s30pin_callbacks && s30pin_callbacks->noti_univ_kdb_dock)
+		return s30pin_callbacks->
+			noti_univ_kdb_dock(s30pin_callbacks, code);
+	return 0;
+}
+
+static void sec_30pin_register_cb(struct sec_30pin_callbacks *cb)
+{
+	s30pin_callbacks = cb;
+}
+
 static void sec_keyboard_register_cb(struct sec_keyboard_callbacks *cb)
 {
 	keyboard_callbacks = cb;
@@ -2901,6 +2937,7 @@ static struct sec_keyboard_platform_data kbd_pdata = {
 	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
 	.acc_power = msm_acc_power,
 	.register_cb = sec_keyboard_register_cb,
+	.noti_univ_kbd_dock = noti_sec_univ_kbd_dock,
 	.wakeup_key = NULL,
 };
 
@@ -2940,6 +2977,7 @@ static int get_dock_state(void)
 
 struct acc_con_platform_data acc_con_pdata = {
 	.otg_en = msm_hsusb_otg_en,
+	.usb_en = msm_hsusb_usb_en,
 	.acc_power = msm_acc_power,
 	.get_dock_state = get_dock_state,
 	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
@@ -2947,6 +2985,7 @@ struct acc_con_platform_data acc_con_pdata = {
 #ifdef CONFIG_SEC_KEYBOARD_DOCK
 	.check_keyboard = check_sec_keyboard_dock,
 #endif
+	.register_cb = sec_30pin_register_cb,
 };
 
 struct platform_device sec_device_connector = {
@@ -3760,7 +3799,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= (int)NULL,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -3769,7 +3808,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= (int)NULL,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4041,6 +4080,10 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_rtb_device,
 #endif
 	&msm8960_device_cache_erp,
+#ifdef CONFIG_MSM_EBI_ERP
+	&msm8960_device_ebi1_ch0_erp,
+	&msm8960_device_ebi1_ch1_erp,
+#endif
 #ifdef CONFIG_MSM_CACHE_DUMP
 	&msm_cache_dump_device,
 #endif
@@ -4061,6 +4104,7 @@ static struct platform_device *espresso10_spr_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -4804,6 +4848,9 @@ static void __init samsung_espresso10_spr_init(void)
 
 #ifndef CONFIG_USB_SWITCH_FSA9485
 	uart_connecting = 0;
+#endif
+#ifdef CONFIG_INPUT_YAS_SENSORS
+	yas_platform_data_init();
 #endif
 #ifdef CONFIG_30PIN_CONN
 	acc_int_init();

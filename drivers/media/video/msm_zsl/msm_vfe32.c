@@ -30,6 +30,7 @@
 #include "msm_ispif.h"		/*aswoogi_zsl */
 
 atomic_t irq_cnt;
+extern unsigned int open_fail_flag;
 
 #define QC_TEST
 
@@ -800,6 +801,7 @@ static void vfe32_start_common(uint16_t operation_mode)
 				   (void *)ISPIF_STREAM(PIX_0,
 					ISPIF_ON_FRAME_BOUNDARY));
 	}
+	pr_err("Update Command Sent ");
 	atomic_set(&vfe32_ctrl->vstate, 1);
 }
 #else
@@ -1445,7 +1447,7 @@ static int vfe32_proc_general(struct msm_isp_cmd *cmd)
 	CDBG("vfe32_proc_general: cmdID = %s, length = %d\n",
 	     vfe32_general_cmd[cmd->id], cmd->length);
 
-	if (vfe32_ctrl->vfebase == NULL) {
+	if (vfe32_ctrl->vfebase == NULL || open_fail_flag) {
 	    pr_err("Error : vfe32_ctrl->vfebase is NULL!!\n");
 	    pr_err("vfe32_proc_general: cmdID = %s, length = %d\n",
 		 vfe32_general_cmd[cmd->id], cmd->length);
@@ -2736,6 +2738,7 @@ static void vfe32_process_reg_update_irq(void)
 	if (vfe32_ctrl->start_ack_pending == TRUE) {
 		vfe32_send_isp_msg(vfe32_ctrl, MSG_ID_START_ACK);
 		vfe32_ctrl->start_ack_pending = FALSE;
+		pr_err("Update ack received");
 	} else {
 		if (vfe32_ctrl->recording_state ==
 			VFE_REC_STATE_STOP_REQUESTED) {
@@ -3124,8 +3127,8 @@ static void vfe32_process_zsl_frame(void)
 		else
 		    no_free_buffer_count = 0;
 		CDBG("count %d\n", no_free_buffer_count);
-		CDBG("time_diff %d, tv_msec %d, pre_frame_msec %d\n",
-		       time_diff, TV_MSEC(tv.tv_nsec), pre_frame_msec);
+	/*	CDBG("time_diff %d, tv_msec %d, pre_frame_msec %d\n",
+		       time_diff, TV_MSEC(tv.tv_nsec), pre_frame_msec);*/
 		/* max 66msec * 60 = 3960msec */
 		/* min 33msec * 60 = 1980msec */
 		if (no_free_buffer_count > 60)

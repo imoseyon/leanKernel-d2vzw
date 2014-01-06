@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -588,7 +588,8 @@ void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 		[ddl->command_channel], hdr_ext_control,
 		r_cframe_skip, false, 0,
 		h263_cpfc_enable, encoder->sps_pps.sps_pps_for_idr_enable_flag,
-		encoder->closed_gop);
+		encoder->closed_gop,
+		encoder->bitstream_restrict_enable);
 	vidc_sm_set_encoder_init_rc_value(&ddl->shared_mem
 		[ddl->command_channel],
 		encoder->target_bit_rate.target_bitrate);

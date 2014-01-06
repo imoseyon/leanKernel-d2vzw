@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -473,11 +473,12 @@ int msm_gemini_input_buf_enqueue(struct msm_gemini_device *pgmn_dev,
 	} else {
 	buf_p->y_buffer_addr    = msm_gemini_platform_v2p(buf_cmd.fd,
 		buf_cmd.y_len + buf_cmd.cbcr_len, &buf_p->file,
-		&buf_p->handle)	+ buf_cmd.offset;
+		&buf_p->handle)	+ buf_cmd.offset + buf_cmd.y_off;
 	}
 	buf_p->y_len          = buf_cmd.y_len;
 
-	buf_p->cbcr_buffer_addr = buf_p->y_buffer_addr + buf_cmd.y_len;
+	buf_p->cbcr_buffer_addr = buf_p->y_buffer_addr + buf_cmd.y_len +
+					buf_cmd.cbcr_off;
 	buf_p->cbcr_len       = buf_cmd.cbcr_len;
 
 	buf_p->num_of_mcu_rows = buf_cmd.num_of_mcu_rows;

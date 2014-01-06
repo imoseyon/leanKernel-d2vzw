@@ -430,6 +430,10 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		*/
 		if ((ext_csd[501] & 0x3F) && (card->cid.manfid == 0x11))
 			card->ext_csd.feature_support |= MMC_DISCARD_FEATURE;
+
+		/* enable discard feature if emmc is 4.41+ moviNand (EXT_CSD_VENDOR_SPECIFIC_FIELD:64)*/
+		if ((ext_csd[64] & 0x1) && (card->cid.manfid == 0x15))
+			card->ext_csd.feature_support |= MMC_DISCARD_FEATURE;
 	}
 
 	card->ext_csd.raw_erased_mem_count = ext_csd[EXT_CSD_ERASED_MEM_CONT];
@@ -950,6 +954,10 @@ static int mmc_suspend(struct mmc_host *host)
 		if (!mmc_host_is_spi(host))
 			mmc_deselect_cards(host);
 	} else {
+		/* for successful resuming for iNAND (manfid:0x45) */
+		if(!strcmp(mmc_hostname(host),"mmc0") && host->card->cid.manfid == 0x45)
+			mmc_switch(host->card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_BUS_WIDTH, EXT_CSD_BUS_WIDTH_1, 0);
+
 		if (mmc_card_can_sleep(host))
 			err = mmc_card_sleep(host);
 		else if (!mmc_host_is_spi(host))

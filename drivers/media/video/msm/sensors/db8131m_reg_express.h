@@ -23,8 +23,8 @@
 /* Made by  : Dongbu Hitek                                  */
 /* date     : 12/06/20                                      */
 /* Model    : Express                                        */
-/* ÁÖÀÇ»çÇ× : 0xE796 ¼ÂÆÃ°ªÀ» ¸¸³ª¸é 0xE796À» I2C write ÇÏÁö ¸»°í */
-/*            150ms delay ÈÄ ´ÙÀ½ ¼ÂÆÃ°ªÀ» I2C writeÇØ ÁÖ¸é µÊ    */
+/* Ç» : 0xE796 Ã°  0xE796 I2C write   */
+/*            150ms delay   Ã° I2C write Ö¸     */
 /* =================================================================*/
 
 static const u16 db8131m_common[] = {
@@ -672,6 +672,8 @@ static const u16 db8131m_common[] = {
 0x3805, /* MIPI DPHY_CTRL_SET*/
 0x3C81,
 0x5011, /* MIPI Current 01 -> 11 */
+0x5880,
+0x5900,
 
 /* SXGA PR*/
 0xFF85, /*Page mode */
@@ -770,6 +772,979 @@ static const u16 db8131m_common[] = {
 0x6401, /*gPR_Active_VGA_u8SCLCropEndY_Addr0*/
 0x65F0, /*gPR_Active_VGA_u8SCLCropEndY_Addr1*/
 
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
+0xFFC0, /*Page mode*/
+0x1041,
+0xE764, /*Wait  100*/
+
+/* Self-Cam END of Initial*/
+};
+
+static const u16 db8131m_common_A[] = {
+/*==================================*/
+/* Preview Command (SXGA)           */
+/*==================================*/
+0xFFC0, /*Page mode*/
+0x1001,
+0xE764, /*Wait  100*/
+
+/*==================================*/
+/* Format                           */
+/*==================================*/
+0xFFA1, /*Page mode*/
+0x7001,
+0x710D,
+
+/*==================================*/
+/* SensorCon                        */
+/*==================================*/
+
+0xFFD0, /*Page mode */
+0x0E08, /*SnsrCon.ABLK_Ctrl_0      */
+0x0F0D, /*ABLK_Ctrl_1_Addr         */
+0x1300, /*Gain_Addr                */
+0x1501, /*IVREFT_REFB_Addr  */
+0x1834, /*ABLK_Ctrl_3              */
+0x1921, /*ABLK_Ctrl_4              */
+0x1A07, /*Rx_Tx_Range              */
+0x200E, /*ABLK_Rsrv_Addr           */
+0x2300, /*SnsrCon.IVREFT2_REFB2    */
+0x2400, /*IPPG_IVCM2               */
+0x39C7, /*RiseSx_CDS_1_L_Addr      */
+0x511F, /*Fallcreset_1_L           */
+0x6119, /*SnsrCon.RiseQBLPDN_L     */
+0x8365, /*RiseTran_Sig_Even_L_Addr */
+0x8567, /*FallTran_Sig_Even_L_Addr */
+0x8765, /*RiseTran_Sig_Odd_L_Addr  */
+0x8967, /*FallTran_Sig_Odd_L_Addr  */
+0x8B27, /*RiseCNT_EN_1_L_Addr      */
+0x8D6c, /*FallCNT_EN_1_L_Addr      */
+0x9115, /*FallCNT_EN_2_L           */
+0xC509, /*FallScanRx_L             */
+0xD1CC, /*Pixel_RiseSx15_2_L       */
+0xD400, /*DoutrClampVal_H          */
+0xD744, /*SnsrCon.ABLK_Ctrl_12     */
+0xDBCA, /*Pixel_FallScanTx15_1_L   */
+0xED01, /*PLL_P_Addr               */
+0xEE0F, /*PLL_M_Addr               */
+0xEF00, /*PLL_S_Addr               */
+0xF540, /*SnsrCon.PLL_Ctrl         */
+0xF840, /*TestMode                 */
+0xF900, /*ABLK_Ctrl_8              */
+0xFB50, /*SnsrCon.PostADC_Gain     */
+
+/*Dgain*/
+0xFF82,
+0xB909,  /*pre R gain*/
+0xBA80,  /*pre R gain*/
+0xBB09,  /*pre G gain*/
+0xBC80,  /*pre G gain*/
+0xBD09,  /*pre B gain*/
+0xBE80,  /*pre B gain*/
+
+0xFF83,
+0x6328, /*Again	Table*/
+0x6410, /*Again	Table*/
+0x65A8, /*Again	Table*/
+0x6650, /*Again	Table*/
+0x6728, /*Again	Table*/
+0x6814, /*Again	Table*/
+
+/*==================================*/
+/*	Analog	ADF                     */
+/*==================================*/
+
+0xFF85,
+0x8993, /*ADF.u8APThreshold          */
+0x8A08, /*u8APClmpThreshold<=====1.0 */
+
+0x8C07, /*gAdf_u8APMinVal_ThrClampH  */
+0x8D40, /*gAdf_u8APMinVal_ThrClampL  */
+
+0x8E00,
+
+0x8F0C,
+0x9111,
+
+0x921F,
+0x9377,
+
+0x951D,
+0x961A,
+0x970E,
+0x980f, /*gAdf_u8APMaxVal_Clmp_rst  */
+0x9907,
+0x9A00,
+
+0x9B00,
+
+0x9C0C,
+0x9D7E,
+0x9E29,
+0x9F3F,
+0xA077,
+0xA175,
+0xA218,
+0xA33A,
+0xA40F,
+
+0xFF86,
+0x1500,
+0x16C2,
+0x1709,
+0x1809,
+0x1909,
+
+0x1BF0,
+0x1C00,
+
+0x1D14,
+
+0x1F01,
+0x2077,
+
+0x2218,
+0x231A,
+0x240E,
+0x2577,
+
+0x2DEB,
+
+0xFF87,
+0xDDB0,
+0xE1EB,
+0xEA41,
+
+0xF139,
+0xFFB0,
+0x3C81,
+0x5011,
+0x5880,
+0x5900,
+
+/*Analog UR */
+0xFFD1,
+0x0700, /*	power off mask clear  */
+0x0B00, /*	clock off mask clear  */
+0x0301, /*	parallel port disable */
+
+/*==================================*/
+/* AE						        */
+/*==================================*/
+
+0xFF82,
+0x9101,
+0x9555,
+0x9655,
+0x97f5,
+0x985f,
+0x99f5,
+0x9a5f,
+0x9b55,
+0x9c55,
+
+0x9D88,
+0x9E01,
+0x9F06,
+0xA10A,
+
+0xA93B,
+0xAA3d,
+0xA840,
+
+0xC502,
+0xC638,
+0xC724,
+0xC810,
+0xC905,
+
+0xD310,
+0xD450,			/* LuxTBGainStep1 46	*/
+0xD555,
+0xD601,
+0xD700,
+0xD801,
+0xD940,
+0xDA04,
+0xDB90,
+
+0xf309,
+0xf460,
+
+0xF900,
+0xFAf0,
+0xFB58,
+0xFC3A,
+0xFD28,
+0xFE12,
+
+0xFF83,
+0x030F,
+0x0408,
+0x0504,
+0x0604,
+
+0x070c,
+0x080b,
+0x090a,
+0x0A06,
+
+0x0b04,
+0x0c4C,
+
+0x1104,
+0x1276,
+
+0x1730,
+0x1810,
+0x1902,
+0x1a00,
+
+0x2F04,
+0x3005,
+0x4f05,
+
+0xFF85,
+0xC803,
+0xC921,
+
+0xCC31,
+0xCA03,
+
+0xFF86,
+0xd402,
+0xd501,
+0xd64d,
+0xd758,
+0xd862,
+0xd9e0,
+0xdad2,
+0xdbbe,
+
+0xe902,
+0xea01,
+0xeb7f,
+
+0xFF83,
+0x5b00,
+0x5c00,
+0x5d00,
+0x5e01,
+
+0xFF82,
+0x925D,			 /* AE Renew */
+
+
+/*==================================*/
+/* AWB						        */
+/*==================================*/
+
+0xFF83,
+0x7983,
+0x8200,
+0x8601,
+0x8780,
+0x9005,
+0x9405,
+0x98D4,
+0xA228,
+0xA300,
+0xA40F,
+0xAD65,
+0xAE80,
+0xAF20,
+0xB410,
+0xB554,
+0xB6BD,
+0xB774,
+0xB89D,
+0xBA4F,
+0xBF0C,
+0xC080,
+0xFF84,
+0x3D00,
+0x3E00,
+0x3F06,
+0x4020,
+0x4107,
+0x4253,
+0x4300,
+0x4400,
+
+0x4900,
+0x4A07,
+0x4B01,
+0x4C00,
+
+0x5D03,
+0x5E03,
+0x5F03,
+0x6005,
+0x6110,
+0x6200,
+0x630C,
+0x6408,
+0x5501,
+0x5607,
+0x5714,
+0x5814,
+0x5920,
+0x5A00,
+0x5B16,
+0x5C10,
+0x6500,
+0x6600,
+0x6700,
+0x6840,
+0x6900,
+0x6A00,
+0x6B00,
+0x6C00,
+
+0xFF85,
+0xE20C,
+
+0xFF83,
+0xCB03,	 /* Min Rgain	*/
+0xCCCB,
+0xCD07,
+0xCE40,
+0xD106,
+0xD2C9,
+0xCF02,
+0xD080,
+
+/*=================================*/
+/*AWB STE						               */
+/*=================================*/
+0xFFA1,
+0x9C00,
+0x9DF0,
+0xA063,
+0xA17A,
+0xA269,
+0xA36F,
+0xA48C,
+0xA540,
+0xA6A6,
+0xA731,
+0xA86E,
+0xA95b,
+0xAA8b,
+0xAB41,
+0xAC64,
+0xAD68,
+0xAE7D,
+0xAF47,
+0xB046,
+0xB168,
+0xB264,
+0xB34D,
+0xB400,
+0xB500,
+0xB600,
+0xB700,
+0xB842,
+0xB985,			/* AWBZone6LTy	            */
+0xBA64,
+0xBB69,
+0xBC39,
+0xBDA0,
+0xBE59,
+0xBF7f,
+0xC05B,
+0xC185,
+0xC260,
+0xC37F,
+
+/*==================================*/
+/* UR                               */
+/*==================================*/
+0xFF87,
+0xC922,
+0xFF86,
+0x14DE,
+
+0xFF85,
+0x0605,
+0x8640,
+0x0700,
+
+/*==================================*/
+/* CCM D65						              */
+/*==================================*/
+0xFF83,
+0xEA00,
+0xEB72,
+0xECFF,
+0xEDC9,
+0xEEff,
+0xEFF8,
+0xF0FF,
+0xF1ED,
+0xF200,
+0xF356,
+0xF4FF,
+0xF5F1,
+0xF6FF,
+0xF7FF,
+0xF8FF,
+0xF9C8,
+0xFA00,
+0xFB6E,
+
+/* CWF lgiht */
+0xFC00,
+0xFD65,
+0xFF85,
+0xE0FF,
+0xE1e0,
+0xFF84,
+0x00ff,
+0x01f4,
+0x02FF,
+0x03F3,
+0x0400,
+0x054B,
+0x06FF,
+0x07FA,
+0x08FF,
+0x09FC,
+0x0AFF,
+0x0BCC,
+0x0C00,
+0x0D6E,
+
+/* A light Green */
+0x0E00,
+0x0F67,
+0x10FF,
+0x11d8,
+0x12ff,
+0x13ff,
+0x14FF,
+0x15ED,
+0x1600,
+0x1759,
+0x18ff,
+0x19f2,
+0x1Aff,
+0x1BEA,
+0x1CFF,
+0x1DbC,
+0x1E00,
+0x1F8d,
+
+/* Out door CCM */
+0xFF86,
+0x4501,    /* CCM LuxThreshold */
+0x4600,    /* CCM LuxThreshold */
+0xFF85,
+0xFEB1,
+
+0xFF85,
+0xEC00,
+0xED77,
+0xEEFF,
+0xEFB9,
+0xF000,
+0xF110,
+0xF2FF,
+0xF3F6,
+0xF400,
+0xF54B,
+0xF6FF,
+0xF7FF,
+0xF8FF,
+0xF9F5,
+0xFAFF,
+0xFBCE,
+0xFC00,
+0xFD7D,
+
+/*==================================*/
+/* ISP Global Control #1						*/
+/*==================================*/
+
+0xFFA0,
+0x1040,
+0x1109,
+0x6073,
+0x611F,
+0x62FE,
+0x6391,
+0x64FD,
+0x65A0,
+0x66A0,
+0x6720,
+0x68B0,
+0x6920,
+0x6A40,
+0x6B10,
+0x6C40,
+0x6D60,
+0x6E60,
+0x6F00,
+0x7000,
+0x7116,
+0x7200,
+0x7304,
+0x740F,
+0x7520,
+0xC012,
+0xC130,
+0xC208,
+0xD071,
+0xD100,
+
+/* LSC */
+0xFF85,
+0x0F43,
+0x10E3,
+0x1b00,
+
+/* Lens Shading */
+0xFFA0,
+0x4380,
+0x4480,
+0x4580,
+0x4680,
+0x4780,
+0x4880,
+0x4980,
+0x4A80,
+0x4B80,
+0x4C80,
+0x4D80,
+0x4E80,
+
+0x5290,
+0x5320,
+0x5400,
+
+/* Max Shading */
+0xFF86,
+0x51A0,
+0x5230,
+0x5300,
+
+0x5480,
+0x5520,
+0x5600,
+
+0x5790,
+0x5820,
+0x5900,
+
+/* Min Shading */
+0x48B0,
+0x4920,
+0x4A00,
+
+0x4B80,
+0x4C18,
+0x4D00,
+
+0x4E90,
+0x4F20,
+0x5000,
+
+/*==================================*/
+/* ISP Global Control #2						*/
+/*==================================*/
+
+0xFFA1,
+0x3030,
+0x3122,
+0x3250,
+0x3300,
+0x3400,
+0x3516,
+0x3600,
+0x3730,
+0x3809,
+0x3922,
+0x3A08,
+0x3B08,
+0x3C08,
+0x3D00,
+
+
+/*==================================*/
+/* ADF						                  */
+/*==================================*/
+
+0xFF85,
+0x04FB,			/* FB EnEDE (v1.6)	   */
+0x0605,			/* Flag	           */
+0x0700,			/* sup hysteresis	 */
+
+/*--------------------*/
+/* ADF BGT	          */
+/*--------------------*/
+0x1721,			/* Th_BGT	 */
+0x260A,			/* Min_BGT	*/
+0x3C00,			/* Max_BGT	*/
+
+/*--------------------*/
+/* ADF CNT            */
+/*--------------------*/
+0x18CB,			/* Th_CNT	  */
+0x2700,			/* Min_CON	*/
+0x3D02,			/* Max_CON	*/
+
+/*----------------*/
+/* ADF on         */
+/*----------------*/
+0xFF85,
+0x04FB,	/* [7]CNF [3]NSF ADF on */
+0xFF86,
+0x14DE,	/* [7]ADF on for EDE new features */
+
+/*----------------*/
+/* ADF - CNFTh1   */
+/*----------------*/
+0xFF86,
+0x7C03,	/* lux threshold for CNFTh1	*/
+0xFF85,
+0x2493,	/* CNFTh1 @ current_lux <  lux_thrd(0x867C)*/
+0x3AC3,	/* CNFTh1 @ current_lux >= lux_thrd(0x867C)*/
+/*----------------*/
+/* ADF - CNFTh2   */
+/*----------------*/
+0xFF85,
+0x13ED,	/* lux threshold for CNFTh2([7:4] : max_lux, [3:0] min_lux)*/
+0x2509,	/* CNFTh2 @ min lux level                                  */
+0x3B03,	/* CNFTh2 @ max lux level                                  */
+/*----------------*/
+/* ADF - CNFTh3, 4*/
+/*----------------*/
+0xFF86,
+0x7D04,
+0x8019,
+0x7E00,
+0x8100,
+0x7F00,
+0x8200,
+/*----------------                     */
+/* HW address (if CNF ADF turned off)  */
+/*----------------                     */
+0xFFA1,
+0x4607,    /* CNFTh5 HW only */
+
+/*----------------*/
+/* ADF - NSF1/2/3 */
+/*----------------*/
+0xFF85,
+0x12A4,	/* Th_NSF	      */
+0x221B,	/* Min_NSF_Th1	 */
+0x2340,	/* Min_NSF_Th2	 */
+0x380F,	/* Max_NSF_Th1	 */
+0x3928,	/* Max_NSF_Th2   */
+0xFF86,
+0x1206,	/* Min_NSF_Th3	  */
+0x1306,	/* Max_NSF_Th3   */
+0xFF85,
+0xE85C,	/* u8ADF_STVal_NSF_TH1 //patch initial value @ firmware 2.0  */
+0xE962,	/* u8ADF_STVal_NSF_TH2 //patch initial value @ firmware 2.0  */
+0xEA0E,	/* u8ADF_EndVal_NSF_TH1 //patch initial value @ firmware 2.0 */
+0xEB18,	/* u8ADF_EndVal_NSF_TH2 //patch initial value @ firmware 2.0 */
+
+/*----------------*/
+/* ADF - NSF4     */
+/*----------------*/
+0xFF86,
+0xA285,	/* Lux. level threshold for NSF4 */
+0xA500,	/* Min_NSF_Th4                   */
+0xA808,	/* Max_NSF_Th4                   */
+/*----------------*/
+/* ADF - NSF5/6   */
+/*----------------*/
+0xA30B,	/* Lux. level threshold for NSF5/6 */
+0xA624,	/* Min_NSF_Th5                     */
+0xA944,	/* Max_NSF_Th5                     */
+0xA702,	/* Min_NSF_Th6                     */
+0xAA00,	/* Max_NSF_Th6                     */
+
+/*----------------*/
+/* ADF - EDE new  */
+/*----------------*/
+0xC00E,	/* Lux level threshold for EDEOption            */
+0xC130,	/* EDEOption value over lux level threshold     */
+0xC230,	/* EDEOption value under lux level threshol     */
+0xC330,	/* EDESmEdgThrd value over lux level threshold  */
+0xC416,	/* EDESmEdgThrd value under lux level threshold */
+0xC5A5,	/* Lux level threshold for EDESmEdgGain         */
+0xC602,	/* EDESmEdgGain value @ min lux level           */
+0xC703,	/* EDESmEdgGain value @ max lux level           */
+
+/*--------------------*/
+/* ADF - GDC          */
+/*--------------------*/
+0xFF85,
+0x1543,	/* GDC lux level threshold */
+0x2D40,	/* Min_GDC_Th1             */
+0x2E80,	/* Min_GDC_Th2             */
+0x4308,	/* Max_GDC_Th1             */
+0x4430,	/* Max_GDC_Th2             */
+
+/*--------------------*/
+/* ADF Edge           */
+/*--------------------*/
+0x14B3,			/* Th_Edge	            */
+0x2806,			/* Min_Coring	          */
+0x2906,			/* Min_Edge_Slope1	    */
+0x2A07,			/* Min_Edge_Slope2	    */
+0x2B06,			/* Min_Edge_SmallOffset */
+0x2C22,			/* Min_Edge_Slope	      */
+0x3E02,			/* Max_Coring	          */
+0x3F08,			/* Max_Edge_Slope1	    */
+0x4009,			/* Max_Edge_Slope2	    */
+0x4106,			/* Max_Edge_SmallOffset */
+0x4222,			/* Max_Edge_Slope	      */
+
+/*--------------------*/
+/* ADF Gamma          */
+/*--------------------*/
+0xFF86,
+0xBF01,   /* DarkGMA Threshold */
+0xAE00,		/* DarkGMA_0         */
+0xAF04,		/* DarkGMA_0         */
+0xB008,		/* DarkGMA_0         */
+0xB110,		/* DarkGMA_0         */
+0xB218,		/* DarkGMA_0         */
+0xB320,		/* DarkGMA_0         */
+0xB430,		/* DarkGMA_0         */
+0xB540,		/* DarkGMA_0         */
+0xB650,		/* DarkGMA_0         */
+0xB760,		/* DarkGMA_0         */
+0xB880,		/* DarkGMA_0         */
+0xB9A0,		/* DarkGMA_0         */
+0xBAC0,		/* DarkGMA_0         */
+0xBBD0,		/* DarkGMA_0         */
+0xBCE0,		/* DarkGMA_0         */
+0xBDF0,		/* DarkGMA_0         */
+0xBEFF,		/* DarkGMA_0         */
+
+0xFF85,
+0x1670,   /* Gamma Threshold */
+0x4700,	  /* Min_Gamma_0     */
+0x4816,	  /* Min_Gamma_1     */
+0x4925,	  /* Min_Gamma_2     */
+0x4A37,	  /* Min_Gamma_3     */
+0x4B45,	  /* Min_Gamma_4     */
+0x4C51,	  /* Min_Gamma_5     */
+0x4D65,	  /* Min_Gamma_6     */
+0x4E77,	  /* Min_Gamma_7     */
+0x4F87,	  /* Min_Gamma_8     */
+0x5095,	  /* Min_Gamma_9     */
+0x51AF,	  /* Min_Gamma_10    */
+0x52C6,	  /* Min_Gamma_11    */
+0x53DB,	  /* Min_Gamma_12    */
+0x54E5,	  /* Min_Gamma_13    */
+0x55EE,	  /* Min_Gamma_14    */
+0x56F7,	  /* Min_Gamma_15    */
+0x57FF,	  /* Min_Gamma_16    */
+
+0x5800,	  /* Max_Gamma_0  */
+0x5902,	  /* Max_Gamma_1  */
+0x5a14,	  /* Max_Gamma_2  */
+0x5b30,	  /* Max_Gamma_3  */
+0x5c4A,	  /* Max_Gamma_4  */
+0x5d5D,	  /* Max_Gamma_5  */
+0x5e78,	  /* Max_Gamma_6  */
+0x5f8E,	  /* Max_Gamma_7  */
+0x609F,	  /* Max_Gamma_8  */
+0x61AC,	  /* Max_Gamma_9  */
+0x62C2,	  /* Max_Gamma_10 */
+0x63D7,	  /* Max_Gamma_11 */
+0x64E7,	  /* Max_Gamma_12 */
+0x65EE,	  /* Max_Gamma_13 */
+0x66F3,	  /* Max_Gamma_14 */
+0x67F9,	  /* Max_Gamma_15 */
+0x68FF,	  /* Max_Gamma_16 */
+
+/*--------------------*/
+/* Suppression	      */
+/*--------------------*/
+0x1A21,			/* Th_SUP	          */
+0x3060,			/* Min_suppression	*/
+0x4680,			/* Max_suppression  */
+
+/*--------------------*/
+/* CDC	              */
+/*--------------------*/
+0x1144,
+0xFF86,
+0xE102,
+0xFF85,
+0x6960,
+0x6A00,
+0x6B15,
+0x6C0F,
+0x6D20,
+0x6E48,
+0x6F00,
+0x70F4,
+0x713C,
+0x7244,
+0xFF86,
+0xE001,
+0xE27F,
+0xE320,
+0xE405,
+0xE500,
+0xE60F,
+
+/*==================================*/
+/* ADF Update						            */
+/*==================================*/
+0xFF85,
+0x0910,			/* CurLux	*/
+
+/*==================================*/
+/* Saturation						            */
+/*==================================*/
+0x8640,			/* Color Saturation	*/
+
+/* BGT2 */
+0xFF86,
+0x6800,	  /* BGTLux1 */
+0x6900,	  /* BGTLux2 */
+0x6a00,	  /* BGTLux3 */
+0x6b00,	  /* Value1  */
+0x6c00,	  /* Value2  */
+0x6d00,	  /* Value3  */
+
+/* SAT */
+0x6F09,	  /*SATLux1 Gamut             */
+0x7000,	  /*SATLux2                   */
+0x7102,	  /*SATZone                   */
+0x7200,	  /*SATZone                   */
+0x7301,	  /*SATValue1    D65 Gamut    */
+0x7400,	  /*SATValue2                 */
+
+
+/* LineLength*/
+0xFF87, /*Page mode */
+0xDC05,
+0xDDB0,
+0xd500, /* Flip*/
+
+
+/*==================================*/
+/* MIPI                             */
+/*==================================*/
+0xFFB0, /*Page mode*/
+0x5402, /* MIPI PHY_HS_TX_CTRL*/
+0x3805, /* MIPI DPHY_CTRL_SET*/
+0x3C81,
+0x5011, /* MIPI Current 01 -> 11 */
+
+/* SXGA PR*/
+0xFF85, /*Page mode */
+0xB71E,
+0xB80A, /* gPT_u8PR_Active_SXGA_WORD_COUNT_Addr0*/
+0xB900, /* gPT_u8PR_Active_SXGA_WORD_COUNT_Addr1*/
+0xBC04, /* gPT_u8PR_Active_SXGA_DPHY_CLK_TIME_Addr3*/
+0xFF87, /* Page mode*/
+0x0C00, /* start Y*/
+0x0D20, /* start Y*/
+0x1003, /* end Y*/
+0x11E0, /* end Y*/
+
+0xFF86, /*u8PLL_Ctrl_Addr*/
+0xFE40,
+
+/* Recoding*/
+0xFF86, /*Page mode*/
+0x371E,
+0x3805, /*gPT_u8PR_Active_720P_WORD_COUNT_Addr0*/
+0x3900, /*gPT_u8PR_Active_720P_WORD_COUNT_Addr1*/
+0x3C04, /*gPT_u8PR_Active_720P_DPHY_CLK_TIME_Addr3*/
+
+0xFF87,
+0x2302, /*gPR_Active_720P_u8SensorCtrl_Addr*/
+0x2472, /*gPR_Active_720P_u8SensorMode_Addr*/
+0x2501, /*gPR_Active_720P_u8PLL_P_Addr*/
+0x260F, /*gPR_Active_720P_u8PLL_M_Addr*/
+0x2700, /*gPR_Active_720P_u8PLL_S_Addr*/
+0x2840, /*gPR_Active_720P_u8PLL_Ctrl_Addr*/
+0x2901, /*gPR_Active_720P_u8src_clk_sel_Addr*/
+0x2A00, /*gPR_Active_720P_u8output_pad_status_Addr*/
+0x2B3F, /*gPR_Active_720P_u8ablk_ctrl_10_Addr*/
+0x2CFF, /*gPR_Active_720P_u8BayerFunc_Addr*/
+0x2DFF, /*gPR_Active_720P_u8RgbYcFunc_Addr*/
+0x2E00, /*gPR_Active_720P_u8ISPMode_Addr*/
+0x2F02, /*gPR_Active_720P_u8SCLCtrl_Addr*/
+0x3001, /*gPR_Active_720P_u8SCLHorScale_Addr0*/
+0x31FF, /*gPR_Active_720P_u8SCLHorScale_Addr1*/
+0x3203, /*gPR_Active_720P_u8SCLVerScale_Addr0*/
+0x33FF, /*gPR_Active_720P_u8SCLVerScale_Addr1*/
+0x3400, /*gPR_Active_720P_u8SCLCropStartX_Addr0*/
+0x3500, /*gPR_Active_720P_u8SCLCropStartX_Addr1*/
+0x3600, /*gPR_Active_720P_u8SCLCropStartY_Addr0*/
+0x3710, /*gPR_Active_720P_u8SCLCropStartY_Addr1*/
+0x3802, /*gPR_Active_720P_u8SCLCropEndX_Addr0*/
+0x3980, /*gPR_Active_720P_u8SCLCropEndX_Addr1*/
+0x3A01, /*gPR_Active_720P_u8SCLCropEndY_Addr0*/
+0x3BF0, /*gPR_Active_720P_u8SCLCropEndY_Addr1*/
+0x3C01, /*gPR_Active_720P_u8OutForm_Addr*/
+0x3D0C, /*gPR_Active_720P_u8OutCtrl_Addr*/
+0x3E04, /*gPR_Active_720P_u8AEWinStartX_Addr*/
+0x3F04, /*gPR_Active_720P_u8AEWinStartY_Addr*/
+0x4066, /*gPR_Active_720P_u8MergedWinWidth_Addr*/
+0x415E, /*gPR_Active_720P_u8MergedWinHeight_Addr*/
+0x4204, /*gPR_Active_720P_u8AEHistWinAx_Addr*/
+0x4304, /*gPR_Active_720P_u8AEHistWinAy_Addr*/
+0x4498, /*gPR_Active_720P_u8AEHistWinBx_Addr*/
+0x4578, /*gPR_Active_720P_u8AEHistWinBy_Addr*/
+0x4622, /*gPR_Active_720P_u8AWBTrim_Addr*/
+0x4728, /*gPR_Active_720P_u8AWBCTWinAx_Addvr*/
+0x4820, /*gPR_Active_720P_u8AWBCTWinAy_Addr*/
+0x4978, /*gPR_Active_720P_u8AWBCTWinBx_Addr*/
+0x4A60, /*gPR_Active_720P_u8AWBCTWinBy_Addr*/
+0x4B03, /*gPR_Active_720P_u16AFCFrameLength_0*/
+0x4C00, /*gPR_Active_720P_u16AFCFrameLength_1*/
+
+/*VGA PR*/
+0xFF86, /*Page mode*/
+0x2E1E,
+0x2F05, /* gPT_u8PR_Active_VGA_WORD_COUNT_Addr0*/
+0x3000, /* gPT_u8PR_Active_VGA_WORD_COUNT_Addr1*/
+0x3304, /* gPT_u8PR_Active_VGA_DPHY_CLK_TIME_Addr3*/
+
+0xFF87, /*Page mode*/
+0x4D00, /*gPR_Active_VGA_u8SensorCtrl_Addr*/
+0x4E72, /*gPR_Active_VGA_u8SensorMode_Addr*/
+0x4F01, /*gPR_Active_VGA_u8PLL_P_Addr*/
+0x500F, /*gPR_Active_VGA_u8PLL_M_Addr*/
+0x5100, /*gPR_Active_VGA_u8PLL_S_Addr*/
+0x5240, /*gPR_Active_VGA_u8PLL_Ctrl_Addr*/
+0x5301, /*gPR_Active_VGA_u8src_clk_sel_Addr*/
+0x5400, /*gPR_Active_VGA_u8output_pad_status_Addr*/
+0x553F, /*gPR_Active_VGA_u8ablk_ctrl_10_Addr*/
+0x56FF, /*gPR_Active_VGA_u8BayerFunc_Addr*/
+0x57FF, /*gPR_Active_VGA_u8RgbYcFunc_Addr*/
+0x5800, /*gPR_Active_VGA_u8ISPMode_Addr*/
+0x5902, /*gPR_Active_VGA_u8SCLCtrl_Addr*/
+0x5A01, /*gPR_Active_VGA_u8SCLHorScale_Addr0*/
+0x5BFF, /*gPR_Active_VGA_u8SCLHorScale_Addr1*/
+0x5C01, /*gPR_Active_VGA_u8SCLVerScale_Addr0*/
+0x5DFF, /*gPR_Active_VGA_u8SCLVerScale_Addr1*/
+0x5E00, /*gPR_Active_VGA_u8SCLCropStartX_Addr0*/
+0x5F00, /*gPR_Active_VGA_u8SCLCropStartX_Addr1*/
+0x6000, /*gPR_Active_VGA_u8SCLCropStartY_Addr0*/
+0x6110, /*gPR_Active_VGA_u8SCLCropStartY_Addr1*/
+0x6202, /*gPR_Active_VGA_u8SCLCropEndX_Addr0*/
+0x6380, /*gPR_Active_VGA_u8SCLCropEndX_Addr1*/
+0x6401, /*gPR_Active_VGA_u8SCLCropEndY_Addr0*/
+0x65F0, /*gPR_Active_VGA_u8SCLCropEndY_Addr1*/
+
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
+
 0xFFC0, /*Page mode*/
 0x1041,
 0xE764, /*Wait  100*/
@@ -794,7 +1769,7 @@ static const u32 db8131m_vt_wifi_common[] = {
 };
 
 /*===========================================*/
-/* CAMERA_PREVIEW - ÃÔ¿µ ÈÄ ÇÁ¸®ºä º¹±Í½Ã ¼ÂÆÃ */
+/* CAMERA_PREVIEW - Ô¿   Í½  */
 /*============================================*/
 
 static const u16 db8131m_preview[] = {

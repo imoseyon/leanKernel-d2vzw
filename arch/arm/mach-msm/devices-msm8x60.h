@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,7 +31,7 @@
 #define MSM_MHL_I2C_BUS_ID             9
 #define MSM_FSA9485_I2C_BUS_ID	11
 #define MSM_SNS_I2C_BUS_ID     12
-#define MSM_FUELGAUGE_I2C_BUS_ID             13
+#define MSM_FUELGAUGE_I2C_BUS_ID        13
 #define MSM_OPT_I2C_BUS_ID     14
 #define MSM_TOUCHKEY_I2C_BUS_ID		16
 #define MSM_NFC_I2C_BUS_ID		17
@@ -48,6 +48,13 @@
 #endif
 #ifdef CONFIG_ADC_STMPE811
 #define MSM_STMPE811_I2C_BUS_ID 22
+#endif
+#define MSM_CHARGER_I2C_BUS_ID  	23
+#ifdef CONFIG_WACOM_W9001
+#define MSM_8960_GSBI11_QUP_I2C_BUS_ID	24
+#endif
+#ifdef CONFIG_BACKLIGHT_LP8556
+#define MSM_BL_I2C_BUS_ID   25
 #endif
 #ifdef CONFIG_SND_SOC_MSM8660_APQ
 extern struct platform_device msm_pcm;

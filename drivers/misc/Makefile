@@ -82,3 +82,8 @@ obj-$(CONFIG_QSEECOM) += tzic.o
 obj-$(CONFIG_ADC_STMPE811)		+= stmpe811.o
 obj-$(CONFIG_SAMSUNG_JACK)		+= sec_jack.o
 obj-$(CONFIG_OPTICAL_BH1721) += bh1721.o
+obj-$(CONFIG_SENSORS_AK8963) += akm8963.o
+ifeq ($(TIMA_ENABLED),1)
+obj-y += ktest/
+obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
+endif

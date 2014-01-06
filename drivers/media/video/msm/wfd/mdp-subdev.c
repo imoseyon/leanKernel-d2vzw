@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,7 @@
 #include "wfd-util.h"
 #include <media/videobuf2-core.h>
 #include <linux/msm_mdp.h>
+#include <linux/switch.h>
 
 struct mdp_instance {
 	struct fb_info *mdp;
@@ -45,13 +46,6 @@ int mdp_open(struct v4l2_subdev *sd, void *arg)
 		goto exit;
 	}
 
-	/*Tell HDMI daemon to open fb1*/
-	rc = kobject_uevent(&fbi->dev->kobj, KOBJ_ADD);
-	if (rc) {
-		WFD_MSG_ERR("Failed add to kobj");
-		goto exit;
-	}
-
 	msm_fb_writeback_init(fbi);
 	inst->mdp = fbi;
 	*cookie = inst;
@@ -78,9 +72,6 @@ int mdp_start(struct v4l2_subdev *sd, void *arg)
 			rc = -ENODEV;
 			goto exit;
 		}
-		rc = kobject_uevent(&fbi->dev->kobj, KOBJ_ONLINE);
-		if (rc)
-			WFD_MSG_ERR("Failed to send ONLINE event\n");
 	}
 exit:
 	return rc;
@@ -97,11 +88,6 @@ int mdp_stop(struct v4l2_subdev *sd, void *arg)
 			return rc;
 		}
 		fbi = (struct fb_info *)inst->mdp;
-		rc = kobject_uevent(&fbi->dev->kobj, KOBJ_OFFLINE);
-		if (rc) {
-			WFD_MSG_ERR("Failed to send offline event\n");
-			return -EIO;
-		}
 	}
 	return 0;
 }
@@ -112,6 +98,7 @@ int mdp_close(struct v4l2_subdev *sd, void *arg)
 	if (inst) {
 		fbi = (struct fb_info *)inst->mdp;
 		msm_fb_writeback_terminate(fbi);
+		/* Releasing the instance after unregistering */
 		kfree(inst);
 	}
 	return 0;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -1402,6 +1402,7 @@ err:
 	return rc;
 }
 
+#if 0
 static long venc_set_multislicing_mode(struct video_client_ctx *client_ctx,
 			__u32 control, __s32 value)
 {
@@ -1505,6 +1506,7 @@ static long venc_set_multislicing_mode(struct video_client_ctx *client_ctx,
 set_multislicing_mode_fail:
 	return rc;
 }
+#endif
 
 static long venc_get_multislicing_mode(struct video_client_ctx *client_ctx,
 			__u32 control, __s32 *value)

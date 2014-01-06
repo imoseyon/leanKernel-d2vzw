@@ -514,7 +514,7 @@ ssize_t sec_hal_fg_store_attrs(struct device *dev,
 
 	switch (offset) {
 	case FG_REG:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			fg->reg_addr = x;
 			max17042_read_reg(fg->client,
 				fg->reg_addr, fg->reg_data);
@@ -525,7 +525,7 @@ ssize_t sec_hal_fg_store_attrs(struct device *dev,
 		ret = count;
 		break;
 	case FG_DATA:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			data[0] = (x & 0xFF00) >> 8;
 			data[1] = (x & 0x00FF);
 			pr_debug("%s: (write) addr = 0x%x, data = 0x%02x%02x\n",
@@ -2055,7 +2055,7 @@ static int get_fuelgauge_soc(struct i2c_client *client)
 {
 	struct sec_fuelgauge_info *fuelgauge = i2c_get_clientdata(client);
 	union power_supply_propval value;
-	int fg_soc;
+	int fg_soc = 0;
 	int fg_vfsoc;
 	int fg_vcell;
 	int fg_current;
@@ -2116,13 +2116,13 @@ static int get_fuelgauge_soc(struct i2c_client *client)
 	fg_vfsoc = get_fuelgauge_value(client, FG_VF_SOC);
 
 	psy_do_property("battery", get,
-		POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+		POWER_SUPPLY_PROP_STATUS, value);
 
 	/* P4-Creative does not set full flag by force */
 #if !defined(CONFIG_MACH_P4W_REV00)  && !defined(CONFIG_MACH_P4W_REV01)
 	/* Algorithm for reducing time to fully charged (from MAXIM) */
-	if (value.intval != SEC_BATTERY_CHARGING_NONE &&
-		value.intval != SEC_BATTERY_CHARGING_RECHARGING &&
+	if (value.intval != POWER_SUPPLY_STATUS_DISCHARGING &&
+		value.intval != POWER_SUPPLY_STATUS_FULL &&
 		fuelgauge->cable_type != POWER_SUPPLY_TYPE_USB &&
 		/* Skip when first check after boot up */
 		!fuelgauge->info.is_first_check &&
@@ -2151,7 +2151,7 @@ static int get_fuelgauge_soc(struct i2c_client *client)
 	/*  Checks vcell level and tries to compensate SOC if needed.*/
 	/*  If jig cable is connected, then skip low batt compensation check. */
 	if (!fuelgauge->pdata->check_jig_status() &&
-		value.intval == SEC_BATTERY_CHARGING_NONE)
+		value.intval == POWER_SUPPLY_STATUS_DISCHARGING)
 		fg_soc = low_batt_compensation(
 			client, fg_soc, fg_vcell, fg_current);
 
@@ -2173,7 +2173,7 @@ static void full_comp_work_handler(struct work_struct *work)
 
 	avg_current = get_fuelgauge_value(fuelgauge->client, FG_CURRENT_AVG);
 	psy_do_property("battery", get,
-		POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+		POWER_SUPPLY_PROP_STATUS, value);
 
 	if (avg_current >= 25) {
 		cancel_delayed_work(&fuelgauge->info.full_comp_work);
@@ -2183,7 +2183,7 @@ static void full_comp_work_handler(struct work_struct *work)
 			__func__, avg_current);
 		fg_fullcharged_compensation(fuelgauge->client,
 			(int)(value.intval ==
-			SEC_BATTERY_CHARGING_RECHARGING), 0);
+			POWER_SUPPLY_STATUS_FULL), 0);
 	}
 }
 
@@ -2266,11 +2266,11 @@ bool sec_hal_fg_full_charged(struct i2c_client *client)
 	union power_supply_propval value;
 
 	psy_do_property("battery", get,
-		POWER_SUPPLY_PROP_CHARGE_TYPE, value);
+		POWER_SUPPLY_PROP_STATUS, value);
 
 	/* full charge compensation algorithm by MAXIM */
 	fg_fullcharged_compensation(client,
-		(int)(value.intval == SEC_BATTERY_CHARGING_RECHARGING), 1);
+		(int)(value.intval == POWER_SUPPLY_STATUS_FULL), 1);
 
 	cancel_delayed_work(&fuelgauge->info.full_comp_work);
 	schedule_delayed_work(&fuelgauge->info.full_comp_work, 100);
@@ -2404,7 +2404,7 @@ ssize_t sec_hal_fg_store_attrs(struct device *dev,
 
 	switch (offset) {
 	case FG_REG:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			fg->reg_addr = x;
 			fg_i2c_read(fg->client,
 				fg->reg_addr, fg->reg_data, 2);
@@ -2415,7 +2415,7 @@ ssize_t sec_hal_fg_store_attrs(struct device *dev,
 		ret = count;
 		break;
 	case FG_DATA:
-		if (sscanf(buf, "%x\n", &x) == 1) {
+		if (sscanf(buf, "%2x\n", &x) == 1) {
 			data[0] = (x & 0xFF00) >> 8;
 			data[1] = (x & 0x00FF);
 			pr_debug("%s: (write) addr = 0x%x, data = 0x%02x%02x\n",

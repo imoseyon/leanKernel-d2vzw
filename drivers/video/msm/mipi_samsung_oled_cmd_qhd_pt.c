@@ -1054,14 +1054,6 @@ static int __init mipi_cmd_samsung_oled_qhd_pt_init(void)
 	pinfo.mode2_xres = 0;
 	pinfo.mode2_yres = 0;
 	pinfo.mode2_bpp = 0;
-	/*
-	 *
-	 * Panel's Horizontal input timing requirement is to
-	 * include dummy(pad) data of 200 clk in addition to
-	 * width and porch/sync width values
-	 */
-	pinfo.mipi.xres_pad = 0;
-	pinfo.mipi.yres_pad = 0;
 
 	pinfo.type = MIPI_CMD_PANEL;
 	pinfo.pdest = DISPLAY_1;
@@ -1103,6 +1095,7 @@ static int __init mipi_cmd_samsung_oled_qhd_pt_init(void)
 	pinfo.mipi.wr_mem_continue = 0x3c;
 	pinfo.mipi.wr_mem_start = 0x2c;
 	pinfo.mipi.dsi_phy_db = &dsi_command_mode_phy_db;
+	pinfo.mipi.esc_byte_ratio = 4;	
 
 	ret = mipi_samsung_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_WVGA_PT,

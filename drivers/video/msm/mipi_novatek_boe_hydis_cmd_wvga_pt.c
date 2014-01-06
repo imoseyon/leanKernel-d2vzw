@@ -214,6 +214,129 @@ static char gamma_cond_set_1_2b_boe[] = {
 
 };
 
+#ifdef CONFIG_MATCH_PMS_KERNEL_BACKLIGHT
+enum {
+	GAMMA_15CD,
+	GAMMA_40CD,
+	GAMMA_70CD,
+	GAMMA_90CD,
+	GAMMA_110CD,
+	GAMMA_130CD,
+	GAMMA_142CD,
+	GAMMA_154CD,
+	GAMMA_166CD,
+	GAMMA_178CD,
+	GAMMA_190CD,
+	GAMMA_200CD,
+	GAMMA_212CD,
+	GAMMA_224CD,
+	GAMMA_236CD,
+	GAMMA_248CD,
+	GAMMA_260CD,
+	GAMMA_273CD,
+	GAMMA_286CD,
+	GAMMA_300CD,
+	GAMMA_313CD,
+	GAMMA_326CD,
+	GAMMA_340CD,
+};
+
+static int lux_tbl_boe[] = {
+	 5, 20, 35, 45, 55, 65, 71, 77, 83, 89, 95,
+	 103, 110, 118, 125, 133, 140, 146, 153, 160, 167, 174, 180
+};
+
+static int get_candela_index_boe(int bl_level)
+{
+	int backlightlevel;
+	int cd;
+
+	/* brightness setting from platform is from 0 to 255
+	 * But in this driver, brightness is only supported from 0 to 24 */
+
+		switch (bl_level) {
+		case 0 ... 20:
+			backlightlevel = GAMMA_15CD; /* duty 5 */
+			break;
+		case 21 ... 39:
+			backlightlevel = GAMMA_15CD; /* duty 5 */
+			break;
+		case 40 ... 49:
+			backlightlevel = GAMMA_40CD; /* duty 20 */
+			break;
+		case 50 ... 59:
+			backlightlevel = GAMMA_70CD; /* duty 35 */
+			break;
+		case 60 ... 69:
+			backlightlevel = GAMMA_90CD;  /* duty 45 */
+			break;
+		case 70 ... 79:
+			backlightlevel = GAMMA_110CD;  /* duty 55 */
+			break;
+		case 80 ... 89:
+			backlightlevel = GAMMA_130CD;  /* duty 65 */
+			break;
+		case 90 ... 99:
+			backlightlevel = GAMMA_142CD;  /* duty 71 */
+			break;
+		case 100 ... 109:
+			backlightlevel = GAMMA_154CD;  /* duty 77 */
+			break;
+		case 110 ... 119:
+			backlightlevel = GAMMA_166CD;  /* duty 83 */
+			break;
+		case 120 ... 129:
+			backlightlevel = GAMMA_178CD;  /* duty 89 */
+			break;
+		case 130 ... 139:
+			backlightlevel = GAMMA_190CD;  /* duty 95 */
+			break;
+		case 140 ... 149:
+			backlightlevel = GAMMA_200CD;  /* duty 103 */
+			break;
+		case 150 ... 159:
+			backlightlevel = GAMMA_212CD;  /* duty 110 */
+			break;
+		case 160 ... 169:
+			backlightlevel = GAMMA_224CD;  /* duty 118 */
+			break;
+		case 170 ... 179:
+			backlightlevel = GAMMA_236CD;  /* duty 125 */
+			break;
+		case 180 ... 189:
+			backlightlevel = GAMMA_248CD;  /* duty 133 */
+			break;
+		case 190 ... 199:
+			backlightlevel = GAMMA_260CD;  /* duty 140 */
+			break;
+		case 200 ... 209:
+			backlightlevel = GAMMA_273CD;  /* duty 146 */
+			break;
+		case 210 ... 219:
+			backlightlevel = GAMMA_286CD;  /* duty 153 */
+			break;
+		case 220 ... 229:
+			backlightlevel = GAMMA_300CD;  /* duty 160 */
+			break;
+		case 230 ... 239:
+			backlightlevel = GAMMA_313CD;  /* duty 167 */
+			break;
+		case 240 ... 249:
+			backlightlevel = GAMMA_326CD;  /* duty 174 */
+			break;
+		case 250 ... 255:
+			backlightlevel = GAMMA_340CD;  /* duty 180 */
+			break;
+		default:
+			backlightlevel = GAMMA_15CD;
+			break;
+		}
+
+	cd = lux_tbl_boe[backlightlevel];
+	return cd;
+
+}
+#else
 static int lux_tbl_boe[] = {
 	 7, 7, 20, 35, 43, 48, 50, 55, 65, 75, 85, 95, 100, 105, 110,
 	115, 120, 125, 135, 145, 155, 165, 175, 185, 195, 203
@@ -242,7 +365,7 @@ static int get_candela_index_boe(int bl_level)
 	return cd;
 
 }
-
+#endif
 /**********************BOE Panel Init sequence ////END *********************/
 
 
@@ -658,8 +781,10 @@ static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt_boe[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(pwm_cond_set_2_0), pwm_cond_set_2_0},
 
+#if !defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(display_on), display_on},
+#endif
 };
 
 static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt_hydis[] = {
@@ -743,16 +868,17 @@ static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt_hydis[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 			sizeof(pwm_cond_set_2_0), pwm_cond_set_2_0},
 
-
+#if !defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(display_on), display_on},
+#endif
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(pwm_cond_set_1_0), pwm_cond_set_1_0},
 };
 
 static int get_candela_index(int bl_level)
 {
-	if (mipi_pd.manufacture_id == JASPER_MANUFACTURE_ID)
+	if (mipi_pd.manufacture_id ==JASPER_MANUFACTURE_ID_HYDIS)
 		return get_candela_index_hydis(bl_level);
 	else
 		return get_candela_index_boe(bl_level);

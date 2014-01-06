@@ -33,7 +33,7 @@
 #endif
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
-#include <linux/battery/sec_battery.h>
+/*#include <linux/battery/sec_battery.h>*/
 #include <linux/battery/sec_fuelgauge.h>
 #include <linux/battery/sec_charger.h>
 
@@ -194,6 +194,10 @@ static bool sec_chg_gpio_init(void)
 
 static bool sec_bat_is_lpm(void) {return (bool)poweroff_charging; }
 
+int extended_cable_type;
+int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+EXPORT_SYMBOL(current_cable_type);
+
 static void sec_bat_initial_check(void)
 {
 	union power_supply_propval value;
@@ -203,7 +207,7 @@ static void sec_bat_initial_check(void)
 	 */
 	value.intval = -1;
 
-	if (!gpio_get_value_cansleep(
+	if (extended_cable_type || !gpio_get_value_cansleep(
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_TA_nCONNECTED)))
 		psy_do_property("battery", set,
 			POWER_SUPPLY_PROP_ONLINE, value);
@@ -222,17 +226,35 @@ static bool sec_bat_check_jig_status(void)
 		return true;
 }
 
-static void sec_bat_switch_to_check(void)
+static bool sec_bat_switch_to_check(void)
 {
+	/* disabled due to requirement change:
+        to check charger type in sec_battery when
+	keyboard dock is connected */
+	/* int i; */
 	pr_debug("%s\n", __func__);
 
 #ifdef CONFIG_CAMERON_HEALTH
 	if (is_cameron_health_connected) {
 		pr_info("%s Cameron Health Activated,"
 			"No need to switch to ADC\n", __func__);
-		return;
+		return true;
 	}
 #endif
+
+	/*
+	if (!gpio_get_value_cansleep(GPIO_ACCESSORY_INT)
+			&& !poweroff_charging) {
+		for (i = 0; i < 10; i++) {
+			if (POWER_SUPPLY_TYPE_CARDOCK ==
+				GET_MAIN_CABLE_TYPE(extended_cable_type)) */
+				/* universal keyboard dock connected */   /*
+				return false;
+			else
+				msleep(200);
+		}
+	}
+	*/
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_USB_SEL, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
@@ -242,23 +264,90 @@ static void sec_bat_switch_to_check(void)
 	gpio_set_value(GPIO_USB_SEL, 1);
 
 	mdelay(10);
+
+	return true;
 }
 
-static void sec_bat_switch_to_normal(void)
+static bool sec_bat_switch_to_normal(void)
 {
 	pr_debug("%s\n", __func__);
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_USB_SEL, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 0);
 	gpio_set_value(GPIO_USB_SEL, 0);
+
+	return true;
 }
 
-int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
-EXPORT_SYMBOL(current_cable_type);
+static bool sec_bat_is_interrupt_cable_check_possible(int extended_cable_type)
+{
+	return (GET_MAIN_CABLE_TYPE(extended_cable_type) ==
+		POWER_SUPPLY_TYPE_CARDOCK) ? false : true;
+}
 
 static int sec_bat_check_cable_callback(void)
 {
 	return current_cable_type;
+}
+
+static int sec_bat_get_cable_from_extended_cable_type(
+	int input_extended_cable_type)
+{
+	int cable_main, cable_sub, cable_power;
+	int cable_type = POWER_SUPPLY_TYPE_UNKNOWN;
+
+	cable_main = GET_MAIN_CABLE_TYPE(input_extended_cable_type);
+	if (cable_main != POWER_SUPPLY_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_MAIN_MASK) |
+			(cable_main << ONLINE_TYPE_MAIN_SHIFT);
+	cable_sub = GET_SUB_CABLE_TYPE(input_extended_cable_type);
+	if (cable_sub != ONLINE_SUB_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_SUB_MASK) |
+			(cable_sub << ONLINE_TYPE_SUB_SHIFT);
+	cable_power = GET_POWER_CABLE_TYPE(input_extended_cable_type);
+	if (cable_power != ONLINE_POWER_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_PWR_MASK) |
+			(cable_power << ONLINE_TYPE_PWR_SHIFT);
+
+	switch (cable_main) {
+	case POWER_SUPPLY_TYPE_CARDOCK:
+		switch (cable_power) {
+		case ONLINE_POWER_TYPE_BATTERY:
+			cable_type = POWER_SUPPLY_TYPE_BATTERY;
+			break;
+		case ONLINE_POWER_TYPE_TA:
+			switch (cable_sub) {
+			case ONLINE_SUB_TYPE_MHL:
+				cable_type = POWER_SUPPLY_TYPE_USB;
+				break;
+			case ONLINE_SUB_TYPE_AUDIO:
+			case ONLINE_SUB_TYPE_DESK:
+			case ONLINE_SUB_TYPE_SMART_NOTG:
+			case ONLINE_SUB_TYPE_KBD:
+				cable_type = POWER_SUPPLY_TYPE_MAINS;
+				break;
+			case ONLINE_SUB_TYPE_SMART_OTG:
+				cable_type = POWER_SUPPLY_TYPE_CARDOCK;
+				break;
+			}
+			break;
+		case ONLINE_POWER_TYPE_USB:
+			cable_type = POWER_SUPPLY_TYPE_USB;
+			break;
+		default:
+			cable_type = current_cable_type;
+			break;
+		}
+		break;
+	default:
+		cable_type = cable_main;
+		break;
+	}
+
+	return cable_type;
 }
 
 static bool sec_bat_check_cable_result_callback(
@@ -270,15 +359,16 @@ static bool sec_bat_check_cable_result_callback(
 	case POWER_SUPPLY_TYPE_USB:
 		pr_info("%s set vbus applied\n",
 			__func__);
+		msm_otg_set_cable_state(cable_type);
 		break;
 
 	case POWER_SUPPLY_TYPE_BATTERY:
 		pr_info("%s set vbus cut\n",
 			__func__);
-		msm_otg_set_charging_state(0);
+		msm_otg_set_cable_state(cable_type);
 		break;
 	case POWER_SUPPLY_TYPE_MAINS:
-		msm_otg_set_charging_state(1);
+		msm_otg_set_cable_state(cable_type);
 		break;
 	default:
 		pr_err("%s cable type (%d)\n",
@@ -323,6 +413,7 @@ static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
 	{0,	0},
+	{0,	0},
 	{1000,	1350},
 	{0,	0},
 	{0,	0},
@@ -335,6 +426,7 @@ static sec_bat_adc_region_t cable_adc_value_table[] = {
 };
 
 static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{1500,	1500,	200,	0},
@@ -352,6 +444,7 @@ static sec_charging_current_t charging_current_table[] = {
 static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
 	{0,	0},
+	{0,	0},
 	{1000,	1350},
 	{0,	0},
 	{0,	0},
@@ -364,6 +457,7 @@ static sec_bat_adc_region_t cable_adc_value_table[] = {
 };
 
 static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{1500,	1500,	200,	0},
@@ -419,8 +513,12 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 
 	.is_lpm = sec_bat_is_lpm,
 	.check_jig_status = sec_bat_check_jig_status,
+	.is_interrupt_cable_check_possible =
+		sec_bat_is_interrupt_cable_check_possible,
 	.check_cable_callback =
 		sec_bat_check_cable_callback,
+	.get_cable_from_extended_cable_type =
+		sec_bat_get_cable_from_extended_cable_type,
 	.cable_switch_check = sec_bat_switch_to_check,
 	.cable_switch_normal = sec_bat_switch_to_normal,
 	.check_cable_result_callback =
@@ -483,6 +581,7 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		SEC_BATTERY_CABLE_CHECK_INT,
 #ifdef CONFIG_CAMERON_HEALTH
 	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC |
+		SEC_BATTERY_CABLE_SOURCE_EXTENDED |
 		SEC_BATTERY_CABLE_SOURCE_EXTERNAL,
 #else
 	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC,
@@ -552,7 +651,8 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.fuel_alert_soc = 1,
 	.repeated_fuelalert = false,
 	.capacity_calculation_type =
-		SEC_FUELGAUGE_CAPACITY_TYPE_RAW,
+		SEC_FUELGAUGE_CAPACITY_TYPE_RAW |
+		SEC_FUELGAUGE_CAPACITY_TYPE_DYNAMIC_SCALE,
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_SCALE | */
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC, */
 	.capacity_max = 1000,

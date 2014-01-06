@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -458,6 +458,8 @@ struct msm_sync {
 	spinlock_t abort_pict_lock;
 	int snap_count;
 	int thumb_count;
+
+	uint32_t focus_state;
 };
 
 #define MSM_APPS_ID_V4L2 "msm_v4l2"

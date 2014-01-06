@@ -79,6 +79,13 @@
 #include <asm/smp.h>
 #endif
 
+#include <linux/gpio.h>
+#include <mach/gpiomux.h>
+
+#ifdef CONFIG_SEC_GPIO_DVS
+#include <linux/secgpio_dvs.h>
+#endif
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -494,11 +501,6 @@ asmlinkage void __init start_kernel(void)
 	lockdep_init();
 	debug_objects_early_init();
 
-	/*
-	 * Set up the the initial canary ASAP:
-	 */
-	boot_init_stack_canary();
-
 	cgroup_init_early();
 
 	local_irq_disable();
@@ -513,6 +515,10 @@ asmlinkage void __init start_kernel(void)
 	page_address_init();
 	printk(KERN_NOTICE "%s", linux_banner);
 	setup_arch(&command_line);
+	/*
+	 * Set up the the initial canary ASAP:
+	 */
+	boot_init_stack_canary();
 	mm_init_owner(&init_mm, &init_task);
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
@@ -768,6 +774,15 @@ static void run_init_process(const char *init_filename)
  */
 static noinline int init_post(void)
 {
+#ifdef CONFIG_SEC_GPIO_DVS
+	/************************ Caution !!! ****************************/
+	/* This function must be located in appropriate INIT position
+	 * in accordance with the specification of each BB vendor.
+	 */
+	/************************ Caution !!! ****************************/
+	gpio_dvs_check_initgpio();
+#endif
+
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
 	free_initmem();

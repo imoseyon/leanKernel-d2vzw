@@ -84,11 +84,16 @@ int load_565rle_image(char *filename, bool bf_supported)
 	int fd, count, err = 0;
 	unsigned max;
 	unsigned short *data, *bits, *ptr;
+	static int skip_logo;
 #ifndef CONFIG_FRAMEBUFFER_CONSOLE
 	struct module *owner;
 #endif
 	int pad;
-
+	/*  Skip logo display after fb[0] register since mdp and DSI is not ready*/
+	if(!skip_logo) {
+		skip_logo = 1;
+		return 0;
+	}
 	info = registered_fb[0];
 	if (!info) {
 		printk(KERN_WARNING "%s: Can not access framebuffer\n",
@@ -138,21 +143,23 @@ int load_565rle_image(char *filename, bool bf_supported)
 		goto err_logo_free_data;
 	}
 	bits = (unsigned short *)(info->screen_base);
-	while (count > 3) {
-		unsigned n = ptr[0];
-		if (n > max)
-			break;
-		if (info->var.bits_per_pixel >= 24) {
-			pad = memset16_rgb8888(bits, ptr[1], n << 1, info);
-			bits += n << 1;
-			bits += pad;
-		} else {
-			memset16(bits, ptr[1], n << 1);
-			bits += n;
+	if (info->screen_base) {
+		while (count > 3) {
+			unsigned n = ptr[0];
+			if (n > max)
+				break;
+			if (info->var.bits_per_pixel >= 24) {
+				pad = memset16_rgb8888(bits, ptr[1], n << 1, info);
+				bits += n << 1;
+				bits += pad;
+			} else {
+				memset16(bits, ptr[1], n << 1);
+				bits += n;
+			}
+			max -= n;
+			ptr += 2;
+			count -= 4;
 		}
-		max -= n;
-		ptr += 2;
-		count -= 4;
 	}
 
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_CMD_QHD_PT) \

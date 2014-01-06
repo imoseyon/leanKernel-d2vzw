@@ -100,6 +100,7 @@ do {\
 #define PREVIEW_SIZE_FHD    5    /* 1920x1080*/
 #define PREVIEW_SIZE_MMS    6    /* 528x432 */
 #define PREVIEW_SIZE_QCIF   8    /* 176x144 */
+#define PREVIEW_SIZE_960x720   9    /* 960*720 */
 
 
 /* DTP */

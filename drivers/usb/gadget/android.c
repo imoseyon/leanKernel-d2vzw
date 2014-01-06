@@ -2,7 +2,7 @@
  * Gadget Driver for Android
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  * Author: Mike Lockwood <lockwood@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -685,6 +685,7 @@ static struct android_usb_function ptp_function = {
 	.init		= ptp_function_init,
 	.cleanup	= ptp_function_cleanup,
 	.bind_config	= ptp_function_bind_config,
+	.ctrlrequest	= mtp_function_ctrlrequest,
 };
 
 
@@ -901,18 +902,12 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	if (!config)
 		return -ENOMEM;
 
-#ifdef CONFIG_USB_MASS_STORAGE_LUN_NUMBER_2
-	config->fsg.nluns = 2;
-#else
 	config->fsg.nluns = 1;
-#endif
 	config->fsg.luns[0].removable = 1;
-#ifdef CONFIG_USB_MASS_STORAGE_LUN_NUMBER_2
-	config->fsg.luns[1].removable = 1;
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+        config->fsg.luns[0].cdrom = 1;
+	config->fsg.luns[0].ro = 0;	/* Read & Write */
 #endif
-
-	config->fsg.luns[0].cdrom = 1;
-
 	common = fsg_common_init(NULL, cdev, &config->fsg);
 	if (IS_ERR(common)) {
 		kfree(config);
@@ -927,15 +922,6 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		kfree(config);
 		return err;
 	}
-#ifdef CONFIG_USB_MASS_STORAGE_LUN_NUMBER_2
-	err = sysfs_create_link(&f->dev->kobj,
-				&common->luns[1].dev.kobj,
-				"lun_ex");
-	if (err) {
-		kfree(config);
-		return err;
-	}
-#endif
 
 	config->common = common;
 	f->config = config;
@@ -979,8 +965,107 @@ static DEVICE_ATTR(inquiry_string, S_IRUGO | S_IWUSR,
 					mass_storage_inquiry_show,
 					mass_storage_inquiry_store);
 
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+static ssize_t mass_storage_vendor_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	return sprintf(buf, "%s\n", config->common->vendor_string);
+}
+
+static ssize_t mass_storage_vendor_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+
+	if (size >= sizeof(config->common->vendor_string))
+		return -EINVAL;
+	if (sscanf(buf, "%s", config->common->vendor_string) != 1)
+		return -EINVAL;
+
+	printk(KERN_DEBUG "%s: vendor %s", __func__,
+				config->common->vendor_string);
+	return size;
+}
+
+static DEVICE_ATTR(vendor_string, S_IRUGO | S_IWUSR,
+					mass_storage_vendor_show,
+					mass_storage_vendor_store);
+
+static ssize_t mass_storage_product_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	return sprintf(buf, "%s\n", config->common->product_string);
+}
+
+static ssize_t mass_storage_product_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+
+	if (size >= sizeof(config->common->product_string))
+		return -EINVAL;
+	if (sscanf(buf, "%s", config->common->product_string) != 1)
+		return -EINVAL;
+
+	printk(KERN_DEBUG "%s: product %s", __func__,
+				config->common->product_string);
+	return size;
+}
+
+static DEVICE_ATTR(product_string, S_IRUGO | S_IWUSR,
+					mass_storage_product_show,
+					mass_storage_product_store);
+
+static ssize_t sua_version_info_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	int ret;
+
+	ret = sprintf(buf, "%s\r\n",config->common-> version_string);
+	printk(KERN_DEBUG "usb: %s version %s\n", __func__, buf);
+	return ret;
+}
+
+/*
+ /sys/class/android_usb/android0/f_mass_storage/sua_version_info
+*/
+static ssize_t sua_version_info_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	int len=0;
+
+	if (size < sizeof(config->common-> version_string))
+		memcpy(config->common-> version_string,buf,size);
+	else
+	{
+		len=sizeof(config->common-> version_string);
+		memcpy(config->common-> version_string,buf,len-1);
+	}
+	printk(KERN_DEBUG "usb: %s buf=%s[%d], %s\n", __func__, buf,sizeof(buf),config->common-> version_string);
+	return size;
+}
+
+static DEVICE_ATTR(sua_version_info,  S_IRUGO | S_IWUSR,
+		sua_version_info_show, sua_version_info_store);
+#endif
+
 static struct device_attribute *mass_storage_function_attributes[] = {
 	&dev_attr_inquiry_string,
+#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	&dev_attr_vendor_string,
+	&dev_attr_product_string,
+	&dev_attr_sua_version_info,
+#endif
 	NULL
 };
 
@@ -1680,13 +1765,18 @@ static void android_disconnect(struct usb_gadget *gadget)
 	unsigned long flags;
 
 	composite_disconnect(gadget);
+	/* accessory HID support can be active while the
+	   accessory function is not actually enabled,
+	   so we need to inform it when we are disconnected.
+	 */
+	acc_disconnect();
 
 	spin_lock_irqsave(&cdev->lock, flags);
 	dev->connected = 0;
 #ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
 	printk(KERN_DEBUG "usb: %s cable state (%d)\n",
 		__func__, cdev->cable_connect);
-	if (cdev->cable_connect == NULL) {
+	if (!cdev->cable_connect) {
 		set_ncm_ready(false);
 		printk(KERN_DEBUG "usb: set ncm ready false\n");
 	}

@@ -38,7 +38,9 @@ static dev_t tzic_device_no;
 static struct cdev tzic_cdev;
 
 #define HLOS_IMG_TAMPER_FUSE    0
+#ifndef SCM_SVC_FUSE
 #define SCM_SVC_FUSE            0x08
+#endif
 #define SCM_BLOW_SW_FUSE_ID     0x01
 #define SCM_IS_SW_FUSE_BLOWN_ID 0x02
 #define TZIC_IOC_MAGIC          0x9E
@@ -51,7 +53,8 @@ static struct cdev tzic_cdev;
 #define LOG printk
 
 static int ic = STATE_IC_GOOD;
-
+static int set_tamper_fuse_cmd(void);
+static uint8_t get_tamper_fuse_cmd(void);
 static int set_tamper_fuse_cmd()
 {
 	uint32_t fuse_id = HLOS_IMG_TAMPER_FUSE;
@@ -69,11 +72,11 @@ static uint8_t get_tamper_fuse_cmd()
 
 	void *cmd_buf;
 	size_t cmd_len;
+	size_t resp_len = 0;
+	uint8_t resp_buf;
 	cmd_buf = (void *)&fuse_id;
 	cmd_len = sizeof(fuse_id);
 
-	size_t resp_len = 0;
-	uint8_t resp_buf;
 	resp_len = sizeof(resp_buf);
 
 	scm_call(SCM_SVC_FUSE, SCM_IS_SW_FUSE_BLOWN_ID, cmd_buf,

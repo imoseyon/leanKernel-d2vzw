@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +57,7 @@ struct res_trk_context {
 	u32 mmu_clks_on;
 	u32 secure_session;
 	struct mutex secure_lock;
+	u32 sec_clk_heap;
 };
 
 #if DEBUG

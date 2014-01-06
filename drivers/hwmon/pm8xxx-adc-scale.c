@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -749,7 +749,7 @@ int32_t pm8xxx_adc_sec_board_therm_default(int32_t adc_code,
 		adc_chan_result->measurement = adc_chan_result->adc_code;
 
 		return pm8xxx_adc_map_linear(
-				temp_table,
+				(void *)temp_table,
 				ARRAY_SIZE(temp_table),
 				adc_chan_result->adc_code,
 				&adc_chan_result->physical);

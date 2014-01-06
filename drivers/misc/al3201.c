@@ -108,12 +108,14 @@ struct al3201_data {
 /*
  * register access helpers
  */
+#if !defined (CONFIG_MACH_ESPRESSO_VZW)
 static int al3201_read_reg(struct i2c_client *client,
 	u32 reg, u8 mask, u8 shift){
 	struct al3201_data *data = i2c_get_clientdata(client);
 
 	return (data->reg_cache[reg] & mask) >> shift;
 }
+#endif
 
 static int al3201_write_reg(struct i2c_client *client,
 	u32 reg, u8 mask, u8 shift, u8 val){
@@ -145,6 +147,7 @@ static int al3201_write_reg(struct i2c_client *client,
  */
 
 /* range */
+#if !defined (CONFIG_MACH_ESPRESSO_VZW)
 static int al3201_sw_reset(struct i2c_client *client)
 {
 
@@ -163,6 +166,7 @@ static int al3201_get_range(struct i2c_client *client)
 	AL3201_RAN_MASK, AL3201_RAN_SHIFT);
 	return tmp;
 }
+#endif
 
 static int al3201_set_range(struct i2c_client *client, int range)
 {
@@ -185,6 +189,7 @@ static int al3201_set_power_state(struct i2c_client *client, int state)
 	state ? AL3201_POW_UP : AL3201_POW_DOWN);
 }
 
+#if !defined (CONFIG_MACH_ESPRESSO_VZW)
 static int al3201_get_power_state(struct i2c_client *client)
 {
 	u8 cmdreg;
@@ -193,6 +198,7 @@ static int al3201_get_power_state(struct i2c_client *client)
 	cmdreg = data->reg_cache[AL3201_POW_COMMAND];
 	return (cmdreg & AL3201_POW_MASK) >> AL3201_POW_SHIFT;
 }
+#endif
 
 /* power & timer enable */
 static int al3201_enable(struct al3201_data *data)
@@ -232,7 +238,10 @@ static int al3201_disable(struct al3201_data *data)
 
 static int al3201_get_adc_value(struct i2c_client *client)
 {
-	int lsb, msb, range;
+	int lsb, msb;
+#if !defined (CONFIG_MACH_ESPRESSO_VZW)
+	int range;
+#endif
 	u32 val;
 	unsigned int adc_total = 0;
 	int adc_avr_value;
@@ -496,8 +505,9 @@ static int __devinit al3201_probe(struct i2c_client *client,
 	int err = 0;
 	struct al3201_data *data;
 	struct input_dev *input_dev;
+#if !defined (CONFIG_MACH_ESPRESSO_VZW)
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-
+#endif
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data) {
 		pr_err("%s, failed to alloc memory for module data\n",

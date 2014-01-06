@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,7 @@
 #include <linux/slab.h>		/* kzalloc() */
 #include <linux/interrupt.h>	/* request_irq() */
 #include <linux/memory.h>	/* memset */
+#include <linux/vmalloc.h>
 
 #include "sps_bam.h"
 #include "bam.h"
@@ -884,7 +885,11 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 		dev->pipe_remote_mask &= ~(1UL << pipe_index);
 		bam_pipe_exit(dev->base, pipe_index, dev->props.ee);
 		if (pipe->sys.desc_cache != NULL) {
-			kfree(pipe->sys.desc_cache);
+			u32 size = pipe->num_descs * sizeof(void *);
+			if (pipe->desc_size + size <= PAGE_SIZE)
+				kfree(pipe->sys.desc_cache);
+			else
+				vfree(pipe->sys.desc_cache);
 			pipe->sys.desc_cache = NULL;
 		}
 		dev->pipes[pipe_index] = BAM_PIPE_UNASSIGNED;
@@ -1004,8 +1009,24 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 	    && (pipe->state & BAM_STATE_BAM2BAM) == 0) {
 		/* Allocate both descriptor cache and user pointer array */
 		size = pipe->num_descs * sizeof(void *);
-		pipe->sys.desc_cache =
-		kzalloc(pipe->desc_size + size, GFP_KERNEL);
+
+		if (pipe->desc_size + size <= PAGE_SIZE)
+			pipe->sys.desc_cache =
+				kzalloc(pipe->desc_size + size, GFP_KERNEL);
+		else {
+			pipe->sys.desc_cache =
+				vmalloc(pipe->desc_size + size);
+
+			if (pipe->sys.desc_cache == NULL) {
+				SPS_ERR(
+					"sps:No memory for pipe %d of BAM 0x%x\n",
+					pipe_index, BAM_ID(dev));
+				return -ENOMEM;
+			}
+
+			memset(pipe->sys.desc_cache, 0, pipe->desc_size + size);
+		}
+
 		if (pipe->sys.desc_cache == NULL) {
 			/*** MUST BE LAST POINT OF FAILURE (see below) *****/
 			SPS_ERR("Desc cache error: BAM 0x%x pipe %d: %d",

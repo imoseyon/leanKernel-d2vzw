@@ -111,6 +111,7 @@ static int msm_csid_config(struct csid_cfg_params *cfg_params)
 	return rc;
 }
 
+#if DBG_CSID
 static irqreturn_t msm_csid_irq(int irq_num, void *data)
 {
 	uint32_t irq;
@@ -127,6 +128,7 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 	}
 	return IRQ_HANDLED;
 }
+#endif
 
 static int msm_csid_subdev_g_chip_ident(struct v4l2_subdev *sd,
 			struct v4l2_dbg_chip_ident *chip)

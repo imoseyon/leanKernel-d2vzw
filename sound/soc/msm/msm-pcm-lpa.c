@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -237,6 +237,7 @@ static int msm_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		q6asm_run_nowait(prtd->audio_client, 0, 0, 0);
 		atomic_set(&prtd->start, 1);
 		atomic_set(&prtd->stop, 0);
+                atomic_set(&prtd->pending_buffer, 1);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		pr_debug("SNDRV_PCM_TRIGGER_STOP\n");
@@ -292,6 +293,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 		kfree(prtd);
 		return -ENOMEM;
 	}
+	prtd->audio_client->perf_mode = false;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		ret = q6asm_open_write(prtd->audio_client, FORMAT_LINEAR_PCM);
 		if (ret < 0) {
@@ -314,6 +316,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	pr_debug("%s: session ID %d\n", __func__, prtd->audio_client->session);
 	prtd->session_id = prtd->audio_client->session;
 	msm_pcm_routing_reg_phy_stream(soc_prtd->dai_link->be_id,
+		prtd->audio_client->perf_mode,
 		prtd->session_id, substream->stream);
 
 	ret = snd_pcm_hw_constraint_list(runtime, 0,

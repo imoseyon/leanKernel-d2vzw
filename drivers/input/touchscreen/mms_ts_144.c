@@ -296,7 +296,7 @@ struct mms_ts_info {
 	bool				enabled;
 
 	enum fw_flash_mode		fw_flash_mode;
-	void (*register_cb)(void *);
+	void (*register_cb)(struct tsp_callbacks *);
 	struct tsp_callbacks callbacks;
 	bool			ta_status;
 	bool			noise_mode;

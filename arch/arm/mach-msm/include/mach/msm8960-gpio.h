@@ -57,6 +57,8 @@
 #include <mach/espresso10_spr-gpio.h>
 #elif defined(CONFIG_MACH_ESPRESSO10_ATT)
 #include <mach/espresso10_att-gpio.h>
+#elif defined(CONFIG_MACH_KONA)
+#include <mach/kona-gpio.h>
 #elif defined(CONFIG_MACH_COMANCHE)
 #include <mach/comanche-gpio.h>
 #elif defined(CONFIG_MACH_EXPRESS)

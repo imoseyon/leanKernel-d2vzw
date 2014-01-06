@@ -48,13 +48,21 @@
 #define ABS_CONTROL_REPORT              (ABS_THROTTLE)
 
 
-static struct orient_platform_data {
+#if defined(CONFIG_MACH_COMANCHE) || defined(CONFIG_MACH_EXPRESS)
+struct orient_platform_data {
 	struct mutex mutex;
 	int enabled;
 	int delay;
 	struct input_dev *orient_input_dev;
 };
-
+#else
+struct orient_platform_data {
+	struct mutex mutex;
+	int enabled;
+	int delay;
+	struct input_dev *orient_input_dev;
+};
+#endif
 
 
 /* Sysfs interface */
@@ -327,7 +335,7 @@ err:
 
 static int sensor_remove(struct platform_device *pdev)
 {
-	struct orient_platform_data *orient_data = dev_get_drvdata(pdev);
+   	struct orient_platform_data *orient_data = dev_get_drvdata((struct device *)pdev);
 
 	if (orient_data->orient_input_dev != NULL) {
 		sysfs_remove_group(&orient_data->orient_input_dev->dev.kobj,

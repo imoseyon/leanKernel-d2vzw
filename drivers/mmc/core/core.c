@@ -342,15 +342,27 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 			 */
 			limit_us = 800000;
 		else
-			limit_us = 100000;
+			limit_us = 250000;
 
 		/*
 		 * SDHC cards always use these fixed values.
 		 */
-		if (timeout_us > limit_us || mmc_card_blockaddr(card)) {
-			data->timeout_ns = limit_us * 1000;
-			data->timeout_clks = 0;
-		}
+		 /* <parvathi.b>: make read access time as 250 msec for both SDSC and SDHC/XC cards */
+		 /* Ref: P131003-01789. Many multi-block and single block read timeout in aging test  */
+		 if (data->flags & MMC_DATA_WRITE)
+		 {
+		 	if (timeout_us > limit_us || mmc_card_blockaddr(card)) {
+				data->timeout_ns = limit_us * 1000;
+				data->timeout_clks = 0;
+		 	}
+		 }
+		 else
+		 {
+		 	 data->timeout_ns = limit_us * 1000;
+			 data->timeout_clks = 0;
+		 	
+		 }
+		
 	}
 	/*
 	 * Some cards need very high timeouts if driven in SPI mode.

@@ -27,10 +27,35 @@
 #define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
 #endif /* KERNEL_VERSION */
 
-/* 3.1.10 is the highest version currently supported */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10)
-#error "Kernel versions after 3.1.10 are not supported"
-#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10) */
+/* 3.0.43 is the highest version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,0,43) && \
+  LINUX_VERSION_CODE < KERNEL_VERSION(3,1,0)
+#error "Kernel versions after 3.0.43 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,0,43) */
+
+/* 3.1.10 is the highest 3.1 version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10) && \
+  LINUX_VERSION_CODE < KERNEL_VERSION(3,2,0)
+#warning "Kernel versions after 3.1.10 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,1,10) && ... */
+
+/* 3.2.30 is the highest 3.2 version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,2,30) && \
+  LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
+#warning "Kernel versions after 3.2.30 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,2,30) && ... */
+
+/* 3.3.8 is the highest 3.3 version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,3,8) && \
+  LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0)
+#warning "Kernel versions after 3.3.8 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,3,8) && ... */
+
+/* 3.4.11 is the highest 3.4 version currently supported */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,4,11) && \
+  LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
+#warning "Kernel versions after 3.4.11 are not supported"
+#endif /* LINUX_VERSION_CODE > KERNEL_VERSION(3,4,11) && ... */
 
 /* 2.4 is not supported */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -150,6 +175,8 @@
 #define LINUX_DST_POP_IS_SKB_DST_POP 1
 #define LINUX_IP_ONLY_PASSTHROUGH_NDISC 1
 #define LINUX_FRAGMENTATION_AFTER_NF6_POST_ROUTING 1
+#define LINUX_USE_SKB_DST_NOREF 1
+#define LINUX_HAS_SKB_RXHASH 1
 #endif /* >= 2.6.35 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,36)
@@ -157,11 +184,12 @@
 #endif /* >= 2.6.36 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37)
+#define LINUX_HAS_SKB_GET_RXHASH 1
 #endif /* >= 2.6.37 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
 #define LINUX_INODE_OPERATION_PERMISSION_HAS_UINT 1
-#define LINUX_HAS_DST_COPY_METRICS 1
+#define LINUX_HAS_DST_METRICS_ACCESSORS 1
 #define LINUX_SSH_RTABLE_FIRST_ELEMENT_NEEDED 1
 #endif /* >= 2.6.38 */
 
@@ -173,18 +201,47 @@
 #define LINUX_DST_ALLOC_HAS_REFCOUNT 1
 #endif /* >= 2.6.38 */
 
+
+/* 3.0 series specific things */
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0)
+#define LINUX_DST_ALLOC_REQUIRES_ZEROING 1
 #define LINUX_DST_ALLOC_HAS_MANY_ARGS 1 
 #endif /* >= 3.0.0 */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,29)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,21)
 #define LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS 1
-#endif /* >= 3.1.0 */
+#endif /* >= 3.0.21 */
+
+
+/* 3.1 series specific things */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,1,0)
 #undef LINUX_INODE_OPERATION_PERMISSION_HAS_UINT 
 #define LINUX_HAS_NET_DEVICE_OPS 1
 #undef LINUX_HAS_HH_CACHE
 #endif /* >= 3.1.0 */
+
+
+/* 3.2 series specific things */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0)
+#define LINUX_HAS_SKB_FRAG_PAGE 1
+#define LINUX_HAS_SKB_L4_RXHASH 1
+#endif /* >= 3.2.0 */
+
+
+/* 3.3 series specific things */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+#define LINUX_USE_DST_GET_NEIGHBOUR_NOREF 1
+#endif /* >= 3.3.0 */
+
+
+/* 3.4 series specific things */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+#endif /* >= 3.4.0 */
+
 
 #endif /* LINUX_VERSION_H */

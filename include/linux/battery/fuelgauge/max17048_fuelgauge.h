@@ -48,7 +48,7 @@ struct battery_data_t {
 };
 
 struct sec_fg_info {
-	bool dummy
+	bool dummy;
 };
 
 #endif /* __MAX17048_FUELGAUGE_H */

@@ -26,12 +26,21 @@ struct sec_keyboard_platform_data {
 	int (*wakeup_key)(void);
 	void (*check_uart_path)(bool en);
 	void (*acc_power)(u8 token, bool active);
+	int (*noti_univ_kbd_dock)(unsigned int code);
 	void (*register_cb)(struct sec_keyboard_callbacks *cb);
 };
 #endif
 
+struct sec_30pin_callbacks {
+	int (*noti_univ_kdb_dock)(struct sec_30pin_callbacks *cb,
+		unsigned int code);
+};
+
 struct acc_con_platform_data {
-	void	(*otg_en) (int active);
+/*	void	(*otg_en) (int active);
+	void	(*usb_en) (int active); */
+	int	(*otg_en) (bool active);
+	int	(*usb_en) (bool active);
 #ifdef CONFIG_CAMERON_HEALTH
 	void (*cameron_health_en) (bool active);
 #endif
@@ -39,6 +48,7 @@ struct acc_con_platform_data {
 	void    (*usb_ldo_en) (int active);
 	int (*get_dock_state)(void);
 	int (*check_keyboard)(bool attached);
+	void (*register_cb)(struct sec_30pin_callbacks *cb);
 	int     accessory_irq_gpio;
 	int     dock_irq_gpio;
 	int     mhl_irq_gpio;

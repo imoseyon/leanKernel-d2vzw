@@ -163,4 +163,13 @@ config CHARGER_BQ24191
 	 This driver source code implemented
 	 all functions for BQ24191 charger.
 
+config CHARGER_NCP1851
+        tristate "NCP1851 charger driver"
+        default n
+        depends on BATTERY_SAMSUNG
+        help
+         Say Y to include support
+         for ON Semiconductor NCP1851 charger driver.
+         This driver source code implemented
+         all functions for NCP1851 charger.
 

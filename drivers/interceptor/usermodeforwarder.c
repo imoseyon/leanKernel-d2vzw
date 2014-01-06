@@ -712,6 +712,11 @@ void ssh_engine_from_ipm_route(SshEngine engine,
 
   /* Allocate and initialize a context structure. */
   rr = ssh_calloc(1, sizeof(*rr));
+  if (rr == NULL)
+    {
+      SSH_DEBUG(SSH_D_FAIL, ("Failed to allocate routing context."));
+      return;
+    }
   rr->engine = engine;
   rr->id = id;
   ssh_interceptor_route(engine->interceptor, &key,
@@ -731,6 +736,9 @@ void ssh_engine_from_ipm_packet(SshEngine engine,
 #endif /* (SSH_INTERCEPTOR_NUM_EXTENSION_SELECTORS > 0) */
   unsigned char *packet_ptr, *internal_ptr;
   size_t packet_len, internal_len, bytes;
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+  SshUInt16 route_selector;
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
 
   /* Decode the packet. */
   bytes = ssh_decode_array(data, len,
@@ -739,6 +747,11 @@ void ssh_engine_from_ipm_packet(SshEngine engine,
                                   SSH_FORMAT_UINT32, &ifnum_out,
                                   SSH_FORMAT_UINT32, &protocol,
                                   SSH_FORMAT_UINT32, &media_header_len,
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+                                 SSH_FORMAT_UINT16, &route_selector,
+#else /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
+                                 SSH_FORMAT_UINT16, NULL,
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
                                   SSH_FORMAT_UINT32_STR_NOCOPY,
                                     &packet_ptr, &packet_len,
                                   SSH_FORMAT_UINT32_STR_NOCOPY,
@@ -780,7 +793,10 @@ void ssh_engine_from_ipm_packet(SshEngine engine,
   SSH_ASSERT(((SshUInt32)ifnum_out) <= ((SshUInt32)SSH_INTERCEPTOR_MAX_IFNUM));
 
   /* Allocate a packet object and copy data into it. */
-  flags &= SSH_PACKET_FROMADAPTER | SSH_PACKET_FROMPROTOCOL;
+  flags &= (SSH_PACKET_FROMADAPTER | 
+            SSH_PACKET_FROMPROTOCOL |
+            SSH_PACKET_FORWARDED |
+            SSH_PACKET_UNMODIFIED);
   pp = ssh_interceptor_packet_alloc(engine->interceptor,
                                     flags, protocol, 
 				    ifnum_in, ifnum_out,
@@ -801,6 +817,10 @@ void ssh_engine_from_ipm_packet(SshEngine engine,
       SSH_DEBUG(SSH_D_ERROR, ("internal import failed, dropping packet"));
       return;
     }
+
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+  pp->route_selector = route_selector;
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
 
 #if (SSH_INTERCEPTOR_NUM_EXTENSION_SELECTORS > 0)
   for (i = 0; i < SSH_INTERCEPTOR_NUM_EXTENSION_SELECTORS; i++)
@@ -988,11 +1008,19 @@ ssh_engine_from_ipm_virtual_adapter_send(SshEngine engine,
   const unsigned char *packet, *internal;
   size_t packet_len, internal_len;
   SshInterceptorPacket pp;
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+  SshUInt16 route_selector;
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
 
   if (ssh_decode_array(data, len,
                        SSH_FORMAT_UINT32, &ifnum_in,
                        SSH_FORMAT_UINT32, &ifnum_out,
                        SSH_FORMAT_UINT32, &protocol,
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+                       SSH_FORMAT_UINT16, &route_selector,
+#else /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
+                       SSH_FORMAT_UINT16, NULL,
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
                        SSH_FORMAT_UINT32_STR_NOCOPY, &packet, &packet_len,
                        SSH_FORMAT_UINT32_STR_NOCOPY, &internal, &internal_len,
                        SSH_FORMAT_END) != len)
@@ -1027,6 +1055,10 @@ ssh_engine_from_ipm_virtual_adapter_send(SshEngine engine,
       SSH_DEBUG(SSH_D_ERROR, ("internal import failed, dropping packet"));
       return;
     }
+
+#ifdef SSH_IPSEC_IP_ONLY_INTERCEPTOR
+  pp->route_selector = route_selector;
+#endif /* SSH_IPSEC_IP_ONLY_INTERCEPTOR */
 
   ssh_virtual_adapter_send(engine->interceptor, pp);
 }

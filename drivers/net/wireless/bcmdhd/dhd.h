@@ -24,7 +24,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd.h 357924 2012-09-20 10:44:32Z $
+ * $Id: dhd.h 426576 2013-09-30 06:14:46Z $
  */
 
 /****************
@@ -58,7 +58,6 @@ int setScheduler(struct task_struct *p, int policy, struct sched_param *param);
 #include <wlioctl.h>
 #include <wlfc_proto.h>
 
-#include <dhd_sec_feature.h>
 
 #if defined(CUSTOMER_HW4_RELEASE)
 /* Customer requirement */
@@ -77,29 +76,39 @@ enum dhd_bus_state {
 	DHD_BUS_DATA		/* Ready for frame transfers */
 };
 
-
+enum dhd_op_flags {
 /* Firmware requested operation mode */
-#define STA_MASK			0x0001
-#define HOSTAPD_MASK		0x0002
-#define WFD_MASK			0x0004
-#define SOFTAP_FW_MASK		0x0008
-#define	CONCURRENT_FW_MASK	(STA_MASK | WFD_MASK)
-#define P2P_GO_ENABLED		0x0010
-#define P2P_GC_ENABLED		0x0020
-#define CONCURENT_MASK		0x00F0
-#define CONCURRENT_MULTI_CHAN	0x0100
+	DHD_FLAG_STA_MODE				= BIT(0), /* STA only */
+	DHD_FLAG_HOSTAP_MODE				= BIT(1), /* SOFTAP only */
+	DHD_FLAG_P2P_MODE				= BIT(2), /* P2P Only */
+	/* STA + P2P */
+	DHD_FLAG_CONCURR_SINGLE_CHAN_MODE = (DHD_FLAG_STA_MODE | DHD_FLAG_P2P_MODE),
+	DHD_FLAG_CONCURR_MULTI_CHAN_MODE		= BIT(4), /* STA + P2P */
+	/* Current P2P mode for P2P connection */
+	DHD_FLAG_P2P_GC_MODE				= BIT(5),
+	DHD_FLAG_P2P_GO_MODE				= BIT(6),
+	DHD_FLAG_MBSS_MODE				= BIT(7) /* MBSS in future */
+};
+
 #define MANUFACTRING_FW 	"WLTEST"
 
-/* max sequential rxcntl timeouts to set HANG event */
-#ifndef MAX_CNTL_TIMEOUT
-#define MAX_CNTL_TIMEOUT  2
-#endif
+/* max sequential TX/RX control timeouts to set HANG event */
+#ifndef MAX_CNTL_TX_TIMEOUT
+#define MAX_CNTL_TX_TIMEOUT  2
+#endif /* MAX_CNTL_TX_TIMEOUT */
+#ifndef MAX_CNTL_RX_TIMEOUT
+#define MAX_CNTL_RX_TIMEOUT  1
+#endif /* MAX_CNTL_RX_TIMEOUT */
+
+#define DHD_SCAN_ASSOC_ACTIVE_TIME	40 /* ms: Embedded default Active setting from DHD */
+#define DHD_SCAN_UNASSOC_ACTIVE_TIME 80 /* ms: Embedded def. Unassoc Active setting from DHD */
+#define DHD_SCAN_PASSIVE_TIME		130 /* ms: Embedded default Passive setting from DHD */
 
 #ifndef POWERUP_MAX_RETRY
 #define POWERUP_MAX_RETRY	3 /* how many times we retry to power up the chip */
 #endif
 #ifndef POWERUP_WAIT_MS
-#define POWERUP_WAIT_MS		(2000) /* ms: time out in waiting wifi to come up */
+#define POWERUP_WAIT_MS		2000	 /* ms: time out in waiting wifi to come up */
 #endif
 
 enum dhd_bus_wake_state {
@@ -232,8 +241,10 @@ typedef struct dhd_pub {
 	int pno_enable;                 /* pno status : "1" is pno enable */
 	int pno_suspend;		/* pno suspend status : "1" is pno suspended */
 #endif /* PNO_SUPPORT */
-	int dtim_skip;         /* dtim skip , default 0 means wake each dtim */
-
+	/* DTIM skip value, default 0(or 1) means wake each DTIM
+	 * 3 means skip 2 DTIMs and wake up 3rd DTIM(9th beacon when AP DTIM is 3)
+	 */
+	int suspend_bcn_li_dtim;         /* bcn_li_dtim value in suspend mode */
 #ifdef PKT_FILTER_SUPPORT
 	int early_suspended;	/* Early suspend status */
 	int dhcp_in_progress;	/* DHCP period */
@@ -277,11 +288,22 @@ typedef struct dhd_pub {
 	uint8 htsfdlystat_sz; /* Size of delay stats, max 255B */
 #endif
 	struct reorder_info *reorder_bufs[WLHOST_REORDERDATA_MAXFLOWS];
-#if defined(CUSTOMER_HW4) && defined(PNO_SUPPORT) && defined(CONFIG_HAS_WAKELOCK)
-	struct wake_lock	pno_wakelock;
+#if defined(RXFRAME_THREAD) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39))
+#define MAXSKBPEND 1024
+	void *skbbuf[MAXSKBPEND];
+	uint32 store_idx;
+	uint32 sent_idx;
+#endif /* RXFRAME_THREAD && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39)) */
+#if defined(ARP_OFFLOAD_SUPPORT)
+	uint32 arp_version;
+#endif
+#if defined(CUSTOMER_HW4)
+	bool dhd_bug_on;
 #endif
 } dhd_pub_t;
-
+#if defined(CUSTOMER_HW4)
+#define MAX_RESCHED_CNT 600
+#endif
 
 	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
 
@@ -340,6 +362,11 @@ typedef struct dhd_pub {
 #undef	SPINWAIT_SLEEP
 #define SPINWAIT_SLEEP(a, exp, us) SPINWAIT(exp, us)
 #endif /* DHDTHREAD */
+
+#ifndef OSL_SLEEP
+#define OSL_SLEEP(ms)		OSL_DELAY(ms*1000)
+#endif /* OSL_SLEEP */
+
 #define DHD_IF_VIF	0x01	/* Virtual IF (Hidden from user) */
 
 unsigned long dhd_os_spin_lock(dhd_pub_t *pub);
@@ -404,11 +431,19 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 #define DHD_PACKET_TIMEOUT_MS	1000
 #define DHD_EVENT_TIMEOUT_MS	1500
 
+#if defined(CUSTOMER_HW4) && defined(PNO_SUPPORT)
+#define DHD_PNO_TIMEOUT_MS	10000
+#endif
+
 /* interface operations (register, remove) should be atomic, use this lock to prevent race
  * condition among wifi on/off and interface operation functions
  */
 void dhd_net_if_lock(struct net_device *dev);
 void dhd_net_if_unlock(struct net_device *dev);
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
+extern struct mutex _dhd_sdio_mutex_lock_;
+#endif 
 
 typedef struct dhd_if_event {
 	uint8 ifidx;
@@ -526,14 +561,15 @@ extern int dhd_dev_get_pno_status(struct net_device *dev);
 #define DHD_MULTICAST4_FILTER_NUM	2
 #define DHD_MULTICAST6_FILTER_NUM	3
 #define DHD_MDNS_FILTER_NUM			4
-extern void dhd_set_packet_filter(dhd_pub_t *dhd);
+#define DHD_ARP_FILTER_NUM		5
+extern int dhd_os_enable_packet_filter(dhd_pub_t *dhdp, int val);
 extern void dhd_enable_packet_filter(int value, dhd_pub_t *dhd);
 extern int net_os_enable_packet_filter(struct net_device *dev, int val);
 extern int net_os_rxfilter_add_remove(struct net_device *dev, int val, int num);
 #endif /* PKT_FILTER_SUPPORT */
 
-extern int dhd_get_dtim_skip(dhd_pub_t *dhd);
-extern bool dhd_check_ap_wfd_mode_set(dhd_pub_t *dhd);
+extern int dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd);
+extern bool dhd_support_sta_mode(dhd_pub_t *dhd);
 
 #ifdef DHD_DEBUG
 extern int write_to_file(dhd_pub_t *dhd, uint8 *buf, int size);
@@ -601,11 +637,7 @@ extern uint dhd_bus_chippkg_id(dhd_pub_t *dhdp);
 extern int dhd_keep_alive_onoff(dhd_pub_t *dhd);
 #endif /* KEEP_ALIVE */
 
-#ifdef ARP_OFFLOAD_SUPPORT
-extern void dhd_arp_offload_set(dhd_pub_t * dhd, int arp_mode);
-extern void dhd_arp_offload_enable(dhd_pub_t * dhd, int arp_enable);
-#endif /* ARP_OFFLOAD_SUPPORT */
-
+extern bool dhd_is_concurrent_mode(dhd_pub_t *dhd);
 
 typedef enum cust_gpio_modes {
 	WLAN_RESET_ON,
@@ -672,29 +704,55 @@ extern uint dhd_sdiod_drive_strength;
 /* Override to force tx queueing all the time */
 extern uint dhd_force_tx_queueing;
 /* Default KEEP_ALIVE Period is 55 sec to prevent AP from sending Keep Alive probe frame */
-#if defined(CUSTOMER_HW4)
-#ifdef KEEP_ALIVE_PACKET_PERIOD_30_SEC
-#define KEEP_ALIVE_PERIOD 30000
-#else /* KEEP_ALIVE_PACKET_PERIOD_30_SEC */
-#define KEEP_ALIVE_PERIOD 55000
-#endif /* KEEP_ALIVE_PACKET_PERIOD_30_SEC */
-#else
-#define KEEP_ALIVE_PERIOD 55000
-#endif /* CUSTOMER_HW4 */
+#define DEFAULT_KEEP_ALIVE_VALUE 	55000 /* msec */
+#ifndef CUSTOM_KEEP_ALIVE_SETTING
+#define CUSTOM_KEEP_ALIVE_SETTING 	DEFAULT_KEEP_ALIVE_VALUE
+#endif /* DEFAULT_KEEP_ALIVE_VALUE */
+
 #define NULL_PKT_STR	"null_pkt"
 
 /* hooks for custom glom setting option via Makefile */
-#define DEFAULT_GLOM_VALUE	-1
+#define DEFAULT_GLOM_VALUE 	-1
 #ifndef CUSTOM_GLOM_SETTING
-#define CUSTOM_GLOM_SETTING	DEFAULT_GLOM_VALUE
+#define CUSTOM_GLOM_SETTING 	DEFAULT_GLOM_VALUE
 #endif
+
+/* hooks for custom Roaming Trigger  setting via Makefile */
+#define DEFAULT_ROAM_TRIGGER_VALUE -75 /* dBm default roam trigger all band */
+#define DEFAULT_ROAM_TRIGGER_SETTING 	-1
+#ifndef CUSTOM_ROAM_TRIGGER_SETTING
+#define CUSTOM_ROAM_TRIGGER_SETTING 	DEFAULT_ROAM_TRIGGER_VALUE
+#endif
+
+/* hooks for custom Roaming Romaing  setting via Makefile */
+#define DEFAULT_ROAM_DELTA_VALUE  10 /* dBm default roam delta all band */
+#define DEFAULT_ROAM_DELTA_SETTING 	-1
+#ifndef CUSTOM_ROAM_DELTA_SETTING
+#define CUSTOM_ROAM_DELTA_SETTING 	DEFAULT_ROAM_DELTA_VALUE
+#endif
+
 
 /* hooks for custom dhd_dpc_prio setting option via Makefile */
 #define DEFAULT_DHP_DPC_PRIO  1
 #ifndef CUSTOM_DPC_PRIO_SETTING
-#define CUSTOM_DPC_PRIO_SETTING		DEFAULT_DHP_DPC_PRIO
+#define CUSTOM_DPC_PRIO_SETTING 	DEFAULT_DHP_DPC_PRIO
 #endif
 
+#define DEFAULT_SUSPEND_BCN_LI_DTIM		3
+#ifndef CUSTOM_SUSPEND_BCN_LI_DTIM
+#define CUSTOM_SUSPEND_BCN_LI_DTIM		DEFAULT_SUSPEND_BCN_LI_DTIM
+#endif
+
+#if defined(RXFRAME_THREAD) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39))
+#ifndef CUSTOM_RXF_PRIO_SETTING
+#define CUSTOM_RXF_PRIO_SETTING		MAX((CUSTOM_DPC_PRIO_SETTING - 1), 1)
+#endif
+#endif /* defined(RXFRAME_THREAD) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39)) */
+
+#define DEFAULT_WIFI_TURNOFF_DELAY		0
+#ifndef WIFI_TURNOFF_DELAY
+#define WIFI_TURNOFF_DELAY		DEFAULT_WIFI_TURNOFF_DELAY
+#endif /* WIFI_TURNOFF_DELAY */
 
 #ifdef SDTEST
 /* Echo packet generator (SDIO), pkts/s */
@@ -881,11 +939,14 @@ extern int dhd_pno_suspend(dhd_pub_t *dhd, int pfn_suspend);
 #endif /* PNO_SUPPORT */
 #ifdef ARP_OFFLOAD_SUPPORT
 #define MAX_IPV4_ENTRIES	8
+void dhd_arp_offload_set(dhd_pub_t * dhd, int arp_mode);
+void dhd_arp_offload_enable(dhd_pub_t * dhd, int arp_enable);
+
 /* dhd_commn arp offload wrapers */
-void dhd_aoe_hostip_clr(dhd_pub_t *dhd);
-void dhd_aoe_arp_clr(dhd_pub_t *dhd);
-int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen);
-void dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr);
+void dhd_aoe_hostip_clr(dhd_pub_t *dhd, int idx);
+void dhd_aoe_arp_clr(dhd_pub_t *dhd, int idx);
+int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen, int idx);
+void dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx);
 #endif /* ARP_OFFLOAD_SUPPORT */
 
 #if defined(CUSTOMER_HW4) && defined(RDWR_KORICS_MACADDR)
@@ -895,4 +956,20 @@ dhd_write_rdwr_korics_macaddr(struct dhd_info *dhd, struct ether_addr *mac);
 #if defined(SUPPORT_MULTIPLE_REVISION)
 extern int concate_revision(struct dhd_bus *bus, char *path, int path_len);
 #endif /* SUPPORT_MULTIPLE_REVISION */
+
+#if defined(CUSTOMER_HW4) && defined(USE_WFA_CERT_CONF)
+enum {
+	SET_PARAM_BUS_TXGLOM_MODE,
+	SET_PARAM_ROAMOFF,
+#ifdef USE_WL_FRAMEBURST
+	SET_PARAM_FRAMEBURST,
+#endif /* USE_WL_FRAMEBURST */
+#ifdef USE_WL_TXBF
+	SET_PARAM_TXBF,
+#endif /* USE_WL_TXBF */
+	PARAM_LAST_VALUE
+};
+extern int sec_get_param(dhd_pub_t *dhd, int mode);
+#endif /* CUSTOMER_HW4 && USE_WFA_CERT_CONF */
+
 #endif /* _dhd_h_ */

@@ -137,10 +137,16 @@ static struct gpiomux_setting slimbus = {
 };
 #endif
 
-static struct gpiomux_setting gpio_key_active_cfg = {
+static struct gpiomux_setting gpio_homekey_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_key_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting gpio_key_suspend_cfg = {
@@ -335,7 +341,7 @@ struct msm_gpiomux_config msm8960_gpio_key_configs[] = {
 	{
 		.gpio = GPIO_HOME_KEY,
 		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_key_active_cfg,
+			[GPIOMUX_ACTIVE] = &gpio_homekey_active_cfg,
 			[GPIOMUX_SUSPENDED] = &gpio_key_suspend_cfg,
 		}
 	},

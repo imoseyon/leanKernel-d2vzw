@@ -35,6 +35,7 @@ static struct msm_cam_server_dev g_server_dev;
 static struct class *msm_class;
 static dev_t msm_devno;
 static int vnode_count;
+unsigned int open_fail_flag;
 
 module_param(msm_camera_v4l2_nr, uint, 0644);
 MODULE_PARM_DESC(msm_camera_v4l2_nr, "videoX start number, -1 is autodetect");
@@ -173,10 +174,13 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 			}
 			kfree(isp_event);
 			pr_err("%s: wait_event error %d\n", __func__, rc);
+			if (rc == -ETIMEDOUT) { 
+			pr_err("%s: cmdtype: %d, timeout_ms: %d, stream_type: %d\n", __func__, out->type, out->timeout_ms, out->stream_type); 
+		}
 			return rc;
 		}
 	}
-
+	
 	rcmd = msm_dequeue(queue, list_control);
 	BUG_ON(!rcmd);
 	D("%s Finished servicing ioctl\n", __func__);
@@ -1417,6 +1421,7 @@ static int msm_open_init(struct msm_cam_v4l2_device *pcam,
 	struct msm_cam_v4l2_dev_inst *pcam_inst)
 {
 	int rc;
+	open_fail_flag = 0;
 
 	rc = msm_cam_server_open_session(&g_server_dev, pcam);
 	if (rc < 0) {
@@ -1467,6 +1472,7 @@ static int msm_open_init(struct msm_cam_v4l2_device *pcam,
 
 	rc = msm_send_open_server(pcam->vnode_id);
 	if (rc < 0) {
+		open_fail_flag = 1;
 		pr_err("%s failed\n", __func__);
 		goto fail5;
 	}
@@ -1489,6 +1495,7 @@ fail1:
 fail:
 	msm_cam_server_close_session(&g_server_dev, pcam);
 end:
+	open_fail_flag = 0;
 	return rc;
 }
 
@@ -1968,14 +1975,20 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 
 	int rc = 0;
 	struct v4l2_event ev;
+	static int Log_Control; /* Debug to control error log */
 	struct msm_cam_config_dev *config_cam = fp->private_data;
 	struct v4l2_event_subscription temp_sub;
 
 	D("%s: cmd %d\n", __func__, _IOC_NR(cmd));
 	if (!g_server_dev.pcam_active) {
+		if(!Log_Control){
 		pr_err("%s: no active pcam instance.", __func__);
+		Log_Control++;
+		}
 		return -EINVAL;
 	}
+	else
+		Log_Control=0;
 
 	switch (cmd) {
 		/* memory management shall be handeld here*/

@@ -316,7 +316,7 @@ enum s5c73m3_fw_path {
 #define S5C73M3_IMAGE_EFFECT_POINT_COLOR_2	0x000D
 #define S5C73M3_IMAGE_EFFECT_POINT_COLOR_3	0x000E
 #define S5C73M3_IMAGE_EFFECT_POINT_COLOR_4	0x000F
-
+#define S5C73M3_IMAGE_EFFECT_CARTOONIZE	0x001A
 
 #define S5C73M3_IMAGE_QUALITY		0x0B0C
 #define S5C73M3_IMAGE_QUALITY_SUPERFINE	0x0000
@@ -336,7 +336,12 @@ enum s5c73m3_fw_path {
 
 #define S5C73M3_FLASH_TORCH		0x0B12
 #define S5C73M3_FLASH_TORCH_OFF		0x0000
+
+#if defined(CONFIG_MACH_M2_DCM)
+#define S5C73M3_FLASH_TORCH_ON		0x0004
+#else
 #define S5C73M3_FLASH_TORCH_ON		0x0001
+#endif
 
 #define S5C73M3_AE_ISNEEDFLASH		0x0CBA
 #define S5C73M3_AE_ISNEEDFLASH_OFF	0x0000
@@ -569,6 +574,7 @@ MIPI_BIT_RATE_640MHz=3,
 MIPI_BIT_RATE_720MHz=4,
 MIPI_BIT_RATE_750MHz=5,
 */
+#ifndef CONFIG_S5C73M3
 static u32 S5C73M3_YUV_PREVIEW[] = {
 	0x00500009,
 	0x00545000,
@@ -583,7 +589,7 @@ static u32 S5C73M3_YUV_PREVIEW[] = {
 	0x00545080,
 	0x0F140004,
 };
-
+#endif
 static u32 S5C73M3_HDR[] = {
 	0x00500009,
 	0x00545000,
@@ -726,6 +732,7 @@ static u32 S5C73M3_PREVIEW[] = {
 };
 
 /* Below Not used settings will be removed later */
+#ifndef CONFIG_S5C73M3
 static u32 S5C73M3_INTERLEAVED_PREVIEW[] = {
 	0x00500009,
 	0x00545000,
@@ -1058,7 +1065,7 @@ static u32 S5C73M3_OTP_PAGE[] = {
 0x0054A000,
 0x0F140001,
 };
-
+#endif
 extern int s5c73m3_spi_read(u8 *buf, size_t len, const int rxSize);
 extern int s5c73m3_spi_write(const u8 *addr, const int len, const int txSize);
 extern int s5c73m3_spi_init(void);

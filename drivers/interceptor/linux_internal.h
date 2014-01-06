@@ -93,9 +93,11 @@
 
 /****************************** Sanity checks ********************************/
 
+#if 0
 #ifndef MODULE
 #error "VPNClient can only be compiled as a MODULE"
 #endif /* MODULE */
+#endif /* 0 */
 
 #ifndef CONFIG_NETFILTER
 #error "Kernel is not compiled with CONFIG_NETFILTER"
@@ -297,16 +299,52 @@ typedef struct sk_buff *SshHookSkb;
 #ifdef LINUX_HAS_SKB_DST_FUNCTIONS
 #define SSH_SKB_DST(__skb) skb_dst((__skb))
 #define SSH_SKB_DST_SET(__skb, __dst) skb_dst_set((__skb), (__dst))
+#define SSH_SKB_DST_DROP(__skb) skb_dst_drop((__skb))
 #else /* LINUX_HAS_SKB_DST_FUNCTIONS */
 #define SSH_SKB_DST(__skb) ((__skb)->dst)
 #define SSH_SKB_DST_SET(__skb, __dst) ((void)((__skb)->dst = (__dst)))
+#define SSH_SKB_DST_DROP(__skb)                    \
+  do {                                             \
+    struct sk_buff *___skb_p = (__skb);            \
+    dst_release(skb_dst((___skb_p)));              \
+    skb_dst_set((___skb_p), NULL);                 \
+  } while (0)
 #endif /* LINUX_HAS_SKB_DST_FUNCTIONS */
+
+#ifdef LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS
+
+#define SSH_DST_NEIGHBOUR_READ_LOCK() rcu_read_lock()
+#define SSH_DST_NEIGHBOUR_READ_UNLOCK() rcu_read_unlock()
+#define SSH_DST_SET_NEIGHBOUR(_dst, _neigh) dst_set_neighbour((_dst), (_neigh))
+#ifdef LINUX_USE_DST_GET_NEIGHBOUR_NOREF
+#define SSH_DST_GET_NEIGHBOUR(_dst) dst_get_neighbour_noref((_dst))
+#else  /* LINUX_USE_DST_GET_NEIGHBOUR_NOREF */
+#define SSH_DST_GET_NEIGHBOUR(_dst) dst_get_neighbour((_dst))
+#endif /* LINUX_USE_DST_GET_NEIGHBOUR_NOREF */
+
+#else /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
+
+#define SSH_DST_NEIGHBOUR_READ_LOCK() do { } while (0)
+#define SSH_DST_NEIGHBOUR_READ_UNLOCK() do { } while (0)
+#define SSH_DST_GET_NEIGHBOUR(_dst) (_dst)->neighbour
+#define SSH_DST_SET_NEIGHBOUR(_dst, _neigh)     \
+  do {                                          \
+    (_dst)->neighbour = (_neigh);               \
+  } while (0)
+#endif /* LINUX_HAS_DST_NEIGHBOUR_FUNCTIONS */
 
 #ifdef IP6CB
 #define SSH_LINUX_IP6CB(skbp) IP6CB(skbp)
 #else /* IP6CB */
 #define SSH_LINUX_IP6CB(skbp) ((struct inet6_skb_parm *) ((skbp)->cb))
 #endif /* IP6CB */
+
+/* This HAVE_NET_DEVICE_OPS was removed in 3.1.x */
+#ifdef LINUX_HAS_NET_DEVICE_OPS
+#ifndef HAVE_NET_DEVICE_OPS
+#define HAVE_NET_DEVICE_OPS 1
+#endif /* HAVE_NET_DEVICE_OPS */
+#endif /* LINUX_HAS_NET_DEVICE_OPS */
 
 /* Stating from linux 2.6.35 the IPv6 address list needs to be iterated
    using the list_for_each_* macros. */

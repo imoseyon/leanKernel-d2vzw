@@ -195,7 +195,7 @@ static void max17040_dump_regs(struct i2c_client *client)
 static void max17040_reset(struct i2c_client *client)
 {
 	struct max17040_chip *chip = i2c_get_clientdata(client);
-	u8 reset_cmd[2] = {0x54, 0x00};
+	u16 reset_cmd = 0x0054;
 
 	if (is_max17048) {
 		mutex_lock(&chip->mutex);
@@ -321,7 +321,7 @@ static void max17040_get_soc(struct i2c_client *client)
 	/* Jaguar :		AdjSOC = ((pSOC - 0.3) * 100) / (100-0.3) */
 	if (psoc > empty_soc) {
 		temp_soc = ((psoc - empty_soc) * 10000)/(full_soc - empty_soc);
-		pr_debug("[battery] temp_soc = %d, psoc = %d (0.8%)\n",
+		pr_debug("[battery] temp_soc=%d, psoc=%d(0.8 percent)\n",
 			temp_soc, psoc);
 	} else
 		temp_soc = 0;
@@ -585,7 +585,6 @@ static irqreturn_t max17040_int_work_func(int irq, void *max_chip)
 {
 	struct max17040_chip *chip = max_chip;
 
-	u8 data[2];
 	u16 ret = 0;
 
 	pr_info("[ALERT] %s\n", __func__);
@@ -869,7 +868,7 @@ static int __devinit max17040_probe(struct i2c_client *client,
 	chip->rcomp = max17040_get_rcomp(client);
 
 	chip->battery.name		= "fuelgauge",
-	chip->battery.type		= POWER_SUPPLY_TYPE_BATTERY,
+	chip->battery.type		= POWER_SUPPLY_TYPE_UNKNOWN,
 	chip->battery.get_property	= max17040_get_property,
 	chip->battery.set_property	= max17040_set_property,
 	chip->battery.properties	= max17040_battery_props,

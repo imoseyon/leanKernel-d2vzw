@@ -411,6 +411,7 @@ __acquires(&port->port_lock)
 
 		req->length = len;
 		list_del(&req->list);
+		req->zero = (gs_buf_data_avail(&port->port_write_buf) == 0);
 
 		pr_vdebug(PREFIX "%d: tx len=%d, 0x%02x 0x%02x 0x%02x ...\n",
 				port->port_num, len, *((u8 *)req->buf),
@@ -1311,7 +1312,7 @@ static void usb_debugfs_init(struct gs_port *ui_dev, int port_num)
 		return;
 
 	debugfs_create_file("readstatus", 0444, dent, ui_dev, &debug_adb_ops);
-	debugfs_create_file("reset", 0222, dent, ui_dev, &debug_rst_ops);
+	debugfs_create_file("reset", S_IRUGO | S_IWUSR, dent, ui_dev, &debug_rst_ops);
 }
 #else
 static void usb_debugfs_init(struct gs_port *ui_dev) {}

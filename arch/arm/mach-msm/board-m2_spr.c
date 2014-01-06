@@ -187,6 +187,11 @@ static struct platform_device msm_fm_platform_init = {
 #ifdef CONFIG_SEC_DEBUG
 #include <mach/sec_debug.h>
 #endif
+
+#ifdef CONFIG_PROC_AVC
+#include <linux/proc_avc.h>
+#endif
+
 unsigned int gpio_table[][GPIO_REV_MAX] = {
 /* GPIO_INDEX	Rev	{#00,#01,#02,#03,#04,#05,#06,#07,#08 } */
 /* MDP_VSYNC	*/	{ 0,   0,  0,  0,  0,  0,  0,  0,  0 },
@@ -292,28 +297,6 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 #define MSM_8960_GSBI10_QUP_I2C_BUS_ID 10
 
 #endif
-
-static struct gpiomux_setting sec_ts_ldo_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting sec_ts_ldo_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
-	{	/* TS LDO EN */
-		.gpio = 10,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sec_ts_ldo_act_cfg,
-			[GPIOMUX_SUSPENDED] = &sec_ts_ldo_sus_cfg,
-		},
-	},
-};
 
 #define MSM_PMEM_ADSP_SIZE                 0x9600000 /* 150 Mbytes */
 #define MSM_PMEM_ADSP_SIZE_FOR_2GB         0xA500000 /* 165 Mbytes */
@@ -422,7 +405,6 @@ static struct platform_device android_pmem_adsp_device = {
 	.id = 2,
 	.dev = { .platform_data = &android_pmem_adsp_pdata },
 };
-#endif
 
 static struct android_pmem_platform_data android_pmem_audio_pdata = {
 	.name = "pmem_audio",
@@ -436,7 +418,8 @@ static struct platform_device android_pmem_audio_device = {
 	.id = 4,
 	.dev = { .platform_data = &android_pmem_audio_pdata },
 };
-#endif
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 
 struct fmem_platform_data fmem_pdata = {
 };
@@ -517,15 +500,19 @@ static void __init size_pmem_devices(void)
 	}
 
 	android_pmem_pdata.size = pmem_size;
-#endif
 	android_pmem_audio_pdata.size = MSM_PMEM_AUDIO_SIZE;
-#endif
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 }
 
+#ifdef CONFIG_ANDROID_PMEM
+#ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
 	msm8960_reserve_table[p->memory_type].size += p->size;
 }
+#endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
+#endif /*CONFIG_ANDROID_PMEM*/
 
 static void __init reserve_pmem_memory(void)
 {
@@ -533,8 +520,8 @@ static void __init reserve_pmem_memory(void)
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
-#endif
 	reserve_memory_for(&android_pmem_audio_pdata);
+#endif
 	msm8960_reserve_table[MEMTYPE_EBI1].size += pmem_kernel_ebi1_size;
 #endif
 }
@@ -787,7 +774,7 @@ static void __init reserve_ion_memory(void)
 			if (!strcmp(heap->name, "mm")
 				&& (mb->start >= 0xc0000000)) {
 				printk(KERN_ERR "heap->name %s, mb->start %lx\n",
-					heap->name, mb->start);
+					heap->name, (unsigned long int)mb->start);
 				heap->size = MSM_PMEM_ADSP_SIZE_FOR_2GB;
 			}
 
@@ -1540,7 +1527,7 @@ int msm8960_get_cable_type(void)
 	}
 	if (i == 10) {
 		pr_err("%s: fail to get battery ps\n", __func__);
-		return;
+		return 0;
 	}
 #endif
 
@@ -1774,10 +1761,23 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.iterm = 100,
 	.charge_duration = 8 * 60 * 60,
 	.recharge_duration = 2 * 60 * 60,
 	.max_voltage = 4350 * 1000,
+#if defined(_d2spi_)
+	.iterm = 150,
+	.recharge_voltage = 4300 * 1000,
+	.event_block = 580,
+	.high_block = 580,
+	.high_recovery = 440,
+	.low_block = -40,
+	.low_recovery = -5,
+	.lpm_high_block = 580,
+	.lpm_high_recovery = 440,
+	.lpm_low_block = -40,
+	.lpm_low_recovery = -5,
+#else
+	.iterm = 100,
 	.recharge_voltage = 4280 * 1000,
 	.event_block = 600,
 	.high_block = 450,
@@ -1788,6 +1788,7 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.lpm_high_recovery = 435,
 	.lpm_low_block = 0,
 	.lpm_low_recovery = 15,
+#endif
 	.wpc_charging_current = 500,
 };
 
@@ -1913,12 +1914,11 @@ void max17040_hw_init(void)
 
 static int max17040_low_batt_cb(void)
 {
-	pr_err("%s: Low battery alert\n", __func__);
-
 #ifdef CONFIG_BATTERY_SEC
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
+	pr_err("%s: Low battery alert\n", __func__);
 	if (!psy) {
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return -ENODEV;
@@ -2036,7 +2036,9 @@ static struct i2c_board_info opt_i2c_borad_info[] = {
 #endif
 };
 
+#if defined(CONFIG_OPTICAL_GP2A) || defined(CONFIG_OPTICAL_GP2AP020A00F)
 static void gp2a_led_onoff(int);
+#endif
 
 #if defined(CONFIG_OPTICAL_GP2A)
 static struct opt_gp2a_platform_data opt_gp2a_data = {
@@ -2645,11 +2647,6 @@ static struct i2c_gpio_platform_data  a2220_i2c_gpio_data = {
 	.udelay			= 1,
 };
 
-static struct platform_device a2220_i2c_gpio_device = {
-	.name			= "i2c-gpio",
-	.id			= MSM_A2220_I2C_BUS_ID,
-	.dev.platform_data	= &a2220_i2c_gpio_data,
-};
 static struct gpiomux_setting a2220_gsbi_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -2767,7 +2764,6 @@ static struct slim_device msm_slim_tabla = {
 		.platform_data = &tabla_platform_data,
 	},
 };
-static u8 tabla20_e_addr[6] = {0, 0, 0x60, 0, 0x17, 2};
 
 static struct tabla_pdata tabla20_platform_data = {
 	.slimbus_slave_device = {
@@ -2892,6 +2888,82 @@ static struct platform_device msm_device_wcnss_wlan = {
 	.resource	= resources_wcnss_wlan,
 	.dev		= {.platform_data = &qcom_wcnss_pdata},
 };
+
+#ifdef CONFIG_QSEECOM
+/* qseecom bus scaling */
+static struct msm_bus_vectors qseecom_clks_init_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_SPS,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ib = 0,
+		.ab = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_SPDM,
+		.dst = MSM_BUS_SLAVE_SPDM,
+		.ib = 0,
+		.ab = 0,
+	},
+};
+
+static struct msm_bus_vectors qseecom_enable_dfab_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_SPS,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ib = (492 * 8) * 1000000UL,
+		.ab = (492 * 8) *  100000UL,
+	},
+	{
+		.src = MSM_BUS_MASTER_SPDM,
+		.dst = MSM_BUS_SLAVE_SPDM,
+		.ib = 0,
+		.ab = 0,
+	},
+};
+
+static struct msm_bus_vectors qseecom_enable_sfpb_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_SPS,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ib = 0,
+		.ab = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_SPDM,
+		.dst = MSM_BUS_SLAVE_SPDM,
+		.ib = (64 * 8) * 1000000UL,
+		.ab = (64 * 8) *  100000UL,
+	},
+};
+static struct msm_bus_paths qseecom_hw_bus_scale_usecases[] = {
+	{
+		ARRAY_SIZE(qseecom_clks_init_vectors),
+		qseecom_clks_init_vectors,
+	},
+	{
+		ARRAY_SIZE(qseecom_enable_dfab_vectors),
+		qseecom_enable_dfab_vectors,
+	},
+	{
+		ARRAY_SIZE(qseecom_enable_sfpb_vectors),
+		qseecom_enable_sfpb_vectors,
+	},
+};
+
+static struct msm_bus_scale_pdata qseecom_bus_pdata = {
+	qseecom_hw_bus_scale_usecases,
+	ARRAY_SIZE(qseecom_hw_bus_scale_usecases),
+	.name = "qsee",
+};
+
+static struct platform_device qseecom_device = {
+	.name		= "qseecom",
+	.id		= 0,
+	.dev		= {
+		.platform_data = &qseecom_bus_pdata,
+	},
+};
+#endif
 
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
@@ -3168,9 +3240,6 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
-static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
-	.max_clock_speed = 15060000,
-};
 
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
@@ -3806,8 +3875,6 @@ static void mxt_init_hw_liquid(void)
 	}
 	return;
 
-err_ldo_gpio_set_dir:
-	gpio_set_value(GPIO_MXT_TS_LDO_EN, 0);
 err_ldo_gpio_req:
 	gpio_free(GPIO_MXT_TS_LDO_EN);
 err_irq_gpio_req:
@@ -3997,14 +4064,6 @@ static struct platform_device msm8960_device_ext_5v_vreg __devinitdata = {
 	},
 };
 
-static struct platform_device msm8960_device_ext_l2_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= 91,
-	.dev	= {
-		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_L2],
-	},
-};
-
 static struct platform_device msm8960_device_ext_3p3v_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
 	.id	= PM8921_GPIO_PM_TO_SYS(17),
@@ -4018,7 +4077,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4027,7 +4086,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4036,7 +4095,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_HOMEPAGE,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 1,
 		.debounce_interval	= 5, /* ms */
@@ -4258,6 +4317,9 @@ static struct platform_device *common_devices[] __initdata = {
 #endif
 	&msm_slim_ctrl,
 	&msm_device_wcnss_wlan,
+#if defined(CONFIG_QSEECOM)
+	&qseecom_device,
+#endif
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
 	defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
 	&qcrypto_device,
@@ -4279,8 +4341,8 @@ static struct platform_device *common_devices[] __initdata = {
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
 	&android_pmem_device,
 	&android_pmem_adsp_device,
-#endif
 	&android_pmem_audio_device,
+#endif
 #endif
 #ifdef CONFIG_KEYBOARD_GPIO
 	&msm8960_gpio_keys_device,
@@ -4340,6 +4402,7 @@ static struct platform_device *m2_spr_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -5040,7 +5103,7 @@ static struct pm_gpio ear_micbiase = {
 	.output_value	= 0,
 };
 
-static int secjack_gpio_init()
+static int secjack_gpio_init(void)
 {
 	int rc;
 
@@ -5081,7 +5144,7 @@ static int secjack_gpio_init()
 }
 #endif
 
-void main_mic_bias_init()
+int main_mic_bias_init(void)
 {
 	int ret;
 	ret = gpio_request(GPIO_MAIN_MIC_BIAS, "LDO_BIAS");
@@ -5091,9 +5154,11 @@ void main_mic_bias_init()
 		return ret;
 	}
 	gpio_direction_output(GPIO_MAIN_MIC_BIAS, 0);
+
+	return 0;
 }
 
-static int configure_codec_lineout_gpio()
+static int configure_codec_lineout_gpio(void)
 {
 	int ret;
 	struct pm_gpio param = {
@@ -5119,7 +5184,7 @@ static int configure_codec_lineout_gpio()
 	return 0;
 }
 
-static int tabla_codec_ldo_en_init()
+static int tabla_codec_ldo_en_init(void)
 {
 	int ret;
 
@@ -5140,6 +5205,10 @@ static void __init samsung_m2_spr_init(void)
 #ifdef CONFIG_SEC_DEBUG
 	sec_debug_init();
 #endif
+#ifdef CONFIG_PROC_AVC
+        sec_avc_log_init();
+#endif
+
 	if (socinfo_init() < 0)
 		pr_err("socinfo_init() failed!\n");
 

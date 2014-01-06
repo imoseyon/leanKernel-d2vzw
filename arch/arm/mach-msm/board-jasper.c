@@ -277,30 +277,6 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 
 #endif
 
-static struct gpiomux_setting sec_ts_ldo_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting sec_ts_ldo_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
-	{	/* TS LDO EN */
-		.gpio = 10,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sec_ts_ldo_act_cfg,
-			[GPIOMUX_SUSPENDED] = &sec_ts_ldo_sus_cfg,
-		},
-	},
-};
-
-
-
 #define MSM_PMEM_ADSP_SIZE         0x4600000 /* 70 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
 #define MSM_PMEM_SIZE 0x2800000 /* 40 Mbytes */
@@ -1073,7 +1049,7 @@ static void fsa9485_mhl_cb(bool attached)
 	}
 }
 
-static void fsa9485_otg_cb(bool attached)
+/*static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
 
@@ -1082,7 +1058,7 @@ static void fsa9485_otg_cb(bool attached)
 		msm_otg_set_id_state(attached);
 	}
 }
-
+*/
 static void fsa9485_usb_cb(bool attached)
 {
 	union power_supply_propval value;
@@ -1666,12 +1642,11 @@ void max17040_hw_init(void)
 
 static int max17040_low_batt_cb(void)
 {
-	pr_err("%s: Low battery alert\n", __func__);
-
 #ifdef CONFIG_BATTERY_SEC
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
+	pr_err("%s: Low battery alert\n", __func__);
 	if (!psy) {
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return -ENODEV;
@@ -2869,10 +2844,10 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
-static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
+/*static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
-
+*/
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
 #else
@@ -2940,7 +2915,7 @@ put_mvs_otg:
 
 static int phy_settings[] = {
 	0x44, 0x80,
-	0x3F, 0x81,
+	0x7F, 0x81,
 	0x3C, 0x82,
 	0x13, 0x83,
 	-1,
@@ -3674,7 +3649,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -3683,7 +3658,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -3968,6 +3943,10 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_rtb_device,
 #endif
 	&msm8960_device_cache_erp,
+#ifdef CONFIG_MSM_EBI_ERP
+	&msm8960_device_ebi1_ch0_erp,
+	&msm8960_device_ebi1_ch1_erp,
+#endif
 #ifdef CONFIG_MSM_CACHE_DUMP
 	&msm_cache_dump_device,
 #endif
@@ -3988,6 +3967,7 @@ static struct platform_device *jasper_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -4547,7 +4527,7 @@ static struct pm_gpio ear_micbiase = {
 	.output_value	= 0,
 };
 
-static int secjack_gpio_init()
+static int secjack_gpio_init(void)
 {
 	int rc;
 
@@ -4588,14 +4568,14 @@ static int secjack_gpio_init()
 }
 #endif
 
-void main_mic_bias_init()
+void main_mic_bias_init(void)
 {
 	int ret;
 	ret = gpio_request(gpio_rev(MAIN_MIC_BIAS), "LDO_BIAS");
 	if (ret) {
 		pr_err("%s: ldo bias gpio %d request"
 				"failed\n", __func__, gpio_rev(MAIN_MIC_BIAS));
-		return ret;
+	//	return ret;
 	}
 	gpio_direction_output(gpio_rev(MAIN_MIC_BIAS), 0);
 }

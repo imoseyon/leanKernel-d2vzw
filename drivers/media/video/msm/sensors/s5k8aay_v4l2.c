@@ -664,6 +664,10 @@ void s5k8aay_set_preview(void)
 				CAM_DEBUG(" WIFI VT common");
 				S5K8_BURST_WRT_LIST(s5k8aay_wifi_vt_common);
 				stable_delay = 150;
+			} else if (s5k8aay_ctrl->vtcall_mode == 3) {
+				CAM_DEBUG(" FACE DETECTION common");
+				S5K8_BURST_WRT_LIST(s5k8aay_fd_common);
+				stable_delay = 250;
 			} else {
 				CAM_DEBUG(" Normal common");
 				S5K8_BURST_WRT_LIST(s5k8aay_common);

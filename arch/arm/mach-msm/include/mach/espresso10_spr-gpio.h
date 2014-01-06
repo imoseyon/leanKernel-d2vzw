@@ -111,6 +111,7 @@
 #define GPIO_KS8851_RST			89
 
 #define GPIO_IF_CON_SENSE		92
+#define GPIO_CRADLE_SW_EN		92
 
 #define GPIO_PS_EN			97
 

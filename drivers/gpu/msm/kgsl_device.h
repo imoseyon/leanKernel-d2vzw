@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 #include "kgsl_pwrctrl.h"
 #include "kgsl_log.h"
 #include "kgsl_pwrscale.h"
+#include <linux/sync.h>
 
 #define KGSL_TIMEOUT_NONE       0
 #define KGSL_TIMEOUT_DEFAULT    0xFFFFFFFF
@@ -57,6 +58,7 @@ struct platform_device;
 struct kgsl_device_private;
 struct kgsl_context;
 struct kgsl_power_stats;
+struct kgsl_event;
 
 struct kgsl_functable {
 	/* Mandatory functions - these functions must be implemented
@@ -105,6 +107,8 @@ struct kgsl_functable {
 		struct kgsl_context *context);
 	long (*ioctl) (struct kgsl_device_private *dev_priv,
 		unsigned int cmd, void *data);
+	int (*next_event)(struct kgsl_device *device,
+		struct kgsl_event *event);
 };
 
 struct kgsl_memregion {
@@ -128,7 +132,8 @@ struct kgsl_event {
 	void (*func)(struct kgsl_device *, void *, u32);
 	void *priv;
 	struct list_head list;
-	struct kgsl_device_private *owner;
+	void *owner;
+	unsigned int created;
 };
 
 
@@ -189,6 +194,7 @@ struct kgsl_device {
 	struct pm_qos_request_list pm_qos_req_dma;
 	struct work_struct ts_expired_ws;
 	struct list_head events;
+	struct list_head events_pending_list;
 	s64 on_time;
 
 	/* page fault debugging parameters */
@@ -198,19 +204,35 @@ struct kgsl_device {
 	unsigned int page_fault_rptr;
 };
 
+void kgsl_process_events(struct work_struct *work);
+void kgsl_check_fences(struct work_struct *work);
+
+/**
+ * struct kgsl_context - Master structure for a KGSL context object
+ * @refcount - kref object for reference counting the context
+ * @id - integer identifier for the context
+ * @dev_priv - pointer to the owning device instance
+ * @devctxt - pointer to the device specific context information
+ * @reset_status - status indication whether a gpu reset occured and whether
+ * this context was responsible for causing it
+ * bad timestamp
+ * @timeline - sync timeline used to create fences that can be signaled when a
+ * sync_pt timestamp expires
+ * @events - list head of pending events for this context
+ * @events_list - list node for the list of all contexts that have pending events
+ */
 struct kgsl_context {
 	uint32_t id;
-
-	/* Pointer to the owning device instance */
 	struct kgsl_device_private *dev_priv;
-
-	/* Pointer to the device specific context information */
 	void *devctxt;
-	/*
-	 * Status indicating whether a gpu reset occurred and whether this
-	 * context was responsible for causing it
-	 */
 	unsigned int reset_status;
+	/*
+	 * Timeline used to create fences that can be signaled when a
+	 * sync_pt timestamp expires.
+	 */
+	struct sync_timeline *timeline;
+	struct list_head events;
+	struct list_head events_list;
 };
 
 struct kgsl_process_private {
@@ -348,5 +370,24 @@ const char *kgsl_pwrstate_to_str(unsigned int state);
 int kgsl_device_snapshot_init(struct kgsl_device *device);
 int kgsl_device_snapshot(struct kgsl_device *device, int hang);
 void kgsl_device_snapshot_close(struct kgsl_device *device);
+
+/**
+ * kgsl_active_count_put - Decrease the device active count
+ * @device: Pointer to a KGSL device
+ *
+ * Decrease the active count for the KGSL device and trigger the suspend_gate
+ * completion if it hits zero
+ */
+static inline void
+kgsl_active_count_put(struct kgsl_device *device)
+{
+	if (device->active_cnt == 1)
+		INIT_COMPLETION(device->suspend_gate);
+
+	device->active_cnt--;
+
+	if (device->active_cnt == 0)
+		complete(&device->suspend_gate);
+}
 
 #endif  /* __KGSL_DEVICE_H */

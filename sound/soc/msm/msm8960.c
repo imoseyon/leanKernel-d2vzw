@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,6 +26,7 @@
 #include <sound/jack.h>
 #include <asm/mach-types.h>
 #include <mach/socinfo.h>
+#include <linux/input.h>
 #include "msm-pcm-routing.h"
 #include "../codecs/wcd9310.h"
 
@@ -645,7 +646,7 @@ static void *def_tabla_mbhc_cal(void)
 
 static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int err;
+	int err, ret;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 
@@ -1093,6 +1094,15 @@ static struct snd_soc_dai_link msm8960_dai[] = {
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_INT_BT_SCO_TX,
 		.be_hw_params_fixup = msm8960_btsco_be_hw_params_fixup,
+	},
+	{
+		.name = "MSM8960 LowLatency",
+		.stream_name = "MultiMedia5",
+		.cpu_dai_name	= "MultiMedia5",
+		.platform_name  = "msm-lowlatency-pcm-dsp",
+		.dynamic = 1,
+		.dsp_link = &fe_media,
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA5,
 	},
 	{
 		.name = LPASS_BE_INT_FM_RX,

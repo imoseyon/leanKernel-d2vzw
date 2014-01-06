@@ -1409,7 +1409,7 @@ int inv_mpu_open(struct mldl_cfg *mldl_cfg,
 	mldl_cfg->mpu_gyro_cfg->int_config = BIT_DMP_INT_EN;
 	mldl_cfg->mpu_gyro_cfg->clk_src = MPU_CLK_SEL_PLLGYROZ;
 	mldl_cfg->mpu_gyro_cfg->lpf = MPU_FILTER_42HZ;
-	mldl_cfg->mpu_gyro_cfg->full_scale = MPU_FS_2000DPS;
+	mldl_cfg->mpu_gyro_cfg->full_scale = MPU_FS_500DPS;
 	mldl_cfg->mpu_gyro_cfg->divider = 4;
 	mldl_cfg->mpu_gyro_cfg->dmp_enable = 1;
 	mldl_cfg->mpu_gyro_cfg->fifo_enable = 1;
@@ -1685,7 +1685,7 @@ int inv_mpu_resume(struct mldl_cfg *mldl_cfg,
 	slave_handle[EXT_SLAVE_TYPE_ACCEL] = accel_handle;
 	slave_handle[EXT_SLAVE_TYPE_COMPASS] = compass_handle;
 	slave_handle[EXT_SLAVE_TYPE_PRESSURE] = pressure_handle;
-	pr_info("Sensors set: %x\n", sensors);
+	pr_info("Sensors set: %lx\n", sensors);
 
 	mldl_print_cfg(mldl_cfg);
 
@@ -1835,7 +1835,7 @@ int inv_mpu_suspend(struct mldl_cfg *mldl_cfg,
 	bool suspend_dmp = ((sensors & INV_DMP_PROCESSOR) == INV_DMP_PROCESSOR);
 	bool suspend_slave[EXT_SLAVE_NUM_TYPES];
 	void *slave_handle[EXT_SLAVE_NUM_TYPES];
-	pr_info("Sensors unset: %x\n", sensors);
+	pr_info("Sensors unset: %lx\n", sensors);
 	suspend_slave[EXT_SLAVE_TYPE_GYROSCOPE] =
 		((sensors & (INV_X_GYRO | INV_Y_GYRO | INV_Z_GYRO))
 			== (INV_X_GYRO | INV_Y_GYRO | INV_Z_GYRO));

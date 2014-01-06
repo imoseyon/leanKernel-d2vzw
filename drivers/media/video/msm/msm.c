@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -81,8 +81,9 @@ static void msm_cam_v4l2_subdev_notify(struct v4l2_subdev *sd,
 		return;
 
 	/* forward to media controller for any changes*/
-	if (pcam->mctl.mctl_notify)
+	if (pcam->mctl.mctl_notify) {
 		pcam->mctl.mctl_notify(&pcam->mctl, notification, arg);
+	}
 }
 
 static int msm_ctrl_cmd_done(void __user *arg)
@@ -179,12 +180,6 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 		if (!rc)
 			rc = -ETIMEDOUT;
 		if (rc < 0) {
-			rcmd = msm_dequeue(queue, list_control);
-			if (!rcmd) {
-				free_qcmd(rcmd);
-				rcmd = NULL;
-			}
-			kfree(isp_event);
 			if (g_server_dev.server_evt_id == 0)
 				g_server_dev.server_evt_id++;
 			pr_err("%s: wait_event error %d\n", __func__, rc);
@@ -198,7 +193,8 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 
 	ctrlcmd = (struct msm_ctrl_cmd *)(rcmd->command);
 	value = out->value;
-	if (ctrlcmd->length > 0)
+	if (ctrlcmd->length > 0 && value != NULL &&
+			ctrlcmd->length <= out->length)
 		memcpy(value, ctrlcmd->value, ctrlcmd->length);
 
 	memcpy(out, ctrlcmd, sizeof(struct msm_ctrl_cmd));
@@ -243,7 +239,7 @@ static int msm_send_close_server(int vnode_id)
 {
 	int rc = 0;
 	struct msm_ctrl_cmd ctrlcmd;
-	D("%s\n", __func__);
+	pr_err("%s\n", __func__);
 	ctrlcmd.type	   = MSM_V4L2_CLOSE;
 	ctrlcmd.timeout_ms = 10000;
 	ctrlcmd.length	 = strnlen(g_server_dev.config_info.config_dev_name[0],
@@ -381,7 +377,7 @@ static int msm_server_streamon(struct msm_cam_v4l2_device *pcam, int idx)
 	struct msm_ctrl_cmd ctrlcmd;
 	D("%s\n", __func__);
 	ctrlcmd.type	   = MSM_V4L2_STREAM_ON;
-	ctrlcmd.timeout_ms = 5000;
+	ctrlcmd.timeout_ms = 10000;
 	ctrlcmd.length	 = 0;
 	ctrlcmd.value    = NULL;
 	ctrlcmd.stream_type = pcam->dev_inst[idx]->image_mode;
@@ -402,7 +398,7 @@ static int msm_server_streamoff(struct msm_cam_v4l2_device *pcam, int idx)
 
 	D("%s, pcam = 0x%x\n", __func__, (u32)pcam);
 	ctrlcmd.type        = MSM_V4L2_STREAM_OFF;
-	ctrlcmd.timeout_ms  = 5000;
+	ctrlcmd.timeout_ms  = 10000;
 	ctrlcmd.length      = 0;
 	ctrlcmd.value       = NULL;
 	ctrlcmd.stream_type = pcam->dev_inst[idx]->image_mode;
@@ -442,16 +438,14 @@ static int msm_server_proc_ctrl_cmd(struct msm_cam_v4l2_device *pcam,
 		goto end;
 	}
 	tmp_cmd = (struct msm_ctrl_cmd *)ctrl_data;
-	if (uptr_cmd && ctrl_data > 0) {
-		if (copy_from_user((void *)ctrl_data, uptr_cmd,
-						cmd_len)) {
-			pr_err("%s: copy_from_user failed.\n", __func__);
-			rc = -EINVAL;
-			goto end;
-		}
+	if (copy_from_user((void *)ctrl_data, uptr_cmd,
+					cmd_len)) {
+		pr_err("%s: copy_from_user failed.\n", __func__);
+		rc = -EINVAL;
+		goto end;
 	}
 	tmp_cmd->value = (void *)(ctrl_data+cmd_len);
-	if (uptr_value && tmp_cmd->value > 0) {
+	if (uptr_value && tmp_cmd->length > 0) {
 		if (copy_from_user((void *)tmp_cmd->value, uptr_value,
 						value_len)) {
 			pr_err("%s: copy_from_user failed, size=%d\n",
@@ -460,7 +454,7 @@ static int msm_server_proc_ctrl_cmd(struct msm_cam_v4l2_device *pcam,
 			goto end;
 		}
 	} else
-		tmp_cmd->value = NULL;
+	tmp_cmd->value = NULL;
 
 	ctrlcmd.type = MSM_V4L2_SET_CTRL_CMD;
 	ctrlcmd.length = cmd_len + value_len;
@@ -1737,15 +1731,15 @@ static int msm_close(struct file *f)
 	if (pcam->use_count == 0) {
 		v4l2_device_unregister_subdev(pcam->mctl.isp_sdev->sd);
 		v4l2_device_unregister_subdev(pcam->mctl.isp_sdev->sd_vpe);
+		rc = msm_cam_server_close_session(&g_server_dev, pcam);
+		if (rc < 0)
+			pr_err("msm_cam_server_close_session fails %d\n", rc);
+
 		if (g_server_dev.use_count > 0) {
 			rc = msm_send_close_server(pcam->vnode_id);
 			if (rc < 0)
 				pr_err("msm_send_close_server failed %d\n", rc);
 		}
-		rc = msm_cam_server_close_session(&g_server_dev, pcam);
-		if (rc < 0)
-			pr_err("msm_cam_server_close_session fails %d\n", rc);
-
 		if (pcam->mctl.mctl_release) {
 			rc = pcam->mctl.mctl_release(&(pcam->mctl));
 			if (rc < 0)
@@ -1816,11 +1810,6 @@ static long msm_ioctl_server(struct file *fp, unsigned int cmd,
 	int i;
 
 	D("%s: cmd %d\n", __func__, _IOC_NR(cmd));
-
-	if (g_server_dev.use_count == 0) {
-		pr_err("%s: no active camera server.", __func__);
-		return -EINVAL;
-	}
 
 	switch (cmd) {
 	case MSM_CAM_IOCTL_GET_CAMERA_INFO:
@@ -2127,7 +2116,7 @@ static long msm_v4l2_evt_notify(struct msm_cam_media_controller *mctl,
 		ERR_COPY_FROM_USER();
 		return -EFAULT;
 	}
-
+	pr_err("%s: Sending event to HAL with type %x\n", __func__, v4l2_ev.type);
 	pcam = mctl->sync.pcam_sync;
 	ktime_get_ts(&v4l2_ev.timestamp);
 	v4l2_event_queue(pcam->pvdev, &v4l2_ev);
@@ -2144,11 +2133,6 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 	struct v4l2_event_subscription temp_sub;
 
 	D("%s: cmd %d\n", __func__, _IOC_NR(cmd));
-
-	if (g_server_dev.use_count == 0) {
-		pr_err("%s: no active camera server.", __func__);
-		return -EINVAL;
-	}
 
 	switch (cmd) {
 		/* memory management shall be handeld here*/
@@ -2281,6 +2265,15 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 			rc = -EINVAL;
 		break;
 
+	case MCTL_CAM_IOCTL_SET_FOCUS:
+		if (copy_from_user(&config_cam->p_mctl->sync.focus_state,
+			(void __user *)arg, sizeof(uint32_t))) {
+			ERR_COPY_FROM_USER();
+			rc = -EINVAL;
+			break;
+		}
+		break;
+
 	default:{
 		/* For the rest of config command, forward to media controller*/
 		struct msm_cam_media_controller *p_mctl = config_cam->p_mctl;
@@ -2340,11 +2333,6 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 
 	D("%s: open %s\n", __func__, fp->f_path.dentry->d_name.name);
 
-	if (g_server_dev.use_count == 0) {
-		pr_err("%s: no active camera instance.", __func__);
-		return -EINVAL;
-	}
-
 	rc = nonseekable_open(inode, fp);
 	if (rc < 0) {
 		pr_err("%s: nonseekable_open error %d\n", __func__, rc);
@@ -2368,18 +2356,8 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 static int msm_close_config(struct inode *node, struct file *f)
 {
 	struct msm_cam_config_dev *config_cam = f->private_data;
-
-	D("%s: close %s\n", __func__, f->f_path.dentry->d_name.name);
-
-	if (g_server_dev.use_count == 0) {
-		pr_err("%s: no active camera instance.", __func__);
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	D("%s Decrementing ref count of config node ", __func__);
 	kref_put(&config_cam->p_mctl->refcount, msm_release_ion_client);
-#endif
 	return 0;
 }
 
@@ -2409,7 +2387,7 @@ static const struct file_operations msm_fops_config = {
 	.open  = msm_open_config,
 	.poll  = msm_poll_config,
 	.unlocked_ioctl = msm_ioctl_config,
-	.mmap = msm_mmap_config,
+	.mmap	= msm_mmap_config,
 	.release = msm_close_config,
 };
 
@@ -2464,7 +2442,6 @@ static int msm_setup_config_dev(int node, char *device_name)
 	if (IS_ERR(device_config)) {
 		rc = PTR_ERR(device_config);
 		pr_err("%s: error creating device: %d\n", __func__, rc);
-		kfree(config_cam);
 		return rc;
 	}
 
@@ -2475,7 +2452,6 @@ static int msm_setup_config_dev(int node, char *device_name)
 	rc = cdev_add(&config_cam->config_cdev, devno, 1);
 	if (rc < 0) {
 		pr_err("%s: error adding cdev: %d\n", __func__, rc);
-		kfree(config_cam);
 		device_destroy(msm_class, devno);
 		return rc;
 	}
@@ -2489,7 +2465,6 @@ static int msm_setup_config_dev(int node, char *device_name)
 	config_cam->config_stat_event_queue.pvdev = video_device_alloc();
 	if (config_cam->config_stat_event_queue.pvdev == NULL) {
 		pr_err("%s: video_device_alloc failed\n", __func__);
-		kfree(config_cam);
 		return -ENOMEM;
 	}
 
@@ -2714,10 +2689,10 @@ int msm_sensor_register(struct v4l2_subdev *sensor_sd)
 	sdata = (struct msm_camera_sensor_info *) s_ctrl->sensordata;
 
 	pcam->mctl.act_sdev = kzalloc(sizeof(struct v4l2_subdev),
-					 GFP_KERNEL);
+								  GFP_KERNEL);
 	if (!pcam->mctl.act_sdev) {
 		pr_err("%s: could not allocate mem for actuator v4l2_subdev\n",
-			__func__);
+			   __func__);
 		kfree(pcam);
 		return -ENOMEM;
 	}
@@ -2726,7 +2701,7 @@ int msm_sensor_register(struct v4l2_subdev *sensor_sd)
 	actctrl = &pcam->mctl.sync.actctrl;
 
 	msm_actuator_probe(sdata->actuator_info,
-			act_sdev, actctrl);
+					   act_sdev, actctrl);
 
 	/* setup a manager object*/
 	rc = msm_sync_init(&pcam->mctl.sync, NULL);
@@ -2802,7 +2777,7 @@ int msm_sensor_register(struct v4l2_subdev *sensor_sd)
 		rc = v4l2_device_register_subdev(&pcam->v4l2_dev, act_sdev);
 		if (rc < 0) {
 			D("%s actuator sub device register failed\n",
-				__func__);
+			  __func__);
 			goto failure;
 		}
 	}
@@ -2844,8 +2819,6 @@ static int __init msm_camera_init(void)
 
 		msm_class = class_create(THIS_MODULE, "msm_camera");
 		if (IS_ERR(msm_class)) {
-			unregister_chrdev_region(msm_devno,
-				g_server_dev.config_info.num_config_nodes+1);
 			rc = PTR_ERR(msm_class);
 			pr_err("%s: create device class failed: %d\n",
 			__func__, rc);
@@ -2856,9 +2829,6 @@ static int __init msm_camera_init(void)
 	D("creating server and config nodes\n");
 	rc = msm_setup_server_dev(0, "video_msm");
 	if (rc < 0) {
-		unregister_chrdev_region(msm_devno,
-			g_server_dev.config_info.num_config_nodes+1);
-		class_destroy(msm_class);
 		pr_err("%s: failed to create server dev: %d\n", __func__,
 		rc);
 		return rc;
@@ -2867,9 +2837,6 @@ static int __init msm_camera_init(void)
 	for (i = 0; i < g_server_dev.config_info.num_config_nodes; i++) {
 		rc = msm_setup_config_dev(i, "config");
 		if (rc < 0) {
-			unregister_chrdev_region(msm_devno,
-				g_server_dev.config_info.num_config_nodes+1);
-			class_destroy(msm_class);
 			pr_err("%s:failed to create config dev: %d\n",
 			 __func__, rc);
 			return rc;

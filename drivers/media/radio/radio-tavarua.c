@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3155,7 +3155,7 @@ static int tavarua_vidioc_s_ctrl(struct file *file, void *priv,
 			 * queue the READY event from the host side
 			 * in case of FM off
 			 */
-			tavarua_q_event(radio, TAVARUA_EVT_RADIO_READY);
+			tavarua_q_event(radio, TAVARUA_EVT_RADIO_DISABLED);
 
 			FMDBG("%s, Disable All Interrupts\n", __func__);
 			/* disable irq */

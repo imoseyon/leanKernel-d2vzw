@@ -20,7 +20,7 @@
 * software in any way with any other Broadcom software provided under a license
 * other than the GPL, without Broadcom's express prior written consent.
 *
-* $Id: dhd_custom_gpio.c 353167 2012-08-24 22:11:30Z $
+* $Id: dhd_custom_gpio.c 425498 2013-09-24 16:24:20Z $
 */
 
 #include <typedefs.h>
@@ -130,7 +130,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_off(2);
 #endif /* CUSTOMER_HW */
 #if defined(CUSTOMER_HW2) || defined(CUSTOMER_HW4)
-			wifi_set_power(0, 0);
+			wifi_set_power(0, WIFI_TURNOFF_DELAY);
 #endif
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 		break;
@@ -142,7 +142,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_on(2);
 #endif /* CUSTOMER_HW */
 #if defined(CUSTOMER_HW2) || defined(CUSTOMER_HW4)
-			wifi_set_power(1, 0);
+			wifi_set_power(1, 200);
 #endif
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 		break;

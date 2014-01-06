@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,7 @@ VREG_CONSUMERS(L1) = {
 };
 VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("8921_l2",		NULL),
+	REGULATOR_SUPPLY("dsi_pll_vdda",	"mdp.0"),
 };
 VREG_CONSUMERS(L3) = {
 	REGULATOR_SUPPLY("8921_l3",		NULL),
@@ -164,8 +165,8 @@ VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("8921_lvs7",		NULL),
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
 	REGULATOR_SUPPLY("lvds_vdda",		"lvds.0"),
-	REGULATOR_SUPPLY("hdmi_pll_fs",		"mdp.0"),
 	REGULATOR_SUPPLY("dsi1_vddio",		"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vddio",	"mdp.0"),
 	REGULATOR_SUPPLY("hdmi_vdda",		"hdmi_msm.0"),
 };
 VREG_CONSUMERS(USB_OTG) = {

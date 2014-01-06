@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,7 +29,7 @@
 
 #include <mach/iommu_hw-8xxx.h>
 #include <mach/iommu.h>
-
+#include <dlog.h>
 #define MRC(reg, processor, op1, crn, crm, op2)				\
 __asm__ __volatile__ (							\
 "   mrc   "   #processor "," #op1 ", %0,"  #crn "," #crm "," #op2 "\n"  \
@@ -994,6 +994,12 @@ irqreturn_t msm_iommu_fault_handler(int irq, void *dev_id)
 			pr_err("Fault occurred in context %d.\n", i);
 			pr_err("Interesting registers:\n");
 			print_ctx_regs(base, i);
+#ifdef CONFIG_SAMSUNG_DEBUG_DISPLAY
+			{
+				__DLOG__(GET_FAR(base, 1));
+				panic("mdp4-debug");
+			}
+#endif
 			SET_FSR(base, i, 0x4000000F);
 		}
 	}

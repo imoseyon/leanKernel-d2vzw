@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -506,6 +506,8 @@ static struct clk_data mdp_8960_clks[] = {
 	{ .name = "tv_src_clk" },
 	{ .name = "tv_clk" },
 #endif
+	{ .name = "reset1_clk" },
+	{ .name = "reset2_clk" },
 	{ 0 }
 };
 

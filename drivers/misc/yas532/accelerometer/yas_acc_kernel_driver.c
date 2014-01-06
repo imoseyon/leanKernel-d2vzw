@@ -37,7 +37,7 @@
 #ifndef CONFIG_YAS_ACC_MULTI_SUPPORT
 #ifdef CONFIG_YAS_ACC_DRIVER_LIS3DH
 #include "yas_acc_driver-lis3dh.c"
-#elif CONFIG_YAS_ACC_DRIVER_BMA250
+#elif defined(CONFIG_YAS_ACC_DRIVER_BMA250)
 #include "yas_acc_driver-bma25x.c"
 #endif
 #else
@@ -730,8 +730,19 @@ static int yas_acc_set_enable_factory_test(struct yas_acc_driver *driver,
 	struct yas_acc_private_data *data = yas_acc_get_data();
 
 	if (data->enabled != enable) {
-		if (enable)
+		if (enable) {
 			driver->set_enable(enable);
+#ifdef CONFIG_YAS_ACC_MULTI_SUPPORT
+	#ifdef CONFIG_YAS_ACC_DRIVER_LIS3DH
+			if (data->used_chip == K3DH_ENABLED)
+				usleep_range(600000, 700000);
+			else
+	#endif
+				usleep_range(1000, 2000);
+#else
+			usleep_range(600000, 700000);
+#endif
+		}
 	} else {
 		if (!enable)
 			driver->set_enable(enable);
@@ -1328,19 +1339,21 @@ static ssize_t acc_data_read(struct device *dev,
 	s32 x;
 	s32 y;
 	s32 z;
+	int err = 0;
 
 	mutex_lock(&data->data_mutex);
 	yas_acc_set_enable_factory_test(data->driver, 1);
-	usleep_range(1000, 2000);
-	yas_acc_measure(data->driver, &accel);
+	err = yas_acc_measure(data->driver, &accel);
+	if (unlikely(err))
+		pr_err("%s: failed to measure accel data\n", __func__);
 	yas_acc_set_enable_factory_test(data->driver, 0);
 	mutex_unlock(&data->data_mutex);
 
-	x = accel.xyz.v[0];
-	y = accel.xyz.v[1];
-	z = accel.xyz.v[2];
+	x = (s32)accel.xyz.v[0] - (s32)data->cal_data.v[0];
+	y = (s32)accel.xyz.v[1] - (s32)data->cal_data.v[1];
+	z = (s32)accel.xyz.v[2] - (s32)data->cal_data.v[2];
 
-	return sprintf(buf, "%d, %d, %d\n", x, y, z);
+	return sprintf(buf, "%d, %d, %d\n", x, y, err ? err : z);
 }
 
 static ssize_t accel_calibration_show(struct device *dev,
@@ -1351,6 +1364,7 @@ static ssize_t accel_calibration_show(struct device *dev,
 	s32 x;
 	s32 y;
 	s32 z;
+	int err;
 	struct yas_acc_private_data *data = yas_acc_get_data();
 
 	x = data->cal_data.v[0];
@@ -1358,7 +1372,11 @@ static ssize_t accel_calibration_show(struct device *dev,
 	z = data->cal_data.v[2];
 	pr_info("accel_calibration_show %d %d %d\n", x, y, z);
 
-	count = sprintf(buf, "%d %d %d\n", x, y, z);
+	if (x == 0 && y == 0 && z == 0)
+		err = 0;
+	else
+		err = 1;
+	count = sprintf(buf, "%d %d %d %d\n", err, x, y, z);
 	return count;
 }
 
@@ -1387,7 +1405,11 @@ static ssize_t accel_calibration_store(struct device *dev,
 	pr_info("accel_calibration_store %d %d %d\n", x, y, z);
 	if (err > 0)
 		err = 0;
-	count = sprintf(buf, "%d\n", err);
+#if defined(CONFIG_MACH_COMANCHE) || defined(CONFIG_MACH_EXPRESS)
+	count = sprintf((char *)buf, "%d\n", err);
+#else
+	count = sprintf((char *)buf, "%d\n", err);
+#endif
 	return count;
 }
 

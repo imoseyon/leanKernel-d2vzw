@@ -30,10 +30,14 @@
 #include "board-8960.h"
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
+#if defined (CONFIG_MACH_COMANCHE)
+#include <linux/battery/sec_battery_configuration.h>
+#include <linux/battery/sec_fuelgauge.h>
+#else
 #include <linux/battery/sec_battery.h>
 #include <linux/battery/sec_fuelgauge.h>
 #include <linux/battery/sec_charger.h>
-
+#endif
 #define SEC_BATTERY_PMIC_NAME ""
 
 static unsigned int sec_bat_recovery_mode;
@@ -80,7 +84,12 @@ static bool sec_bat_adc_ap_init(
 static bool sec_bat_adc_ap_exit(void) {return true; }
 static int sec_bat_adc_ap_read(unsigned int channel)
 {
-	int rc, data;
+
+#if defined(CONFIG_MACH_COMANCHE)
+	int rc, data=-1;
+#else
+int rc, data;
+#endif
 	struct pm8xxx_adc_chan_result result;
 
 	switch (channel) {
@@ -196,12 +205,25 @@ static void sec_bat_initial_check(void)
 }
 
 static bool sec_bat_check_jig_status(void) {return false; }
-static void sec_bat_switch_to_check(void) {}
-static void sec_bat_switch_to_normal(void) {}
+static bool sec_bat_switch_to_check(void) {return true; }
+static bool sec_bat_switch_to_normal(void) {return true; }
 
 static int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
 static int sec_bat_check_cable_callback(void)
 {
+	/* When TA(or USB) cable is inserted,
+	 * bat_irq_thread is called, before fsa9485_charger_cb.
+	 * Both can trigger the cable/monitor work.
+	 * Should be changed the order of them bcz of below issue.
+	 * e.g. If the phone is in high temperature and inserting TA,
+	 * 1. bat_irq_thread > cable_work > monitor work > high temp stop
+	 * 2.            fsa9485_charger_cb > cable_work > charging start
+	 * At that time, as soon as stop charging bcz of high temp,
+	 * charging start by cable_work of fsa9485.
+	 * Add msleep to fix the this issue.
+	 */
+	msleep(500);
+	
 	if (current_cable_type ==
 		POWER_SUPPLY_TYPE_BATTERY &&
 		gpio_get_value_cansleep(
@@ -211,8 +233,10 @@ static int sec_bat_check_cable_callback(void)
 		return POWER_SUPPLY_TYPE_UARTOFF;
 	}
 
-	if (current_cable_type ==
-		POWER_SUPPLY_TYPE_UARTOFF &&
+	if ((current_cable_type ==
+		POWER_SUPPLY_TYPE_UARTOFF ||
+		current_cable_type ==
+		POWER_SUPPLY_TYPE_CARDOCK) &&
 		!gpio_get_value_cansleep(
 		PM8921_GPIO_PM_TO_SYS(
 		PMIC_GPIO_OTG_POWER))) {
@@ -323,7 +347,8 @@ static bool sec_bat_get_temperature_callback(
 		union power_supply_propval *val) {return true; }
 static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 
-static const int temp_table[][2] = {
+
+static sec_bat_adc_table_data_t temp_table[] = {
 	{27592,	650},
 	{27999,	600},
 	{28563,	550},
@@ -357,6 +382,7 @@ static sec_bat_adc_region_t cable_adc_value_table[] = {
 };
 
 static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{1000,	1050,	150,	0},

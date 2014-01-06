@@ -111,6 +111,7 @@ int msm_csiphy_config(struct csiphy_cfg_params *cfg_params)
 	return rc;
 }
 
+#if DBG_CSIPHY
 static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 {
 	uint32_t irq;
@@ -134,6 +135,7 @@ static irqreturn_t msm_csiphy_irq(int irq_num, void *data)
 	msm_io_w(0x0, csiphy_dev->base + 0x164);
 	return IRQ_HANDLED;
 }
+#endif
 
 static int msm_csiphy_subdev_g_chip_ident(struct v4l2_subdev *sd,
 			struct v4l2_dbg_chip_ident *chip)

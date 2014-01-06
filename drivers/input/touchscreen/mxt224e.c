@@ -97,7 +97,11 @@
 
 #define MAX_USING_FINGER_NUM 10
 
-static struct object_t {
+#if defined CONFIG_MACH_COMANCHE || defined (CONFIG_MACH_AEGIS2)
+struct object_t {
+#else
+struct object_t {
+#endif
 	u8 object_type;
 	u16 i2c_address;
 	u8 size;
@@ -105,7 +109,11 @@ static struct object_t {
 	u8 num_report_ids;
 } __packed;
 
-static struct finger_info {
+#if defined CONFIG_MACH_COMANCHE || defined (CONFIG_MACH_AEGIS2)
+struct finger_info {
+#else
+struct finger_info {
+#endif
 	s16 x;
 	s16 y;
 	s16 z;
@@ -114,15 +122,21 @@ static struct finger_info {
 	int16_t component;
 };
 
-static struct mxt224_data {
+#if defined CONFIG_MACH_COMANCHE || defined (CONFIG_MACH_AEGIS2)
+struct mxt224_data {
+#else
+struct mxt224_data {
+#endif
 	struct i2c_client *client;
 	struct input_dev *input_dev;
 	struct early_suspend early_suspend;
 #if TOUCH_BOOSTER
+
 	struct delayed_work work_dvfs_off;
 	struct delayed_work	work_dvfs_chg;
 	bool	dvfs_lock_status;
 	struct mutex dvfs_lock;
+
 #endif
 	u8 family_id;
 	u32 finger_mask;
@@ -155,7 +169,11 @@ static struct mxt224_data {
 	const u8 *t48_config_chrg_e;
 	void (*power_onoff)(int);
 	void (*register_cb)(void *);
+#if defined(CONFIG_MACH_COMANCHE)||defined(CONFIG_MACH_APEXQ) || defined (CONFIG_MACH_EXPRESS) || defined CONFIG_MACH_AEGIS2
+	void (*read_ta_status)(bool *);
+#else
 	void (*read_ta_status)(void *);
+#endif
 	const u8 *config_fw_version;
 	int num_fingers;
 #ifdef VIRTUAL_KEYPAD_ISSUE
@@ -202,10 +220,11 @@ struct t48_median_config_t {
 static struct t48_median_config_t noise_median; /* 110927 gumi noise */
 
 #if TOUCH_BOOSTER
-static bool dvfs_lock_status;
-static bool press_status;
+#if !defined(CONFIG_MACH_COMANCHE) 
+//static bool dvfs_lock_status;
+//static bool press_status;
 #endif
-
+#endif
 static u8 threshold = 45;
 static int threshold_e = 50;
 
@@ -236,7 +255,9 @@ static void set_dvfs_off(struct work_struct *work)
 {
 	struct mxt224_data *data = container_of(work,
 				struct mxt224_data, work_dvfs_off.work);
-	int ret;
+#if !defined CONFIG_MACH_COMANCHE && !defined CONFIG_MACH_AEGIS2
+	//int ret;
+#endif
 	mutex_lock(&data->dvfs_lock);
 	cpufreq_set_limit(TOUCH_BOOSTER_FIRST_STOP, 0);
 	cpufreq_set_limit(TOUCH_BOOSTER_SECOND_STOP, 0);
@@ -423,6 +444,7 @@ static unsigned int mxt_timer_state;
 static unsigned int good_check_flag;
 static u8 cal_check_flag;
 static u8 Doing_calibration_falg;
+static DEFINE_MUTEX(tsp_mutex);
 
 static uint8_t calibrate_chip(void)
 {
@@ -464,6 +486,7 @@ static uint8_t calibrate_chip(void)
 	if (!ret && !ret1 && !Doing_calibration_falg) {
 		/* change calibration suspend settings to zero
 		   until calibration confirmed good */
+		mutex_lock(&tsp_mutex);
 		ret = write_mem(copy_data, copy_data->cmd_proc
 				+ CMD_CALIBRATE_OFFSET, 1, &cal_data);
 
@@ -476,6 +499,8 @@ static uint8_t calibrate_chip(void)
 			Doing_calibration_falg = 1;
 			printk(KERN_ERR"[TSP] calibration success!!!\n");
 		}
+		gForceCalibration_flag = 1;
+		mutex_unlock(&tsp_mutex);
 	}
 	gForceCalibration_flag = 1;
 
@@ -502,11 +527,8 @@ static void mxt224_ta_probe(int ta_status)
 	int ret;
 	u8 value;
 	u8 val = 0;
-	u16 size;
 	u8 active_depth;
 	u8 charge_time;
-
-	struct mxt224_data *data = copy_data;
 	printk(KERN_ERR "[TSP] mxt224 probe number: %d\n",
 			tsp_probe_num);
 	if (!mxt224_enabled) {
@@ -966,7 +988,11 @@ err:
 
 static void report_input_data(struct mxt224_data *data)
 {
-	int i, ret;
+#if defined CONFIG_MACH_COMANCHE || defined CONFIG_MACH_AEGIS2
+	int i;
+#else
+	int i;
+#endif	
 	int count = 0;
 	struct mxt224_platform_data *pdata = data->client->dev.platform_data;
 
@@ -1233,12 +1259,13 @@ static irqreturn_t mxt224_irq_thread(int irq, void *ptr)
 					mxt_time_point =
 						jiffies_to_msecs(jiffies);
 				}
-
+				mutex_lock(&tsp_mutex);
 				if ((gForceCalibration_flag == 1)
 						&& (gIgnoreReport_flag == 1)) {
 					gIgnoreReport_flag = 0;
 					printk(KERN_DEBUG"[TSP] Now! Enable Touch Report!!!\n");
 				}
+				mutex_unlock(&tsp_mutex);
 			}
 			if ((msg[1]&0x04) == 0x04) /* I2C checksum error */
 				printk(KERN_DEBUG"[TSP] I2C checksum error\n");
@@ -2649,8 +2676,11 @@ static int __devinit mxt224_probe(struct i2c_client *client,
 	int ret;
 	int i;
 	bool ta_status = 0;
-	u8 **tsp_config;
-
+#if defined CONFIG_MACH_COMANCHE || defined CONFIG_MACH_AEGIS2
+	u8 **tsp_config=NULL;
+#else
+	u8 **tsp_config=NULL;
+#endif
 	touch_is_pressed = 0;
 	tsp_probe_num = 0;
 	if (!pdata) {
@@ -2681,8 +2711,11 @@ static int __devinit mxt224_probe(struct i2c_client *client,
 	data->input_dev = input_dev;
 
 	data->num_fingers = pdata->max_finger_touches;
+
 	data->power_onoff = pdata->power_onoff;
+	
 	data->read_ta_status = pdata->read_ta_status;
+
 	data->config_fw_version = pdata->config_fw_version;
 	data->register_cb = pdata->register_cb;
 

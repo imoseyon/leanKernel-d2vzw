@@ -428,7 +428,7 @@ static int msm_config_vfe(struct v4l2_subdev *sd,
 
 	return -EINVAL;
 }
-
+#if 0
 static int msm_vpe_frame_cfg(struct msm_sync *sync,
 				void *cfgcmdin)
 {
@@ -471,7 +471,7 @@ static int msm_vpe_frame_cfg(struct msm_sync *sync,
 		rc = sync->vpefn.vpe_config(cfgcmd, data);
 	return rc;
 }
-
+#endif
 static int msm_stats_axi_cfg(struct v4l2_subdev *sd,
 		struct msm_sync *sync, struct msm_vfe_cfg_cmd *cfgcmd)
 {

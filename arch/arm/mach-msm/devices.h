@@ -1,7 +1,7 @@
 /* linux/arch/arm/mach-msm/devices.h
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,6 +27,7 @@ void __init msm_map_msm9615_io(void);
 void __init msm9615_init_irq(void);
 void __init msm_rotator_update_bus_vectors(unsigned int xres,
 	unsigned int yres);
+void __init msm_rotator_set_split_iommu_domain(void);
 
 extern struct platform_device asoc_msm_pcm;
 extern struct platform_device asoc_msm_dai0;
@@ -83,6 +84,10 @@ extern struct platform_device msm8960_device_ispif;
 extern struct platform_device msm8960_device_vfe;
 extern struct platform_device msm8960_device_vpe;
 extern struct platform_device msm8960_device_cache_erp;
+#ifdef CONFIG_MSM_EBI_ERP
+extern struct platform_device msm8960_device_ebi1_ch0_erp;
+extern struct platform_device msm8960_device_ebi1_ch1_erp;
+#endif
 
 extern struct platform_device apq8064_device_uart_gsbi1;
 extern struct platform_device apq8064_device_uart_gsbi3;
@@ -176,6 +181,7 @@ extern struct platform_device msm_device_vidc_720p;
 
 extern struct platform_device msm_pcm;
 extern struct platform_device msm_multi_ch_pcm;
+extern struct platform_device msm_lowlatency_pcm;
 extern struct platform_device msm_pcm_routing;
 extern struct platform_device msm_i2s_cpudai0;
 extern struct platform_device msm_i2s_cpudai1;
@@ -296,3 +302,6 @@ extern struct platform_device msm_device_csic0;
 extern struct platform_device msm_device_csic1;
 extern struct platform_device msm_device_vfe;
 extern struct platform_device msm_device_vpe;
+
+extern struct platform_device msm8960_iommu_domain_device;
+extern struct platform_device apq8064_iommu_domain_device;

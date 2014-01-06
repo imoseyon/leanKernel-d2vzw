@@ -103,21 +103,6 @@ static struct gpiomux_setting cdc_mclk = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting audio_auxpcm[] = {
-	/* Suspended state */
-	{
-		.func = GPIOMUX_FUNC_GPIO,
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
-	},
-	/* Active state */
-	{
-		.func = GPIOMUX_FUNC_1,
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
-	},
-};
-
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 static struct gpiomux_setting gpio_eth_config = {
 	.pull = GPIOMUX_PULL_NONE,
@@ -125,12 +110,6 @@ static struct gpiomux_setting gpio_eth_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 };
 #endif
-
-static struct gpiomux_setting slimbus = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_KEEPER,
-};
 
 static struct gpiomux_setting gpio_key_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -227,12 +206,6 @@ static struct gpiomux_setting mdm2ap_errfatal_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting ap2mdm_kpdpwr_n_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
 static struct gpiomux_setting mdp_vsync_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -271,12 +244,6 @@ static struct gpiomux_setting hdmi_active_3_cfg = {
 	.dir = GPIOMUX_IN,
 };
 
-static struct gpiomux_setting hdmi_active_4_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_OUT_HIGH,
-};
 #endif
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
 static struct gpiomux_setting mhl_suspend_cfg = {
@@ -554,21 +521,6 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm8960_slimbus_config[] __initdata = {
-	{
-		.gpio	= 60,		/* slimbus data */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &slimbus,
-		},
-	},
-	{
-		.gpio	= 61,		/* slimbus clk */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &slimbus,
-		},
-	},
-};
-
 static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 	{
 		.gpio = 59,
@@ -641,12 +593,6 @@ static struct gpiomux_setting cdc_i2s_tx_d0 = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting cdc_i2s_tx_d1 = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
 static struct gpiomux_setting cdc_i2s_tx_ws = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -679,38 +625,6 @@ static struct msm_gpiomux_config msm8960_audio_i2s_tx_codec_configs[] = {
 		},
 	},
 
-};
-
-
-static struct msm_gpiomux_config msm8960_audio_auxpcm_configs[] __initdata = {
-	{
-		.gpio = 63,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &audio_auxpcm[0],
-			[GPIOMUX_ACTIVE] = &audio_auxpcm[1],
-		},
-	},
-	{
-		.gpio = 64,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &audio_auxpcm[0],
-			[GPIOMUX_ACTIVE] = &audio_auxpcm[1],
-		},
-	},
-	{
-		.gpio = 65,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &audio_auxpcm[0],
-			[GPIOMUX_ACTIVE] = &audio_auxpcm[1],
-		},
-	},
-	{
-		.gpio = 66,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &audio_auxpcm[0],
-			[GPIOMUX_ACTIVE] = &audio_auxpcm[1],
-		},
-	},
 };
 
 static struct msm_gpiomux_config wcnss_5wire_interface[] = {
@@ -1008,6 +922,40 @@ static struct msm_gpiomux_config msm8960_sec_sensor_configs[] = {
 	},
 };
 
+
+static struct gpiomux_setting nc_gpio_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting nc_gpio_suspended_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm8960_nc_gpio_configs[] = {
+	{
+		.gpio      = 140,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_gpio_suspended_config,
+			[GPIOMUX_ACTIVE]    = &nc_gpio_active_config,
+		},
+	},
+
+	{
+		.gpio      = 141,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nc_gpio_suspended_config,
+			[GPIOMUX_ACTIVE]    = &nc_gpio_active_config,
+		},
+	},
+
+};
+
 int __init msm8960_init_gpiomux(void)
 {
 	int rc = msm_gpiomux_init(NR_GPIO_IRQS);
@@ -1085,9 +1033,15 @@ int __init msm8960_init_gpiomux(void)
 	msm_gpiomux_install(msm8960_hdmi_configs,
 			ARRAY_SIZE(msm8960_hdmi_configs));
 #endif
-
+#ifdef CONFIG_VIDEO_MHL_V2
+	msm_gpiomux_install(msm8960_mhl_configs,
+			ARRAY_SIZE(msm8960_mhl_configs));
+#endif
 	msm_gpiomux_install(msm8960_mdp_vsync_configs,
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));
+
+	msm_gpiomux_install(msm8960_nc_gpio_configs,
+			ARRAY_SIZE(msm8960_nc_gpio_configs));
 
 	return 0;
 }

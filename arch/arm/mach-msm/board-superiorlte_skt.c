@@ -345,7 +345,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
 #define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE /* 4KB */
 #define MSM_ION_HEAP_NUM	8
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
@@ -4567,6 +4567,7 @@ static struct platform_device *m2_skt_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,

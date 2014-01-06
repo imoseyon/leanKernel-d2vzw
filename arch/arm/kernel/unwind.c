@@ -221,7 +221,14 @@ static int unwind_exec_insn(struct unwind_ctrl_block *ctrl)
 	else if ((insn & 0xf0) == 0xa0) {
 		unsigned long *vsp = (unsigned long *)ctrl->vrs[SP];
 		int reg;
+		// Handle the case when you reach end of the stack
+		int test = insn & 7;
 
+		test += (insn & 0x80)?1:0;
+		if((vsp+test)>ALIGN(ctrl->vrs[SP],THREAD_SIZE))
+		{
+			return -URC_FAILURE;
+		}
 		/* pop R4-R[4+bbb] */
 		for (reg = 4; reg <= 4 + (insn & 7); reg++)
 			ctrl->vrs[reg] = *vsp++;

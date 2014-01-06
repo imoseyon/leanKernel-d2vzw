@@ -885,7 +885,8 @@ static void gamma_cell_determine(int ldi_id)
 	pr_info("%s Panel type : %s", __func__,
 		(((ldi_id & 0x0000FF00) >> 8) == 0xB4) ? "SM2" : "M2");
 
-	if (((ldi_id & 0x0000FF00) >> 8) == 0xB4) {
+	if (((ldi_id & 0x0000FF00) >> 8) == 0xB4 || \
+		((ldi_id & 0x0000FF00) >> 8) == 0xB6) {
 		V1_300CD_R = V1_300CD_R_SM2;
 		V1_300CD_G = V1_300CD_G_SM2;
 		V1_300CD_B = V1_300CD_B_SM2;

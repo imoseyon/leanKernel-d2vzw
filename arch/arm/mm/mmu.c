@@ -32,6 +32,12 @@
 
 #include "mm.h"
 
+//Siso - Added for DCM booting - Nov 17th
+#if defined(CONFIG_MACH_M2_DCM) 
+	#include <mach/msm8960-gpio.h>
+#endif
+//
+
 /*
  * empty_zero_page is a special page that is used for
  * zero-initialized data and COW.
@@ -796,7 +802,16 @@ void __init sanity_check_meminfo(void)
 	int i, j, highmem = 0;
 
 #ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
+#if defined(CONFIG_MACH_M2_DCM)    //Siso - Added for DCM booting - Nov 17th
+
+	if(system_rev > BOARD_REV07)
+	{
+		find_membank0_hole();
+	}
+
+#else
 	find_membank0_hole();
+#endif
 #endif
 
 #if (defined CONFIG_HIGHMEM) && (defined CONFIG_FIX_MOVABLE_ZONE)

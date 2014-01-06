@@ -169,6 +169,7 @@ config ARCH_MSM8960
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
 	select MSM_KRAIT_WFE_FIXUP
+	select MSM_CPU_PWRCTL
 
 config ARCH_MSM8930
 	bool "MSM8930"
@@ -207,11 +208,11 @@ config ARCH_MSM8930
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
 	select MSM_KRAIT_WFE_FIXUP
+	select MSM_CPU_PWRCTL
 
 config ARCH_APQ8064
 	bool "APQ8064"
 	select ARCH_MSM_KRAITMP
-	select MACH_APQ8064_SIM if !MACH_APQ8064_RUMI3
 	select MSM_V2_TLMM
 	select ARM_GIC
 	select CPU_V7
@@ -225,6 +226,7 @@ config ARCH_APQ8064
 	select MSM_PM8X60 if PM
 	select HOLES_IN_ZONE if SPARSEMEM
 	select MSM_KRAIT_WFE_FIXUP
+	select MSM_CPU_PWRCTL
 
 config ARCH_MSMCOPPER
 	bool "MSM Copper"
@@ -707,6 +709,11 @@ config MACH_ESPRESSO10_ATT
         default n
         bool "MSM8960 Samsung ESPRESSO10_ATT"
 
+config MACH_KONA
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung KONA ATT"
+
 config MACH_ESPRESSO_SPR
         depends on ARCH_MSM8960
         default n
@@ -767,6 +774,13 @@ config MACH_M2_SKT
         bool "MSM8960 Samsung M2_SKT"
         help
           Support for the Samsung M2 SKT device.
+
+config MACH_M2_MTR
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_MTR"
+        help
+          Support for the Samsung M2 Metro PCS device.
 
 config MACH_M2_DCM
 	depends on ARCH_MSM8960
@@ -870,6 +884,29 @@ config MACH_APQ8064_RUMI3
 	help
 	  Support for the Qualcomm APQ8064 RUMI3 emulator.
 
+config MACH_APQ8064_CDP
+	depends on ARCH_APQ8064
+	bool "APQ8064 CDP"
+	help
+	  Support for the Qualcomm APQ8064 CDP device.
+
+config MACH_APQ8064_MTP
+	depends on ARCH_APQ8064
+	bool "APQ8064 MTP"
+	help
+	  Support for the Qualcomm APQ8064 MTP device.
+
+config MACH_APQ8064_LIQUID
+	depends on ARCH_APQ8064
+	bool "APQ8064 LIQUID"
+	help
+	  Support for the Qualcomm APQ8064 LIQUID device.
+
+config MACH_MPQ8064_CDP
+	depends on ARCH_APQ8064
+	bool "MPQ8064 CDP"
+	help
+	  Support for the Qualcomm MPQ8064 CDP device.
 config MACH_FSM9XXX_SURF
 	depends on ARCH_FSM9XXX
 	depends on !MSM_STACKED_MEMORY
@@ -881,6 +918,10 @@ config MACH_FSM9XXX_SURF
 	  FFA board.
 
 endmenu
+
+if MACH_KONA
+source "arch/arm/mach-msm/Kconfig.local"
+endif
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
@@ -2119,7 +2160,7 @@ config BT_MSM_PINTEST
 	tristate "MSM Bluetooth Pin Connectivity Test"
 	depends on ((ARCH_MSM8X60 || ARCH_MSM7X27A) && DEBUG_FS)
         default n
-	help
+        help
 	  Bluetooth MSM Pin Connectivity test module.
 	  This driver provides support for verifying the MSM to BT pin
 	  connectivity.
@@ -2130,11 +2171,12 @@ config BT_BCM4334
 	help
 	  Adds BCM4334 RFKILL driver for Broadcom BCM4334 chipset
 
-config BT_MGMT
-       bool "Bluetooth Mgmt"
-       default n
- 	help
-	  This is for bluetooth mgmt
+config BT_BLUEDROID
+    bool "Bluetooth bluedroid"
+    default n
+    help
+        This is for bluedroid stack
+        default is n.
 
 config MSM_FAKE_BATTERY
 		depends on POWER_SUPPLY
@@ -2231,6 +2273,16 @@ config MSM_RTB_SEPARATE_CPUS
 	  separately. This will guarantee that the last acesses for each cpu
 	  will be logged but there will be fewer entries per cpu
 
+config MSM_EBI_ERP
+	bool "External Bus Interface (EBI) error reporting"
+	help
+	  Say 'Y' here to enable reporting of external bus interface errors to
+	  the kernel log. Information such as the offending address and
+	  transaction type will be logged. This may be useful for debugging
+	  seemingly broken memory accesses.
+
+	  For production builds, you should probably say 'N' here.
+
 config MSM_CACHE_ERP
 	bool "Cache / CPU error reporting"
 	depends on ARCH_MSM_KRAIT
@@ -2252,6 +2304,31 @@ config MSM_L1_ERR_PANIC
 
 	  For production builds, you should probably say 'N' here.
 
+config MSM_L1_RECOV_ERR_PANIC
+	bool "Panic on recoverable L1 cache errors"
+	depends on MSM_CACHE_ERP && MSM_L1_ERR_PANIC
+	help
+	  Certain CPU designs may be able to automatically recover from certain
+	  kinds of L1 cache errors, even though the L1 cache itself may not
+	  support error correction. These errors should not result in any kind
+	  of corruption, but their presence is nevertheless an indication of
+	  poor system health. To cause the kernel to panic whenever a
+	  recoverable L1 cache error is detected, say 'Y' here. This may be
+	  useful as a debugging technique if general system instability is
+	  suspected.
+
+	  For production builds, you should definitely say 'N' here.
+
+config MSM_L1_ERR_LOG
+	bool "Log CPU ERP events to system memory"
+	depends on MSM_CACHE_ERP
+	help
+	  Enable logging CPU ERP events to an area of memory that will be
+	  preserved across a system reset. This may be useful for detecting and
+	  troubleshooting ERP-related system crashes in the field.
+
+	  For production builds, you may want to say 'Y' here.
+
 config MSM_L2_ERP_PRINT_ACCESS_ERRORS
 	bool "Report L2 master port slave/decode errors in kernel log"
 	depends on MSM_CACHE_ERP
@@ -2265,15 +2342,6 @@ config MSM_L2_ERP_PRINT_ACCESS_ERRORS
 	  interrupt rather than as an exception, meaning that the backtrace may
 	  have some skid. This option may help with debugging, though production
 	  builds should probably say 'N' here.
-config MSM_L1_ERR_LOG
-	bool "Log CPU ERP events to system memory"
-	depends on MSM_CACHE_ERP
-	help
-	  Enable logging CPU ERP events to an area of memory that will be
-	  preserved across a system reset. This may be useful for detecting and
-	  troubleshooting ERP-related system crashes in the field.
-
-	  For production builds, you may want to say 'Y' here.
 
 config MSM_L2_ERP_PORT_PANIC
 	bool "Panic on L2 master port errors"
@@ -2349,5 +2417,12 @@ config MSM_DCVS
 	  The DCVS manager allows idle driver to feed the idle information to the
 	  algorithm and the algorithm returns a frequency for the core which is
 	  passed to the frequency change driver.
+
+config MSM_CPU_PWRCTL
+	bool "Ensures that krait droop detectors are always off"
+	help
+	  Droop detector mechanism can adversely affect krait plls during
+	  stand alone power collapse operation. Selecting this option
+	  ensures that they are always off.
 
 endif

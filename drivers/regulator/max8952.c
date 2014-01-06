@@ -79,7 +79,6 @@ static int max8952_voltage(struct max8952_data *max8952, u8 mode)
 static int max8952_list_voltage(struct regulator_dev *rdev,
 		unsigned int selector)
 {
-	struct max8952_data *max8952 = rdev_get_drvdata(rdev);
 	int ret;
 
 	if (rdev_get_id(rdev) != 0)
@@ -169,6 +168,7 @@ static int _max8952_set_voltage(struct regulator_dev *rdev,
 }
 /*end lmh_add, New set_voltage func. for camera ISP core power setting*/
 
+#if 0 /* Not use in D2 ATT */
 static int max8952_set_voltage(struct regulator_dev *rdev,
 			       int min_uV, int max_uV, unsigned *selector)
 {
@@ -201,7 +201,7 @@ static int max8952_set_voltage(struct regulator_dev *rdev,
 
 	return 0;
 }
-
+#endif
 static struct regulator_ops max8952_ops = {
 	.list_voltage		= max8952_list_voltage,
 	.is_enabled		= max8952_is_enabled,

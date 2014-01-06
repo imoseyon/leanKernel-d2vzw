@@ -371,10 +371,13 @@ static int is_pm8921_sec_charger_using(void)
 	return 0;
 #elif defined(CONFIG_MACH_SUPERIORLTE_SKT)
 	return 0;
+#elif defined(CONFIG_MACH_KONA)
+	return 0;
 #endif
 	return 1;
 }
-
+ #if  !defined(CONFIG_MACH_COMANCHE) && !defined (CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_ESPRESSO10_SPR)\
+	&& !defined (CONFIG_MACH_ESPRESSO10_VZW) && !defined (CONFIG_MACH_EXPRESS)&& !defined (CONFIG_MACH_ESPRESSO_VZW)
 static int sec_bat_get_fuelgauge_data(struct pm8921_chg_chip *chip, int type)
 {
 #if defined(CONFIG_BATTERY_MAX17040) || \
@@ -419,6 +422,7 @@ static int sec_bat_get_fuelgauge_data(struct pm8921_chg_chip *chip, int type)
 #endif
 }
 
+#if !defined(CONFIG_MACH_APEXQ)
 static int sec_bat_set_fuelgauge_data(struct pm8921_chg_chip *chip, int type)
 {
 #if defined(CONFIG_BATTERY_MAX17040) || \
@@ -443,7 +447,8 @@ static int sec_bat_set_fuelgauge_data(struct pm8921_chg_chip *chip, int type)
 	return -ENODEV;
 #endif
 }
-
+#endif
+#endif
 static int pm_chg_masked_write(struct pm8921_chg_chip *chip, u16 addr,
 							u8 mask, u8 val)
 {
@@ -569,7 +574,7 @@ static int pm_chg_charge_dis(struct pm8921_chg_chip *chip, int disable)
 				disable ? CHG_CHARGE_DIS_BIT : 0);
 }
 
-static bool pm_is_chg_charge_dis_bit_set(struct pm8921_chg_chip *chip)
+/*static bool pm_is_chg_charge_dis_bit_set(struct pm8921_chg_chip *chip)
 {
 	u8 temp = 0;
 	int rc;
@@ -579,7 +584,7 @@ static bool pm_is_chg_charge_dis_bit_set(struct pm8921_chg_chip *chip)
 		pr_err("%s: pm8xxx_readb failed!(%d)\n", __func__, rc);
 
 	return !!(temp & CHG_CHARGE_DIS_BIT);
-}
+}*/
 
 #define PM8921_CHG_V_MIN_MV	3240
 #define PM8921_CHG_V_STEP_MV	20
@@ -671,9 +676,9 @@ static int pm_chg_vinmin_set(struct pm8921_chg_chip *chip, int voltage)
 static int pm_chg_vinmin_get(struct pm8921_chg_chip *chip)
 {
 	u8 temp;
-	int rc, voltage_mv;
+	int voltage_mv;
 
-	rc = pm8xxx_readb(chip->dev->parent, CHG_VIN_MIN, &temp);
+	pm8xxx_readb(chip->dev->parent, CHG_VIN_MIN, &temp);
 	temp &= PM8921_CHG_VINMIN_MASK;
 
 	voltage_mv = PM8921_CHG_VINMIN_MIN_MV +
@@ -953,7 +958,7 @@ static int pm_chg_iweak_set(struct pm8921_chg_chip *chip, int milliamps)
 
 #define PM8921_CHG_BATT_TEMP_THR_COLD	BIT(1)
 #define PM8921_CHG_BATT_TEMP_THR_COLD_SHIFT	1
-static int pm_chg_batt_cold_temp_config(struct pm8921_chg_chip *chip,
+/*static int pm_chg_batt_cold_temp_config(struct pm8921_chg_chip *chip,
 					enum pm8921_chg_cold_thr cold_thr)
 {
 	u8 temp;
@@ -963,11 +968,11 @@ static int pm_chg_batt_cold_temp_config(struct pm8921_chg_chip *chip,
 	return pm_chg_masked_write(chip, CHG_CNTRL_2,
 					PM8921_CHG_BATT_TEMP_THR_COLD,
 					 temp);
-}
+}*/
 
 #define PM8921_CHG_BATT_TEMP_THR_HOT		BIT(0)
 #define PM8921_CHG_BATT_TEMP_THR_HOT_SHIFT	0
-static int pm_chg_batt_hot_temp_config(struct pm8921_chg_chip *chip,
+/*static int pm_chg_batt_hot_temp_config(struct pm8921_chg_chip *chip,
 					enum pm8921_chg_hot_thr hot_thr)
 {
 	u8 temp;
@@ -977,7 +982,7 @@ static int pm_chg_batt_hot_temp_config(struct pm8921_chg_chip *chip,
 	return pm_chg_masked_write(chip, CHG_CNTRL_2,
 					PM8921_CHG_BATT_TEMP_THR_HOT,
 					 temp);
-}
+}*/
 
 static int64_t read_battery_id(struct pm8921_chg_chip *chip)
 {
@@ -1123,7 +1128,7 @@ static int is_battery_charging(int fsm_state)
 	return 0;
 }
 
-static void bms_notify(struct work_struct *work)
+/*static void bms_notify(struct work_struct *work)
 {
 	struct bms_notify *n = container_of(work, struct bms_notify, work);
 
@@ -1133,7 +1138,7 @@ static void bms_notify(struct work_struct *work)
 		pm8921_bms_charging_end(n->is_battery_full);
 		n->is_battery_full = 0;
 	}
-}
+}*/
 
 static void bms_notify_check(struct pm8921_chg_chip *chip)
 {
@@ -1254,7 +1259,7 @@ static int get_prop_battery_uvolts(struct pm8921_chg_chip *chip)
 #endif
 }
 
-static unsigned int voltage_based_capacity(struct pm8921_chg_chip *chip)
+/*static unsigned int voltage_based_capacity(struct pm8921_chg_chip *chip)
 {
 	unsigned int current_voltage_uv = get_prop_battery_uvolts(chip);
 	unsigned int current_voltage_mv = current_voltage_uv / 1000;
@@ -1268,7 +1273,7 @@ static unsigned int voltage_based_capacity(struct pm8921_chg_chip *chip)
 	else
 		return (current_voltage_mv - low_voltage) * 100
 		    / (high_voltage - low_voltage);
-}
+}*/
 
 static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 {
@@ -1292,11 +1297,14 @@ static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 #define AVG_CNT 15
 static int get_prop_batt_current(struct pm8921_chg_chip *chip)
 {
-	int result_ua, rc;
+	int result_ua = 0;
+#if defined(CONFIG_PM8XXX_CCADC)
+	int rc = 0;
 	int data[AVG_CNT+2];
 	int min[2] = {0, 0};
 	int max[2] = {0, 0};
-	int i, sum = 0;
+	int i = 0, sum = 0;
+#endif
 
 #if defined(CONFIG_PM8921_BMS)
 	rc = pm8921_bms_get_battery_current(&result_ua);
@@ -2084,6 +2092,8 @@ static irqreturn_t batt_inserted_irq_handler(int irq, void *data)
  * if DC is removed and then inserted after the battery was in use.
  * Therefore the handle_start_ext_chg() is not called.
  */
+ #if !defined(CONFIG_BATTERY_MAX17040) && \
+	!defined(CONFIG_BATTERY_MAX17042)
 static irqreturn_t vbatdet_low_irq_handler(int irq, void *data)
 {
 	struct pm8921_chg_chip *chip = data;
@@ -2092,7 +2102,7 @@ static irqreturn_t vbatdet_low_irq_handler(int irq, void *data)
 	high_transition = pm_chg_get_rt_status(chip, VBATDET_LOW_IRQ);
 
 	if (high_transition) {
-		/* enable auto charging */
+		// enable auto charging
 		pm_chg_auto_enable(chip, !charging_disabled);
 		pr_info("batt fell below resume voltage %s\n",
 			charging_disabled ? "" : "charger enabled");
@@ -2104,7 +2114,7 @@ static irqreturn_t vbatdet_low_irq_handler(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-
+#endif
 static irqreturn_t usbin_uv_irq_handler(int irq, void *data)
 {
 	pr_err("USB UnderVoltage\n");
@@ -2763,7 +2773,7 @@ static void set_appropriate_battery_current(struct pm8921_chg_chip *chip)
 }
 
 #define TEMP_HYSTERISIS_DEGC 2
-static void battery_cool(bool enter)
+/*static void battery_cool(bool enter)
 {
 	pr_debug("enter = %d\n", enter);
 	if (enter == the_chip->is_bat_cool)
@@ -2786,9 +2796,9 @@ static void battery_cool(bool enter)
 			- the_chip->resume_voltage_delta);
 	}
 	schedule_work(&btm_config_work);
-}
+}*/
 
-static void battery_warm(bool enter)
+/*static void battery_warm(bool enter)
 {
 	pr_debug("enter = %d\n", enter);
 	if (enter == the_chip->is_bat_warm)
@@ -2811,9 +2821,9 @@ static void battery_warm(bool enter)
 			- the_chip->resume_voltage_delta);
 	}
 	schedule_work(&btm_config_work);
-}
+}*/
 
-static int configure_btm(struct pm8921_chg_chip *chip)
+/*static int configure_btm(struct pm8921_chg_chip *chip)
 {
 	int rc;
 
@@ -2830,7 +2840,7 @@ static int configure_btm(struct pm8921_chg_chip *chip)
 		pr_err("failed to start btm rc = %d\n", rc);
 
 	return rc;
-}
+}*/
 
 /**
  * set_disable_status_param -
@@ -3693,7 +3703,7 @@ static ssize_t sec_bat_store(struct device *dev,
 
 	switch (off) {
 	case BATT_CHARGING_ENABLE:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			if (x == 0)  /* charging enable */
 				pm_chg_usb_suspend_enable(chip, 0);
 			else if (x == 1)	/* charging disable */
@@ -3710,7 +3720,7 @@ static ssize_t sec_bat_store(struct device *dev,
 		}
 		break;
 	case BATT_CHARGING_SOURCE:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			if (x == 0) {
 				chip->cable_type = CABLE_TYPE_NONE;
 				handle_cable_insertion_removal(chip);
@@ -3727,7 +3737,7 @@ static ssize_t sec_bat_store(struct device *dev,
 		}
 		break;
 	case BATT_RESET_SOC:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			if (x == 1) {
 #if defined(CONFIG_BATTERY_MAX17040) || \
 	defined(CONFIG_BATTERY_MAX17042)
@@ -3738,21 +3748,21 @@ static ssize_t sec_bat_store(struct device *dev,
 		}
 		break;
 	case BATT_USBIN_CURR:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			/* pm8921_charger_vbus_draw(x); */
 			TEST_iUSBIN = x;
 			ret = count;
 		}
 		break;
 	case BATT_CHG_CURR:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			/* pm8921_set_max_battery_charge_current(x); */
 			TEST_iBAT = x;
 			ret = count;
 		}
 		break;
 	case TEST_VALUE:
-		if (sscanf(buf, "%d\n", &x) == 1) {
+		if (sscanf(buf, "%2d\n", &x) == 1) {
 			chip->test_value = (unsigned int)x;
 			ret = count;
 		}

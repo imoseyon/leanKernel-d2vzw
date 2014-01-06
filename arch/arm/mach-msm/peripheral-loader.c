@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -347,8 +347,8 @@ void pil_put(void *peripheral_handle)
 	/* TODO: Peripheral shutdown support */
 	
 	printk(KERN_DEBUG "%s: pil->count[%d]", __func__, pil->count);
-	if (!strncmp(pil->desc->name, "modem", 5)) {
-		printk(KERN_DEBUG "%s: modem::pil->count[%d]", __func__, pil->count);
+	if( (!strncmp(pil->desc->name, "modem", 5)) || (!strncmp(pil->desc->name, "q6", 2)) ) {
+		printk(KERN_DEBUG "%s: %s::pil->count[%d]", __func__,pil->desc->name, pil->count);
 	if (pil->count == 1)
 		goto unlock;
 	}

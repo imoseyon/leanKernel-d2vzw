@@ -1,7 +1,7 @@
 /* drivers/input/touchscreen/msm_ts.c
  *
  * Copyright (C) 2008 Google, Inc.
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -387,6 +387,7 @@ static int __devinit msm_ts_probe(struct platform_device *pdev)
 
 	input_set_capability(ts->input_dev, EV_KEY, BTN_TOUCH);
 	set_bit(EV_ABS, ts->input_dev->evbit);
+	set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
 
 	input_set_abs_params(ts->input_dev, ABS_X, pdata->min_x, pdata->max_x,
 			     0, 0);

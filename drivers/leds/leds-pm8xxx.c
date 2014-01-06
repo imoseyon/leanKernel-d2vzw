@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -707,15 +707,12 @@ static DEVICE_ATTR(led_pattern, S_IRUGO | S_IWUSR | S_IWGRP,
 static ssize_t led_lowpower_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct leds_dev_data *info = dev_get_drvdata(dev);
 	return snprintf(buf, 4, "%d\n", low_powermode);
 }
 
 static ssize_t led_lowpower_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
-	struct leds_dev_data *info = dev_get_drvdata(dev);
-
 	if (buf[0] == '1')
 		low_powermode = 1;
 	else

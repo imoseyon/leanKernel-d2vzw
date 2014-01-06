@@ -496,6 +496,7 @@ ssh_interceptor_packet_alloc(SshInterceptor interceptor,
       return NULL;
     }
   packet->skb = skb;
+  skb_dst_set(packet->skb, NULL);
 
   /* Set data area inside the packet */
   skb->len = total_len;

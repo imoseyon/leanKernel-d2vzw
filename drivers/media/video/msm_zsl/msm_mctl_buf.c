@@ -478,7 +478,7 @@ int msm_mctl_check_free_buf(
 	unsigned long flags = 0;
 	/* CACHABLE_MEMORY */
 	struct msm_frame_buffer *buf = NULL;
-	int rc = -EINVAL, idx, i;
+	int rc = -EINVAL, idx;
 
 	if (!pmctl) {
 		pr_err("%s: pmctl is null\n", __func__);

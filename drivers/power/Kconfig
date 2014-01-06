@@ -362,7 +362,7 @@ config PM8921_SEC_CHARGER
 	 So Samsung charging dirver is seperated.
 
 config CHARGER_SMB347
-	bool "Enable SMB347 charger driver"
+	tristate "Enable SMB347 charger driver"
 	default n
 	help
 	  Say Y here to enable support for the battery charger in the SUMMIT

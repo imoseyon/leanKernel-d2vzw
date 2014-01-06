@@ -62,7 +62,7 @@ static int irda_fw_update(struct ir_remocon_data *ir_data)
 {
 	struct ir_remocon_data *data = ir_data;
 	struct i2c_client *client = data->client;
-	int i, ret;
+	int i=0, ret=0;
 	u8 buf_ir_test[8];
 
 	data->pdata->ir_vdd_onoff(0);
@@ -213,11 +213,10 @@ static void ir_remocon_work(struct ir_remocon_data *ir_data, int count)
 	struct i2c_client *client = data->client;
 
 	int buf_size = count+2;
-	int ret, i;
+	int ret;
 	int sleep_timing;
 	int end_data;
 	int emission_time;
-	unsigned long flags;
 
 	printk(KERN_INFO "%s: total buf_size: %d\n", __func__, buf_size);
 

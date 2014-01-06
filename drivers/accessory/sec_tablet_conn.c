@@ -27,6 +27,7 @@
 #include <linux/switch.h>
 #include <linux/wakelock.h>
 #include <asm/irq.h>
+#include <linux/power_supply.h>
 
 #ifdef CONFIG_VIDEO_MHL_TAB_V2
 #include "mhl_tab_v2/sii9234_driver.h"
@@ -64,20 +65,34 @@ enum uevent_dock_type {
 	UEVENT_DOCK_CONNECTED = 255,
 };
 
+enum dock_usb_mode {
+	DOCK_USB_HOST = 0,
+	DOCK_USB_CLIENT,
+	DOCK_USB_OFFLINE,
+};
+
 struct acc_con_info {
 	struct device *acc_dev;
 	struct acc_con_platform_data *pdata;
 	struct delayed_work acc_dwork;
 	struct delayed_work acc_id_dwork;
+	struct delayed_work acc_con_dwork;
 	struct switch_dev dock_switch;
 	struct switch_dev ear_jack_switch;
 	struct wake_lock wake_lock;
+	struct sec_30pin_callbacks callbacks;
 	struct mutex lock;
 	enum accessory_type current_accessory;
+	enum accessory_type univ_kbd_accessory;
 	enum dock_type current_dock;
+	enum dock_usb_mode current_dock_usb_mode;
 	int accessory_irq;
 	int dock_irq;
 	int mhl_irq;
+	int adc_val;
+	int cable_type;
+	int cable_sub_type;
+	int cable_pwr_type;
 };
 
 static int check_using_stmpe811_adc(void)
@@ -108,12 +123,24 @@ static int connector_detect_change(void)
 			else if (adc_min > adc_buff[i])
 				adc_min = adc_buff[i];
 		}
-		msleep(20);
+		mdelay(1);
 	}
-	adc = (adc_sum - adc_max - adc_min)/3;
+	/* adc = (adc_sum - adc_max - adc_min)/3;*/
+	adc = adc_buff[4];
 	ACC_CONDEV_DBG("ACCESSORY_ID : ADC value = %d\n", adc);
 	return (int)adc;
 }
+
+#define MAX_ADC_USBOTG		2841
+#define MIN_ADC_USBOTG		2623
+#define MAX_ADC_CAMERON		2557
+#define MIN_ADC_CAMERON		2361
+#define MAX_ADC_LINEOUT2	2324
+#define MIN_ADC_LINEOUT2	2146
+#define MAX_ADC_CARMOUNT	1784
+#define MIN_ADC_CARMOUNT	1647
+#define MAX_ADC_LINEOUT		1281
+#define MIN_ADC_LINEOUT		1100
 
 void acc_notified(struct acc_con_info *acc, int acc_adc)
 {
@@ -131,21 +158,21 @@ void acc_notified(struct acc_con_info *acc, int acc_adc)
 
 	if (acc_adc != false) {
 		if (check_using_stmpe811_adc()) {
-			if ((1207 < acc_adc) && (1256 > acc_adc)) {
+			if ((MIN_ADC_LINEOUT < acc_adc) && (MAX_ADC_LINEOUT > acc_adc)) {
 				env_ptr = "ACCESSORY=lineout";
 				current_accessory = ACCESSORY_LINEOUT;
-			} else if ((1680 < acc_adc) && (1749 > acc_adc)) {
+			} else if ((MIN_ADC_CARMOUNT < acc_adc) && (MAX_ADC_CARMOUNT > acc_adc)) {
 				env_ptr = "ACCESSORY=carmount";
 				acc->current_accessory = ACCESSORY_CARMOUNT;
-			} else if ((2189 < acc_adc) && (2278 > acc_adc)) {
+			} else if ((MIN_ADC_LINEOUT2 < acc_adc) && (MAX_ADC_LINEOUT2 > acc_adc)) {
 				env_ptr = "ACCESSORY=lineout";
 				current_accessory = ACCESSORY_LINEOUT;
 #ifdef CONFIG_CAMERON_HEALTH
-			} else if ((2400 < acc_adc) && (2500 > acc_adc)) {
+			} else if ((MIN_ADC_CAMERON < acc_adc) && (MAX_ADC_CAMERON > acc_adc)) {
 				env_ptr = "ACCESSORY=cameron";
 				current_accessory = ACCESSORY_CAMERON;
 #endif
-			} else if ((2676 < acc_adc) && (2785 > acc_adc)) {
+			} else if ((MIN_ADC_USBOTG < acc_adc) && (MAX_ADC_USBOTG > acc_adc)) {
 				env_ptr = "ACCESSORY=OTG";
 				current_accessory = ACCESSORY_OTG;
 			} else {
@@ -277,6 +304,28 @@ void acc_notified(struct acc_con_info *acc, int acc_adc)
 	}
 }
 
+/*  power supply name for set state */
+#define PSY_NAME	"battery"
+static void acc_dock_psy(struct acc_con_info *acc)
+{
+	struct power_supply *psy = power_supply_get_by_name(PSY_NAME);
+	union power_supply_propval value;
+
+	if (!psy || !psy->set_property) {
+		pr_err("%s: fail to get %s psy\n", __func__, PSY_NAME);
+		return;
+	}
+
+	value.intval = 0;
+	value.intval = (acc->cable_type << 16) + (acc->cable_sub_type << 8) +
+		(acc->cable_pwr_type << 0);
+	pr_info("[BATT]30 cx(%d), sub(%d), pwr(%d)\n",
+			acc->cable_type, acc->cable_sub_type,
+			acc->cable_pwr_type);
+
+	psy->set_property(psy, POWER_SUPPLY_PROP_ONLINE, &value);
+}
+
 static void acc_dock_check(struct acc_con_info *acc, bool connected)
 {
 	char *env_ptr;
@@ -304,44 +353,68 @@ static void acc_dock_check(struct acc_con_info *acc, bool connected)
 	ACC_CONDEV_DBG("%s : %s", env_ptr, stat_ptr);
 }
 
+#if defined(CONFIG_VIDEO_MHL_TAB_V2)
+static void check_acc_mhl(struct acc_con_info *acc)
+{
+	if (gpio_get_value(acc->pdata->accessory_irq_gpio)) {
+		/*call MHL deinit */
+		mhl_onoff_ex(false);
+	} else {
+		mutex_lock(&acc->lock);
+		mhl_onoff_ex(true);
+		mutex_unlock(&acc->lock);
+	}
+}
+#endif
+
 static void check_acc_dock(struct acc_con_info *acc)
 {
 	if (gpio_get_value(acc->pdata->accessory_irq_gpio)) {
 		if (acc->current_dock == DOCK_NONE)
 			return;
-		ACC_CONDEV_DBG("docking station detached!!!");
+		ACC_CONDEV_DBG("dock station detached..!");
 		switch_set_state(&acc->dock_switch, UEVENT_DOCK_NONE);
 #ifdef CONFIG_SEC_KEYBOARD_DOCK
 		acc->pdata->check_keyboard(false);
-#endif
-#if defined(CONFIG_VIDEO_MHL_TAB_V2)
-		/*call MHL deinit */
-		mhl_onoff_ex(false);
+
+		if (acc->current_dock == DOCK_KEYBOARD) {
+			ACC_CONDEV_DBG("keyboard dock detached on %s mode",
+			(acc->current_dock_usb_mode) ? "client" : "host");
+			if ((acc->current_dock_usb_mode == DOCK_USB_HOST) &&
+				acc->pdata->otg_en)
+				acc->pdata->otg_en(0);
+			acc->current_dock_usb_mode = DOCK_USB_OFFLINE;
+		}
+		if (acc->cable_type != POWER_SUPPLY_TYPE_BATTERY) {
+			acc->cable_type = POWER_SUPPLY_TYPE_BATTERY;
+			acc->cable_sub_type = ONLINE_SUB_TYPE_UNKNOWN;
+			acc_dock_psy(acc);
+		}
 #endif
 		acc_dock_check(acc, false);
+		acc->adc_val = 0;
 	} else {
 		ACC_CONDEV_DBG("docking station attached!!!");
 
 		switch_set_state(&acc->dock_switch, UEVENT_DOCK_CONNECTED);
-		msleep(100);
+		msleep(200);
 		wake_lock(&acc->wake_lock);
 
 #ifdef CONFIG_SEC_KEYBOARD_DOCK
 		if (acc->pdata->check_keyboard(true)) {
 			acc->current_dock = DOCK_KEYBOARD;
-			ACC_CONDEV_DBG("[30PIN] keyboard dock "
-				"station attached!!!");
+			ACC_CONDEV_DBG
+			("The dock proves to be a keyboard dock..!");
 			switch_set_state(&acc->dock_switch,
 				UEVENT_DOCK_KEYBOARD);
 		} else
 #endif /* CONFIG_SEC_KEYBOARD_DOCK */
 		{
+			ACC_CONDEV_DBG
+			("The dock proves to be a desktop dock..!");
 			switch_set_state(&acc->dock_switch, UEVENT_DOCK_DESK);
 			acc->current_dock = DOCK_DESK;
 		}
-#if defined(CONFIG_VIDEO_MHL_TAB_V2)
-		mhl_onoff_ex(true);
-#endif
 
 		acc_dock_check(acc, true);
 
@@ -354,9 +427,10 @@ static irqreturn_t acc_con_interrupt(int irq, void *ptr)
 {
 	struct acc_con_info *acc = ptr;
 
-	ACC_CONDEV_DBG("");
-
-	check_acc_dock(acc);
+	ACC_CONDEV_DBG("A dock station attached or detached..");
+	wake_lock(&acc->wake_lock);
+	schedule_delayed_work(&acc->acc_con_dwork,
+		msecs_to_jiffies(500));
 
 	return IRQ_HANDLED;
 }
@@ -409,6 +483,10 @@ static int acc_con_interrupt_init(struct acc_con_info *acc)
 	}
 	gpio_direction_input(acc->pdata->accessory_irq_gpio);
 	acc->accessory_irq = gpio_to_irq(acc->pdata->accessory_irq_gpio);
+
+	if (!gpio_get_value(acc->pdata->accessory_irq_gpio))
+		acc_con_interrupt(acc->accessory_irq, acc);
+
 	ret = request_threaded_irq(acc->accessory_irq, NULL, acc_con_interrupt,
 			IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 			"accessory_detect", acc);
@@ -483,6 +561,72 @@ err_irq_dock:
 	return ;
 }
 
+static int acc_noti_univkbd_dock(struct sec_30pin_callbacks *cb,
+	unsigned int code)
+{
+	struct acc_con_info *acc =
+		container_of(cb, struct acc_con_info, callbacks);
+
+	bool change_mode = false;
+
+	ACC_CONDEV_DBG("universal keyboard noti. callback 0x%x on %s mode",
+		code, (acc->current_dock_usb_mode) ? "client" : "host");
+
+	switch (code) {
+	case 0x68: /*dock is con*/
+		if (acc->current_dock_usb_mode != DOCK_USB_HOST) {
+			change_mode = true;
+			acc->current_dock_usb_mode = DOCK_USB_HOST;
+		}
+		acc->cable_type = POWER_SUPPLY_TYPE_CARDOCK;
+		acc->cable_sub_type = ONLINE_SUB_TYPE_KBD;
+		acc_dock_psy(acc);
+		break;
+	case 0x69: /*1A/TA connection*/
+		acc->cable_pwr_type = ONLINE_POWER_TYPE_USB;
+		acc_dock_psy(acc);
+		break;
+	case 0x6a: /*USB connection*/
+		if (acc->current_dock_usb_mode != DOCK_USB_CLIENT) {
+			change_mode = true;
+			acc->current_dock_usb_mode = DOCK_USB_CLIENT;
+		}
+		acc->cable_pwr_type = ONLINE_POWER_TYPE_USB;
+		acc_dock_psy(acc);
+		break;
+	case 0x6b: /*2A/TA connection*/
+		acc->cable_pwr_type = ONLINE_POWER_TYPE_TA;
+		acc_dock_psy(acc);
+		break;
+	case 0x6c: /*cable disconnect*/
+		if (acc->current_dock_usb_mode == DOCK_USB_CLIENT) {
+			change_mode = true;
+			acc->current_dock_usb_mode = DOCK_USB_HOST;
+		}
+		acc->cable_pwr_type = ONLINE_POWER_TYPE_BATTERY;
+		acc_dock_psy(acc);
+		break;
+	}
+
+	if (change_mode == true) {
+		if (acc->current_dock_usb_mode == DOCK_USB_HOST) {
+			ACC_CONDEV_DBG("change to host mode");
+			if (acc->pdata->otg_en)
+				acc->pdata->otg_en(1);
+		} else if (acc->current_dock_usb_mode == DOCK_USB_CLIENT) {
+			ACC_CONDEV_DBG("change to client mode");
+			if (acc->pdata->otg_en)
+				acc->pdata->otg_en(0);
+			if (acc->pdata->usb_en) {
+				msleep(300);
+				acc->pdata->usb_en(1);
+			}
+		}
+	}
+
+	return 0;
+}
+
 static void acc_id_delay_work(struct work_struct *work)
 {
 	struct acc_con_info *acc = container_of(work,
@@ -498,6 +642,18 @@ static void acc_id_delay_work(struct work_struct *work)
 		ACC_CONDEV_DBG("adc_val : %d", adc_val);
 		acc_notified(acc, adc_val);
 	}
+	wake_unlock(&acc->wake_lock);
+}
+
+static void acc_con_delay_work(struct work_struct *work)
+{
+	struct acc_con_info *acc = container_of(work,
+		struct acc_con_info, acc_con_dwork.work);
+
+	check_acc_dock(acc);
+#if defined(CONFIG_VIDEO_MHL_TAB_V2)
+	check_acc_mhl(acc);
+#endif
 	wake_unlock(&acc->wake_lock);
 }
 
@@ -521,6 +677,10 @@ static int acc_con_probe(struct platform_device *pdev)
 	acc->pdata = pdata;
 	acc->current_dock = DOCK_NONE;
 	acc->current_accessory = ACCESSORY_NONE;
+	acc->univ_kbd_accessory = ACCESSORY_NONE;
+	acc->current_dock_usb_mode = DOCK_USB_OFFLINE;
+	acc->adc_val = 0;
+	acc->cable_type = POWER_SUPPLY_TYPE_BATTERY;
 
 	mutex_init(&acc->lock);
 
@@ -529,6 +689,10 @@ static int acc_con_probe(struct platform_device *pdev)
 		goto err_sw_dock;
 
 	acc->acc_dev = &pdev->dev;
+
+	acc->callbacks.noti_univ_kdb_dock = acc_noti_univkbd_dock;
+	if (pdata->register_cb)
+		pdata->register_cb(&acc->callbacks);
 
 	acc->dock_switch.name = "dock";
 	retval = switch_dev_register(&acc->dock_switch);
@@ -544,6 +708,8 @@ static int acc_con_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&acc->acc_dwork, acc_delay_work);
 	schedule_delayed_work(&acc->acc_dwork, msecs_to_jiffies(24000));
 	INIT_DELAYED_WORK(&acc->acc_id_dwork, acc_id_delay_work);
+
+	INIT_DELAYED_WORK(&acc->acc_con_dwork, acc_con_delay_work);
 
 	return 0;
 

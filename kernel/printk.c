@@ -268,7 +268,7 @@ static int __init printk_remap_nocache(void)
 		sec_log_buf = nocache_base;
 		ramdump_kernel_log_addr = sec_log_ptr;
 		pr_debug("ramdump_kernel_log_addr = 0x%x\n",
-		ramdump_kernel_log_addr);
+		(unsigned int)ramdump_kernel_log_addr);
 		sec_log_size = sec_log_save_size;
 		sec_log_irq_en = nocache_base - 0xC ;
 #endif
@@ -301,7 +301,7 @@ static int __init printk_remap_nocache(void)
 #ifdef CONFIG_SEC_SSR_DUMP
 		ramdump_kernel_log_addr = sec_log_ptr;
 		pr_info("%s: ramdump_kernel_log_addr = 0x%x\n",
-		__func__, ramdump_kernel_log_addr);
+		__func__, (unsigned int)ramdump_kernel_log_addr);
 #endif
 	sec_log_size = sec_log_save_size;
 	sec_log_irq_en = nocache_base - 0xC ;

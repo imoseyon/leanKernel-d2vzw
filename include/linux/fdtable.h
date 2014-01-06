@@ -88,6 +88,10 @@ static inline struct file * fcheck_files(struct files_struct *files, unsigned in
 
 	if (fd < fdt->max_fds)
 		file = rcu_dereference_check_fdtable(files, fdt->fd[fd]);
+	if (IS_ERR(file)) {
+		pr_err("%s: file error %p\n", __func__, file);
+		file = NULL;
+	}
 	return file;
 }
 

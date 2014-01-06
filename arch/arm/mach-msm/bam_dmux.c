@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -325,7 +325,7 @@ static void bam_dmux_log(const char *fmt, ...)
 		);
 #else
 	len += scnprintf(buff, sizeof(buff),
-		"<DMUX> %u.%09lu %c%c%c%c %c%c%c%c%d%c ",
+		"<DMUX> %u.%09lu %c%c%c%c %c%c%c%c%d ",
 		(unsigned)t_now, nanosec_rem,
 		a2_pc_disabled ? 'D' : 'd',
 		in_global_reset ? 'R' : 'r',

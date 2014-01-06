@@ -40,7 +40,7 @@ static int yas530_ext_resume(void *mlsl_handle,
 {
 	int result = INV_SUCCESS;
 
-	struct yas530_ext_private_data *private_data = pdata->private_data;
+	
 
 	geomagnetic_api_resume();
 
@@ -56,7 +56,7 @@ static int yas530_ext_read(void *mlsl_handle,
 	int raw[3] = {0,};
 	int xyz[3] = {0,};
 	int accuracy = 0;
-	int i = 0;
+	
 	short xyz_scaled[3] = {0,};
 
 	geomagnetic_api_read(xyz, raw, NULL, &accuracy);
@@ -82,8 +82,7 @@ static int yas530_ext_config(void *mlsl_handle,
 			 struct ext_slave_config *data)
 {
 	int result = INV_SUCCESS;
-	struct yas530_private_data *private_data = pdata->private_data;
-
+	
 	return result;
 }
 
@@ -94,7 +93,7 @@ static int yas530_ext_get_config(void *mlsl_handle,
 			     struct ext_slave_config *data)
 {
 	int result = INV_SUCCESS;
-	struct yas530_ext_private_data *private_data = pdata->private_data;
+	
 
 	switch (data->key) {
 	default:
@@ -110,7 +109,7 @@ static int yas530_ext_init(void *mlsl_handle,
 
 	struct yas530_ext_private_data *private_data;
 	int result = INV_SUCCESS;
-	char offset[3] = {0, 0, 0};
+	
 
 	private_data = (struct yas530_ext_private_data *)
 		kzalloc(sizeof(struct yas530_ext_private_data), GFP_KERNEL);

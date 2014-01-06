@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmutils.h 354184 2012-08-30 08:08:08Z $
+ * $Id: bcmutils.h 413467 2013-07-19 04:41:50Z $
  */
 
 #ifndef	_bcmutils_h_
@@ -343,6 +343,22 @@ extern uint8 *pktoffset(osl_t *osh, void *p,  uint offset);
 #define	PKTPRIO_UPD	0x400		
 #define	PKTPRIO_DSCP	0x800		
 
+
+
+#define DSCP_AF11	0x0A
+#define DSCP_AF12	0x0C
+#define DSCP_AF13	0x0E
+
+#define DSCP_AF21	0x12
+#define DSCP_AF22	0x14
+#define DSCP_AF23	0x16
+
+#define DSCP_AF31	0x1A
+#define DSCP_AF32	0x1C
+#define DSCP_AF33	0x1E
+
+#define DSCP_EF		0x2E
+
 extern uint pktsetprio(void *pkt, bool update_vtag);
 
 
@@ -598,7 +614,7 @@ extern void *_bcmutils_dummy_fn;
 
 
 #ifndef setbit
-#ifndef NBBY		      
+#ifndef NBBY		  
 #define	NBBY	8	
 #endif 
 #define	setbit(a, i)	(((uint8 *)a)[(i) / NBBY] |= 1 << ((i) % NBBY))
@@ -659,11 +675,11 @@ extern void *_bcmutils_dummy_fn;
 							(ea).octet[5]
 #if !defined(SIMPLE_MAC_PRINT)
 #define MACDBG "%02x:%02x:%02x:%02x:%02x:%02x"
-#define STR_TO_MACD(ea) (ea)[0], (ea)[1], (ea)[2], (ea)[3], (ea)[4], (ea)[5]
+#define MAC2STRDBG(ea) (ea)[0], (ea)[1], (ea)[2], (ea)[3], (ea)[4], (ea)[5]
 #else
 #define MACDBG				"%02x:%02x:%02x"
-#define STR_TO_MACD(ea) (ea)[0], (ea)[4], (ea)[5]
-#endif
+#define MAC2STRDBG(ea) (ea)[0], (ea)[4], (ea)[5]
+#endif 
 
 
 typedef struct bcm_bit_desc {

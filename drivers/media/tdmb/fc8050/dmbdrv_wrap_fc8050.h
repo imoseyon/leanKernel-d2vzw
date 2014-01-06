@@ -64,6 +64,10 @@ unsigned char dmb_drv_set_ch(
 	unsigned long frequency
 	, unsigned char subchannel
 	, unsigned char sevice_type);
+unsigned char dmb_drv_set_ch_factory(
+	unsigned long frequency
+	, unsigned char subchannel
+	, unsigned char sevice_type);
 unsigned short dmb_drv_get_ber(void);
 unsigned char dmb_drv_get_ant(void);
 signed short dmb_drv_get_rssi(void);

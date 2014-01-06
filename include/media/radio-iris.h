@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 The Linux Foundation. All rights reserved.
  *
  * This file is based on include/net/bluetooth/hci_core.h
  *
@@ -509,6 +509,7 @@ enum radio_state_t {
 	FM_RECV,
 	FM_TRANS,
 	FM_RESET,
+	FM_CALIB
 };
 
 enum v4l2_cid_private_iris_t {

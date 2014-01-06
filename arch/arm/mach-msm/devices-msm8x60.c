@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1540,7 +1540,7 @@ static struct msm_rotator_platform_data rotator_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table = &rotator_bus_scale_pdata,
 #endif
-
+	.rot_iommu_split_domain = 0,
 };
 
 struct platform_device msm_rotator_device = {
@@ -2252,9 +2252,11 @@ struct msm_vidc_platform_data vidc_platform_data = {
 	.memtype = ION_CP_MM_HEAP_ID,
 	.enable_ion = 1,
 	.cp_enabled = 0,
+	.secure_wb_heap = 1,
 #else
 	.memtype = MEMTYPE_SMI_KERNEL,
 	.enable_ion = 0,
+	.secure_wb_heap = 0,
 #endif
 	.disable_dmx = 0,
 	.disable_fullhd = 0,

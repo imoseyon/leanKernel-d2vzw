@@ -42,6 +42,8 @@
 #include "isx012_regs_express.h"
 #elif defined(CONFIG_MACH_STRETTO)
 #include "isx012_regs_stretto.h"
+#elif defined(CONFIG_MACH_KONA)
+#include "isx012_regs_kona.h"
 #else
 #include "isx012_regs_v2.h"
 #endif
@@ -688,11 +690,7 @@ void isx012_set_init_mode(void)
 	isx012_ctrl->op_mode = CAMERA_MODE_INIT;
 	isx012_ctrl->af_mode = SHUTTER_AF_MODE;
 	isx012_ctrl->vtcall_mode = 0;
-#ifdef CONFIG_MACH_JAGUAR
 	isx012_ctrl->samsungapp = 0;
-#else
-	isx012_ctrl->samsungapp = 1; /* temp : SamsungApp 0, etc 1 */
-#endif
 
 	/* Lcd ON after AE, AWB operation */
 	isx012_i2c_write_multi(0x0282, 0x21, 0x01);
@@ -1389,8 +1387,11 @@ static void isx012_set_flash(int mode)
 	if (mode == MOVIE_FLASH) {
 		CAM_DEBUG(" MOVIE FLASH ON");
 		if (system_rev >= BOARD_REV05) {
-			gpio_set_value_cansleep(isx012_ctrl->sensordata->
-				sensor_platform_info->flash_set, 0);
+			if ((system_rev == BOARD_REV05)\
+				|| (system_rev == BOARD_REV06))
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_set, 0);
 		} else {
 			gpio_set_value_cansleep(isx012_ctrl->sensordata->
 				sensor_platform_info->flash_en, 0);
@@ -1424,8 +1425,11 @@ static void isx012_set_flash(int mode)
 	} else if (mode == CAPTURE_FLASH) {
 		if (system_rev >= BOARD_REV05) {
 			CAM_DEBUG(" CAPTURE FLASH ON EXPRESS REV 05");
-			gpio_set_value_cansleep(isx012_ctrl->sensordata->
-				sensor_platform_info->flash_set, 0);
+			if ((system_rev == BOARD_REV05)\
+				|| (system_rev == BOARD_REV06))
+				gpio_set_value_cansleep(isx012_ctrl->
+					sensordata->sensor_platform_info->
+						flash_set, 0);
 			for (i = 11 ; i > 0; i--) {
 				gpio_set_value_cansleep(isx012_ctrl->
 					sensordata->sensor_platform_info->
@@ -1443,6 +1447,21 @@ static void isx012_set_flash(int mode)
 				sensor_platform_info->flash_en, 1);
 			gpio_set_value_cansleep(isx012_ctrl->sensordata->
 				sensor_platform_info->flash_set, 0);
+		}
+	} else {
+		if (system_rev >= BOARD_REV07) {
+			CAM_DEBUG(" FLASH OFF");
+			gpio_set_value_cansleep(isx012_ctrl->
+				sensordata->sensor_platform_info->
+					flash_en, 0);
+		} else {
+			CAM_DEBUG(" FLASH OFF");
+			gpio_set_value_cansleep(isx012_ctrl->
+				sensordata->sensor_platform_info->
+					flash_en, 0);
+			gpio_set_value_cansleep(isx012_ctrl->
+				sensordata->sensor_platform_info->
+					flash_set, 0);
 		}
 	}
 #else
@@ -1471,7 +1490,7 @@ static void isx012_set_flash(int mode)
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_set, 0);
 	}
-#endif
+
 	else {
 		CAM_DEBUG(" FLASH OFF");
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
@@ -1479,6 +1498,7 @@ static void isx012_set_flash(int mode)
 		gpio_set_value_cansleep(isx012_ctrl->sensordata->
 					sensor_platform_info->flash_set, 0);
 	}
+#endif
 }
 
 void isx012_set_preview_size(int32_t index)
@@ -1510,6 +1530,13 @@ void isx012_set_preview_size(int32_t index)
 		ISX012_WRITE_LIST(isx012_1920_Preview);
 		break;
 
+#if defined(CONFIG_MACH_KONA)
+
+	case PREVIEW_SIZE_960x720:
+		ISX012_WRITE_LIST(isx012_960_Preview);
+		break;
+#endif
+
 	default:
 		ISX012_WRITE_LIST(isx012_640_Preview);
 		break;
@@ -1524,24 +1551,27 @@ static void isx012_set_af_mode(int mode)
 
 	switch (mode) {
 	case CAMERA_AF_AUTO:
-		ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
-		if (isx012_ctrl->settings.focus_status != IN_AUTO_MODE)
+		if (isx012_ctrl->settings.focus_status == IN_MACRO_MODE) {
+			ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
 			ISX012_WRITE_LIST(isx012_AF_ReStart);
+		}
 		isx012_ctrl->settings.focus_status = IN_AUTO_MODE;
 		break;
 
 	case CAMERA_AF_MACRO:
-		ISX012_WRITE_LIST(isx012_AF_Macro_ON);
-		if (isx012_ctrl->settings.focus_status != IN_MACRO_MODE)
+		if (isx012_ctrl->settings.focus_status == IN_AUTO_MODE) {
+			ISX012_WRITE_LIST(isx012_AF_Macro_ON);           
 			ISX012_WRITE_LIST(isx012_AF_ReStart);
+		}
 		isx012_ctrl->settings.focus_status = IN_MACRO_MODE;
 		break;
 
 	default:
-		cam_err(" set default AF auto.", mode);
-		ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
-		if (isx012_ctrl->settings.focus_status != IN_AUTO_MODE)
+		cam_err(" set default AF auto.");
+		if (isx012_ctrl->settings.focus_status == IN_MACRO_MODE) {
+			ISX012_WRITE_LIST(isx012_AF_Macro_OFF);
 			ISX012_WRITE_LIST(isx012_AF_ReStart);
+		}
 		isx012_ctrl->settings.focus_status = IN_AUTO_MODE;
 		break;
 	}
@@ -1551,6 +1581,8 @@ static void isx012_set_af_mode(int mode)
 
 static int isx012_set_af_stop(int af_check)
 {
+	short unsigned int r_data[1] = {0};
+
 	CAM_DEBUG(" %d", af_check);
 
 	if (af_check == 1) {
@@ -1573,6 +1605,12 @@ static int isx012_set_af_stop(int af_check)
 			isx012_i2c_write_multi(0x0282, 0x20, 0x01);
 		}
 		isx012_i2c_write_multi(0x8800, 0x01, 0x01);
+	} else {
+		isx012_i2c_read(0x0308, r_data);
+
+		 /* 0x11: Normal preview AE, 0x12: Flash AE */
+		if ((r_data[0] & 0xFF) != 0x11)
+			ISX012_BURST_WRITE_LIST(isx012_Flash_OFF);
 	}
 
 	isx012_set_af_mode(isx012_ctrl->settings.focus_mode);
@@ -2273,10 +2311,9 @@ static void isx012_set_af_status(int status)
 				mdelay(1);
 			} while (timeout_cnt++ < ISX012_DELAY_RETRIES);
 		} else {
-#if defined(CONFIG_MACH_JAGUAR) || defined(CONFIG_MACH_STRETTO)
 			if (isx012_ctrl->samsungapp == 0) {
 				ISX012_WRITE_LIST(
-					isx012_Camcorder_Halfrelease_Mode);
+					isx012_Barcode_SAF);
 			} else {
 				if ((isx012_ctrl->settings.scenemode
 					== CAMERA_SCENE_NIGHT)
@@ -2288,22 +2325,6 @@ static void isx012_set_af_status(int status)
 						isx012_Halfrelease_Mode);
 				}
 			}
-#else
-			if ((isx012_ctrl->settings.scenemode
-					== CAMERA_SCENE_NIGHT)
-					&& (isx012_ctrl->lowLight)) {
-				ISX012_WRITE_LIST(
-				isx012_Lowlux_night_Halfrelease_Mode);
-			} else {/* temp : SamsungApp 0, etc 1 */
-				if (isx012_ctrl->samsungapp == 0) {
-					ISX012_WRITE_LIST(
-						isx012_Halfrelease_Mode);
-				} else {
-					ISX012_WRITE_LIST(
-						isx012_Barcode_SAF);
-				}
-			}
-#endif
 			/*wait 1V time (40ms)*/
 			msleep(40);
 		}
@@ -2574,6 +2595,7 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 1);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
 	CAM_DEBUG(" check VT standby : %d", temp);
+    usleep(10);
 
 	/*Set Main clock */
 	gpio_tlmm_config(GPIO_CFG(data->sensor_platform_info->mclk, 1,
@@ -2587,20 +2609,20 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
 	if (rc < 0)
 		cam_err(" clk enable failed");
+	mdelay(2);
 
-	usleep(15);
 
 	/*reset VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_reset);
 	CAM_DEBUG(" check VT reset : %d", temp);
-	usleep(100);
+	mdelay(1);
 
 	/*off standy VT */
 	gpio_set_value_cansleep(data->sensor_platform_info->vt_sensor_stby, 0);
 	temp = gpio_get_value(data->sensor_platform_info->vt_sensor_stby);
 	CAM_DEBUG(" check VT standby : %d", temp);
-	usleep(125 * 1000);
+	usleep(10);
 
 	/*reset Main cam */
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
@@ -2629,6 +2651,31 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	ISX012_WRITE_LIST(isx012_Pll_Setting_4);
 	CAM_DEBUG(" Mode Trandition 2");
 
+
+	cam_err(" camera rotation start");
+	rc = isx012_i2c_write_multi(0x008C, 0x03, 0x01);
+	if (rc < 0) {
+		cam_err("I2C ERROR: rc = %d", rc);
+		return rc;
+	}
+
+	rc = isx012_i2c_write_multi(0x008D, 0x03, 0x01);
+	if (rc < 0) {
+		cam_err("I2C ERROR: rc = %d", rc);
+		return rc;
+	}
+	rc = isx012_i2c_write_multi(0x008E, 0x03, 0x01);
+	if (rc < 0) {
+		cam_err("I2C ERROR: rc = %d", rc);
+		return rc;
+	}
+	rc = isx012_i2c_write_multi(0x0082, 0x03, 0x01);
+	if (rc < 0) {
+		cam_err("I2C ERROR: rc = %d", rc);
+		return rc;
+	}
+	cam_err(" camera rotation end");
+	
 	usleep(200); /* 0.2ms */
 
 	/*standby Main cam */
@@ -2659,7 +2706,6 @@ static int isx012_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
 	int temp = 0;
-	unsigned short test_read;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
 	CAM_DEBUG(" E");
@@ -2899,7 +2945,6 @@ void sensor_native_control(void __user *arg)
 	case EXT_CAM_SET_TOUCHAF_POS:
 		isx012_set_touchaf_pos(ctrl_info.value_1,
 			ctrl_info.value_2);
-		isx012_ctrl->af_mode = TOUCH_AF_MODE;
 		break;
 
 	case EXT_CAM_SET_AF_MODE:
@@ -2907,7 +2952,6 @@ void sensor_native_control(void __user *arg)
 			isx012_ctrl->af_mode = TOUCH_AF_MODE;
 		else
 			isx012_ctrl->af_mode = SHUTTER_AF_MODE;
-
 		break;
 
 	case EXT_CAM_FLASH_STATUS:
@@ -3057,7 +3101,7 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 	return rc;
 }
-#elif defined(CONFIG_ISX012) && defined(CONFIG_SR030PC50) /* ApexQ*/
+#elif defined(CONFIG_ISX012) && defined(CONFIG_SR030PC50) /* KonaLTE*/
 static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int rc = 0;
@@ -3066,7 +3110,10 @@ static int isx012_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 	CAM_DEBUG(" E");
 
+#if !(defined(CONFIG_MACH_KONA))
+	CAM_DEBUG(" not KONA flash off ");
 	isx012_set_flash(FLASH_OFF);
+#endif
 
 	/*Soft landing */
 	ISX012_WRITE_LIST(isx012_Sensor_Off_VCM);

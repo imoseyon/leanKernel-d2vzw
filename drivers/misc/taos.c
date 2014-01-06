@@ -67,8 +67,10 @@
 #define VENDOR_NAME	"TAOS"
 #ifdef CONFIG_OPTICAL_TAOS_TMD2672X
 #define CHIP_NAME       "TMD2672X"
+#define CHIP_ID			0x3B
 #else
 #define CHIP_NAME       "TMD27723"
+#define CHIP_ID			0x39
 #endif
 
 #define OFFSET_FILE_PATH	"/efs/prox_cal"
@@ -373,7 +375,10 @@ static int taos_chip_on(struct taos_data *taos)
 			gprintk("opt_i2c_write to ctrl reg failed\n");
 			fail_num++;
 		}
-		msleep(20); /*more than 12 ms*/
+
+		msleep(20);
+		if (fail_num == 0)
+			break;
 	}
 	return ret;
 }
@@ -557,6 +562,7 @@ static ssize_t light_enable_store(struct device *dev,
 	if (new_value && !(taos->power_state & LIGHT_ENABLED)) {
 		if (!taos->power_state) {
 			taos->pdata->power(true);
+			msleep(20);
 			taos_chip_on(taos);
 		}
 		taos->power_state |= LIGHT_ENABLED;
@@ -598,13 +604,13 @@ static ssize_t proximity_enable_store(struct device *dev,
 	if (new_value && !(taos->power_state & PROXIMITY_ENABLED)) {
 		if (!taos->power_state)
 			taos->pdata->power(true);
+		usleep_range(5000, 6000);
 		ret = proximity_open_offset(taos);
 		if (ret < 0 && ret != -ENOENT)
 			pr_err("%s: proximity_open_offset() failed\n",
 			__func__);
 		/* set prox_threshold from board file */
-		if (taos->offset_value != taos->initial_offset
-			&& taos->cal_result == 1) {
+		if (taos->offset_value != taos->initial_offset) {
 			if (taos->pdata->prox_th_hi_cal &&
 				taos->pdata->prox_th_low_cal) {
 				taos->threshold_high =
@@ -701,9 +707,6 @@ static int proximity_open_offset(struct taos_data *data)
 	pr_err("%s: data->offset_value = %d\n",
 		__func__, data->offset_value);
 	set_prox_offset(data, data->offset_value);
-	if (data->offset_value < 121 &&
-		data->offset_value != data->initial_offset)
-		data->cal_result = 1;
 	filp_close(offset_filp, current->files);
 	set_fs(old_fs);
 
@@ -769,16 +772,30 @@ static int proximity_store_offset(struct device *dev, bool do_calib)
 				if (adc >= 250) {
 					taos->offset_cal_high = true;
 				} else {
+					taos->offset_cal_high = false;
 					taos->offset_value =
 						taos->initial_offset;
 					break;
 				}
 				offset_cal_baseline = false;
 			} else	{
-				if (adc > target_xtalk)
-					taos->offset_value += offset_change;
-				else
-					taos->offset_value -= offset_change;
+				if (taos->offset_cal_high) {
+					if (adc > target_xtalk) {
+						taos->offset_value +=
+							offset_change;
+					} else {
+						taos->offset_value -=
+							offset_change;
+					}
+				} else	{
+					if (adc > target_xtalk) {
+						taos->offset_value -=
+							offset_change;
+					} else {
+						taos->offset_value +=
+							offset_change;
+					}
+				}
 				offset_change = (int)(offset_change / 2);
 				if (offset_change == 0)
 					break;
@@ -809,7 +826,7 @@ static int proximity_store_offset(struct device *dev, bool do_calib)
 			} else
 				taos->cal_result = 2;
 		}
-		if (taos->offset_cal_high == true)
+		if (taos->offset_cal_high != false)
 			set_prox_offset(taos, taos->offset_value);
 	} else {
 	/* tap reset button */
@@ -826,7 +843,7 @@ static int proximity_store_offset(struct device *dev, bool do_calib)
 	set_fs(KERNEL_DS);
 
 	offset_filp = filp_open(OFFSET_FILE_PATH,
-			O_CREAT | O_TRUNC | O_WRONLY, 0666);
+			O_CREAT | O_TRUNC | O_WRONLY | O_SYNC, 0666);
 	if (IS_ERR(offset_filp)) {
 		pr_err("%s: Can't open prox_offset file\n", __func__);
 		set_fs(old_fs);
@@ -1059,8 +1076,9 @@ static DEVICE_ATTR(prox_avg, S_IRUGO|S_IWUSR, proximity_avg_show,
 	proximity_avg_store);
 static DEVICE_ATTR(state, S_IRUGO|S_IWUSR, proximity_state_show, NULL);
 
-static DEVICE_ATTR(prox_offset_pass, S_IRUGO, prox_offset_pass_show, NULL);
-static DEVICE_ATTR(prox_thresh, S_IRUGO|S_IWUSR, proximity_thresh_show,
+static DEVICE_ATTR(prox_offset_pass, S_IRUGO|S_IWUSR,
+	prox_offset_pass_show, NULL);
+static DEVICE_ATTR(prox_thresh, 0644, proximity_thresh_show,
 	proximity_thresh_store);
 
 static struct device_attribute *prox_sensor_attrs[] = {
@@ -1090,7 +1108,12 @@ static int proximity_get_channelvalue(struct taos_data *taos)
 	taos->cleardata = cleardata;
 	taos->irdata = irdata;
 
+#if defined(CONFIG_MACH_COMANCHE)
+	ret = opt_i2c_read(taos, STATUS, (u8 *)&status);
+#else
+
 	ret = opt_i2c_read(taos, STATUS, &status);
+#endif
 	if (ret < 0) {
 		pr_err("opt_i2c_read() to STATUS regs failed\n");
 		return ret;
@@ -1151,7 +1174,7 @@ static void taos_work_func_light(struct work_struct *work)
 {
 	struct taos_data *taos = container_of(work, struct taos_data,
 					      work_light);
-	int adc = lightsensor_get_adcvalue(taos);
+	int adc = taos_get_lux(taos);
 
 	input_report_abs(taos->light_input_dev, ABS_MISC, adc);
 	input_sync(taos->light_input_dev);
@@ -1429,7 +1452,7 @@ static int taos_get_initial_offset(struct taos_data *taos)
 
 	msleep(20);
 	ret = opt_i2c_read(taos, PRX_OFFSET, &p_offset);
-	pr_err("%s: initial offset = %d\n", p_offset);
+	pr_err("%s: initial offset = %d\n", __func__, p_offset);
 
 	if (taos->pdata->power)
 		taos->pdata->power(false);
@@ -1441,6 +1464,7 @@ static int taos_i2c_probe(struct i2c_client *client,
 			  const struct i2c_device_id *id)
 {
 	int ret = -ENODEV;
+	u16 chipid = 0;
 	struct input_dev *input_dev;
 	struct taos_data *taos;
 	struct taos_platform_data *pdata = client->dev.platform_data;
@@ -1460,6 +1484,11 @@ static int taos_i2c_probe(struct i2c_client *client,
 		pr_err("%s: failed to alloc memory for module data\n",
 		       __func__);
 		return -ENOMEM;
+	}
+	chipid = i2c_smbus_read_word_data(client, CMD_REG | CHIPID);
+	if (chipid != CHIP_ID) {
+		pr_err("%s: i2c read error [%X]\n", __func__, chipid);
+		goto err_chip_id_or_i2c_error;
 	}
 
 	taos->offset_cal_high = false;
@@ -1628,6 +1657,7 @@ err_input_allocate_device_proximity:
 	gpio_free(taos->pdata->als_int);
 	mutex_destroy(&taos->power_lock);
 	wake_lock_destroy(&taos->prx_wake_lock);
+err_chip_id_or_i2c_error:
 	kfree(taos);
 done:
 	return ret;
@@ -1647,8 +1677,10 @@ static int taos_suspend(struct device *dev)
 	if (taos->power_state & LIGHT_ENABLED)
 		taos_light_disable(taos);
 #endif
-	if (taos->power_state == LIGHT_ENABLED)
+	if (taos->power_state == LIGHT_ENABLED) {
+		taos_chip_off(taos);
 		taos->pdata->power(false);
+	}
 	return 0;
 }
 
@@ -1658,8 +1690,11 @@ static int taos_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct taos_data *taos = i2c_get_clientdata(client);
 
-	if (taos->power_state == LIGHT_ENABLED)
+	if (taos->power_state == LIGHT_ENABLED) {
 		taos->pdata->power(true);
+		msleep(20);
+		taos_chip_on(taos);
+	}
 #ifndef CONFIG_OPTICAL_TAOS_TMD2672X
 	if (taos->power_state & LIGHT_ENABLED)
 		taos_light_enable(taos);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,6 +47,12 @@ static long long vpe_do_div(long long num, long long den)
 
 static int vpe_start(void)
 {
+
+	if(vpe_ctrl->vpebase == NULL){
+		pr_err("vpe_ctrl->vpebase is not iomapped\n");
+		return -EIO;
+	}
+	
 	/*  enable the frame irq, bit 0 = Display list 0 ROI done */
 	msm_io_w_mb(1, vpe_ctrl->vpebase + VPE_INTR_ENABLE_OFFSET);
 	msm_io_dump(vpe_ctrl->vpebase, 0x120);
@@ -123,6 +129,12 @@ static int msm_vpe_cfg_update(void *pinfo)
 {
 	uint32_t  rot_flag, rc = 0;
 	struct msm_pp_crop *pcrop = (struct msm_pp_crop *)pinfo;
+
+	if(vpe_ctrl->vpebase == NULL){
+		pr_err("vpe_ctrl->vpebase is not iomapped\n");
+		return -EIO;
+	}
+	
 
 	rot_flag = msm_io_r(vpe_ctrl->vpebase +
 						VPE_OP_MODE_OFFSET) & 0xE00;
@@ -211,6 +223,11 @@ static int vpe_update_scaler(struct msm_pp_crop *pcrop)
 	uint32_t yscale_filter_sel, xscale_filter_sel;
 	uint32_t scale_unit_sel_x, scale_unit_sel_y;
 	uint64_t numerator, denominator;
+
+	if(vpe_ctrl->vpebase == NULL){
+		pr_err("vpe_ctrl->vpebase is not iomapped\n");
+		return -EIO;
+	}
 
 	/* assumption is both direction need zoom. this can be
 	improved. */
@@ -405,6 +422,11 @@ static int msm_send_frame_to_vpe(void)
 	int rc = 0;
 	unsigned long flags;
 
+	if(vpe_ctrl->vpebase == NULL){
+		pr_err("vpe_ctrl->vpebase is not iomapped\n");
+		return -EIO;
+	}
+
 	spin_lock_irqsave(&vpe_ctrl->lock, flags);
 	msm_io_w((vpe_ctrl->pp_frame_info->src_frame.sp.phy_addr +
 			  vpe_ctrl->pp_frame_info->src_frame.sp.y_off),
@@ -577,6 +599,12 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 		(struct msm_mctl_pp_params *)arg;
 	struct msm_mctl_pp_cmd *cmd = vpe_params->cmd;
 	int rc = 0;
+
+	if(vpe_ctrl->vpebase == NULL){
+		pr_err("vpe_ctrl->vpebase is not iomapped\n");
+		return -EIO;
+	}
+	
 	switch (cmd->id) {
 	case VPE_CMD_INIT:
 	case VPE_CMD_DEINIT:
@@ -682,6 +710,7 @@ void msm_vpe_subdev_release(struct platform_device *pdev)
 	}
 
 	iounmap(vpe_ctrl->vpebase);
+	vpe_ctrl->vpebase = NULL;
 	atomic_set(&vpe_init_done, 0);
 }
 EXPORT_SYMBOL(msm_vpe_subdev_release);

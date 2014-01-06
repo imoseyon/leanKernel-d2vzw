@@ -2081,6 +2081,12 @@ check_interval(int ms)
 	for (index = 0; index < NELEMS(supported_data_interval); index++) {
 		if (ms == supported_data_interval[index])
 			return index;
+		else if (ms < supported_data_interval[index]) {
+			if (index == 0)
+				return 0;
+			else
+				return index - 1;
+		}
 	}
 	return -1;
 }

@@ -1,0 +1,21 @@
+choice
+	prompt "Target Locale"
+	default TARGET_LOCALE_USA
+
+config TARGET_LOCALE_USA
+	bool "USA"
+
+config TARGET_LOCALE_EUR
+	bool "Europe Open"
+endchoice
+
+choice
+	prompt "KONA Target Carrier"
+	depends on MACH_KONA && (TARGET_LOCALE_EUR || TARGET_LOCALE_USA)
+	default MACH_KONA_USA_ATT
+
+config MACH_KONA_USA_ATT
+	bool "ATT"
+config MACH_KONA_EUR_OPEN
+	bool "Europe Open"
+endchoice

@@ -27,13 +27,13 @@ sec_param_data *param_data;
 static bool param_sec_operation(void *value, int offset,
 		int size, int direction)
 {
-	pr_debug("%s %x %x %d %d\n", __func__, value, offset, size, direction);
-
 	/* Read from PARAM(parameter) partition  */
 	struct file *filp;
 	mm_segment_t fs;
 	int ret = true;
 	int flag = (direction == PARAM_WR) ? (O_RDWR | O_SYNC) : O_RDONLY;
+
+	pr_debug("%s %p %x %d %d\n", __func__, value, offset, size, direction);
 
 	filp = filp_open(SEC_PARAM_FILE_NAME, flag, 0);
 

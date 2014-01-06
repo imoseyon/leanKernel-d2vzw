@@ -57,11 +57,12 @@ struct test {
 static struct test *testBuf;
 static s32 large_file;
 #endif
-static int db8131m_sensor_config(void __user *argp);
+static int db8131m_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+	void __user *argp);
 static void db8131m_set_flip(int flip);
 DEFINE_MUTEX(db8131m_mut);
 
-static struct db8131m_exif_data
+struct db8131m_exif_data
 {
 	unsigned short iso;
 	unsigned short shutterspeed;
@@ -69,7 +70,7 @@ static struct db8131m_exif_data
 
 static struct db8131m_exif_data *db8131m_exif;
 
-#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
+#if defined(CONFIG_MACH_GOGH)
 #include "db8131m_reg_v2.h"
 #elif defined(CONFIG_MACH_JASPER)
 #include "db8131m_reg_jasper.h"
@@ -81,6 +82,8 @@ static struct db8131m_exif_data *db8131m_exif;
 #include "db8131m_reg_comanche.h"
 #elif defined(CONFIG_MACH_EXPRESS)
 #include "db8131m_reg_express.h"
+#elif defined(CONFIG_MACH_INFINITE)
+#include "db8131m_reg_infinite.h"
 #else
 #include "db8131m_reg.h"
 #endif
@@ -501,6 +504,10 @@ static int32_t db8131m_i2c_write_16bit(u16 packet)
 
 	} while (retry_count <= 5);
 
+	if (rc != 1) {
+		cam_err(" returned error, %d", rc);
+		return -EIO;
+	}
 	return 0;
 }
 
@@ -534,6 +541,8 @@ static int db8131m_i2c_write_list(const u16 *list, int size, char *name)
 #endif
 	return ret;
 }
+
+#if 0
 /**
  * db8131m_i2c_read_multi: Read (I2C) multiple bytes to the camera sensor
  * @client: pointer to i2c_client
@@ -616,6 +625,7 @@ static int db8131m_i2c_write_multi(unsigned short addr, unsigned int w_data)
 	}
 	return (err == 1) ? 0 : -EIO;
 }
+#endif
 
 #ifdef FACTORY_TEST
 struct class *sec_class;
@@ -711,7 +721,7 @@ void db8131m_set_exif(void)
 
 int db8131m_get_exif(int exif_cmd)
 {
-	unsigned short val;
+	unsigned short val = 0;
 	CAM_DEBUG("E");
 
 	switch (exif_cmd) {
@@ -743,7 +753,6 @@ void db8131m_set_preview_size(int32_t index)
 
 void db8131m_set_preview(void)
 {
-	int err = 0;
 	CAM_DEBUG("cam_mode = %d", db8131m_ctrl->cam_mode);
 	CAM_DEBUG("db8131m_set_preview function called\n");
 
@@ -788,6 +797,17 @@ void db8131m_set_preview(void)
 				CAM_DEBUG("INIT_preview for M ver");
 				DB8_WRT_LIST(db8131m_common_M);
 			}
+#elif defined(CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_INFINITE)
+			unsigned char module_ver;
+			db8131m_i2c_write_16bit(0xFF02);
+			db8131m_i2c_read(0x09, &module_ver);
+			if (module_ver == 0x4) {
+				CAM_DEBUG("INIT_preview for S version");
+				DB8_WRT_LIST(db8131m_common);
+			} else {
+				CAM_DEBUG("INIT_preview for A version");
+				DB8_WRT_LIST(db8131m_common_A);
+			}
 #else
 			DB8_WRT_LIST(db8131m_common);
 #endif
@@ -816,12 +836,16 @@ void db8131m_set_capture(void)
 
 static int32_t db8131m_sensor_setting(int update_type, int rt)
 {
-	CAM_DEBUG("Start.. Sensor Setting\n");
 
 	int32_t rc = 0;
-	int temp = 0;
 	struct msm_camera_csid_params db8131m_csid_params;
 	struct msm_camera_csiphy_params db8131m_csiphy_params;
+	struct msm_camera_csid_vc_cfg db8131m_vccfg[] = {
+		{0, 0x1E, CSI_DECODE_8BIT},
+		{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
+		};
+
+	CAM_DEBUG("Start.. Sensor Setting\n");
 	switch (update_type) {
 	case REG_INIT:
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE)
@@ -842,10 +866,6 @@ static int32_t db8131m_sensor_setting(int update_type, int rt)
 #if defined(CONFIG_MACH_JASPER)
 			msleep(100);
 #endif
-			struct msm_camera_csid_vc_cfg db8131m_vccfg[] = {
-					{0, 0x1E, CSI_DECODE_8BIT},
-					{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
-					};
 			db8131m_csid_params.lane_cnt = 1;
 			db8131m_csid_params.lane_assign = 0xe4;
 			db8131m_csid_params.lut_params.num_cid =
@@ -888,8 +908,6 @@ static int32_t db8131m_sensor_setting(int update_type, int rt)
 static int32_t db8131m_video_config(int mode)
 {
 	int32_t	rc = 0;
-	int	rt;
-
 	CAM_DEBUG("[db8131m] %s E", __func__);
 	if (db8131m_sensor_setting(UPDATE_PERIODIC, RES_PREVIEW) < 0)
 		rc = -1;
@@ -929,15 +947,13 @@ static struct msm_cam_clk_info cam_clk_info[] = {
 #if defined(CONFIG_S5K5CCGX) && defined(CONFIG_DB8131M) /* jasper */
 static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CAM_DEBUG("=== Start ===");
-	CAM_DEBUG("=== db8131m power up ===");
 
 	int rc = 0;
 	int temp = 0;
-	int status = 0;
-	int count = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
+	CAM_DEBUG("=== Start ===");
+	CAM_DEBUG("=== db8131m power up ===");
 #ifdef CONFIG_LOAD_FILE
 	db8131m_regs_table_init();
 #endif
@@ -1005,14 +1021,13 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 #elif defined(CONFIG_ISX012) && defined(CONFIG_DB8131M) /* Gogh *//* AEGIS2 */
 static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CAM_DEBUG("=== Start ===");
-	CAM_DEBUG("=== db8131m power up ===");
 
 	int rc = 0;
 	int temp = 0;
-	int status = 0;
-	int count = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+
+	CAM_DEBUG("=== Start ===");
+	CAM_DEBUG("=== db8131m power up ===");
 
 #ifdef CONFIG_LOAD_FILE
 	db8131m_regs_table_init();
@@ -1061,6 +1076,7 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 /*
 	rc = S5K8_WRT_LIST(db8131m_pre_common);
 */
+	rc = db8131m_i2c_write_16bit(0xFFD0);
 	if (rc < 0) {
 		pr_info("Error in Front Camera Sensor Validation Test");
 		return rc;
@@ -1080,8 +1096,6 @@ static int db8131m_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	int rc = 0;
 	int temp = 0;
-	int status = 0;
-	int count = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 
 #ifdef CONFIG_LOAD_FILE
@@ -1385,13 +1399,14 @@ long db8131m_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	CAM_DEBUG("db8131m_sensor_subdev_ioctl\n");
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_CFG:
-		return db8131m_sensor_config(argp);
+		return db8131m_sensor_config(&db8131m_s_ctrl, argp);
 	default:
 		return -ENOIOCTLCMD;
 	}
 }
 
-int db8131m_sensor_config(void __user *argp)
+int db8131m_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+	void __user *argp)
 {
 	struct sensor_cfg_data cfg_data;
 	long   rc = 0;
@@ -1552,7 +1567,7 @@ static int db8131m_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 }
 #endif
 
-static struct db8131m_format db8131m_subdev_info[] = {
+struct v4l2_subdev_info db8131m_subdev_info[] = {
 	{
 	.code   = V4L2_MBUS_FMT_YUYV8_2X8,
 	.colorspace = V4L2_COLORSPACE_JPEG,

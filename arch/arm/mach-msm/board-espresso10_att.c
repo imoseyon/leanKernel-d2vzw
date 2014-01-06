@@ -339,7 +339,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 
 #define MSM8960_FIXED_AREA_START 0xb0000000
 #define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		0x280000
+#define MSM_MM_FW_SIZE		0x200000
 #define MSM8960_FW_START	(MSM8960_FIXED_AREA_START - MSM_MM_FW_SIZE)
 
 static unsigned msm_ion_sf_size = MSM_ION_SF_SIZE;
@@ -2853,19 +2853,25 @@ static int msm_hsusb_otg_en(bool on)
 	return 0;
 }
 
-static void msm_acc_power(u8 token, bool active);
-static int msm_hsusb_vbus_power(bool on)
+static int msm_hsusb_usb_en(bool on)
 {
 	int enable = 0;
-
 	enable = on;
+	pr_info("%s, enable %d\n", __func__, on);
+	msm_otg_set_vbus_state(enable);
+	msleep(100);
+	msm_otg_set_cable_state(POWER_SUPPLY_TYPE_USB);
+	return 0;
+}
 
+static void msm_acc_power(u8 token, bool active);
+static void msm_hsusb_vbus_power(bool on)
+{
 	pr_info("%s, attached %d\n", __func__, on);
 	if (on)
 		msm_acc_power(1, true);
 	else
 		msm_acc_power(1, false);
-	return 0;
 }
 
 static void msm_acc_power(u8 token, bool active)
@@ -2910,6 +2916,21 @@ static int check_sec_keyboard_dock(bool attached)
 	return 0;
 }
 
+/* call 30pin func. from sec_keyboard */
+static struct sec_30pin_callbacks *s30pin_callbacks;
+static int noti_sec_univ_kbd_dock(unsigned int code)
+{
+	if (s30pin_callbacks && s30pin_callbacks->noti_univ_kdb_dock)
+		return s30pin_callbacks->
+			noti_univ_kdb_dock(s30pin_callbacks, code);
+	return 0;
+}
+
+static void sec_30pin_register_cb(struct sec_30pin_callbacks *cb)
+{
+	s30pin_callbacks = cb;
+}
+
 static void sec_keyboard_register_cb(struct sec_keyboard_callbacks *cb)
 {
 	keyboard_callbacks = cb;
@@ -2919,6 +2940,7 @@ static struct sec_keyboard_platform_data kbd_pdata = {
 	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
 	.acc_power = msm_acc_power,
 	.register_cb = sec_keyboard_register_cb,
+	.noti_univ_kbd_dock = noti_sec_univ_kbd_dock,
 	.wakeup_key = NULL,
 };
 
@@ -2958,6 +2980,7 @@ static int get_dock_state(void)
 
 struct acc_con_platform_data acc_con_pdata = {
 	.otg_en = msm_hsusb_otg_en,
+	.usb_en = msm_hsusb_usb_en,
 	.acc_power = msm_acc_power,
 	.get_dock_state = get_dock_state,
 	.accessory_irq_gpio = GPIO_ACCESSORY_INT,
@@ -2965,6 +2988,7 @@ struct acc_con_platform_data acc_con_pdata = {
 #ifdef CONFIG_SEC_KEYBOARD_DOCK
 	.check_keyboard = check_sec_keyboard_dock,
 #endif
+	.register_cb = sec_30pin_register_cb,
 };
 
 struct platform_device sec_device_connector = {
@@ -4059,6 +4083,10 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_rtb_device,
 #endif
 	&msm8960_device_cache_erp,
+#ifdef CONFIG_MSM_EBI_ERP
+	&msm8960_device_ebi1_ch0_erp,
+	&msm8960_device_ebi1_ch1_erp,
+#endif
 #ifdef CONFIG_MSM_CACHE_DUMP
 	&msm_cache_dump_device,
 #endif
@@ -4079,6 +4107,7 @@ static struct platform_device *espresso10_att_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,

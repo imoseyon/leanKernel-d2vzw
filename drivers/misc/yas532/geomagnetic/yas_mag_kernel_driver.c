@@ -1554,7 +1554,7 @@ geomagnetic_input_work_func(struct work_struct *work)
 
 	delay = geomagnetic_work(&magdata);
 	if (delay > 0)
-		schedule_delayed_work(&data->work, msecs_to_jiffies(delay) + 1);
+		schedule_delayed_work(&data->work, msecs_to_jiffies(delay));
 	else
 		schedule_delayed_work(&data->work, 0);
 }

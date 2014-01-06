@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,16 +35,17 @@ static void blenable_work_func(struct work_struct *work);
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 
-static struct dsi_cmd_desc novatek_cmd_backlight_cmds[] = {
+struct dsi_cmd_desc novatek_cmd_backlight_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1},
 };
 
+static int bl_level_old;
 
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT) || \
 	defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
 static struct mipi_novatek_driver_data msd;
 int is_lcd_connected = 1;
-
+struct dcs_cmd_req cmdreq;
 
 
 static char manufacture_id1[2] = {0xDA, 0x00}; /* DTYPE_DCS_READ */
@@ -112,7 +113,15 @@ static int mipi_novatek_disp_send_cmd(struct msm_fb_data_type *mfd,
 	switch (cmd) {
 	case PANEL_READY_TO_ON:
 #if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
-		if (msd.mpd->manufacture_id != JASPER_MANUFACTURE_ID) {
+		if (msd.mpd->manufacture_id != JASPER_MANUFACTURE_ID_HYDIS) {
+			cmd_desc = msd.mpd->ready_to_on_boe.cmd;
+			cmd_size = msd.mpd->ready_to_on_boe.size;
+		} else {
+			cmd_desc = msd.mpd->ready_to_on_hydis.cmd;
+			cmd_size = msd.mpd->ready_to_on_hydis.size;
+		}
+#elif defined(CONFIG_MACH_JASPER)
+		if (msd.mpd->manufacture_id == JASPER_MANUFACTURE_ID_BOE){
 			cmd_desc = msd.mpd->ready_to_on_boe.cmd;
 			cmd_size = msd.mpd->ready_to_on_boe.size;
 		} else {
@@ -154,13 +163,21 @@ static int mipi_novatek_disp_send_cmd(struct msm_fb_data_type *mfd,
 		goto unknown_command;
 
 	if (lock) {
-		mipi_dsi_mdp_busy_wait(mfd);
-
-		mipi_dsi_cmds_tx(&msd.novatek_tx_buf, cmd_desc, cmd_size);
+		cmdreq.cmds = cmd_desc;
+		cmdreq.cmds_cnt = cmd_size;
+		cmdreq.flags = CMD_REQ_COMMIT;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+		mipi_dsi_cmdlist_put(&cmdreq);
 
 		mutex_unlock(&mfd->dma->ov_mutex);
 	} else {
-		mipi_dsi_cmds_tx(&msd.novatek_tx_buf, cmd_desc, cmd_size);
+		cmdreq.cmds = cmd_desc;
+		cmdreq.cmds_cnt = cmd_size;
+		cmdreq.flags = CMD_REQ_COMMIT;
+		cmdreq.rlen = 0;
+		cmdreq.cb = NULL;
+		mipi_dsi_cmdlist_put(&cmdreq);
 	}
 
 	return 0;
@@ -191,7 +208,7 @@ static int mipi_novatek_lcd_init(void);
 #define HPCI_FPGA_WRITE_CMD	0x04
 static char led_pwm2[2] = {0x53, 0x24}; /* DTYPE_DCS_WRITE1 */
 static char led_pwm3[2] = {0x55, 0x00}; /* DTYPE_DCS_WRITE1 */
-#if (defined(CONFIG_SPI_QUP))
+#if defined(CONFIG_SPI_QUP)
 static struct spi_device *panel_3d_spi_client;
 
 static void novatek_fpga_write(uint8 addr, uint16 value)
@@ -552,6 +569,7 @@ static int mipi_novatek_lcd_off(struct platform_device *pdev)
 	mipi_dsi_cmds_tx(&novatek_tx_buf, novatek_display_off_cmds,
 			ARRAY_SIZE(novatek_display_off_cmds));
 
+	bl_level_old = -1;
 	return 0;
 }
 #if 0 /*test function*/
@@ -559,7 +577,6 @@ static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1};
 
-struct dcs_cmd_req cmdreq;
 
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
@@ -568,6 +585,7 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 	cmdreq.cmds = &backlight_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = 0;
+	cmdreq.flags = CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
@@ -578,7 +596,6 @@ static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
 	struct mipi_panel_info *mipi;
-	static int bl_level_old;
 
 	mipi  = &mfd->panel_info.mipi;
 	if (bl_level_old == mfd->bl_level)
@@ -646,6 +663,8 @@ static int __devinit mipi_novatek_lcd_probe(struct platform_device *pdev)
 		if (dlane_swap)
 			mipi->dlane_swap = dlane_swap;
 	}
+
+	bl_level_old = -1;
 
 	return 0;
 }
@@ -789,6 +808,21 @@ static int mipi_novatek_lcd_init(void)
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT) || \
 	defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
 
+#if defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
+void mipi_novatek_disp_on_cmd(struct msm_fb_data_type *mfd)
+{
+	struct mipi_panel_info *mipi;
+
+	mipi = &mfd->panel_info.mipi;
+	if (mfd->display_on_status == MIPI_SUSPEND_STATE) {
+		if (mipi->mode == DSI_CMD_MODE) {
+			mipi_novatek_disp_send_cmd(mfd, PANEL_ON, true);
+			mfd->display_on_status = MIPI_RESUME_STATE;
+			pr_info("%s status : %d ", __func__, mfd->display_on_status);
+		}
+	}
+}
+#endif
 
 static int mipi_novatek_disp_on(struct platform_device *pdev)
 {
@@ -803,18 +837,31 @@ static int mipi_novatek_disp_on(struct platform_device *pdev)
 		return -EINVAL;
 
 	mipi = &mfd->panel_info.mipi;
-#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
+
 	if (first_power_on == 0) {
+#if !defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
+#endif
 		msd.mpd->manufacture_id =
 				mipi_novatek_disp_manufacture_id(mfd);
+		
+#if !defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
 		first_power_on++;
+#endif		
+	}
+
+	mipi_novatek_disp_send_cmd(mfd, PANEL_READY_TO_ON, false);
+#if defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
+	if (first_power_on == 0) {
+
+		INIT_DELAYED_WORK(&det_work, blenable_work_func);
+		schedule_delayed_work(&det_work, msecs_to_jiffies(100));
+		first_power_on++;
+
 	}
 #endif
-	mipi_novatek_disp_send_cmd(mfd, PANEL_READY_TO_ON, false);
-#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
-	INIT_DELAYED_WORK(&det_work, blenable_work_func);
-	schedule_delayed_work(&det_work, msecs_to_jiffies(100));
-#endif
+
 	if (mipi->mode == DSI_VIDEO_MODE)
 		mipi_novatek_disp_send_cmd(mfd, PANEL_ON, false);
 
@@ -855,6 +902,11 @@ static int mipi_novatek_disp_off(struct platform_device *pdev)
 
 	mipi_novatek_disp_send_cmd(mfd, PANEL_READY_TO_OFF, false);
 	mipi_novatek_disp_send_cmd(mfd, PANEL_OFF, false);
+
+#if defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
+		mfd->display_on_status = MIPI_SUSPEND_STATE;
+#endif
+	bl_level_old = -1;
 	pr_info("%s:Display off completed\n", __func__);
 	return 0;
 }
@@ -876,6 +928,7 @@ static void mipi_novatek_disp_early_suspend(struct early_suspend *h)
 
 	mipi_novatek_disp_send_cmd(mfd, PANEL_EARLY_OFF, true);
 	mfd->resume_state = MIPI_SUSPEND_STATE;
+
 #if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH)
 	set_esd_disable();
 #endif
@@ -896,7 +949,9 @@ static void mipi_novatek_disp_late_resume(struct early_suspend *h)
 		return;
 	}
 
+#if !defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
 	mipi_novatek_disp_send_cmd(mfd, PANEL_LATE_ON, true);
+#endif
 	pr_info("%s:Display resume completed\n", __func__);
 }
 #endif
@@ -909,8 +964,8 @@ void set_esd_refresh(boolean stat)
 static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd)
 {
 	struct mipi_panel_info *mipi;
-	static int bl_level_old;
-	pr_info("%s Back light level:%d\n", __func__, mfd->bl_level);
+	
+	pr_info("%s Back light level:%d \n", __func__, mfd->bl_level);
 
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT)
@@ -934,7 +989,7 @@ static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd)
 		goto end;
 	mutex_lock(&mfd->dma->ov_mutex);
 	
-	mipi_dsi_mdp_busy_wait(mfd);
+	mipi_dsi_mdp_busy_wait();
 
 #ifdef CONFIG_FB_MSM_BACKLIGHT_AAT1402IUQ
 	/*
@@ -947,8 +1002,14 @@ static void mipi_novatek_disp_set_backlight(struct msm_fb_data_type *mfd)
 	led_pwm1[1] = (unsigned char)
 		(msd.mpd->set_brightness_level(mfd->bl_level));
 #endif
-	mipi_dsi_cmds_tx(&msd.novatek_tx_buf, novatek_cmd_backlight_cmds,
-			ARRAY_SIZE(novatek_cmd_backlight_cmds));
+	cmdreq.cmds = novatek_cmd_backlight_cmds;
+	cmdreq.cmds_cnt = ARRAY_SIZE(novatek_cmd_backlight_cmds);
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	pr_debug("%s : mipi_dsi_cmdlist_put(cnt=%d) \n", __func__, cmdreq.cmds_cnt);
+	mipi_dsi_cmdlist_put(&cmdreq);
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
 end:
@@ -956,6 +1017,7 @@ end:
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_CMD_WVGA_PT)
 	mfd->backlight_ctrl_ongoing = FALSE;
 #endif
+
 	return;
 }
 #if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
@@ -988,6 +1050,9 @@ static DEVICE_ATTR(lcd_type, S_IRUGO, mipi_novatek_lcdtype_show, NULL);
 static int __devinit mipi_novatek_disp_probe(struct platform_device *pdev)
 {
 	struct platform_device *msm_fb_added_dev;
+#if defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
+	struct msm_fb_data_type *mfd;
+#endif
 
 #if defined(CONFIG_LCD_CLASS_DEVICE)
 	int ret;
@@ -1035,6 +1100,19 @@ static int __devinit mipi_novatek_disp_probe(struct platform_device *pdev)
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT)
 	init_mdnie_class();
 #endif
+
+#if defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
+	mfd = platform_get_drvdata(msm_fb_added_dev);
+	if (!mfd)
+		return -ENODEV;
+	if (mfd->key != MFD_KEY)
+		return -EINVAL;
+
+	mfd->cmd_panel_disp_on = mipi_novatek_disp_on_cmd;
+	mfd->display_on_status = MIPI_SUSPEND_STATE;
+#endif
+
+	bl_level_old = -1;
 	pr_info("%s:Display probe completed\n", __func__);
 	return 0;
 }

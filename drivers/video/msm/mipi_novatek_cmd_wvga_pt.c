@@ -18,7 +18,229 @@
 static struct msm_panel_info pinfo;
 
 static struct mipi_panel_data mipi_pd;
+static char etc_cond_set_1_1_boe[] = {
+	0xF0,
+	0x55, 0xAA, 0x52, 0x08, 0x01
+};
+static char etc_cond_set_1_2_boe[] = {
+	0xB0,
+	0x09, 0x09, 0x09
+};
+static char etc_cond_set_1_3_boe[] = {
+	0xB6,
+	0x34, 0x34, 0x34
+};
+static char etc_cond_set_1_4_boe[] = {
+	0xB1,
+	0x09, 0x09, 0x09
+};
+static char etc_cond_set_1_5_boe[] = {
+	0xB7,
+	0x24, 0x24, 0x24
+};
+static char etc_cond_set_1_6_boe[] = {
+	0xB3,
+	0x05, 0x05, 0x05
+};
+static char etc_cond_set_1_7_boe[] = {
+	0xB9,
+	0x24, 0x24, 0x24
+};
+static char etc_cond_set_1_8_boe[] = {
+	0xBF,
+	0x01
+};
+static char etc_cond_set_1_9_boe[] = {
+	0xB5,
+	0x0B, 0x0B, 0x0B
+};
+static char etc_cond_set_1_101_boe[] = {
+	0xBA,
+	0x24, 0x24, 0x24
+};
+static char etc_cond_set_1_10_boe[] = {
+	0xBC,
+	0x00, 0xA3, 0x00
+};
+static char etc_cond_set_1_11_boe[] = {
+	0xBD,
+	0x00, 0xA3, 0x00
+};
+/* Init Sequence Begin(Page 0) */
+static char etc_cond_set_1_12_boe[] = {
+	0xF0,
+	0x55, 0xAA, 0x52, 0x08, 0x00
+};
+static char etc_cond_set_1_13_boe[] = {
+	0xB6,
+	0x0A
+};
+static char etc_cond_set_1_14_boe[] = {
+	0xB7,
+	0x00, 0x00
+};
+static char etc_cond_set_1_15_boe[] = {
+	0xB8,
+	0x01, 0x05, 0x05, 0x05
+};
+static char etc_cond_set_1_16_boe[] = {
+	0xBA,
+	0x01,
+};
 
+static char etc_cond_set_1_18_boe[] = {
+	0xBD,
+	0x01, 0x84, 0x07, 0x32, 0x00
+};
+static char etc_cond_set_1_19_boe[] = {
+	0xBE,
+	0x01, 0x84, 0x07, 0x31, 0x00
+};
+static char etc_cond_set_1_20_boe[] = {
+	0xBF,
+	0x01, 0x84, 0x07, 0x31, 0x00
+};
+static char etc_cond_set_1_21_boe[] = {
+	0xCC,
+	0x03, 0x00, 0x00,
+};
+static char etc_cond_set_1_22_boe[] = {
+	0x36,
+	0x00
+};
+static char etc_cond_set_1_23_boe[] = {
+	0x35,
+	0x00
+};
+static char etc_cond_set_1_24_boe[] = {
+	0xB1,
+	0x4C, 0x06
+};
+static char etc_cond_set_1_25_boe[] = {
+	0x44,
+	0x00, 0x06
+};
+
+/* gamma settings */
+
+
+static char gamma_cond_set_1_1r_boe[] = {
+	0xD1,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+};
+static char gamma_cond_set_1_1g_boe[] = {
+	0xD2,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+};
+static char gamma_cond_set_1_1b_boe[] = {
+	0xD3,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+};
+static char gamma_cond_set_1_2r_boe[] = {
+	0xD4,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+};
+static char gamma_cond_set_1_2g_boe[] = {
+	0xD5,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+
+};
+static char gamma_cond_set_1_2b_boe[] = {
+	0xD6,
+	0x00,
+	0x37, 0x00, 0x57, 0x00, 0x84,
+	0x00, 0xA2, 0x00, 0xB7, 0x00,
+	0xDE, 0x01, 0x03, 0x01, 0x39,
+	0x01, 0x64, 0x01, 0xA6, 0x01,
+	0xDB, 0x02, 0x2D, 0x02, 0x6D,
+	0x02, 0x70, 0x02, 0xA7, 0x02,
+	0xED, 0x03, 0x19, 0x03, 0x4E,
+	0x03, 0x75, 0x03, 0x9F, 0x03,
+	0xBA, 0x03, 0xC5, 0x03, 0xD0, 0x03, 0xD4,
+	0x03, 0xD7, 0x03, 0xDF
+
+};
+
+static int lux_tbl_boe[] = {
+	7, 7, 20, 35, 43, 48, 50, 55, 65, 75, 85, 95, 100,
+	105, 110, 115, 120, 125, 135, 145, 155, 165, 175, 185, 195, 202
+};
+
+static int get_candela_index_boe(int bl_level)
+{
+
+	int cd;
+	int div;
+	int count;
+
+	count = MAX_GAMMA_VALUE + 1;
+	div = MAX_BL_LEVEL / count;
+	cd = (bl_level / div) - (MIN_BL_LEVEL / div) - INDEX_OFFSET;
+
+	if (cd >= count)
+		cd = count - 1;
+	if (cd < 0)
+		cd = 0;
+	if (cd == 0)
+		cd = 1;
+
+	cd = lux_tbl_boe[cd];
+
+	return cd;
+
+}
+
+/**********************BOE Panel Init sequence ////END *********************/
 static char etc_cond_set_1_1[] = {
 	0xFF,
 	0xAA, 0x55, 0x25, 0x01,
@@ -250,6 +472,40 @@ static char gamma_cond_set_1_2b[] = {
 	0x94, 0x03, 0x9E, 0x03, 0xAC, 0x03,
 	0xBD, 0x03, 0xF1
 };
+#ifdef CONFIG_MACH_APEXQ
+static int lux_tbl_hydis[] = {
+	0, 8, 13, 15, 20, 30, 40, 50, 60, 70, 80, 95, 100,
+	105, 110, 115, 120, 125, 130, 140, 150, 160, 170, 180, 190, 200, 205,
+};
+#else
+static int lux_tbl_hydis[] = {
+	7, 7, 20, 35, 43, 48, 50, 55, 65, 75, 85, 95, 100,
+	105, 110, 115, 120, 125, 135, 145, 155, 165, 175, 185, 195, 202
+};
+#endif
+static int get_candela_index_hydis(int bl_level)
+{
+
+	int cd;
+	int div;
+	int count;
+
+	count = MAX_GAMMA_VALUE + 1;
+	div = MAX_BL_LEVEL / count;
+	cd = (bl_level / div) - (MIN_BL_LEVEL / div) - INDEX_OFFSET;
+
+	if (cd >= count)
+		cd = count - 1;
+	if (cd < 0)
+		cd = 0;
+	if (cd == 0)
+		cd = 1;
+
+	cd = lux_tbl_hydis[cd];
+
+	return cd;
+
+}
 
 /* PWM settings */
 #ifdef CONFIG_FB_MSM_BACKLIGHT_AAT1402IUQ
@@ -310,6 +566,88 @@ static struct dsi_cmd_desc novatek_panel_off_cmds[] = {
 static struct dsi_cmd_desc novatek_panel_early_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 0,
 		sizeof(all_pixel_off), all_pixel_off},
+};
+static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt_boe[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 20,
+		sizeof(sw_reset), sw_reset},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_1_boe), etc_cond_set_1_1_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_2_boe), etc_cond_set_1_2_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_3_boe), etc_cond_set_1_3_boe},
+				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_4_boe), etc_cond_set_1_4_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_5_boe), etc_cond_set_1_5_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_6_boe), etc_cond_set_1_6_boe},
+				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_7_boe), etc_cond_set_1_7_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_8_boe), etc_cond_set_1_8_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_9_boe), etc_cond_set_1_9_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_101_boe), etc_cond_set_1_101_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_10_boe), etc_cond_set_1_10_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 20,
+		sizeof(etc_cond_set_1_11_boe), etc_cond_set_1_11_boe},
+	/*GAMMA SETTINGS*/
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_1r_boe), gamma_cond_set_1_1r_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_1g_boe), gamma_cond_set_1_1g_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_1b_boe), gamma_cond_set_1_1b_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_2r_boe), gamma_cond_set_1_2r_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_2g_boe), gamma_cond_set_1_2g_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(gamma_cond_set_1_2b_boe), gamma_cond_set_1_2b_boe},
+		/*INIT SEQUENCE*/
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_12_boe), etc_cond_set_1_12_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_13_boe), etc_cond_set_1_13_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_14_boe), etc_cond_set_1_14_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_15_boe), etc_cond_set_1_15_boe},
+				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_16_boe), etc_cond_set_1_16_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_18_boe), etc_cond_set_1_18_boe},
+				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_19_boe), etc_cond_set_1_19_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_20_boe), etc_cond_set_1_20_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_21_boe), etc_cond_set_1_21_boe},
+				{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_22_boe), etc_cond_set_1_22_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_23_boe), etc_cond_set_1_23_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_24_boe), etc_cond_set_1_24_boe},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(etc_cond_set_1_25_boe), etc_cond_set_1_25_boe},
+
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 120,
+		sizeof(sleep_out), sleep_out},
+
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+			sizeof(pwm_cond_off), pwm_cond_off},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(pwm_cond_set_2_0), pwm_cond_set_2_0},
+#if !defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(display_on), display_on},
+#endif
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(pwm_cond_set_1_0), pwm_cond_set_1_0},
 };
 static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
@@ -390,52 +728,20 @@ static struct dsi_cmd_desc novatek_panel_ready_to_on_cmds_nt[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 			sizeof(pwm_cond_set_2_0), pwm_cond_set_2_0},
 
-
+#if !defined(CONFIG_FB_MSM_MIPI_CMD_PANEL_VSYNC)
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(display_on), display_on},
+#endif
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 		sizeof(pwm_cond_set_1_0), pwm_cond_set_1_0},
 };
 
-#ifdef CONFIG_MACH_APEXQ
-static int lux_tbl[] = {
-	0, 8, 13, 15, 20, 30, 40, 50, 60, 70, 80, 95, 100,
-	105, 110, 115, 120, 125, 130, 140, 150, 160, 170, 180, 190, 200, 205,
-};
-#else
-static int lux_tbl[] = {
-	9, 9, 9, 9, 9, 9, 9, 10, 15, 20,
-	30, 40, 50, 60, 70, 80, 86, 90, 95, 100,
-	105, 107, 110, 113, 115, 118, 121, 125, 130,
-	135, 140, 145, 150, 155, 160, 163, 165, 170, 175,
-	185, 195, 205, 215, 225, 230, 235, 240, 245, 253, 253
-};
-
-
-#endif
-
 static int get_candela_index(int bl_level)
 {
-
-	int cd;
-	int div;
-	int count;
-
-	count = MAX_GAMMA_VALUE + 1;
-	div = MAX_BL_LEVEL / count;
-	cd = (bl_level / div) - (MIN_BL_LEVEL / div) - INDEX_OFFSET;
-
-	if (cd >= count)
-		cd = count - 1;
-	if (cd < 0)
-		cd = 0;
-	if (cd == 0)
-		cd = 1;
-
-	cd = lux_tbl[cd];
-
-	return cd;
-
+	if (mipi_pd.manufacture_id == JASPER_MANUFACTURE_ID_BOE)
+		return get_candela_index_boe(bl_level);
+	else 
+		return get_candela_index_hydis(bl_level);
 }
 
 static struct mipi_panel_data mipi_pd = {
@@ -444,6 +750,8 @@ static struct mipi_panel_data mipi_pd = {
 			, ARRAY_SIZE(novatek_panel_ready_to_on_cmds_nt)},
 	.ready_to_off = {novatek_panel_ready_to_off_cmds
 			, ARRAY_SIZE(novatek_panel_ready_to_off_cmds)},
+	.ready_to_on_boe = {novatek_panel_ready_to_on_cmds_nt_boe
+			, ARRAY_SIZE(novatek_panel_ready_to_on_cmds_nt_boe)},
 	.on = {novatek_panel_on_cmds
 			, ARRAY_SIZE(novatek_panel_on_cmds)},
 	.off = {novatek_panel_off_cmds

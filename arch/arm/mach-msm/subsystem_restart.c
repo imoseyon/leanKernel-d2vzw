@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -397,11 +397,6 @@ static int subsystem_restart_thread(void *data)
 	 * before the powerup lock is released, panic and bail out.
 	 */
 	mutex_unlock(shutdown_lock);
-
-#ifdef CONFIG_SEC_DEBUG
-	/* Print the modem crash details to klog */
-	print_modem_dump_info();
-#endif
 
 	/* Collect ram dumps for all subsystems in order here */
 	for (i = 0; i < restart_list_count; i++) {

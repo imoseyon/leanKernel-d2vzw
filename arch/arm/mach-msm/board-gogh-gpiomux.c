@@ -92,11 +92,13 @@ static struct gpiomux_setting gsbi12 = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting cdc_mclk = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
+#endif
 
 static struct gpiomux_setting nc_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -104,6 +106,7 @@ static struct gpiomux_setting nc_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting audio_auxpcm[] = {
 	/* Suspended state */
 	{
@@ -118,6 +121,7 @@ static struct gpiomux_setting audio_auxpcm[] = {
 		.pull = GPIOMUX_PULL_NONE,
 	},
 };
+#endif
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 static struct gpiomux_setting gpio_eth_config = {
@@ -127,6 +131,7 @@ static struct gpiomux_setting gpio_eth_config = {
 };
 #endif
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting slimbus = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -138,6 +143,7 @@ static struct gpiomux_setting volkey = {
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_UP,
 };
+#endif
 
 static struct gpiomux_setting wcnss_5wire_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -232,6 +238,7 @@ static struct gpiomux_setting hdmi_active_1_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting hdmi_active_2_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -251,6 +258,7 @@ static struct gpiomux_setting hdmi_active_4_cfg = {
 	.pull = GPIOMUX_PULL_UP,
 	.dir = GPIOMUX_OUT_HIGH,
 };
+#endif
 
 #ifdef CONFIG_USB_SWITCH_FSA9485
 static struct gpiomux_setting fsa9485_suspend_cfg = {
@@ -435,6 +443,7 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 	},
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct msm_gpiomux_config msm8960_slimbus_config[] __initdata = {
 	{
 		.gpio	= 60,		/* slimbus data */
@@ -458,6 +467,7 @@ static struct msm_gpiomux_config msm8960_audio_codec_configs[] __initdata = {
 		},
 	},
 };
+#endif
 
 static struct gpiomux_setting cdc_i2s_mclk = {
 	.func = GPIOMUX_FUNC_1,
@@ -522,11 +532,13 @@ static struct gpiomux_setting cdc_i2s_tx_d0 = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting cdc_i2s_tx_d1 = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
+#endif
 
 static struct gpiomux_setting cdc_i2s_tx_ws = {
 	.func = GPIOMUX_FUNC_1,
@@ -583,6 +595,7 @@ static struct msm_gpiomux_config nc_configs[] __initdata = {
 	},
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct msm_gpiomux_config msm8960_audio_auxpcm_configs[] __initdata = {
 	{
 		.gpio = 63,
@@ -613,6 +626,7 @@ static struct msm_gpiomux_config msm8960_audio_auxpcm_configs[] __initdata = {
 		},
 	},
 };
+#endif
 
 static struct msm_gpiomux_config wcnss_5wire_interface[] = {
 	{
@@ -695,21 +709,21 @@ static struct gpiomux_setting gpio_keys_config = {
 };
 static struct msm_gpiomux_config gpio_keys_config_mux[] __initdata = {
 	{
-		.gpio = NULL,
+		.gpio = -1,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_config,
 			[GPIOMUX_ACTIVE] = &gpio_keys_config
 		}
 	},
 	{
-		.gpio = NULL,
+		.gpio = -1,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_config,
 			[GPIOMUX_ACTIVE] = &gpio_keys_config
 		}
 	},
 	{
-		.gpio = NULL,
+		.gpio = -1,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_config,
 			[GPIOMUX_ACTIVE] = &gpio_keys_config

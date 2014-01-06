@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -201,6 +201,7 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 			decoder->dynamic_prop_change |=
 				DDL_DEC_REQ_OUTPUT_FLUSH;
 			decoder->dpb_mask.client_mask = 0;
+			decoder->field_needed_for_prev_ip = 0;
 			vcd_status = VCD_S_SUCCESS;
 		}
 	break;
@@ -1041,10 +1042,24 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 	case VCD_REQ_PERF_LEVEL:
 		vcd_status = VCD_S_SUCCESS;
 		break;
+	case VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG:
+	{
+		struct vcd_property_bitstream_restrict_enable *restrict_enable =
+			(struct vcd_property_bitstream_restrict_enable *)
+				property_value;
+		if (sizeof(struct vcd_property_bitstream_restrict_enable) ==
+			property_hdr->sz &&
+			encoder->codec.codec == VCD_CODEC_H264) {
+			encoder->bitstream_restrict_enable =
+			restrict_enable->bitstream_restrict_enable_flag;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
+	}
 	default:
 		DDL_MSG_ERROR("INVALID ID %d\n", (int)property_hdr->prop_id);
 		vcd_status = VCD_ERR_ILLEGAL_OP;
-	break;
+		break;
 	}
 	return vcd_status;
 }
@@ -1524,6 +1539,15 @@ static u32 ddl_get_enc_property(struct ddl_client_context *ddl,
 			vcd_status = VCD_S_SUCCESS;
 		}
 		break;
+	case VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG:
+		if (sizeof(struct vcd_property_bitstream_restrict_enable) ==
+			property_hdr->sz) {
+			((struct vcd_property_bitstream_restrict_enable *)
+				property_value)->bitstream_restrict_enable_flag
+					= encoder->bitstream_restrict_enable;
+			vcd_status = VCD_S_SUCCESS;
+		}
+	break;
 	default:
 		vcd_status = VCD_ERR_ILLEGAL_OP;
 		break;

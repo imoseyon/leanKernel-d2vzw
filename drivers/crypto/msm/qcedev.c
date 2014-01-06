@@ -1,6 +1,6 @@
 /* Qualcomm CE device driver.
  *
- * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1273,7 +1273,6 @@ static int qcedev_pmem_ablk_cipher_max_xfer(struct qcedev_async_req *areq,
 	unsigned long paddr;
 	unsigned long kvaddr;
 	unsigned long len;
-	int ret = 0;
 
 	sg_src = kmalloc((sizeof(struct scatterlist) *
 				areq->cipher_op_req.entries),	GFP_KERNEL);
@@ -1289,10 +1288,8 @@ static int qcedev_pmem_ablk_cipher_max_xfer(struct qcedev_async_req *areq,
 	areq->cipher_req.creq.src = sg_src;
 
 	/* address src */
-	ret = get_pmem_file(areq->cipher_op_req.pmem.fd_src, &paddr,
+	get_pmem_file(areq->cipher_op_req.pmem.fd_src, &paddr,
 					&kvaddr, &len, &file_src);
-	if (ret)
-		pr_err("%s(): get_pmem_file failed\n", __func__);
 
 	for (i = 0; i < areq->cipher_op_req.entries; i++) {
 		sg_set_buf(sg_ndex,
@@ -1320,11 +1317,8 @@ static int qcedev_pmem_ablk_cipher_max_xfer(struct qcedev_async_req *areq,
 		areq->cipher_req.creq.dst = sg_dst;
 		sg_ndex = sg_dst;
 
-		ret = get_pmem_file(areq->cipher_op_req.pmem.fd_dst, &paddr,
+		get_pmem_file(areq->cipher_op_req.pmem.fd_dst, &paddr,
 					&kvaddr, &len, &file_dst);
-		if (ret)
-			pr_err("%s(): get_pmem_file failed\n", __func__);
-
 		for (i = 0; i < areq->cipher_op_req.entries; i++)
 			sg_set_buf(sg_ndex++,
 			((uint8_t *)(areq->cipher_op_req.pmem.dst[i].offset)
@@ -2049,12 +2043,8 @@ static int qcedev_probe(struct platform_device *pdev)
 	podev->qce = handle;
 	podev->pdev = pdev;
 	platform_set_drvdata(pdev, podev);
-	rc = qce_hw_support(podev->qce, &podev->ce_support);
-	if (rc) {
-		pr_err("%s: failed qce_hw_support.\n", __func__);
-		rc = -ENODEV;
-		goto err;
-	}
+	qce_hw_support(podev->qce, &podev->ce_support);
+
 	if (podev->platform_support.bus_scale_table != NULL) {
 		podev->bus_scale_handle =
 			msm_bus_scale_register_client(
@@ -2076,10 +2066,12 @@ static int qcedev_probe(struct platform_device *pdev)
 			msm_bus_scale_unregister_client(
 						podev->bus_scale_handle);
 err:
+
+	if (handle)
+		qce_close(handle);
 	platform_set_drvdata(pdev, NULL);
 	podev->qce = NULL;
 	podev->pdev = NULL;
-	qce_close(handle);
 	return rc;
 };
 

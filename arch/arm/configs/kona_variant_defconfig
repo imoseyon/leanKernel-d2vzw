@@ -1,0 +1,5 @@
+# edit here
+# def/undef for local target
+konalte="CONFIG_MACH_KONA_EUR_OPEN=y CONFIG_TARGET_LOCALE_EUR=y"
+konalte_undef="MACH_KONA_USA_ATT TARGET_LOCALE_USA"
+

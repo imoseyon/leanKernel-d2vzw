@@ -188,9 +188,10 @@ static s32 tcpal_cspi_open(void)
 
 	tcbd_debug(DEBUG_TCPAL_CSPI, "\n");
 	return 0;
-
+#ifdef __USE_TC_CPU__
 cspi_init_fail:
 	return -1;
+#endif
 }
 
 static inline s32 tcpal_cspi_write_and_read(

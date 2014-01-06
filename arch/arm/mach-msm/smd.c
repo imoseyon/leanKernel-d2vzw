@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/smd.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -2165,7 +2165,7 @@ static void smsm_cb_snapshot(uint32_t use_wakelock)
 {
 	int n;
 	uint32_t new_state;
-	unsigned long flags;
+	unsigned long flags = 0;
 	int ret;
 
 	ret = kfifo_avail(&smsm_snapshot_fifo);
@@ -2853,7 +2853,7 @@ static int restart_notifier_cb(struct notifier_block *this,
 static struct restart_notifier_block restart_notifiers[] = {
 	{SMD_MODEM, "modem", .nb.notifier_call = restart_notifier_cb},
 	{SMD_Q6, "lpass", .nb.notifier_call = restart_notifier_cb},
-	{SMD_WCNSS, "riva", .nb.notifier_call = restart_notifier_cb},
+	{SMD_WCNSS, "wcnss", .nb.notifier_call = restart_notifier_cb},
 	{SMD_DSPS, "dsps", .nb.notifier_call = restart_notifier_cb},
 };
 

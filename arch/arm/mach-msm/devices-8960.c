@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,6 +43,7 @@
 #include "pil-q6v4.h"
 #include "scm-pas.h"
 #include <mach/msm_dcvs.h>
+#include <mach/iommu_domains.h>
 
 #ifdef CONFIG_MSM_MPM
 #include "mpm.h"
@@ -580,7 +581,7 @@ static struct msm_bus_vectors vidc_vdec_1080p_turbo_vectors[] = {
 		.ib  = 10000000,
 	},
 };
- 
+
 static struct msm_bus_paths vidc_bus_client_config[] = {
 	{
 		ARRAY_SIZE(vidc_init_vectors),
@@ -668,9 +669,11 @@ struct msm_vidc_platform_data vidc_platform_data = {
 	.memtype = ION_CP_MM_HEAP_ID,
 	.enable_ion = 1,
 	.cp_enabled = 1,
+	.secure_wb_heap = 1,
 #else
 	.memtype = MEMTYPE_EBI1,
 	.enable_ion = 0,
+	.secure_wb_heap = 0,
 #endif
 	.disable_dmx = 0,
 	.disable_fullhd = 0,
@@ -1074,7 +1077,7 @@ struct platform_device msm_device_bam_dmux = {
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
 	.pet_time = 10000,
-	.bark_time = 20000,
+	.bark_time = 25000,
 	.has_secure = true,
 };
 
@@ -1692,8 +1695,8 @@ static struct resource resources_qup_spi_gsbi11[] = {
 	/*test: Qualcomm, DMA SPI, start */
 	{
 		.name	= "spidm_channels",
-		.start	= 9,
-		.end	= 10,
+		.start	= 3,
+		.end	= 4,
 		.flags	= IORESOURCE_DMA,
 	},
 	{
@@ -1820,6 +1823,11 @@ struct platform_device msm_multi_ch_pcm = {
 	.id	= -1,
 };
 
+struct platform_device msm_lowlatency_pcm = {
+	.name	= "msm-lowlatency-pcm-dsp",
+	.id	= -1,
+};
+
 struct platform_device msm_pcm_routing = {
 	.name	= "msm-pcm-routing",
 	.id	= -1,
@@ -1891,13 +1899,24 @@ struct platform_device msm_cpudai_incall_record_tx = {
  */
 struct msm_dai_auxpcm_pdata auxpcm_pdata = {
 	.clk = "pcm_clk",
-	.mode = AFE_PCM_CFG_MODE_PCM,
-	.sync = AFE_PCM_CFG_SYNC_INT,
-	.frame = AFE_PCM_CFG_FRM_256BPF,
-	.quant = AFE_PCM_CFG_QUANT_LINEAR_NOPAD,
-	.slot = 0,
-	.data = AFE_PCM_CFG_CDATAOE_MASTER,
-	.pcm_clk_rate = 2048000,
+	.mode_8k = {
+		.mode = AFE_PCM_CFG_MODE_PCM,
+		.sync = AFE_PCM_CFG_SYNC_INT,
+		.frame = AFE_PCM_CFG_FRM_64BPF,
+		.quant = AFE_PCM_CFG_QUANT_LINEAR_NOPAD,
+		.slot = 0,
+		.data = AFE_PCM_CFG_CDATAOE_MASTER,
+		.pcm_clk_rate = 512000,
+	},
+	.mode_16k = {
+		.mode = AFE_PCM_CFG_MODE_PCM,
+		.sync = AFE_PCM_CFG_SYNC_INT,
+		.frame = AFE_PCM_CFG_FRM_32BPF,
+		.quant = AFE_PCM_CFG_QUANT_LINEAR_NOPAD,
+		.slot = 0,
+		.data = AFE_PCM_CFG_CDATAOE_MASTER,
+		.pcm_clk_rate = 512000,
+	}
 };
 
 struct platform_device msm_cpudai_auxpcm_rx = {
@@ -2116,6 +2135,11 @@ struct platform_device msm_rotator_device = {
 		.platform_data = &rotator_pdata,
 	},
 };
+
+void __init msm_rotator_set_split_iommu_domain(void)
+{
+	rotator_pdata.rot_iommu_split_domain = 1;
+}
 #endif
 
 #define MIPI_DSI_HW_BASE        0x04700000
@@ -3229,6 +3253,46 @@ struct platform_device msm8960_device_cache_erp = {
 	.resource	= msm_cache_erp_resources,
 };
 
+#ifdef CONFIG_MSM_EBI_ERP
+static struct resource msm_ebi1_ch0_erp_resources[] = {
+	{
+		.start = HSDDRX_EBI1CH0_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.start = 0x00A40000,
+		.end   = 0x00A41000,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8960_device_ebi1_ch0_erp = {
+	.name		= "msm_ebi_erp",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(msm_ebi1_ch0_erp_resources),
+	.resource	= msm_ebi1_ch0_erp_resources,
+};
+
+static struct resource msm_ebi1_ch1_erp_resources[] = {
+	{
+		.start = HSDDRX_EBI1CH1_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+	{
+		.start = 0x00D40000,
+		.end   = 0x00D41000,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8960_device_ebi1_ch1_erp = {
+	.name		= "msm_ebi_erp",
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(msm_ebi1_ch1_erp_resources),
+	.resource	= msm_ebi1_ch1_erp_resources,
+};
+#endif
+
 static int msm8960_LPM_latency = 1000; /* >100 usec for WFI */
 
 struct platform_device msm8960_cpu_idle_device = {
@@ -3273,5 +3337,163 @@ struct platform_device msm8960_msm_gov_device = {
 	.id = -1,
 	.dev = {
 		.platform_data = &msm8960_core_info,
+	},
+};
+
+struct msm_iommu_domain_name msm8960_iommu_ctx_names[] = {
+	/* Camera */
+	{
+		.name = "vpe_src",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "vpe_dst",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "vfe_imgwr",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "vfe_misc",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "ijpeg_src",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "ijpeg_dst",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "jpegd_src",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Camera */
+	{
+		.name = "jpegd_dst",
+		.domain = CAMERA_DOMAIN,
+	},
+	/* Rotator */
+	{
+		.name = "rot_src",
+		.domain = ROTATOR_SRC_DOMAIN,
+	},
+	/* Rotator */
+	{
+		.name = "rot_dst",
+		.domain = ROTATOR_SRC_DOMAIN,
+	},
+	/* Video */
+	{
+		.name = "vcodec_a_mm1",
+		.domain = VIDEO_DOMAIN,
+	},
+	/* Video */
+	{
+		.name = "vcodec_b_mm2",
+		.domain = VIDEO_DOMAIN,
+	},
+	/* Video */
+	{
+		.name = "vcodec_a_stream",
+		.domain = VIDEO_DOMAIN,
+	},
+};
+
+static struct mem_pool msm8960_video_pools[] =  {
+	/*
+	 * Video hardware has the following requirements:
+	 * 1. All video addresses used by the video hardware must be at a higher
+	 *    address than video firmware address.
+	 * 2. Video hardware can only access a range of 256MB from the base of
+	 *    the video firmware.
+	*/
+	[VIDEO_FIRMWARE_POOL] =
+	/* Low addresses, intended for video firmware */
+		{
+			.paddr	= SZ_128K,
+			.size	= SZ_16M - SZ_128K,
+		},
+	[VIDEO_MAIN_POOL] =
+	/* Main video pool */
+		{
+			.paddr	= SZ_16M,
+			.size	= SZ_256M - SZ_16M,
+		},
+	[GEN_POOL] =
+	/* Remaining address space up to 2G */
+		{
+			.paddr	= SZ_256M,
+			.size	= SZ_2G - SZ_256M,
+		},
+};
+
+static struct mem_pool msm8960_camera_pools[] =  {
+	[GEN_POOL] =
+	/* One address space for camera */
+		{
+			.paddr	= SZ_128K,
+			.size	= SZ_2G - SZ_128K,
+		},
+};
+
+static struct mem_pool msm8960_display_read_pools[] =  {
+	[GEN_POOL] =
+	/* One address space for display reads */
+		{
+			.paddr	= SZ_128K,
+			.size	= SZ_2G - SZ_128K,
+		},
+};
+
+static struct mem_pool msm8960_rotator_src_pools[] =  {
+	[GEN_POOL] =
+	/* One address space for rotator src */
+		{
+			.paddr	= SZ_128K,
+			.size	= SZ_2G - SZ_128K,
+		},
+};
+
+static struct msm_iommu_domain msm8960_iommu_domains[] = {
+		[VIDEO_DOMAIN] = {
+			.iova_pools = msm8960_video_pools,
+			.npools = ARRAY_SIZE(msm8960_video_pools),
+		},
+		[CAMERA_DOMAIN] = {
+			.iova_pools = msm8960_camera_pools,
+			.npools = ARRAY_SIZE(msm8960_camera_pools),
+		},
+		[DISPLAY_READ_DOMAIN] = {
+			.iova_pools = msm8960_display_read_pools,
+			.npools = ARRAY_SIZE(msm8960_display_read_pools),
+		},
+		[ROTATOR_SRC_DOMAIN] = {
+			.iova_pools = msm8960_rotator_src_pools,
+			.npools = ARRAY_SIZE(msm8960_rotator_src_pools),
+		},
+};
+
+struct iommu_domains_pdata msm8960_iommu_domain_pdata = {
+	.domains = msm8960_iommu_domains,
+	.ndomains = ARRAY_SIZE(msm8960_iommu_domains),
+	.domain_names = msm8960_iommu_ctx_names,
+	.nnames = ARRAY_SIZE(msm8960_iommu_ctx_names),
+	.domain_alloc_flags = 0,
+};
+
+struct platform_device msm8960_iommu_domain_device = {
+	.name = "iommu_domains",
+	.id = -1,
+	.dev = {
+		.platform_data = &msm8960_iommu_domain_pdata,
 	},
 };

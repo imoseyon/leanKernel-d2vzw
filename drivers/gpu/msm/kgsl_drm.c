@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -377,6 +377,7 @@ kgsl_gem_free_object(struct drm_gem_object *obj)
 	kgsl_gem_free_mmap_offset(obj);
 	drm_gem_object_release(obj);
 	kfree(obj->driver_private);
+	kfree(obj);
 }
 
 static int

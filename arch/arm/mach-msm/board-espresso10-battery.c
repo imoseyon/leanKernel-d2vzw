@@ -33,9 +33,18 @@
 #endif
 
 #if defined(CONFIG_BATTERY_SAMSUNG)
+// removing build errors
+#if defined (CONFIG_MACH_ESPRESSO10_ATT)
+#include <linux/battery/sec_battery_configuration.h>
+#include <linux/battery/sec_fuelgauge.h>
+#elif defined (CONFIG_MACH_ESPRESSO10_SPR) || defined (CONFIG_MACH_ESPRESSO10_VZW)
+#include <linux/battery/sec_fuelgauge.h>
+#include <linux/battery/sec_charger.h>
+#else
 #include <linux/battery/sec_battery.h>
 #include <linux/battery/sec_fuelgauge.h>
 #include <linux/battery/sec_charger.h>
+#endif
 
 #define SEC_BATTERY_PMIC_NAME ""
 
@@ -178,6 +187,10 @@ static bool sec_chg_gpio_init(void)
 
 static bool sec_bat_is_lpm(void) {return (bool)poweroff_charging; }
 
+int extended_cable_type;
+int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
+EXPORT_SYMBOL(current_cable_type);
+
 static void sec_bat_initial_check(void)
 {
 	union power_supply_propval value;
@@ -187,7 +200,7 @@ static void sec_bat_initial_check(void)
 	 */
 	value.intval = -1;
 
-	if (!gpio_get_value_cansleep(
+	if (extended_cable_type || !gpio_get_value_cansleep(
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_TA_nCONNECTED)))
 		psy_do_property("battery", set,
 			POWER_SUPPLY_PROP_ONLINE, value);
@@ -203,9 +216,27 @@ static bool sec_bat_check_jig_status(void)
 		return true;
 }
 
-static void sec_bat_switch_to_check(void)
+static bool sec_bat_switch_to_check(void)
 {
+	/* disabled due to requirement change:
+        to check charger type in sec_battery when
+        keyboard dock is connected */
+	/* int i; */
 	pr_debug("%s\n", __func__);
+	
+	/*
+	if (!gpio_get_value_cansleep(GPIO_ACCESSORY_INT)
+			&& !poweroff_charging) {
+		for (i = 0; i < 10; i++) {
+			if (POWER_SUPPLY_TYPE_CARDOCK ==
+				GET_MAIN_CABLE_TYPE(extended_cable_type)) */
+				/* universal keyboard dock connected */   /*
+				return false;
+			else
+				msleep(200);
+		}
+	}
+	*/
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_USB_SEL, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 1);
@@ -215,23 +246,90 @@ static void sec_bat_switch_to_check(void)
 	gpio_set_value(GPIO_USB_SEL, 1);
 
 	mdelay(10);
+
+	return true;
 }
 
-static void sec_bat_switch_to_normal(void)
+static bool sec_bat_switch_to_normal(void)
 {
 	pr_debug("%s\n", __func__);
 
 	gpio_tlmm_config(GPIO_CFG(GPIO_USB_SEL, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA), 0);
 	gpio_set_value(GPIO_USB_SEL, 0);
+
+	return true;
 }
 
-int current_cable_type = POWER_SUPPLY_TYPE_BATTERY;
-EXPORT_SYMBOL(current_cable_type);
+static bool sec_bat_is_interrupt_cable_check_possible(int extended_cable_type)
+{
+	return (GET_MAIN_CABLE_TYPE(extended_cable_type) ==
+		POWER_SUPPLY_TYPE_CARDOCK) ? false : true;
+}
 
 static int sec_bat_check_cable_callback(void)
 {
 	return current_cable_type;
+}
+
+static int sec_bat_get_cable_from_extended_cable_type(
+	int input_extended_cable_type)
+{
+	int cable_main, cable_sub, cable_power;
+	int cable_type = 0;
+
+	cable_main = GET_MAIN_CABLE_TYPE(input_extended_cable_type);
+	if (cable_main != POWER_SUPPLY_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_MAIN_MASK) |
+			(cable_main << ONLINE_TYPE_MAIN_SHIFT);
+	cable_sub = GET_SUB_CABLE_TYPE(input_extended_cable_type);
+	if (cable_sub != ONLINE_SUB_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_SUB_MASK) |
+			(cable_sub << ONLINE_TYPE_SUB_SHIFT);
+	cable_power = GET_POWER_CABLE_TYPE(input_extended_cable_type);
+	if (cable_power != ONLINE_POWER_TYPE_UNKNOWN)
+		extended_cable_type = (extended_cable_type &
+			~(int)ONLINE_TYPE_PWR_MASK) |
+			(cable_power << ONLINE_TYPE_PWR_SHIFT);
+
+	switch (cable_main) {
+	case POWER_SUPPLY_TYPE_CARDOCK:
+		switch (cable_power) {
+		case ONLINE_POWER_TYPE_BATTERY:
+			cable_type = POWER_SUPPLY_TYPE_BATTERY;
+			break;
+		case ONLINE_POWER_TYPE_TA:
+			switch (cable_sub) {
+			case ONLINE_SUB_TYPE_MHL:
+				cable_type = POWER_SUPPLY_TYPE_USB;
+				break;
+			case ONLINE_SUB_TYPE_AUDIO:
+			case ONLINE_SUB_TYPE_DESK:
+			case ONLINE_SUB_TYPE_SMART_NOTG:
+			case ONLINE_SUB_TYPE_KBD:
+				cable_type = POWER_SUPPLY_TYPE_MAINS;
+				break;
+			case ONLINE_SUB_TYPE_SMART_OTG:
+				cable_type = POWER_SUPPLY_TYPE_CARDOCK;
+				break;
+			}
+			break;
+		case ONLINE_POWER_TYPE_USB:
+			cable_type = POWER_SUPPLY_TYPE_USB;
+			break;
+		default:
+			cable_type = current_cable_type;
+			break;
+		}
+		break;
+	default:
+		cable_type = cable_main;
+		break;
+	}
+
+	return cable_type;
 }
 
 static bool sec_bat_check_cable_result_callback(
@@ -243,15 +341,16 @@ static bool sec_bat_check_cable_result_callback(
 	case POWER_SUPPLY_TYPE_USB:
 		pr_info("%s set vbus applied\n",
 			__func__);
+		msm_otg_set_cable_state(cable_type);
 		break;
 
 	case POWER_SUPPLY_TYPE_BATTERY:
 		pr_info("%s set vbus cut\n",
 			__func__);
-		msm_otg_set_charging_state(0);
+		msm_otg_set_cable_state(cable_type);
 		break;
 	case POWER_SUPPLY_TYPE_MAINS:
-		msm_otg_set_charging_state(1);
+		msm_otg_set_cable_state(cable_type);
 		break;
 	default:
 		pr_err("%s cable type (%d)\n",
@@ -295,7 +394,8 @@ static bool sec_fg_fuelalert_process(bool is_fuel_alerted) {return true; }
 static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
 	{0,	0},
-	{900,	1350},
+	{0,	0},
+	{900,	1550},
 	{0,	0},
 	{0,	0},
 	{0,	0},
@@ -306,7 +406,9 @@ static sec_bat_adc_region_t cable_adc_value_table[] = {
 	{0,	0},
 };
 
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
 static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 	{1800,	1800,	250,	0},
@@ -319,6 +421,37 @@ static sec_charging_current_t charging_current_table[] = {
 	{0,	0,	0,	0},
 	{0,	0,	0,	0},
 };
+#elif defined(CONFIG_MACH_ESPRESSO10_VZW)
+static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{1800,	1800,	370,	0},
+	{1500,	500,	370,	0},
+	{1500,	500,	370,	0},
+	{1500,	500,	370,	0},
+	{1500,	500,	370,	0},
+	{1500,	700,	370,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+};
+#else
+static sec_charging_current_t charging_current_table[] = {
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{1800,	1800,	400,	0},
+	{1500,	500,	400,	0},
+	{1500,	500,	400,	0},
+	{1500,	500,	400,	0},
+	{1500,	500,	400,	0},
+	{1500,	700,	400,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+	{0,	0,	0,	0},
+};
+#endif
 
 static int polling_time_table[] = {
 	10,	/* BASIC */
@@ -360,9 +493,16 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.chg_gpio_init = sec_chg_gpio_init,
 
 	.is_lpm = sec_bat_is_lpm,
+	.jig_irq = PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PMIC_GPIO_IF_CON_SENSE),
+	.jig_irq_attr =
+		IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 	.check_jig_status = sec_bat_check_jig_status,
+	.is_interrupt_cable_check_possible =
+		sec_bat_is_interrupt_cable_check_possible,
 	.check_cable_callback =
 		sec_bat_check_cable_callback,
+	.get_cable_from_extended_cable_type =
+		sec_bat_get_cable_from_extended_cable_type,
 	.cable_switch_check = sec_bat_switch_to_check,
 	.cable_switch_normal = sec_bat_switch_to_normal,
 	.check_cable_result_callback =
@@ -423,7 +563,8 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.cable_check_type =
 		SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE |
 		SEC_BATTERY_CABLE_CHECK_INT,
-	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC,
+	.cable_source_type = SEC_BATTERY_CABLE_SOURCE_ADC |
+		SEC_BATTERY_CABLE_SOURCE_EXTENDED,
 
 	.event_check = true,
 	.event_waiting_time = 600,
@@ -455,31 +596,52 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 	.temp_low_recovery_event = 18,
 	.temp_high_threshold_normal = 480,
 	.temp_high_recovery_normal = 430,
-	.temp_low_threshold_normal = -32,
+	.temp_low_threshold_normal = -12,
 	.temp_low_recovery_normal = 0,
 	.temp_high_threshold_lpm = 480,
 	.temp_high_recovery_lpm = 430,
-	.temp_low_threshold_lpm = -32,
+	.temp_low_threshold_lpm = -12,
 	.temp_low_recovery_lpm = 0,
-#else
+#elif defined(CONFIG_MACH_ESPRESSO10_VZW)
 	/* VZW */
-	.temp_high_threshold_event = 588,
+	.temp_high_threshold_event = 645,
 	.temp_high_recovery_event = 427,
 	.temp_low_threshold_event = -25,
 	.temp_low_recovery_event = 18,
-	.temp_high_threshold_normal = 489,
-	.temp_high_recovery_normal = 427,
-	.temp_low_threshold_normal = -25,
-	.temp_low_recovery_normal = 18,
+	.temp_high_threshold_normal = 515,
+	.temp_high_recovery_normal = 429,
+	.temp_low_threshold_normal = -44,
+	.temp_low_recovery_normal = -14,
 	.temp_high_threshold_lpm = 451,
 	.temp_high_recovery_lpm = 425,
 	.temp_low_threshold_lpm = -19,
 	.temp_low_recovery_lpm = 6,
+#else
+	/* SPR */
+	.temp_high_threshold_event = 578,
+	.temp_high_recovery_event = 444,
+	.temp_low_threshold_event = -32,
+	.temp_low_recovery_event = -10,
+	.temp_high_threshold_normal = 510,
+	.temp_high_recovery_normal = 444,
+	.temp_low_threshold_normal = -32,
+	.temp_low_recovery_normal = -10,
+	.temp_high_threshold_lpm = 460,
+	.temp_high_recovery_lpm = 450,
+	.temp_low_threshold_lpm = -20,
+	.temp_low_recovery_lpm = -10,
 #endif
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
 	.full_check_type = SEC_BATTERY_FULLCHARGED_CHGGPIO,
 	.full_check_count = 1,
 	.full_check_adc_1st = 200,
 	.full_check_adc_2nd = 200,
+#else
+	.full_check_type = SEC_BATTERY_FULLCHARGED_FG_CURRENT,
+	.full_check_count = 2,
+	.full_check_adc_1st = 265,
+	.full_check_adc_2nd = 265,
+#endif
 	.chg_gpio_full_check =
 		PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_CHG_STAT),
 	.chg_polarity_full_check = 0,
@@ -487,11 +649,21 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		SEC_BATTERY_FULL_CONDITION_NOTIMEFULL |
 		SEC_BATTERY_FULL_CONDITION_VCELL,
 	.full_condition_soc = 99,
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
 	.full_condition_vcell = 4100,
+#else
+	.full_condition_vcell = 4180,
+#endif
 
 	.recharge_condition_type =
-		SEC_BATTERY_RECHARGE_CONDITION_VCELL,
+		SEC_BATTERY_RECHARGE_CONDITION_VCELL |
+		SEC_BATTERY_RECHARGE_CONDITION_AVGVCELL,
+	.recharge_condition_avgvcell = 4000,
+#if defined(CONFIG_MACH_ESPRESSO10_ATT)
 	.recharge_condition_vcell = 4150,
+#else
+	.recharge_condition_vcell = 4140,
+#endif
 
 	.charging_total_time = 10 * 60 * 60,
 	.recharging_total_time = 2 * 60 * 60,
@@ -509,7 +681,7 @@ static sec_battery_platform_data_t sec_battery_pdata = {
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_SCALE | */
 		/* SEC_FUELGAUGE_CAPACITY_TYPE_ATOMIC, */
 	.capacity_max = 1000,
-	.capacity_max_margin = 30,
+	.capacity_max_margin = 50,
 	.capacity_min = 0,
 
 	/* Charger */

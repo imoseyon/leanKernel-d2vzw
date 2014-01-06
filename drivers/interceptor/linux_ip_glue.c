@@ -1134,6 +1134,9 @@ ssh_interceptor_send(SshInterceptor interceptor,
 	      goto error;
 	    }
 	  
+	  /* Send packet to network. Note that this may cause recursive
+             calls to the outbound netfilter hooks because the packet
+             may trigger IPv6 neighbour discovery. */
 	  switch (pp->protocol)
 	    {
 	    case SSH_PROTOCOL_IP4:
@@ -1158,9 +1161,24 @@ ssh_interceptor_send(SshInterceptor interceptor,
 	      goto error;
 	    }
 	  
-	  /* All done. */
+	  /* All done for unmodified packet */
 	  goto sent;
 	}
+
+      /* Clear local_df */
+      ipp->skb->local_df = 0;
+
+      /* Clear rxhash, it used also for tx hashing */
+#ifdef LINUX_HAS_SKB_RXHASH
+      ipp->skb->rxhash = 0;
+#endif /* LINUX_HAS_SKB_RXHASH */
+#ifdef LINUX_HAS_SKB_L4_RXHASH
+      ipp->skb->l4_rxhash = 0;
+#endif /* LINUX_HAS_SKB_L4_RXHASH */
+
+      /* Mac header pointer is required by iptables */
+      SSH_ASSERT(media_header_len <= ipp->skb->len);
+      SSH_SKB_SET_MACHDR(ipp->skb, ipp->skb->data);
 
 #ifdef DEBUG_LIGHT
       if (
@@ -1178,10 +1196,6 @@ ssh_interceptor_send(SshInterceptor interceptor,
 #endif /* DEBUG_LIGHT */
 
 #ifndef SSH_IPSEC_IP_ONLY_INTERCEPTOR
-
-      /* Media level */
-      SSH_ASSERT(media_header_len <= ipp->skb->len);
-      SSH_SKB_SET_MACHDR(ipp->skb, ipp->skb->data);
 
       /* Set ipp->skb->protocol */
       SSH_ASSERT(skb_headlen(ipp->skb) >= media_header_len);
@@ -1411,7 +1425,7 @@ ssh_interceptor_send(SshInterceptor interceptor,
 	      goto error;
 	    }
 	  
-	  /* All done. */
+	  /* All done for unmodified packet. */
 	  goto sent;
 	}
 
@@ -1425,8 +1439,7 @@ ssh_interceptor_send(SshInterceptor interceptor,
       /* Clear old routing decision */
       if (SSH_SKB_DST(ipp->skb))
         {
-          dst_release(SSH_SKB_DST(ipp->skb));
-          SSH_SKB_DST_SET(ipp->skb, NULL);
+          SSH_SKB_DST_DROP(ipp->skb);
         }
 
       /* If the packet has an associated SKB and that SKB is associated
@@ -1434,6 +1447,19 @@ ssh_interceptor_send(SshInterceptor interceptor,
 	 may arise when sending packets towards the protocol when
 	 the packet has been turned around by the engine. */
       skb_orphan(ipp->skb);
+
+      /* Reset rxhash */      
+#ifdef LINUX_HAS_SKB_L4_RXHASH
+      ipp->skb->l4_rxhash = 0;
+#endif /* LINUX_HAS_SKB_L4_RXHASH */
+#ifdef LINUX_HAS_SKB_RXHASH
+      /* Clear rxhash */
+      ipp->skb->rxhash = 0;
+#ifdef LINUX_HAS_SKB_GET_RXHASH
+      /* and recalculate it. */
+      skb_get_rxhash(ipp->skb);
+#endif /* LINUX_HAS_SKB_GET_RXHASH */
+#endif /* LINUX_HAS_SKB_RXHASH */
 
 #ifndef SSH_IPSEC_IP_ONLY_INTERCEPTOR 
 

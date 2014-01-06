@@ -61,4 +61,14 @@ struct max17040_platform_data {
 #define RCOMP0_TEMP	20 /* 'C */
 #endif
 
+#if defined(CONFIG_MACH_M2_MTR)
+#define EMPTY_COND_SOC          100
+#define EMPTY_SOC               150
+#define FULL_SOC_DEFAULT        9960
+#define FULL_SOC_LOW            9860
+#define FULL_SOC_HIGH           10200
+#define FULL_KEEP_SOC           50
+#define RCOMP0_TEMP     20 /* 'C */
+#endif
+
 #endif

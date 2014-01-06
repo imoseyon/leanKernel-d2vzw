@@ -354,7 +354,7 @@ uint8_t msb_gain, lsb_gain;
 
 	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
 }
-
+#ifndef CONFIG_S5C73M3
 static void s5k6a3yx_write_fl_lines(
 	struct msm_sensor_ctrl_t *s_ctrl,
 	uint32_t gain,
@@ -429,7 +429,7 @@ static void s5k6a3yx_write_gain(
 
 	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
 }
-
+#endif
 static int32_t s5k6a3yx_write_exp_gain(
 	struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t gain,

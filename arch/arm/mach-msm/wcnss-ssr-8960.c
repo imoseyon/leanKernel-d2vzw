@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,7 +46,7 @@ static void riva_smsm_cb_fn(struct work_struct *work)
 	if (!enable_riva_ssr)
 		panic(MODULE_NAME ": SMSM reset request received from riva");
 	else
-		subsystem_restart("riva");
+		subsystem_restart("wcnss");
 }
 
 static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
@@ -77,7 +77,7 @@ static void riva_fatal_fn(struct work_struct *work)
 	if (!enable_riva_ssr)
 		panic(MODULE_NAME ": Watchdog bite received from riva");
 	else
-		subsystem_restart("riva");
+		subsystem_restart("wcnss");
 }
 
 static irqreturn_t riva_wdog_bite_irq_hdlr(int irq, void *dev_id)
@@ -126,6 +126,8 @@ static int riva_shutdown(const struct subsys_data *subsys)
 {
 	pil_force_shutdown("wcnss");
 	flush_delayed_work(&cancel_vote_work);
+	wcnss_flush_delayed_boot_votes();
+	disable_irq_nosync(RIVA_APSS_WDOG_BITE_RESET_RDY_IRQ);
 
 	return 0;
 }
@@ -178,7 +180,7 @@ static void riva_crash_shutdown(const struct subsys_data *subsys)
 }
 
 static struct subsys_data riva_8960 = {
-	.name = "riva",
+	.name = "wcnss",
 	.shutdown = riva_shutdown,
 	.powerup = riva_powerup,
 	.ramdump = riva_ramdump,

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -54,26 +54,20 @@ struct hdmi_msm_cec_msg {
 struct hdmi_msm_state_type {
 	boolean panel_power_on;
 	boolean hpd_initialized;
-	boolean hpd_state_in_isr;
 #ifdef CONFIG_SUSPEND
 	boolean pm_suspended;
 #endif
-	int hpd_stable;
-	boolean hpd_prev_state;
-	boolean hpd_cable_chg_detected;
 	boolean full_auth_done;
 	boolean hpd_during_auth;
-	struct work_struct hpd_state_work, hpd_read_work;
-	struct timer_list hpd_state_timer;
+	struct work_struct hpd_state_work;
 	struct completion ddc_sw_done;
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
+	bool hdcp_enable;
 	boolean hdcp_activating;
 	boolean reauth ;
 	struct work_struct hdcp_reauth_work, hdcp_work;
 	struct completion hdcp_success_done;
 	struct timer_list hdcp_timer;
-#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT */
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT
 	boolean cec_enabled;
@@ -100,7 +94,7 @@ struct hdmi_msm_state_type {
 
 #define CEC_QUEUE_SIZE		16
 #define CEC_QUEUE_END	 (hdmi_msm_state->cec_queue_start + CEC_QUEUE_SIZE)
-#define RETRANSMIT_MAX_NUM	7
+#define RETRANSMIT_MAX_NUM	5
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT */
 
 	int irq;
@@ -113,6 +107,7 @@ struct hdmi_msm_state_type {
 	void __iomem *hdmi_io;
 
 	struct external_common_state_type common;
+	struct completion hpd_event_processed;
 	boolean hpd_on_offline;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
 		defined(CONFIG_VIDEO_MHL_TAB_V2)

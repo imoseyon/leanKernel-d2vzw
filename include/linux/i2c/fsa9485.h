@@ -65,6 +65,9 @@ enum {
 
 extern void fsa9485_manual_switching(int path);
 extern void fsa9485_otg_detach(void);
+#if defined(CONFIG_MACH_AEGIS2)
+extern void fsa9485_checkandhookaudiodockfornoise(int value);
+#endif
 extern struct class *sec_class;
 
 #endif /* _FSA9485_H_ */

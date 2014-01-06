@@ -12,9 +12,12 @@
  * GNU General Public License for more details.
  *
  */
-
-#if defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_INFINITE)
+#if defined(_goghspr_)
+#include "a2220_firmware_gogh_spr.h"
+#elif defined(CONFIG_MACH_GOGH)
 #include "a2220_firmware_gogh.h"
+#elif defined(CONFIG_MACH_INFINITE)
+#include "a2220_firmware_infinite.h"
 #elif defined(CONFIG_MACH_COMANCHE)
 #include "a2220_firmware_comanche.h"
 #elif defined(CONFIG_MACH_EXPRESS)
@@ -23,8 +26,10 @@
 #include "a2220_firmware_aegis2.h"
 #elif defined(CONFIG_MACH_JASPER)
 #include "a2220_firmware_jasper.h"
-#elif defined(_d2tmo_)
+#elif defined(_d2tmo_) || defined(_d2ltetmo_) || defined(_d2lteMetroPCS_)
 #include "a2220_firmware_t999.h"
+#elif defined(_d2spr_) || defined(_d2vmu_)
+#include "a2220_firmware_l710.h"
 #else
 #include "a2220_firmware_i747.h"
 #endif

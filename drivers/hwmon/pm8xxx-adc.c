@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -451,7 +451,7 @@ static uint32_t pm8xxx_adc_read_adc_code(int32_t *data)
 #define EN_BATT_THERM_MASK2			0x10
 int pm8921_enable_batt_therm(u8 en)
 {
-	int rc;
+	int rc = 0;
 	u8 reg;
 	struct pm8xxx_adc *adc_pmic = pmic_adc;
 
@@ -477,6 +477,7 @@ int pm8921_enable_batt_therm(u8 en)
 		return rc;
 	}
 
+	return rc;
 }
 
 static void pm8xxx_adc_btm_warm_scheduler_fn(struct work_struct *work)

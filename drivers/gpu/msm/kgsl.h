@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -62,6 +62,7 @@
 	do { _stat += (_size); if (_stat > _max) _max = _stat; } while (0)
 
 struct kgsl_device;
+struct kgsl_context;
 
 struct kgsl_driver {
 	struct cdev cdev;
@@ -157,6 +158,9 @@ struct kgsl_mem_entry *kgsl_sharedmem_find_region(
 	struct kgsl_process_private *private, unsigned int gpuaddr,
 	size_t size);
 
+void kgsl_cancel_events_ctxt(struct kgsl_device *device,
+	struct kgsl_context *context);
+
 extern const struct dev_pm_ops kgsl_pm_ops;
 
 struct early_suspend;
@@ -242,5 +246,11 @@ kgsl_mem_entry_put(struct kgsl_mem_entry *entry)
 {
 	kref_put(&entry->refcount, kgsl_mem_entry_destroy);
 }
+int kgsl_add_event(struct kgsl_device *device, u32 ts,
+	void (*cb)(struct kgsl_device *, void *, u32), void *priv,
+	void *owner);
+
+void kgsl_cancel_events(struct kgsl_device *device,
+	void *owner);
 
 #endif /* __KGSL_H */

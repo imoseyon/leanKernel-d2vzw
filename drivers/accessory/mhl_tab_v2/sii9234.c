@@ -40,7 +40,9 @@
 #include <linux/proc_fs.h>
 
 #include "sii9234_driver.h"
-
+#if defined (CONFIG_MACH_ESPRESSO10_SPR) || defined (CONFIG_MACH_ESPRESSO10_VZW)
+static struct device *sii9244_mhldev;
+#endif
 #ifdef CONFIG_MHL_SWING_LEVEL
 #include <linux/ctype.h>
 
@@ -569,11 +571,10 @@ u8 mhl_onoff_ex(bool onoff)
 }
 EXPORT_SYMBOL(mhl_onoff_ex);
 
-
 #ifdef MHL_SS_FACTORY
 #define SII_ID 0x92
-static ssize_t sysfs_check_mhl_command(struct device *dev,
-			struct device_attribute *attr, char *buf)
+static ssize_t sysfs_check_mhl_command(struct class *dev,
+			struct class_attribute *attr, char *buf)
 {
 	int size;
 	u8 sii_id1 = 0;
@@ -601,7 +602,6 @@ static ssize_t sysfs_check_mhl_command(struct device *dev,
 
 static CLASS_ATTR(test_result, 0664 , sysfs_check_mhl_command, NULL);
 #endif /*MHL_SS_FACTORY*/
-
 #ifdef CONFIG_PM
 static int sii9234_mhl_tx_suspend(struct device *dev)
 {
@@ -665,40 +665,41 @@ static int __devinit sii9234_mhl_tx_i2c_probe(struct i2c_client *client,
 	if (sii9234->pdata->swing_level == 0)
 		sii9234->pdata->swing_level = 0xEB;
 
-
-#ifdef MHL_SS_FACTORY
 	pr_info("create mhl sysfile\n");
 
 	sec_mhl = class_create(THIS_MODULE, "mhl");
 	if (IS_ERR(sec_mhl)) {
 		pr_err("Failed to create class(sec_mhl)!\n");
-		goto err_class;
+		goto err_exit1;
 	}
 
+//#ifdef MHL_SS_FACTORY
+#if defined(MHL_SS_FACTORY)
 	ret = class_create_file(sec_mhl, &class_attr_test_result);
 	if (ret) {
 		pr_err("[ERROR] Failed to create device file in sysfs entries!\n");
-		goto err_exit2a;
+		goto err_exit1a;
 	}
 #endif
+
 #ifdef CONFIG_MHL_SWING_LEVEL
 	pr_info("create mhl sysfile\n");
 
 	ret = class_create_file(sec_mhl, &class_attr_swing);
 	if (ret) {
 		pr_err("[ERROR] failed to create swing sysfs file\n");
-		goto err_exit2a;
+		goto err_exit1b;
 	}
 #endif
 	return 0;
 
-err_class:
 #ifdef CONFIG_MHL_SWING_LEVEL
-	class_remove_file(sec_mhl, &class_attr_swing);
+err_exit1b:
+	class_remove_file(sec_mhl, &class_attr_test_result);
 #endif
 
-err_exit2a:
 #if defined(MHL_SS_FACTORY) || defined(CONFIG_MHL_SWING_LEVEL)
+err_exit1a:
 	class_destroy(sec_mhl);
 #endif
 

@@ -217,10 +217,11 @@ static void redirty_tail(struct inode *inode)
 static void requeue_io(struct inode *inode)
 {
 	struct backing_dev_info *bdi = inode_to_bdi(inode);
+	struct bdi_writeback *wb;
 	if (bdi == NULL)
 		return;
 
-	struct bdi_writeback *wb = &bdi->wb;
+	wb = &bdi->wb;
 
 	assert_spin_locked(&inode_wb_list_lock);
 	list_move(&inode->i_wb_list, &wb->b_more_io);

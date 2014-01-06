@@ -27,9 +27,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * This is Modified by Samsung Electronics
- * Taewan Kim <taewan95.kim@samsung.com>
- *
  */
 
 #include <linux/module.h>
@@ -41,7 +38,13 @@
 #include <linux/memory.h>
 #include <linux/memory_hotplug.h>
 
+#define LMK_COUNT_READ
+
 #define ENHANCED_LMK_ROUTINE
+
+#ifdef LMK_COUNT_READ
+static uint32_t lmk_count = 0;
+#endif
 
 #ifdef ENHANCED_LMK_ROUTINE
 #define LOWMEM_DEATHPENDING_DEPTH 3
@@ -93,11 +96,12 @@ task_notify_func(struct notifier_block *self, unsigned long val, void *data)
 #ifdef ENHANCED_LMK_ROUTINE
 	int i = 0;
 
-	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++)
+	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
 		if (task == lowmem_deathpending[i]) {
 			lowmem_deathpending[i] = NULL;
 			break;
 		}
+	}
 #else
 	if (task == lowmem_deathpending)
 		lowmem_deathpending = NULL;
@@ -148,6 +152,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int selected_tasksize[LOWMEM_DEATHPENDING_DEPTH] = {0,};
 	int selected_oom_adj[LOWMEM_DEATHPENDING_DEPTH] = {OOM_ADJUST_MAX,};
 	int all_selected_oom = 0;
+	int max_selected_oom_idx = 0;
 #else
 	int selected_tasksize = 0;
 	int selected_oom_adj;
@@ -180,7 +185,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #ifdef ENHANCED_LMK_ROUTINE
 	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
 		if (lowmem_deathpending[i] &&
-	    time_before_eq(jiffies, lowmem_deathpending_timeout))
+			time_before_eq(jiffies, lowmem_deathpending_timeout))
 			return 0;
 	}
 #else
@@ -226,7 +231,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		struct mm_struct *mm;
 		struct signal_struct *sig;
 		int oom_adj;
-
+#ifdef ENHANCED_LMK_ROUTINE
+		int is_exist_oom_task = 0;
+#endif
 		task_lock(p);
 		mm = p->mm;
 		sig = p->signal;
@@ -245,27 +252,40 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			continue;
 
 #ifdef ENHANCED_LMK_ROUTINE
-		for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
-			if (all_selected_oom >= LOWMEM_DEATHPENDING_DEPTH) {
-				if (oom_adj < selected_oom_adj[i])
-					continue;
-				if (oom_adj == selected_oom_adj[i] &&
-					tasksize <= selected_tasksize[i])
-					continue;
-			} else if (selected[i])
-				continue;
+		if (all_selected_oom < LOWMEM_DEATHPENDING_DEPTH) {
+			for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
+				if (!selected[i]) {
+					is_exist_oom_task = 1;
+					max_selected_oom_idx = i;
+					break;
+				}
+			}
+		} else if (selected_oom_adj[max_selected_oom_idx] < oom_adj ||
+			(selected_oom_adj[max_selected_oom_idx] == oom_adj &&
+			selected_tasksize[max_selected_oom_idx] < tasksize)) {
+			is_exist_oom_task = 1;
+		}
 
-			selected[i] = p;
-			selected_tasksize[i] = tasksize;
-			selected_oom_adj[i] = oom_adj;
+		if (is_exist_oom_task) {
+			selected[max_selected_oom_idx] = p;
+			selected_tasksize[max_selected_oom_idx] = tasksize;
+			selected_oom_adj[max_selected_oom_idx] = oom_adj;
 
 			if (all_selected_oom < LOWMEM_DEATHPENDING_DEPTH)
 				all_selected_oom++;
-			lowmem_print(2, "select %d (%s), adj %d, size %d,"
-			     "to kill\n",
-			     p->pid, p->comm, oom_adj, tasksize);
 
-			break;
+			if (all_selected_oom == LOWMEM_DEATHPENDING_DEPTH) {
+				for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
+					if (selected_oom_adj[i] < selected_oom_adj[max_selected_oom_idx])
+						max_selected_oom_idx = i;
+					else if (selected_oom_adj[i] == selected_oom_adj[max_selected_oom_idx] &&
+						selected_tasksize[i] < selected_tasksize[max_selected_oom_idx])
+						max_selected_oom_idx = i;
+				}
+			}
+
+			lowmem_print(2, "select %d (%s), adj %d, size %d, to kill\n",
+				p->pid, p->comm, oom_adj, tasksize);
 		}
 #else
 		if (selected) {
@@ -286,14 +306,17 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #ifdef ENHANCED_LMK_ROUTINE
 	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
 		if (selected[i]) {
-			lowmem_print(1, "send sigkill to %d (%s), adj %d,"
-				     "size %d\n",
+			lowmem_print(1, "send sigkill to %d (%s), adj %d,\
+				     size %d\n",
 				     selected[i]->pid, selected[i]->comm,
 				     selected_oom_adj[i], selected_tasksize[i]);
 			lowmem_deathpending[i] = selected[i];
 			lowmem_deathpending_timeout = jiffies + HZ;
 			force_sig(SIGKILL, selected[i]);
 			rem -= selected_tasksize[i];
+#ifdef LMK_COUNT_READ
+			lmk_count++;
+#endif
 		}
 	}
 #else
@@ -305,6 +328,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		lowmem_deathpending_timeout = jiffies + HZ;
 		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
+#ifdef LMK_COUNT_READ
+		lmk_count++;
+#endif
 	}
 #endif
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
@@ -340,6 +366,9 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
+#ifdef LMK_COUNT_READ
+module_param_named(lmkcount, lmk_count, uint, S_IRUGO);
+#endif
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

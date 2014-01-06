@@ -369,11 +369,12 @@ static ssize_t touchkey_firm_status_show(struct device *dev,
 	dev_dbg(&info->client->dev, "[TouchKey] touchkey_update_status: %d\n",
 						info->touchkey_update_status);
 	if (info->touchkey_update_status == 0)
-		count = snprintf(buff, sizeof(buff), "PASS\n");
+		count = snprintf(buff, sizeof(buff), "PASS");
 	else if (info->touchkey_update_status == 1)
-		count = snprintf(buff, sizeof(buff), "Downloading\n");
+		count = snprintf(buff, sizeof(buff), "Downloading");
 	else if (info->touchkey_update_status == -1)
-		count = snprintf(buff, sizeof(buff), "Fail\n");
+		count = snprintf(buff, sizeof(buff), "Fail");
+	count = snprintf(buf, sizeof(buff), "%s\n", buff);
 	return count;
 }
 
@@ -839,7 +840,10 @@ static int __devinit cypress_touchkey_probe(struct i2c_client *client,
 	struct input_dev *input_dev;
 	int ret = 0;
 	int i;
+#if defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_DCM) \
+	|| defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_K2_KDI)
 	int retry = NUM_OF_RETRY_UPDATE;
+#endif
 	int ic_fw_ver;
 
 	struct device *sec_touchkey;

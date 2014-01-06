@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -229,12 +229,13 @@ static int msm_csid_release(struct v4l2_subdev *sd)
 		ARRAY_SIZE(csid_vreg_info), &csid_dev->csi_vdd, 0);
 	if (rc < 0)
 		pr_err("%s: regulator off failed\n", __func__);
-
+#if 0 // fixed kernel panic 
 	msm_camera_enable_vreg(&csid_dev->pdev->dev, csid_vreg_info,
 		ARRAY_SIZE(csid_vreg_info), &csid_dev->csi_vdd, 0);
 
 	msm_camera_config_vreg(&csid_dev->pdev->dev, csid_vreg_info,
 		ARRAY_SIZE(csid_vreg_info), &csid_dev->csi_vdd, 0);
+#endif
 
 	iounmap(csid_dev->base);
 	csid_dev->base = NULL;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,6 +15,9 @@
 #include <mach/qdsp6v2/apr.h>
 #include <mach/msm_subsystem_map.h>
 #include <sound/apr_audio.h>
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#include <linux/ion.h>
+#endif
 
 #define IN                      0x000
 #define OUT                     0x001
@@ -94,10 +97,15 @@ typedef void (*app_cb)(uint32_t opcode, uint32_t token,
 struct audio_buffer {
 	dma_addr_t phys;
 	void       *data;
-	struct msm_mapped_buffer *mem_buffer;
 	uint32_t   used;
 	uint32_t   size;/* size of buffer */
 	uint32_t   actual_size; /* actual number of bytes read by DSP */
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	struct ion_handle *handle;
+	struct ion_client *client;
+#else
+	struct msm_mapped_buffer *mem_buffer;
+#endif
 };
 
 struct audio_aio_write_param {
@@ -135,6 +143,7 @@ struct audio_client {
 
 	atomic_t		cmd_state;
 	atomic_t		time_flag;
+	atomic_t		nowait_cmd_cnt;
 	wait_queue_head_t	cmd_wait;
 	wait_queue_head_t	time_wait;
 
@@ -142,6 +151,7 @@ struct audio_client {
 	void			*priv;
 	uint32_t         io_mode;
 	uint64_t         time_stamp;
+	bool             perf_mode;
 };
 
 void q6asm_audio_client_free(struct audio_client *ac);
@@ -164,6 +174,7 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 			struct audio_client *ac);
 
 int q6asm_open_read(struct audio_client *ac, uint32_t format);
+int q6asm_open_read_v2_1(struct audio_client *ac, uint32_t format);
 
 int q6asm_open_write(struct audio_client *ac, uint32_t format);
 
@@ -220,6 +231,12 @@ int q6asm_enc_cfg_blk_aac(struct audio_client *ac,
 			 uint32_t mode, uint32_t format);
 
 int q6asm_enc_cfg_blk_pcm(struct audio_client *ac,
+			uint32_t rate, uint32_t channels);
+
+int q6asm_enc_cfg_blk_pcm_native(struct audio_client *ac,
+			uint32_t rate, uint32_t channels);
+
+int q6asm_enc_cfg_blk_multi_ch_pcm(struct audio_client *ac,
 			uint32_t rate, uint32_t channels);
 
 int q6asm_enable_sbrps(struct audio_client *ac,

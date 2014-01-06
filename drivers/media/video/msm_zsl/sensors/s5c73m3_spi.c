@@ -106,9 +106,9 @@ int s5c73m3_spi_read(u8 *buf, size_t len, const int rxSize)
 {
 	int k;
 	int ret = 0;
-	int z = 0;
+	
 
-	u8 paddingData[32];
+	
 	u8 temp_buf[4] = {0};
 	u32 count = len/rxSize;
 	u32 extra = len%rxSize;

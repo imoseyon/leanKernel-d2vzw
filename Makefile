@@ -194,8 +194,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 export KBUILD_BUILDHOST := $(SUBARCH)
 #ARCH		?= $(SUBARCH)
 #CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
-ARCH		?= arm
-CROSS_COMPILE	?= /opt/toolchains/arm-eabi-4.4.3/bin/arm-eabi-
+ARCH  ?= arm
+CROSS_COMPILE ?= /opt/toolchains/arm-eabi-4.6/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -375,6 +375,8 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
+                   -Wno-error=maybe-uninitialized \
+                   -w \
 		   -D_$(TARGET_PRODUCT)_
 
 KBUILD_AFLAGS_KERNEL :=
@@ -566,6 +568,12 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
+ifdef CONFIG_MACH_ESPRESSO10_ATT
+
+CC		=$(CROSS_COMPILE)gcc
+endif
+
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
@@ -646,6 +654,26 @@ KBUILD_ARFLAGS := $(call ar-option,D)
 # check for 'asm goto'
 ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
+endif
+
+#Disable the whole of the following block to disable L1 TIMA
+#ifeq ($(TIMA_ENABLED),1)
+#      KBUILD_CFLAGS += 	-DTIMA_ENABLED \
+			-DTIMA_PGD_FREE_MANAGE -DTIMA_COPY_PMD_MANAGE \
+			-DTIMA_PMD_CLEAR_MANAGE -DTIMA_KERNEL_L1_MANAGE \
+			-DTIMA_L2_MANAGE -DTIMA_L2_GROUP \
+			-DTIMA_DEBUG_INFRA -DTIMA_INIT_SEC_MON
+#       KBUILD_AFLAGS += -DTIMA_ENABLED \
+			-DTIMA_PGD_FREE_MANAGE -DTIMA_COPY_PMD_MANAGE \
+			-DTIMA_PMD_CLEAR_MANAGE -DTIMA_KERNEL_L1_MANAGE \
+			-DTIMA_L2_MANAGE -DTIMA_L2_GROUP \
+			-DTIMA_DEBUG_INFRA -DTIMA_INIT_SEC_MON
+#endif
+
+#Disable the whole of the following block to disable LKM AUTH
+ifeq ($(TIMA_ENABLED),1)
+       KBUILD_CFLAGS += -DTIMA_LKM_AUTH_ENABLED -DTIMA_TEST_INFRA #-DTIMA_LKM_SET_PAGE_ATTRIB
+       KBUILD_AFLAGS += -DTIMA_LKM_AUTH_ENABLED #-DTIMA_LKM_SET_PAGE_ATTRIB
 endif
 
 # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments

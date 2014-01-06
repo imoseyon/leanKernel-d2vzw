@@ -281,6 +281,7 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 
 #endif
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct gpiomux_setting sec_ts_ldo_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -302,7 +303,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 		},
 	},
 };
-
+#endif
 
 #define MSM_PMEM_ADSP_SIZE         0x4E00000 /* 78 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
@@ -325,7 +326,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #endif
 #define MSM_ION_MM_FW_SIZE	0x200000 /* (2MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE /* 4KB */
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
 #define MSM_HDMI_PRIM_ION_SF_SIZE MSM_HDMI_PRIM_PMEM_SIZE
@@ -1046,7 +1047,7 @@ static u8 touchkey_keycode_common[] = {KEY_BACK, KEY_HOME, KEY_MENU};
 static u8 touchkey_keycode_rev02[] = {KEY_MENU, KEY_HOME, KEY_BACK};
 
 static struct cypress_touchkey_platform_data cypress_touchkey_pdata = {
-	.gpio_int = NULL,
+	.gpio_int = -1,
 	.gpio_led_en = GPIO_KEY_LED_EN,
 	.touchkey_keycode = touchkey_keycode_common,
 	.power_onoff = cypress_power_onoff,
@@ -1056,7 +1057,7 @@ static struct i2c_board_info touchkey_i2c_devices_info[] __initdata = {
 	{
 		I2C_BOARD_INFO("cypress_touchkey", 0x20),
 		.platform_data = &cypress_touchkey_pdata,
-		.irq = NULL,
+		.irq = -1,
 	},
 };
 
@@ -1125,6 +1126,7 @@ static void fsa9485_mhl_cb(bool attached)
 	}
 }
 
+#if !defined(CONFIG_MACH_GOGH)
 static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
@@ -1134,6 +1136,7 @@ static void fsa9485_otg_cb(bool attached)
 		msm_otg_set_id_state(attached);
 	}
 }
+#endif
 
 static void fsa9485_usb_cb(bool attached)
 {
@@ -1670,12 +1673,11 @@ void max17040_hw_init(void)
 
 static int max17040_low_batt_cb(void)
 {
-	pr_err("%s: Low battery alert\n", __func__);
-
 #ifdef CONFIG_BATTERY_SEC
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
+	pr_err("%s: Low battery alert\n", __func__);
 	if (!psy) {
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return -ENODEV;
@@ -2347,11 +2349,13 @@ static struct i2c_gpio_platform_data  a2220_i2c_gpio_data = {
 	.udelay			= 1,
 };
 
+#if !defined(CONFIG_MACH_GOGH)
 static struct platform_device a2220_i2c_gpio_device = {
 	.name			= "i2c-gpio",
 	.id			= MSM_A2220_I2C_BUS_ID,
 	.dev.platform_data	= &a2220_i2c_gpio_data,
 };
+#endif
 #endif
 #ifdef CONFIG_WCD9310_CODEC
 
@@ -2450,7 +2454,9 @@ static struct slim_device msm_slim_tabla = {
 		.platform_data = &tabla_platform_data,
 	},
 };
+#if !defined(CONFIG_MACH_GOGH)
 static u8 tabla20_e_addr[6] = {0, 0, 0x60, 0, 0x17, 2};
+#endif
 
 static struct tabla_pdata tabla20_platform_data = {
 	.slimbus_slave_device = {
@@ -2851,9 +2857,11 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
+#if !defined(CONFIG_MACH_GOGH)
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
+#endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
@@ -3656,7 +3664,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -3665,7 +3673,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -3674,7 +3682,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_CAMERA,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 1,
 		.debounce_interval	= 5, /* ms */
@@ -3977,6 +3985,7 @@ static struct platform_device *gogh_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -4530,7 +4539,7 @@ static struct pm_gpio ear_micbiase = {
 	.output_value	= 0,
 };
 
-static int secjack_gpio_init()
+int secjack_gpio_init(void)
 {
 	int rc;
 
@@ -4562,7 +4571,7 @@ static int secjack_gpio_init()
 	return rc;
 }
 #endif
-static int main_mic_bias_init()
+static int main_mic_bias_init(void)
 {
 	int ret;
 	ret = gpio_request(GPIO_MAIN_MIC_BIAS, "LDO_BIAS");
@@ -4575,7 +4584,7 @@ static int main_mic_bias_init()
 	return 0;
 }
 
-static int tabla_codec_ldo_config()
+static int tabla_codec_ldo_config(void)
 {
 	int ret;
 

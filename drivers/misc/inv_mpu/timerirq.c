@@ -224,7 +224,7 @@ static long timerirq_ioctl(struct file *file,
 		break;
 	case TIMERIRQ_START:
 		data->period = arg;
-		pr_info("TIMERIRQ_START : period=%d", data->period);
+		pr_info("TIMERIRQ_START : period=%ld", data->period);
 		retval = start_timerirq(data);
 		break;
 	case TIMERIRQ_STOP:

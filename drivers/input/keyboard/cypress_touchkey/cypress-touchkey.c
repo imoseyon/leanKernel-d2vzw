@@ -51,8 +51,10 @@
 #define CYPRESS_LED_CONTROL_ON	0X60
 #define CYPRESS_LED_CONTROL_OFF	0X70
 #define CYPRESS_SLEEP		0X80
-static int vol_mv_level = 33;
 
+#if !defined (CONFIG_MACH_EXPRESS) && !defined (CONFIG_MACH_AEGIS2)
+static int vol_mv_level = 33;
+#endif
 
 
 #ifdef CONFIG_LEDS_CLASS
@@ -138,6 +140,7 @@ static void cypress_touchkey_brightness_set(struct led_classdev *led_cdev,
 }
 #endif
 
+#if !defined (CONFIG_MACH_EXPRESS) && !defined (CONFIG_MACH_AEGIS2)
 static void change_touch_key_led_voltage(int vol_mv)
 {
 	struct regulator *tled_regulator;
@@ -170,7 +173,6 @@ static ssize_t brightness_control(struct device *dev,
 	}
 	return size;
 }
-
 static ssize_t brightness_level_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -181,6 +183,7 @@ static ssize_t brightness_level_show(struct device *dev,
 	printk(KERN_DEBUG "[TouchKey] Touch LED voltage = %d\n", vol_mv_level);
 	return count;
 }
+#endif
 
 static irqreturn_t cypress_touchkey_interrupt(int irq, void *dev_id)
 {
@@ -361,11 +364,12 @@ static ssize_t touchkey_firm_status_show(struct device *dev,
 	dev_dbg(&info->client->dev, "[TouchKey] touchkey_update_status: %d\n",
 						info->touchkey_update_status);
 	if (info->touchkey_update_status == 0)
-		count = snprintf(buff, sizeof(buff), "PASS\n");
+		count = snprintf(buff, sizeof(buff), "PASS");
 	else if (info->touchkey_update_status == 1)
-		count = snprintf(buff, sizeof(buff), "Downloading\n");
+		count = snprintf(buff, sizeof(buff), "Downloading");
 	else if (info->touchkey_update_status == -1)
-		count = snprintf(buff, sizeof(buff), "Fail\n");
+		count = snprintf(buff, sizeof(buff), "Fail");
+	count = snprintf(buf, sizeof(buff), "%s\n", buff);
 	return count;
 }
 
@@ -738,6 +742,7 @@ static ssize_t touch_autocal_testmode(struct device *dev,
 	return count;
 }
 
+#if !defined (CONFIG_MACH_EXPRESS) && !defined (CONFIG_MACH_AEGIS2)
 static ssize_t autocalibration_enable(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t size)
@@ -751,7 +756,6 @@ static ssize_t autocalibration_enable(struct device *dev,
 		cypress_touchkey_auto_cal(info);
 	return 0;
 }
-
 static ssize_t autocalibration_status(struct device *dev,
 				      struct device_attribute *attr, char *buf)
 {
@@ -768,7 +772,10 @@ static ssize_t autocalibration_status(struct device *dev,
 	else
 		return sprintf(buf, "Disabled\n");
 }
+#endif
 
+static DEVICE_ATTR(touchkey_firm_update_status,
+		S_IRUGO | S_IWUSR | S_IWGRP, touchkey_firm_status_show, NULL);
 static DEVICE_ATTR(touchkey_firm_version_panel, S_IRUGO,
 				touch_version_read, NULL);
 static DEVICE_ATTR(touchkey_firm_version_phone, S_IRUGO,
@@ -792,13 +799,15 @@ static DEVICE_ATTR(touchkey_idac1, S_IRUGO, touchkey_idac1_show, NULL);
 static DEVICE_ATTR(touchkey_threshold, S_IRUGO, touchkey_threshold_show, NULL);
 static DEVICE_ATTR(touchkey_autocal_start, S_IRUGO | S_IWUSR | S_IWGRP,
 				NULL, touch_autocal_testmode);
+#if !defined (CONFIG_MACH_EXPRESS) && !defined (CONFIG_MACH_AEGIS2)
 static DEVICE_ATTR(autocal_enable, S_IRUGO | S_IWUSR | S_IWGRP, NULL,
 		   autocalibration_enable);
 static DEVICE_ATTR(autocal_stat, S_IRUGO | S_IWUSR | S_IWGRP,
 		   autocalibration_status, NULL);
+
 static DEVICE_ATTR(touchkey_brightness_level, S_IRUGO | S_IWUSR | S_IWGRP,
 				brightness_level_show, brightness_control);
-
+#endif
 
 static int __devinit cypress_touchkey_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
@@ -951,6 +960,12 @@ static int __devinit cypress_touchkey_probe(struct i2c_client *client,
 	}
 	dev_set_drvdata(sec_touchkey, info);
 
+	if (device_create_file(sec_touchkey,
+			&dev_attr_touchkey_firm_update_status) < 0) {
+		pr_err("Failed to create device file(%s)!\n",
+			dev_attr_touchkey_firm_update_status.attr.name);
+		goto err_sysfs;
+	}
 	if (device_create_file(sec_touchkey,
 			&dev_attr_touchkey_firm_update) < 0) {
 		pr_err("Failed to create device file(%s)!\n",

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,7 +45,7 @@
 #define VIDC_SM_DISP_PIC_PROFILE_DISP_PIC_PROFILE_SHFT      0
 
 #define VIDC_SM_DISP_PIC_FRAME_TYPE_ADDR                    0x00c0
-#define VIDC_SM_DISP_PIC_FRAME_TYPE_BMSK                    0x00000003
+#define VIDC_SM_DISP_PIC_FRAME_TYPE_BMSK                    0x0000003f
 #define VIDC_SM_DISP_PIC_FRAME_TYPE_SHFT                    0
 
 #define VIDC_SM_FREE_LUMA_DPB_ADDR                          0x00c4
@@ -83,6 +83,8 @@
 #define VIDC_SM_ENC_EXT_CTRL_ADDR                    0x0028
 #define VIDC_SM_ENC_EXT_CTRL_VBV_BUFFER_SIZE_BMSK    0xffff0000
 #define VIDC_SM_ENC_EXT_CTRL_VBV_BUFFER_SIZE_SHFT    16
+#define VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK 0x2000
+#define VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT 13
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_BMSK  0x80
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_SHFT  7
 #define VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_BMSK    0X100
@@ -396,7 +398,8 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 	*shared_mem, u32 hec_enable,
 	enum VIDC_SM_frame_skip frame_skip_mode,
 	u32 seq_hdr_in_band, u32 vbv_buffer_size, u32 cpcfc_enable,
-	u32 sps_pps_control, u32 closed_gop_enable)
+	u32 sps_pps_control, u32 closed_gop_enable,
+	u32 restrict_bitstream_enable)
 {
 	u32 enc_ctrl;
 
@@ -420,7 +423,11 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 			VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_BMSK) |
 			VIDC_SETFIELD(closed_gop_enable,
 			VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_SHFT,
-			VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_BMSK);
+			VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_BMSK) |
+			VIDC_SETFIELD((restrict_bitstream_enable) ? 1 : 0,
+			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT,
+			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK);
+
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_ENC_EXT_CTRL_ADDR, enc_ctrl);
 }
 

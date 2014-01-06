@@ -1,7 +1,7 @@
 /* linux/arch/arm/mach-msm/timer.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -36,6 +36,9 @@
 #include "smd_private.h"
 #endif
 #include "timer.h"
+#ifdef CONFIG_SEC_DEBUG
+#include <mach/sec_debug.h>
+#endif
 
 enum {
 	MSM_TIMER_DEBUG_SYNC = 1U << 0,
@@ -203,6 +206,7 @@ static irqreturn_t msm_timer_interrupt(int irq, void *dev_id)
 	if (evt->event_handler == NULL)
 		return IRQ_HANDLED;
 	evt->event_handler(evt);
+	sec_debug_timer_log(2222, (int)irqs_disabled(), (void*)evt->event_handler);
 	return IRQ_HANDLED;
 }
 

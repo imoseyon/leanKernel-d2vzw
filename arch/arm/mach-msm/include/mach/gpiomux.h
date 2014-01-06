@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -138,7 +138,9 @@ int msm_gpiomux_put(unsigned gpio);
  */
 int msm_gpiomux_write(unsigned gpio, enum msm_gpiomux_setting which,
 	struct gpiomux_setting *setting, struct gpiomux_setting *old_setting);
-
+#ifdef CONFIG_SEC_PM_DEBUG
+void msm_gpiomux_read(unsigned gpio, struct gpiomux_setting *val);
+#endif
 /* Architecture-internal function for use by the framework only.
  * This function can assume the following:
  * - the gpio value has passed a bounds-check

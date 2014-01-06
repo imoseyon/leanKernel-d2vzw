@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -395,8 +395,6 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 		__raw_writel(0xF, MSM_TCSR_BASE + TCSR_WDT_CFG);
 
 	delay_time = msecs_to_jiffies(pdata->pet_time);
-	pr_info("%s: pet_time=%lu bark_time=%lu\n", __func__, pdata->pet_time,
-		pdata->bark_time);
 	schedule_work_on(0, &init_dogwork_struct);
 	return 0;
 }

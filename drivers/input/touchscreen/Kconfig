@@ -126,6 +126,18 @@ config TOUCHSCREEN_MMS136
 	  To compile this driver as a module, choose M here: the
 	  module will be called mms_ts.
 
+config TOUCHSCREEN_MMS134S
+        tristate "Melfas MMS134S Touchscreen"
+        depends on I2C
+        help
+          Say Y here if you have Melfas MMS136 series I2C touchscreen,
+           connected to your system.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called mms_ts.
+	  
 config TOUCHSCREEN_MMS136_TABLET
 	tristate "Melfas MMS136 Touchscreen at table model"
 	depends on I2C
@@ -889,5 +901,29 @@ config TOUCHSCREEN_SYNAPTICS_S7301
 	  touchscreen controllers.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called melfas_ts.
+	  module will be called synaptics_ts.
+	  
+config TOUCHSCREEN_SYNAPTICS_KONA
+	tristate "SYNAPTICS S7301 Touchscreen Interface"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want support for SYNAPTICS S7301
+	  touchscreen controllers.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called synaptics_ts.
+
+config WACOM_W9001
+	tristate "Wacom penabled i2c touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have an Wacom penabled i2c touchscreen
+	  connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called wacom_GXXX.
+
 endif

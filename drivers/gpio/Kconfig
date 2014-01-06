@@ -477,4 +477,6 @@ config GPIO_PM8XXX_RPC
 	  This option enables support for on-chip GPIO found on Qualcomm PM8xxx
 	  PMICs through RPC.
 
+config SEC_GPIO_DVS
+	tristate "setting Samsung GPIO debugging and verification system"
 endif

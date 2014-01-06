@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,7 +13,9 @@
 
 #ifndef MIPI_TC358764_DSI2LVDS_H
 #define MIPI_TC358764_DSI2LVDS_H
-
+#if !defined (CONFIG_MACH_ESPRESSO10_SPR)  && !defined (CONFIG_MACH_ESPRESSO10_VZW) && !defined (CONFIG_MACH_ESPRESSO_VZW)
+#define PWM_LEVEL 255
+#endif
 struct dsi2lvds_panel_data {
 	const char panel_name[30];
 };

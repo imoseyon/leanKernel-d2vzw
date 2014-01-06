@@ -289,29 +289,6 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 
 #endif
 
-static struct gpiomux_setting sec_ts_ldo_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting sec_ts_ldo_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
-	{	/* TS LDO EN */
-		.gpio = 10,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sec_ts_ldo_act_cfg,
-			[GPIOMUX_SUSPENDED] = &sec_ts_ldo_sus_cfg,
-		},
-	},
-};
-
-
 #define MSM_PMEM_ADSP_SIZE                 0x9600000 /* 150 Mbytes */
 #define MSM_PMEM_ADSP_SIZE_FOR_2GB         0x9600000 /* 150 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
@@ -327,7 +304,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
 #define MSM_ION_QSECOM_SIZE	0x1700000 /* (24MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	0x1000 /* 4KB */
+#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE /* 4KB */
 #define MSM_ION_HEAP_NUM	8
 #define MSM_LIQUID_ION_MM_SIZE (MSM_ION_MM_SIZE + 0x600000)
 #define MSM_LIQUID_ION_SF_SIZE MSM_LIQUID_PMEM_SIZE
@@ -1785,12 +1762,11 @@ void max17040_hw_init(void)
 
 static int max17040_low_batt_cb(void)
 {
-	pr_err("%s: Low battery alert\n", __func__);
-
 #ifdef CONFIG_BATTERY_SEC
 	struct power_supply *psy = power_supply_get_by_name("battery");
 	union power_supply_propval value;
 
+	pr_err("%s: Low battery alert\n", __func__);
 	if (!psy) {
 		pr_err("%s: fail to get battery ps\n", __func__);
 		return -ENODEV;
@@ -4365,6 +4341,7 @@ static struct platform_device *m2_skt_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,

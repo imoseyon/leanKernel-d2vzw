@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -89,7 +89,7 @@ static void set_dload_mode(int on)
 		       dload_mode_addr + sizeof(unsigned int));
 		mb();
 #ifdef CONFIG_SEC_DEBUG
-		pr_err("set_dload_mode <%d> ( %x )\n", on, CALLER_ADDR0);
+		pr_err("set_dload_mode <%d> ( %x )\n", on, (unsigned int)CALLER_ADDR0);
 #endif
 	}
 }
@@ -249,7 +249,7 @@ void arch_reset(char mode, const char *cmd)
 	/* onlyjazz.ed26  : avoid ioreamp is possible
 		because arch_reset can be called in interrupt context */
 	if (!restart_reason)
-		restart_reason = ioremap_nocache((MSM_IMEM_BASE \
+		restart_reason = ioremap_nocache((unsigned int)(MSM_IMEM_BASE \
 						+ RESTART_REASON_ADDR), SZ_4K);
 #endif
 

@@ -483,7 +483,7 @@ static int snd_pcm_hw_params_user(struct snd_pcm_substream *substream,
 
 	params = memdup_user(_params, sizeof(*params));
 	if (IS_ERR(params)) {
-		pr_err("%s memdump_user failed %d\n", __func__, IS_ERR(params));
+		pr_err("%s memdump_user failed %ld\n", __func__, IS_ERR(params));
 		return PTR_ERR(params);
 	}
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -133,7 +133,7 @@ static int ramdump_read(struct file *filep, char __user *buf, size_t count,
 	 */
 	if (!strcmp((const char *)rd_dev->name, "ramdump_kernel_log")) {
 		pr_info("Ramdump(%s): In ramdump_read and device_mem = 0x%x\n",
-		rd_dev->name, ramdump_kernel_log_addr);
+		rd_dev->name, (unsigned int)ramdump_kernel_log_addr);
 		device_mem = ramdump_kernel_log_addr;
 	} else {
 #endif

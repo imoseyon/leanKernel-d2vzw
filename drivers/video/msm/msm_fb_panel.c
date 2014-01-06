@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2010, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -72,6 +72,29 @@ int panel_next_off(struct platform_device *pdev)
 			    platform_data;
 			if ((next_pdata) && (next_pdata->on))
 				ret = next_pdata->off(next_pdev);
+		}
+	}
+
+	return ret;
+}
+
+int panel_next_blank(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct msm_fb_panel_data *pdata;
+	struct msm_fb_panel_data *next_pdata;
+	struct platform_device *next_pdev;
+
+	pdata = (struct msm_fb_panel_data *)pdev->dev.platform_data;
+
+	if (pdata) {
+		next_pdev = pdata->next;
+		if (next_pdev) {
+			next_pdata =
+				(struct msm_fb_panel_data *)next_pdev->dev.
+				platform_data;
+			if ((next_pdata) && (next_pdata->panel_blank))
+				ret = next_pdata->panel_blank(next_pdev, 1);
 		}
 	}
 

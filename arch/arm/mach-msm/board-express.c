@@ -271,6 +271,7 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 
 #endif
 
+/*
 static struct gpiomux_setting sec_ts_ldo_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -284,7 +285,7 @@ static struct gpiomux_setting sec_ts_ldo_sus_cfg = {
 };
 
 static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
-	{	/* TS LDO EN */
+	{	 TS LDO EN 
 		.gpio = 10,
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &sec_ts_ldo_act_cfg,
@@ -292,6 +293,8 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 		},
 	},
 };
+*/
+
 
 
 #define MSM_PMEM_ADSP_SIZE         0x4E00000 /* 78 Mbytes */
@@ -1404,7 +1407,12 @@ static void fsa9485_dock_cb(int attached)
 
 	switch (set_cable_status) {
 	case CABLE_TYPE_CARDOCK:
-		value.intval = POWER_SUPPLY_TYPE_CARDOCK;
+		if (!gpio_get_value_cansleep(
+			PM8921_GPIO_PM_TO_SYS(
+			PMIC_GPIO_OTG_POWER))) {
+			value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		} else
+			value.intval = POWER_SUPPLY_TYPE_CARDOCK;
 		break;
 	case CABLE_TYPE_NONE:
 		value.intval = POWER_SUPPLY_TYPE_BATTERY;
@@ -2107,10 +2115,14 @@ static struct mpu_platform_data mpu_data_00 = {
 static struct yas_platform_data geomagnetic_pdata;
 static int __init yas_platform_data_init(void)
 {
-if (system_rev < BOARD_REV05)
+if (system_rev < BOARD_REV05){
 	geomagnetic_pdata.mag_orientation = YAS532_POSITION_0;
-else
+	return 0;
+	}
+else{
 	geomagnetic_pdata.mag_orientation = YAS532_POSITION_1;
+	return 0;
+	}
 }
 #endif
 
@@ -2500,6 +2512,7 @@ static struct i2c_board_info a2220_device[] __initdata = {
 	},
 };
 
+/*
 static struct i2c_gpio_platform_data  a2220_i2c_gpio_data = {
 	.sda_pin		= GPIO_A2220_I2C_SDA,
 	.scl_pin		= GPIO_A2220_I2C_SCL,
@@ -2511,7 +2524,9 @@ static struct platform_device a2220_i2c_gpio_device = {
 	.id			= MSM_A2220_I2C_BUS_ID,
 	.dev.platform_data	= &a2220_i2c_gpio_data,
 };
+*/
 #endif
+
 #if defined(CONFIG_KEYBOARD_ADP5588) || defined(CONFIG_KEYBOARD_ADP5588_MODULE)
 static const unsigned short adp5588_keymap[ADP5588_KEYMAPSIZE] = {
 	[0]	 = KEY_BACK,
@@ -2698,7 +2713,10 @@ static struct slim_device msm_slim_tabla = {
 		.platform_data = &tabla_platform_data,
 	},
 };
-static u8 tabla20_e_addr[6] = {0, 0, 0x60, 0, 0x17, 2};
+
+
+// static u8 tabla20_e_addr[6] = {0, 0, 0x60, 0, 0x17, 2};
+
 
 static struct tabla_pdata tabla20_platform_data = {
 	.slimbus_slave_device = {
@@ -3099,9 +3117,12 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
+
+/*
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
+*/
 
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
@@ -3953,14 +3974,6 @@ static u8 t25_config_s[] = { SPT_SELFTEST_T25,
 	0, 0, 0, 0, 0
 };
 
-static u8 t35_config_s[] = { SPT_GENERICDATA_T35,
-	0x1C, 0x00, 0x01, 0x02, 0x09, 0x0A
-};
-
-static u8 t35_config_s_ta[] = { SPT_GENERICDATA_T35,
-	0x0C, 0x00, 0x01, 0x02, 0x05, 0x06
-};
-
 static u8 t40_config_s[] = { PROCI_GRIPSUPPRESSION_T40,
 	0, 0, 0, 0, 0
 };
@@ -3972,9 +3985,6 @@ static u8 t42_config_s[] = { PROCI_TOUCHSUPPRESSION_T42,
 
 static u8 t46_config_s[] = { SPT_CTECONFIG_T46,
 	0x04, 0x00, 0x10, 0x14, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01
-};
-static u8 t46_config_s_ta[] = { SPT_CTECONFIG_T46,
-	0x04, 0x00, 0x10, 0x18, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01
 };
 
 static u8 t47_config_s[] = { PROCI_STYLUS_T47,
@@ -4008,7 +4018,7 @@ static u8 t62_config_s[] = { PROCG_NOISESUPPRESSION_T62,
 	0x0A, 0x05, 0x30, 0x14, 0x64, 0x06, 0x06, 0x04, 0x64, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x60, MXT224S_THRESHOLD_BATT,
 	0x02, 0x05, 0x01, 0x30, MXT224S_MAX_MT_FINGERS,
-	0x0F, 0x0F, 0x1E, 0x1E, 0xF6, 0xF6, 0xF2, 0x3E, 0x00,
+	0x0F, 0x0F, 0xEC, 0xEC, 0xEC, 0xEC, 0x35, 0x2F, 0x00,
 	0x00, 0x12, 0x0A, 0x00
 };
 
@@ -4018,7 +4028,7 @@ static u8 t62_config_s_ta[] = { PROCG_NOISESUPPRESSION_T62,
 	0x1E, 0x14, 0x30, 0x14, 0x64, 0x06, 0x06, 0x04, 0x64, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x50, MXT224S_THRESHOLD_CHRG,
 	0x02, 0x05, 0x01, 0x30, MXT224S_MAX_MT_FINGERS,
-	0x0F, 0x0F, 0x1E, 0x1E, 0xF6, 0xF6, 0xF2, 0x3E, 0x00,
+	0x0F, 0x0F, 0xEC, 0xEC, 0xEC, 0xEC, 0x35, 0x2F, 0x00,
 	0x00, 0x12, 0x0A, 0x00
 };
 
@@ -4034,7 +4044,6 @@ static const u8 *mxt224s_config[] = {
 	t19_config_s,
 	t23_config_s,
 	t25_config_s,
-	t35_config_s,
 	t40_config_s,
 	t42_config_s,
 	t46_config_s,
@@ -4102,9 +4111,7 @@ static struct mxt224s_platform_data mxt224s_data = {
 	.t62_config_batt_e = t62_config_s,
 	.t62_config_chrg_e = t62_config_s_ta,
 	.t46_config_batt_e = t46_config_s,
-	.t46_config_chrg_e = t46_config_s_ta,
-	.t35_config_batt_e = t35_config_s,
-	.t35_config_chrg_e = t35_config_s_ta,
+	.t46_config_chrg_e = t46_config_s,
 	.power_onoff = mxt224_power_onoff,
 	.register_cb = mxt224_register_callback,
 	.read_ta_status = mxt224_read_ta_status,
@@ -4285,6 +4292,7 @@ err_irq_gpio_req:
 	gpio_free(GPIO_MXT_TS_IRQ);
 }
 
+/*
 static struct mxt_platform_data mxt_platform_data = {
 	.config			= mxt_config_data,
 	.config_length		= ARRAY_SIZE(mxt_config_data),
@@ -4294,10 +4302,11 @@ static struct mxt_platform_data mxt_platform_data = {
 	.y_size			= 1365,
 	.blen			= 32,
 	.threshold		= 40,
-	.voltage		= 3300000,		/* 3.3V */
+	.voltage		= 3300000,		 3.3V 
 	.orient			= MXT_ROTATED_90,
 	.irqflags		= IRQF_TRIGGER_FALLING,
 };
+
 
 static struct i2c_board_info mxt_device_info[] __initdata = {
 	{
@@ -4306,6 +4315,7 @@ static struct i2c_board_info mxt_device_info[] __initdata = {
 		.irq = MSM_GPIO_TO_INT(GPIO_MXT_TS_IRQ),
 	},
 };
+*/
 
 #ifndef CONFIG_SLIMBUS_MSM_CTRL
 #define TABLA_I2C_SLAVE_ADDR	0x0d
@@ -4462,6 +4472,7 @@ static struct platform_device msm8960_device_ext_5v_vreg __devinitdata = {
 	},
 };
 
+/*
 static struct platform_device msm8960_device_ext_l2_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
 	.id	= 91,
@@ -4469,6 +4480,7 @@ static struct platform_device msm8960_device_ext_l2_vreg __devinitdata = {
 		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_L2],
 	},
 };
+*/
 
 static struct platform_device msm8960_device_ext_3p3v_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
@@ -4483,7 +4495,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4492,7 +4504,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4501,7 +4513,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_HOMEPAGE,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 1,
 		.debounce_interval	= 5, /* ms */
@@ -4820,6 +4832,7 @@ static struct platform_device *express_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -5391,7 +5404,7 @@ static struct pm_gpio ear_micbiase = {
 	.output_value	= 0,
 };
 
-static int secjack_gpio_init()
+static int secjack_gpio_init(void)
 {
 	int rc;
 
@@ -5433,7 +5446,7 @@ static int secjack_gpio_init()
 }
 #endif
 
-static int configure_codec_lineout_gpio()
+static int configure_codec_lineout_gpio(void)
 {
 	int ret;
 	struct pm_gpio param = {
@@ -5458,7 +5471,7 @@ static int configure_codec_lineout_gpio()
 					PMIC_GPIO_LINEOUT_EN), 1);
 	return 0;
 }
-static int tabla_codec_ldo_en_init()
+static int tabla_codec_ldo_en_init(void)
 {
 	int ret;
 

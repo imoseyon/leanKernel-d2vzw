@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -327,17 +327,28 @@ static int msm_dai_q6_auxpcm_hw_params(
 	}
 	dai_data->channels = params_channels(params);
 
-	if (params_rate(params) != 8000) {
-		dev_err(dai->dev, "AUX PCM supports only 8KHz sampling rate\n");
+	dai_data->rate = params_rate(params);
+	switch (dai_data->rate) {
+	case 8000:
+		dai_data->port_config.pcm.mode = auxpcm_pdata->mode_8k.mode;
+		dai_data->port_config.pcm.sync = auxpcm_pdata->mode_8k.sync;
+		dai_data->port_config.pcm.frame = auxpcm_pdata->mode_8k.frame;
+		dai_data->port_config.pcm.quant = auxpcm_pdata->mode_8k.quant;
+		dai_data->port_config.pcm.slot = auxpcm_pdata->mode_8k.slot;
+		dai_data->port_config.pcm.data = auxpcm_pdata->mode_8k.data;
+		break;
+	case 16000:
+		dai_data->port_config.pcm.mode = auxpcm_pdata->mode_16k.mode;
+		dai_data->port_config.pcm.sync = auxpcm_pdata->mode_16k.sync;
+		dai_data->port_config.pcm.frame = auxpcm_pdata->mode_16k.frame;
+		dai_data->port_config.pcm.quant = auxpcm_pdata->mode_16k.quant;
+		dai_data->port_config.pcm.slot = auxpcm_pdata->mode_16k.slot;
+		dai_data->port_config.pcm.data = auxpcm_pdata->mode_16k.data;
+		break;
+	default:
+		dev_err(dai->dev, "AUX PCM supports only 8kHz and 16kHz sampling rate\n");
 		return -EINVAL;
 	}
-	dai_data->rate = params_rate(params);
-	dai_data->port_config.pcm.mode = auxpcm_pdata->mode;
-	dai_data->port_config.pcm.sync = auxpcm_pdata->sync;
-	dai_data->port_config.pcm.frame = auxpcm_pdata->frame;
-	dai_data->port_config.pcm.quant = auxpcm_pdata->quant;
-	dai_data->port_config.pcm.slot = auxpcm_pdata->slot;
-	dai_data->port_config.pcm.data = auxpcm_pdata->data;
 
 	return 0;
 }
@@ -535,7 +546,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata =
 			(struct msm_dai_auxpcm_pdata *) dai->dev->platform_data;
-
+	unsigned long pcm_clk_rate;
 	mutex_lock(&aux_pcm_mutex);
 
 	if (dai->id == PCM_RX)
@@ -594,13 +605,23 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 
 	afe_open(PCM_TX, &dai_data->port_config, dai_data->rate);
 
-	rc = clk_set_rate(pcm_clk, auxpcm_pdata->pcm_clk_rate);
+	if (dai_data->rate == 8000) {
+		pcm_clk_rate = auxpcm_pdata->mode_8k.pcm_clk_rate;
+	} else if (dai_data->rate == 16000) {
+		pcm_clk_rate = auxpcm_pdata->mode_16k.pcm_clk_rate;
+	} else {
+		dev_err(dai->dev, "%s: Invalid AUX PCM rate %d\n", __func__,
+			  dai_data->rate);
+		return -EINVAL;
+	}
+	
+	rc = clk_set_rate(pcm_clk, pcm_clk_rate);
 	if (rc < 0) {
 		pr_err("%s: clk_set_rate failed\n", __func__);
 		return rc;
 	}
 
-	clk_enable(pcm_clk);
+	clk_prepare_enable(pcm_clk);
 	clk_reset(pcm_clk, CLK_RESET_DEASSERT);
 
 	mutex_unlock(&aux_pcm_mutex);
@@ -713,7 +734,6 @@ static int msm_dai_q6_dai_auxpcm_probe(struct snd_soc_dai *dai)
 {
 	struct msm_dai_q6_dai_data *dai_data;
 	int rc = 0;
-	struct clk *aux_pcm_clk;
 
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata =
 			(struct msm_dai_auxpcm_pdata *) dai->dev->platform_data;
@@ -984,7 +1004,7 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_tx_dai = {
 		SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.channels_min = 1,
-		.channels_max = 2,
+		.channels_max = 4,
 		.rate_min =     8000,
 		.rate_max =	48000,
 	},
@@ -1068,7 +1088,7 @@ static struct snd_soc_dai_driver msm_dai_q6_bt_sco_rx_dai = {
 };
 
 static struct snd_soc_dai_driver msm_dai_q6_bt_sco_tx_dai = {
-	.playback = {
+	.capture = {
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.channels_min = 1,
@@ -1097,7 +1117,7 @@ static struct snd_soc_dai_driver msm_dai_q6_fm_rx_dai = {
 };
 
 static struct snd_soc_dai_driver msm_dai_q6_fm_tx_dai = {
-	.playback = {
+	.capture = {
 		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 		SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -1113,11 +1133,11 @@ static struct snd_soc_dai_driver msm_dai_q6_fm_tx_dai = {
 
 static struct snd_soc_dai_driver msm_dai_q6_aux_pcm_rx_dai = {
 	.playback = {
-		.rates = SNDRV_PCM_RATE_8000,
+		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.channels_min = 1,
 		.channels_max = 1,
-		.rate_max = 8000,
+		.rate_max = 16000,
 		.rate_min = 8000,
 	},
 	.ops = &msm_dai_q6_auxpcm_ops,
@@ -1127,11 +1147,11 @@ static struct snd_soc_dai_driver msm_dai_q6_aux_pcm_rx_dai = {
 
 static struct snd_soc_dai_driver msm_dai_q6_aux_pcm_tx_dai = {
 	.capture = {
-		.rates = SNDRV_PCM_RATE_8000,
+		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 		.channels_min = 1,
 		.channels_max = 1,
-		.rate_max = 8000,
+		.rate_max = 16000,
 		.rate_min = 8000,
 	},
 	.ops = &msm_dai_q6_auxpcm_ops,

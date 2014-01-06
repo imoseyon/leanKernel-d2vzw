@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,12 @@
 #define PAS_SHUTDOWN_CMD	6
 #define PAS_IS_SUPPORTED_CMD	7
 
+#define WORKAROUND_FOR_ABNORMAL_MPU_BEHAVIOR
+
+#ifdef WORKAROUND_FOR_ABNORMAL_MPU_BEHAVIOR
+#define MPU_GRANULARITY PAGE_SIZE
+static char metadata_buf[SZ_8K] __page_aligned_bss;
+#endif
 int pas_init_image(enum pas_id id, const u8 *metadata, size_t size)
 {
 	int ret;
@@ -36,19 +42,43 @@ int pas_init_image(enum pas_id id, const u8 *metadata, size_t size)
 		u32	image_addr;
 	} request;
 	u32 scm_ret = 0;
+
+#ifdef WORKAROUND_FOR_ABNORMAL_MPU_BEHAVIOR
+	void *mdata_buf = metadata_buf;
+	int do_kfree = 0;
+	size_t aligned_size = round_up(size, MPU_GRANULARITY);
+
+	if (aligned_size > sizeof(metadata_buf)) {
+		mdata_buf = kmalloc(aligned_size, GFP_KERNEL);
+		do_kfree = 1;
+	}
+	if (!mdata_buf)
+		return -ENOMEM;
+	memset(mdata_buf + size, 0x0, aligned_size - size);
+	memcpy(mdata_buf, metadata, size);
+	pr_debug("mdata_buf vaddr=%lx paddr=%lx size=%lx, aligned=%lx\n",
+		(unsigned long)mdata_buf,
+		(unsigned long)virt_to_phys(mdata_buf),
+		(unsigned long)size, (unsigned long)aligned_size);
+#else
 	/* Make memory physically contiguous */
 	void *mdata_buf = kmemdup(metadata, size, GFP_KERNEL);
 
 	if (!mdata_buf)
 		return -ENOMEM;
+#endif
 
 	request.proc = id;
 	request.image_addr = virt_to_phys(mdata_buf);
 
 	ret = scm_call(SCM_SVC_PIL, PAS_INIT_IMAGE_CMD, &request,
 			sizeof(request), &scm_ret, sizeof(scm_ret));
+#ifdef WORKAROUND_FOR_ABNORMAL_MPU_BEHAVIOR
+	if (do_kfree)
+		kfree(mdata_buf);
+#else
 	kfree(mdata_buf);
-
+#endif
 	if (ret)
 		return ret;
 	return scm_ret;

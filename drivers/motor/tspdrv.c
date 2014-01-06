@@ -362,6 +362,7 @@ defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_ESPRESSO_ATT)
 	} else {
 		pdata = pdev->dev.platform_data;
 		vibrator_drvdata.vib_model = pdata->vib_model;
+#ifndef CONFIG_HAPTIC_DRV2603
 		vibrator_drvdata.is_pmic_haptic_pwr_en = \
 						pdata->is_pmic_haptic_pwr_en;
 		if (pdata->is_pmic_haptic_pwr_en)
@@ -370,6 +371,7 @@ defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_ESPRESSO_ATT)
 		else
 			vibrator_drvdata.haptic_pwr_en_gpio = \
 				pdata->haptic_pwr_en_gpio;
+#endif
 		if (pdata->vib_model == HAPTIC_PWM) {
 			vibrator_drvdata.vib_pwm_gpio = pdata->vib_pwm_gpio;
 			vibrator_drvdata.is_pmic_vib_en = \
@@ -520,16 +522,16 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 		return 0;
 	}
 
+	/* Check buffer size */
+	if ((count <= SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
+		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
+		return 0;
+	}
+
 	/* Copy immediately the input buffer */
 	if (0 != copy_from_user(g_cwrite_buffer, buf, count)) {
 		/* Failed to copy all the data, exit */
 		DbgOut((KERN_ERR "tspdrv: copy_from_user failed.\n"));
-		return 0;
-	}
-
-	/* Check buffer size */
-	if ((count <= SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
-		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
 		return 0;
 	}
 
@@ -545,6 +547,7 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 			** (Should never happen).
 			*/
 			DbgOut((KERN_EMERG "tspdrv: invalid buffer index.\n"));
+			return 0;
 		}
 
 		/* Check bit depth */
@@ -565,6 +568,7 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 			** (Should never happen).
 			*/
 			DbgOut((KERN_EMERG "tspdrv: invalid data size.\n"));
+			return 0;
 		}
 
 		/* Check actuator index */

@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Author: Brian Swetland <swetland@google.com>
- * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -171,7 +171,7 @@ enum usb_bam_pipe_dir {
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
-	int (*vbus_power)(bool on);
+	void (*vbus_power)(bool on);
 	unsigned power_budget;
 	enum usb_mode_type mode;
 	enum otg_control_type otg_control;
@@ -240,6 +240,7 @@ struct msm_otg {
 #define ID_B		3
 #define ID_C		4
 	unsigned long inputs;
+	unsigned long probe_time_jiffies;
 	struct work_struct sm_work;
 	atomic_t in_lpm;
 	int async_int;

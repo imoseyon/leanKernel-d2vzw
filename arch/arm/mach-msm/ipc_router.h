@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,6 +102,8 @@ struct rr_packet {
 	uint32_t length;
 };
 
+#define MAX_WAKELOCK_NAME_SZ 32
+
 struct msm_ipc_port {
 	struct list_head list;
 
@@ -116,6 +118,7 @@ struct msm_ipc_port {
 
 	struct list_head port_rx_q;
 	struct mutex port_rx_q_lock;
+	char rx_wakelock_name[MAX_WAKELOCK_NAME_SZ];
 	struct wake_lock port_rx_wake_lock;
 	wait_queue_head_t port_rx_wait_q;
 

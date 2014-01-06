@@ -14,6 +14,23 @@
 
 #include <linux/battery/sec_charger.h>
 
+#if defined (CONFIG_MACH_COMANCHE) || defined (CONFIG_MACH_ESPRESSO10_ATT) || defined (CONFIG_MACH_APEXQ)\
+	|| defined (CONFIG_MACH_EXPRESS) || defined (CONFIG_MACH_ESPRESSO10_SPR) || defined (CONFIG_MACH_ESPRESSO10_VZW)\
+	|| defined (CONFIG_MACH_ESPRESSO_VZW)
+static enum power_supply_property sec_charger_props[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+};
+static struct device_attribute sec_charger_attrs[] = {
+	SEC_CHARGER_ATTR(reg),
+	SEC_CHARGER_ATTR(data),
+	SEC_CHARGER_ATTR(regs),
+};
+#endif
+
 static int sec_chg_get_property(struct power_supply *psy,
 			    enum power_supply_property psp,
 			    union power_supply_propval *val)
@@ -26,6 +43,7 @@ static int sec_chg_get_property(struct power_supply *psy,
 		val->intval = charger->charging_current ? 1 : 0;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
+	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 	case POWER_SUPPLY_PROP_HEALTH:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (!sec_hal_chg_get_property(charger->client, psp, val))
@@ -262,7 +280,7 @@ static int __devinit sec_charger_probe(
 	i2c_set_clientdata(client, charger);
 
 	charger->psy_chg.name		= "sec-charger";
-	charger->psy_chg.type		= POWER_SUPPLY_TYPE_BATTERY;
+	charger->psy_chg.type		= POWER_SUPPLY_TYPE_UNKNOWN;
 	charger->psy_chg.get_property	= sec_chg_get_property;
 	charger->psy_chg.set_property	= sec_chg_set_property;
 	charger->psy_chg.properties	= sec_charger_props;
@@ -315,13 +333,16 @@ static int __devinit sec_charger_probe(
 	if (ret) {
 		dev_err(&client->dev,
 			"%s : Failed to create_attrs\n", __func__);
-		goto err_supply_unreg;
+		goto err_req_irq;
 	}
 
 	dev_dbg(&client->dev,
 		"%s: SEC Charger Driver Loaded\n", __func__);
 	return 0;
 
+err_req_irq:
+	if (charger->pdata->chg_irq)
+		free_irq(charger->pdata->chg_irq, charger);
 err_supply_unreg:
 	power_supply_unregister(&charger->psy_chg);
 err_free:

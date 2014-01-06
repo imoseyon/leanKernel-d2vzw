@@ -381,7 +381,7 @@ static int proximity_store_cancelation(struct device *dev, bool do_calib)
 	set_fs(KERNEL_DS);
 
 	cancel_filp = filp_open(CANCELATION_FILE_PATH,
-			O_CREAT | O_TRUNC | O_WRONLY, 0666);
+			O_CREAT | O_TRUNC | O_WRONLY | O_SYNC, 0666);
 	if (IS_ERR(cancel_filp)) {
 		pr_err("%s: Can't open cancelation file\n", __func__);
 		set_fs(old_fs);

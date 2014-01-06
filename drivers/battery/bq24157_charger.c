@@ -39,6 +39,7 @@ static int bq24157_i2c_read(struct i2c_client *client,
 	return ret;
 }
 
+#if !defined (CONFIG_MACH_COMANCHE) && !defined (CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_EXPRESS)
 static void bq24157_i2c_write_array(struct i2c_client *client,
 				u8 *buf, int size)
 {
@@ -46,6 +47,7 @@ static void bq24157_i2c_write_array(struct i2c_client *client,
 	for (i = 0; i < size; i += 3)
 		bq24157_i2c_write(client, (u8) (*(buf + i)), (buf + i) + 1);
 }
+#endif
 
 static void bq24157_set_command(struct i2c_client *client,
 				int reg, int datum)
@@ -199,6 +201,7 @@ static u8 bq24157_get_fast_charging_current_data(
 	return data << 4;
 }
 
+#if !defined (CONFIG_MACH_COMANCHE) && !defined (CONFIG_MACH_APEXQ) && !defined (CONFIG_MACH_EXPRESS)
 static void bq24157_set_safety_limits(struct i2c_client *client)
 {
 	struct sec_charger_info *charger = i2c_get_clientdata(client);
@@ -213,6 +216,7 @@ static void bq24157_set_safety_limits(struct i2c_client *client)
 	bq24157_set_command(client,
 		BQ24157_SAFETY, data);
 }
+#endif
 
 static void bq24157_charger_function_conrol(
 				struct i2c_client *client)
@@ -281,6 +285,8 @@ static void bq24157_charger_function_conrol(
 		case SEC_BATTERY_FULLCHARGED_CHGPSY:
 			/* Enable Current Termination */
 			data |= 0x08;
+			break;
+		default:
 			break;
 		}
 		bq24157_set_command(client,

@@ -787,17 +787,6 @@ static char ACL_COND_SET_33[] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 };
-static char ACL_COND_SET_20[] = {
-	0xC1,
-	0x47, 0x53, 0x13, 0x53, 0x00, 0x00,
-	0x02, 0xCF, 0x00, 0x00, 0x04, 0xFF,
-	0x00, 0x00, 0x00, 0x00, 0x00,
-	0x01, 0x04, 0x07, 0x0A, 0x0D, 0x10,
-	0x12, 0x15, 0x18, 0x1B, 0x1E,
-	/* adding 8 byte padding*/
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-};
 
 static struct dsi_cmd_desc DSI_CMD_ACL_50 = {
 DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(ACL_COND_SET_50), ACL_COND_SET_50 };
@@ -805,8 +794,7 @@ static struct dsi_cmd_desc DSI_CMD_ACL_40 = {
 DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(ACL_COND_SET_40), ACL_COND_SET_40 };
 static struct dsi_cmd_desc DSI_CMD_ACL_33 = {
 DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(ACL_COND_SET_33), ACL_COND_SET_33 };
-static struct dsi_cmd_desc DSI_CMD_ACL_20 = {
-DTYPE_DCS_LWRITE, 1, 0, 0, 0, sizeof(ACL_COND_SET_20), ACL_COND_SET_20 };
+
 static struct dsi_cmd_desc_LCD lcd_acl_table[] = {
 	{0, "20", NULL},
 	{0, "30", NULL},
@@ -1102,7 +1090,7 @@ static int get_candela_index(int bl_level)
 		backlightlevel = GAMMA_250CD;
 		break;
 	case 255:
-		if (mipi_pd.msd->dstat.auto_brightness == 1)
+		if (mipi_pd.msd->dstat.auto_brightness > 0)
 			backlightlevel = GAMMA_300CD;
 		else
 			backlightlevel = GAMMA_250CD;
@@ -1586,7 +1574,7 @@ static int __init mipi_cmd_samsung_oled_qhd_pt_init(void)
 #endif
 	pinfo.xres = 720;
 	pinfo.yres = 1280;
-	pinfo.height = 107;
+	pinfo.height = 106;
 	pinfo.width = 60;
 	pinfo.mode2_xres = 0;
 	pinfo.mode2_yres = 0;

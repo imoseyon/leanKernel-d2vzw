@@ -336,6 +336,12 @@ static void gpio_keys_report_event(struct gpio_button_data *bdata)
 	sec_debug_check_crash_key(button->code, state);
 #endif
 
+#if defined(CONFIG_MACH_JAGUAR)
+	pr_info("%s:key code(%d) value(%d)\n",
+			__func__, button->code, state);
+#endif
+
+	printk(KERN_ALERT" %s:key code(%d) value(%d)\n", __func__, button->code, state);
 	if (type == EV_ABS) {
 		if (state)
 			input_event(input, type, button->code, button->value);
@@ -396,6 +402,8 @@ static irqreturn_t gpio_keys_isr(int irq, void *dev_id)
 	else
 		schedule_work(&bdata->work);
 
+	printk(KERN_ALERT" gpio-keys (keypad) handled : %s\n",__func__);
+	
 	return IRQ_HANDLED;
 }
 

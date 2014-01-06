@@ -110,7 +110,11 @@ struct mxt224_platform_data {
 	const u8 *t48_config_chrg_e;
 	void (*power_onoff)(int);
 	void (*register_cb)(void *);
+#if defined(CONFIG_MACH_COMANCHE)||defined(CONFIG_MACH_APEXQ) || defined (CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_AEGIS2)
+	void (*read_ta_status)(bool *);
+#else
 	void (*read_ta_status)(void *);
+#endif
 	const u8 *config_fw_version;
 };
 

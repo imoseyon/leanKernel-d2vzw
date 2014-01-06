@@ -238,6 +238,7 @@ restart:
 			kstat_incr_softirqs_this_cpu(vec_nr);
 
 			trace_softirq_entry(vec_nr);
+			sec_debug_timer_log(6666, (int)irqs_disabled(), (void*)h->action);
 			h->action(h);
 			trace_softirq_exit(vec_nr);
 			if (unlikely(prev_count != preempt_count())) {

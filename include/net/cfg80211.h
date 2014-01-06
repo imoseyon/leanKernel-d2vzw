@@ -368,6 +368,26 @@ struct cfg80211_crypto_settings {
 	bool control_port_no_encrypt;
 };
 
+struct mac_address {
+	u8 addr[ETH_ALEN];
+};
+
+/**
+ * struct cfg80211_acl_data - Access control list data
+ *
+ * @acl_policy: ACL policy to be applied on the station's
+ *	entry specified by mac_addr
+ * @n_acl_entries: Number of MAC address entries passed
+ * @mac_addrs: List of MAC addresses of stations to be used for ACL
+ */
+struct cfg80211_acl_data {
+	enum nl80211_acl_policy acl_policy;
+	int n_acl_entries;
+
+	/* Keep it last */
+	struct mac_address mac_addrs[];
+};
+
 /**
  * struct beacon_parameters - beacon parameters
  *
@@ -396,6 +416,8 @@ struct cfg80211_crypto_settings {
  * @assocresp_ies: extra information element(s) to add into (Re)Association
  *	Response frames or %NULL
  * @assocresp_ies_len: length of assocresp_ies in octets
+ * @acl: ACL configuration used by the drivers which has support for
+ *	MAC address based access control
  */
 struct beacon_parameters {
 	u8 *head, *tail;
@@ -413,6 +435,7 @@ struct beacon_parameters {
 	size_t proberesp_ies_len;
 	const u8 *assocresp_ies;
 	size_t assocresp_ies_len;
+	const struct cfg80211_acl_data *acl;
 };
 
 /**
@@ -1377,6 +1400,14 @@ struct cfg80211_wowlan {
  * @set_ringparam: Set tx and rx ring sizes.
  *
  * @get_ringparam: Get tx and rx ring current and maximum sizes.
+ *
+ * @set_mac_acl: Sets MAC address control list in AP and P2P GO mode.
+ *	Parameters include ACL policy, an array of MAC address of stations
+ *	and the number of MAC addresses. If there is already a list in driver
+ *	this new list replaces the existing one. Driver has to clear its ACL
+ *	when number of MAC addresses entries is passed as 0. Drivers which
+ *	advertise the support for MAC based ACL have to implement this callback.
+ *
  */
 struct cfg80211_ops {
 	int	(*suspend)(struct wiphy *wiphy, struct cfg80211_wowlan *wow);
@@ -1553,6 +1584,9 @@ struct cfg80211_ops {
 				struct net_device *dev,
 				struct cfg80211_sched_scan_request *request);
 	int	(*sched_scan_stop)(struct wiphy *wiphy, struct net_device *dev);
+
+	int	(*set_mac_acl)(struct wiphy *wiphy, struct net_device *dev,
+				const struct cfg80211_acl_data *params);
 };
 
 /*
@@ -1602,6 +1636,23 @@ struct cfg80211_ops {
  * @WIPHY_FLAG_MESH_AUTH: The device supports mesh authentication by routing
  *	auth frames to userspace. See @NL80211_MESH_SETUP_USERSPACE_AUTH.
  * @WIPHY_FLAG_SUPPORTS_SCHED_SCAN: The device supports scheduled scans.
+ * @WIPHY_FLAG_SUPPORTS_FW_ROAM: The device supports roaming feature in the
+ *     firmware.
+ * @WIPHY_FLAG_AP_UAPSD: The device supports uapsd on AP.
+ * @WIPHY_FLAG_SUPPORTS_TDLS: The device supports TDLS (802.11z) operation.
+ * @WIPHY_FLAG_TDLS_EXTERNAL_SETUP: The device does not handle TDLS (802.11z)
+ *     link setup/discovery operations internally. Setup, discovery and
+ *     teardown packets should be sent through the @NL80211_CMD_TDLS_MGMT
+ *     command. When this flag is not set, @NL80211_CMD_TDLS_OPER should be
+ *     used for asking the driver/firmware to perform a TDLS operation.
+ * @WIPHY_FLAG_HAVE_AP_SME: device integrates AP SME
+ * @WIPHY_FLAG_REPORTS_OBSS: the device will report beacons from other BSSes
+ *      when there are virtual interfaces in AP mode by calling
+ *      cfg80211_report_obss_beacon().
+ * @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD: When operating as an AP, the device
+ *      responds to probe-requests in hardware.
+ * @WIPHY_FLAG_OFFCHAN_TX: Device supports direct off-channel TX.
+ * @WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL: Device supports remain-on-channel call.
  */
 enum wiphy_flags {
 	WIPHY_FLAG_CUSTOM_REGULATORY		= BIT(0),
@@ -1616,6 +1667,15 @@ enum wiphy_flags {
 	WIPHY_FLAG_MESH_AUTH			= BIT(10),
 	WIPHY_FLAG_SUPPORTS_SCHED_SCAN		= BIT(11),
 	WIPHY_FLAG_ENFORCE_COMBINATIONS		= BIT(12),
+	WIPHY_FLAG_SUPPORTS_FW_ROAM             = BIT(13),
+	WIPHY_FLAG_AP_UAPSD                     = BIT(14),
+	WIPHY_FLAG_SUPPORTS_TDLS                = BIT(15),
+	WIPHY_FLAG_TDLS_EXTERNAL_SETUP          = BIT(16),
+	WIPHY_FLAG_HAVE_AP_SME                  = BIT(17),
+	WIPHY_FLAG_REPORTS_OBSS                 = BIT(18),
+	WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD        = BIT(19),
+	WIPHY_FLAG_OFFCHAN_TX			= BIT(20),
+	WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL	= BIT(21),
 };
 
 /**
@@ -1690,10 +1750,6 @@ struct ieee80211_iface_combination {
 	u16 max_interfaces;
 	u8 n_limits;
 	bool beacon_int_infra_match;
-};
-
-struct mac_address {
-	u8 addr[ETH_ALEN];
 };
 
 struct ieee80211_txrx_stypes {
@@ -1813,6 +1869,10 @@ struct wiphy_wowlan_support {
  *	may request, if implemented.
  *
  * @wowlan: WoWLAN support information
+ * @ap_sme_capa: AP SME capabilities, flags from &enum nl80211_ap_sme_features.
+ *
+ * @max_acl_mac_addrs: Maximum number of MAC addresses that the device
+ *	supports for ACL.
  */
 struct wiphy {
 	/* assign these fields before you register the wiphy */
@@ -1835,6 +1895,9 @@ struct wiphy {
 	u16 interface_modes;
 
 	u32 flags;
+	u16 max_acl_mac_addrs;
+
+	u32 ap_sme_capa;
 
 	enum cfg80211_signal_type signal_type;
 
@@ -1865,6 +1928,13 @@ struct wiphy {
 
 	u32 available_antennas_tx;
 	u32 available_antennas_rx;
+
+	/*
+	* Bitmap of supported protocols for probe response offloading
+	* see &enum nl80211_probe_resp_offload_support_attr. Only valid
+	* when the wiphy flag @WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD is set.
+	*/
+	u32 probe_resp_offload;
 
 	/* If multiple wiphys are registered and you're handed e.g.
 	 * a regular netdev with assigned ieee80211_ptr, you won't
@@ -2085,6 +2155,8 @@ struct wireless_dev {
 	int ps_timeout;
 
 	int beacon_interval;
+
+	u32 ap_unexpected_nlpid;
 
 #ifdef CONFIG_CFG80211_WEXT
 	/* wext data */

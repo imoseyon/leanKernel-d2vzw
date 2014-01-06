@@ -766,6 +766,8 @@ Outdoor D65
 0xFF86,
 0x1A01,		/*Update*/
 
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
 0xFFC0,
 0x1041,
 0xE796,		/* Delay 150ms*/
@@ -1435,6 +1437,8 @@ static const u16 db8131m_common_M[] = {
 0x0700,
 0x0b00,
 
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
 0xFFC0,
 0x1041,
 0xE796,

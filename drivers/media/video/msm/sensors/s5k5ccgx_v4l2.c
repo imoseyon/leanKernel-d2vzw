@@ -67,19 +67,20 @@ static int s5k5ccgx_set_ae_awb(int lock);
 static int s5k5ccgx_reset_AF_region(void);
 static void s5k5ccgx_set_scene_mode(int mode);
 static void s5k5ccgx_set_metering(int mode);
-static int s5k5ccgx_sensor_config(void __user *argp);
+static int s5k5ccgx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+     void __user *argp);
 
 #if defined(CONFIG_MACH_ESPRESSO_VZW)
 int cam_mode;
 #endif
 
-static struct s5k5ccgx_exif_data
+struct s5k5ccgx_exif_data
 {
 	unsigned short iso;
 	unsigned short shutterspeed;
 };
 
-static struct s5k5ccgx_exif_data *s5k5ccgx_exif;
+struct s5k5ccgx_exif_data *s5k5ccgx_exif;
 DEFINE_MUTEX(s5k5ccgx_mut);
 
 #ifdef CONFIG_LOAD_FILE
@@ -212,7 +213,7 @@ static int s5k5ccgx_write_regs_from_sd(char *name)
 {
 	char *start, *end, *reg, *size;
 	unsigned short addr;
-	unsigned int len, value;
+	unsigned int value;
 	char reg_buf[7], data_buf1[5], data_buf2[7];
 
 
@@ -282,7 +283,7 @@ static DECLARE_WAIT_QUEUE_HEAD(s5k5ccgx_wait_queue);
  *
  * Returns 0 on success, <0 on error
  */
-
+#if 0
 static int s5k5ccgx_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 {
 	unsigned char buf[4];
@@ -316,7 +317,7 @@ static int s5k5ccgx_i2c_read_multi(unsigned short subaddr, unsigned long *data)
 	return err;
 }
 
-
+#endif
 /**
  * s5k5ccgx_i2c_read: Read (I2C) multiple bytes to the camera sensor
  * @client: pointer to i2c_client
@@ -470,7 +471,7 @@ static int s5k5ccgx_i2c_burst_wrt_list(struct s5k5ccgx_short_t regs[], int size,
 	return 0;
 }
 
-
+#ifdef CONFIG_LOAD_FILE
 static int s5k5ccgx_i2c_wrt_list(struct s5k5ccgx_short_t regs[],
 	int size, char *name)
 {
@@ -505,7 +506,7 @@ static int s5k5ccgx_i2c_wrt_list(struct s5k5ccgx_short_t regs[],
 
 	return 0;
 }
-
+#endif
 int s5k5ccgx_get_light_level(void)
 {
 	unsigned short	msb, lsb;
@@ -581,7 +582,7 @@ static struct device_attribute s5k5ccgx_cameraflash_attr = {
 
 static int s5k5ccgx_get_exif(int exif_cmd)
 {
-	unsigned short val;
+	unsigned short val=0;
 	CAM_DEBUG("E");
 
 	switch (exif_cmd) {
@@ -603,10 +604,9 @@ static int s5k5ccgx_get_exif(int exif_cmd)
 	return val;
 }
 
-static void s5k5ccgx_exif_shutter_speed()
+static void s5k5ccgx_exif_shutter_speed(void)
 {
 	unsigned short lsb, msb;
-	unsigned val = 0;
 	lsb = msb = 0;
 	S5K5CCGX_WRT_LIST(s5k5ccgx_sht_spd);
 	s5k5ccgx_i2c_read(0x0F12, &lsb);
@@ -616,7 +616,7 @@ static void s5k5ccgx_exif_shutter_speed()
 	return;
 }
 
-static void s5k5ccgx_exif_iso()
+static void s5k5ccgx_exif_iso(void)
 {
 	unsigned short rough_iso, index;
 	unsigned int gain = 0;
@@ -802,11 +802,14 @@ void s5k5ccgx_set_capture(void)
 
 static int32_t s5k5ccgx_sensor_setting(int update_type, int rt)
 {
-	CAM_DEBUG("Start");
-
 	int32_t rc = 0;
 	struct msm_camera_csid_params s5k5ccgx_csid_params;
 	struct msm_camera_csiphy_params s5k5ccgx_csiphy_params;
+	 struct msm_camera_csid_vc_cfg  s5k5ccgx_vccfg[] = {{0, 0x1E, CSI_DECODE_8BIT},
+														/* {0, CSI_RAW10, CSI_DECODE_10BIT}, */
+														{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
+														};
+	CAM_DEBUG("Start");
 	switch (update_type) {
 	case REG_INIT:
 		if (rt == RES_PREVIEW || rt == RES_CAPTURE)
@@ -826,12 +829,6 @@ static int32_t s5k5ccgx_sensor_setting(int update_type, int rt)
 			mdelay(30);
 
 /*			if (config_csi2 == 0) { */
-				struct msm_camera_csid_vc_cfg
-							s5k5ccgx_vccfg[] = {
-					{0, 0x1E, CSI_DECODE_8BIT},
-					/* {0, CSI_RAW10, CSI_DECODE_10BIT}, */
-					{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
-					};
 			s5k5ccgx_csid_params.lane_cnt = 1;
 			s5k5ccgx_csid_params.lane_assign = 0xe4;
 			s5k5ccgx_csid_params.lut_params.num_cid =
@@ -917,12 +914,10 @@ static struct msm_cam_clk_info cam_clk_info[] = {
 #if defined(CONFIG_S5K5CCGX) && defined(CONFIG_DB8131M) /* jasper */
 static int s5k5ccgx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CAM_DEBUG("=== Start ===");
-
 	int rc = 0;
 	int temp = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
-
+	CAM_DEBUG("=== Start ===");
 #ifdef CONFIG_LOAD_FILE
 	s5k5ccgx_regs_table_init();
 #endif
@@ -975,7 +970,7 @@ static int s5k5ccgx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	gpio_set_value_cansleep(data->sensor_platform_info->sensor_reset, 1);
 	temp = gpio_get_value(data->sensor_platform_info->sensor_reset);
 	CAM_DEBUG("[s5k5ccgx] CAM_3M_RST : %d", temp);
-	usleep(6 * 1000);
+	usleep(10 * 1000);
 
 	/* sensor validation test */
 	CAM_DEBUG(" Camera Sensor Validation Test");
@@ -1000,14 +995,10 @@ static int s5k5ccgx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 #elif defined(CONFIG_S5K5CCGX) && defined(CONFIG_SR030PC50) /* Espresso */
 static int s5k5ccgx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CAM_DEBUG("=== Start ===");
-
 	int rc = 0;
 	int temp = 0;
-	int status = 0;
-	int count = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
-
+	CAM_DEBUG("=== Start ===");
 #ifdef CONFIG_LOAD_FILE
 	s5k5ccgx_regs_table_init();
 #endif
@@ -1179,6 +1170,7 @@ static int s5k5ccgx_set_af_mode(int mode)
 
 focus_end:
 	s5k5ccgx_ctrl->settings.focus_mode = mode;
+	return 0;
 }
 
 int s5k5ccgx_set_af_status(int status, int initial_pos)
@@ -1638,7 +1630,7 @@ static void s5k5ccgx_set_scene_mode(int mode)
 	s5k5ccgx_ctrl->settings.scene = mode;
 
 }
-
+#if 0
 static void s5k5ccgx_set_iso(int iso)
 {
 	CAM_DEBUG("[s5k5ccgx] %s : %d\n", __func__, iso);
@@ -1668,7 +1660,7 @@ static void s5k5ccgx_set_iso(int iso)
 
 	s5k5ccgx_ctrl->settings.iso = iso;
 }
-
+#endif
 static void s5k5ccgx_set_metering(int mode)
 {
 	CAM_DEBUG("[s5k5ccgx] %s : %d\n", __func__, mode);
@@ -1791,7 +1783,7 @@ void sensor_native_control(void __user *arg)
 		(const void *)&ctrl_info, sizeof(ctrl_info)))
 		CAM_DEBUG("[s5k5ccgx] %s fail copy_to_user!", __func__);
 
-	return rc;
+	return ;
 }
 
 long s5k5ccgx_sensor_subdev_ioctl(struct v4l2_subdev *sd,
@@ -1801,13 +1793,14 @@ long s5k5ccgx_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	CAM_DEBUG("s5k5ccgx_sensor_subdev_ioctl\n");
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_CFG:
-		return s5k5ccgx_sensor_config(argp);
+		return s5k5ccgx_sensor_config(&s5k5ccgx_s_ctrl, argp);	   
 	default:
 		return -ENOIOCTLCMD;
 	}
 }
 
-int s5k5ccgx_sensor_config(void __user *argp)
+int s5k5ccgx_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
+		void __user *argp) 
 {
 	struct sensor_cfg_data cfg_data;
 	long   rc = 0;
@@ -1937,7 +1930,7 @@ static int s5k5ccgx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 }
 #endif
 
-static struct s5k5ccgx_format s5k5ccgx_subdev_info[] = {
+static struct v4l2_subdev_info s5k5ccgx_subdev_info[] = {	//haarika
 	{
 	.code   = V4L2_MBUS_FMT_YUYV8_2X8,
 	.colorspace = V4L2_COLORSPACE_JPEG,
@@ -2016,7 +2009,7 @@ static int s5k5ccgx_i2c_probe(struct i2c_client *client,
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
 		pr_err("%s: NULL sensor data\n", __func__);
-		return -EFAULT;
+		rc = -EFAULT;
 		goto probe_failure;
 	}
 

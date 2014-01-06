@@ -139,6 +139,8 @@ static const u16 db8131m_common[] = {
 0xFFB0,
 0x3C81,
 0x5011,
+0x5880,
+0x5900,
 
 0xFFD1,
 0x0700,
@@ -702,6 +704,8 @@ static const u16 db8131m_common[] = {
 0xFFd1,
 0x0700,
 0x0b00,
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
 0xFFC0,
 0x1041,
 
@@ -1341,6 +1345,8 @@ static const u32 db8131m_vt_common[] = {
 0x3805,
 0x3C81,
 0x5011,
+0x5880,
+0x5900,
 
 
 0xFF85,
@@ -1439,7 +1445,8 @@ static const u32 db8131m_vt_common[] = {
 0x6401,
 0x65F0,
 
-
+0xFF82, /* Frame Page*/
+0x7F55, /* 5 Frame setting*/
 
 0xFFC0,
 0x1041,

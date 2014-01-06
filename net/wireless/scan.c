@@ -1,4 +1,4 @@
-/*
+﻿/*
  * cfg80211 scan result handling
  *
  * Copyright 2008 Johannes Berg <johannes@sipsolutions.net>
@@ -330,8 +330,10 @@ static int cmp_bss(struct cfg80211_bss *a,
 {
 	int r;
 
+#ifndef CONFIG_BCM4334
 	if (a->channel != b->channel)
 		return b->channel->center_freq - a->channel->center_freq;
+#endif /* CONFIG_BCM4334 */
 
 	if (is_mesh_bss(a) && is_mesh_bss(b)) {
 		r = cmp_ies(WLAN_EID_MESH_ID,
@@ -351,6 +353,11 @@ static int cmp_bss(struct cfg80211_bss *a,
 	r = memcmp(a->bssid, b->bssid, ETH_ALEN);
 	if (r)
 		return r;
+
+#ifdef CONFIG_BCM4334
+	if (a->channel != b->channel)
+		return b->channel->center_freq - a->channel->center_freq;
+#endif /* CONFIG_BCM4334 */
 
 	return cmp_ies(WLAN_EID_SSID,
 		       a->information_elements,
@@ -862,6 +869,8 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 		if (wreq->scan_type == IW_SCAN_TYPE_PASSIVE)
 			creq->n_ssids = 0;
 	}
+	for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+		creq->rates[i] = (1 << wiphy->bands[i]->n_bitrates) - 1;
 
 	rdev->scan_req = creq;
 	err = rdev->ops->scan(wiphy, dev, creq);

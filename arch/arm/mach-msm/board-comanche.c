@@ -288,6 +288,7 @@ struct sx150x_platform_data msm8960_sx150x_data[] = {
 
 #endif
 
+#if !defined(CONFIG_MACH_COMANCHE)
 static struct gpiomux_setting sec_ts_ldo_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -310,6 +311,7 @@ static struct msm_gpiomux_config msm8960_sec_ts_configs[] = {
 	},
 };
 
+#endif
 
 #define MSM_PMEM_ADSP_SIZE         0x4E00000 /* 78 Mbytes */
 #define MSM_PMEM_AUDIO_SIZE        0x160000 /* 1.375 Mbytes */
@@ -1154,6 +1156,7 @@ static void fsa9485_mhl_cb(bool attached)
 	}
 }
 
+#if !defined(CONFIG_MACH_COMANCHE)
 static void fsa9485_otg_cb(bool attached)
 {
 	pr_info("fsa9485_otg_cb attached %d\n", attached);
@@ -1163,7 +1166,7 @@ static void fsa9485_otg_cb(bool attached)
 		msm_otg_set_id_state(attached);
 	}
 }
-
+#endif
 static void fsa9485_usb_cb(bool attached)
 {
 	union power_supply_propval value;
@@ -1330,7 +1333,12 @@ static void fsa9485_dock_cb(int attached)
 
 	switch (set_cable_status) {
 	case CABLE_TYPE_CARDOCK:
-		value.intval = POWER_SUPPLY_TYPE_CARDOCK;
+		if (!gpio_get_value_cansleep(
+			PM8921_GPIO_PM_TO_SYS(
+			PMIC_GPIO_OTG_POWER))) {
+			value.intval = POWER_SUPPLY_TYPE_BATTERY;
+		} else
+			value.intval = POWER_SUPPLY_TYPE_CARDOCK;
 		break;
 	case CABLE_TYPE_NONE:
 		value.intval = POWER_SUPPLY_TYPE_BATTERY;
@@ -2415,6 +2423,7 @@ static struct i2c_board_info a2220_device[] __initdata = {
 	},
 };
 
+#if !defined(CONFIG_MACH_COMANCHE)
 static struct i2c_gpio_platform_data  a2220_i2c_gpio_data = {
 	.sda_pin		= GPIO_A2220_I2C_SDA,
 	.scl_pin		= GPIO_A2220_I2C_SCL,
@@ -2426,6 +2435,7 @@ static struct platform_device a2220_i2c_gpio_device = {
 	.id			= MSM_A2220_I2C_BUS_ID,
 	.dev.platform_data	= &a2220_i2c_gpio_data,
 };
+#endif
 #endif
 #if defined(CONFIG_KEYBOARD_ADP5588) || defined(CONFIG_KEYBOARD_ADP5588_MODULE)
 static const unsigned short adp5588_keymap[ADP5588_KEYMAPSIZE] = {
@@ -2613,8 +2623,9 @@ static struct slim_device msm_slim_tabla = {
 		.platform_data = &tabla_platform_data,
 	},
 };
+#if !defined(CONFIG_MACH_COMANCHE)
 static u8 tabla20_e_addr[6] = {0, 0, 0x60, 0, 0x17, 2};
-
+#endif
 static struct tabla_pdata tabla20_platform_data = {
 	.slimbus_slave_device = {
 		.name = "tabla-slave",
@@ -3014,9 +3025,11 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi11_pdata = {
 	.max_clock_speed = 48000000, /*15060000,*/
 };
 #endif
+#if !defined(CONFIG_MACH_COMANCHE)
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
 };
+#endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
@@ -4060,7 +4073,7 @@ static struct platform_device msm8960_device_ext_5v_vreg __devinitdata = {
 		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_5V],
 	},
 };
-
+#if !defined(CONFIG_MACH_COMANCHE)
 static struct platform_device msm8960_device_ext_l2_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
 	.id	= 91,
@@ -4068,6 +4081,7 @@ static struct platform_device msm8960_device_ext_l2_vreg __devinitdata = {
 		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_L2],
 	},
 };
+#endif
 
 static struct platform_device msm8960_device_ext_3p3v_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
@@ -4082,7 +4096,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEUP,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4091,7 +4105,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4100,7 +4114,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_MENU,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4109,7 +4123,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_HOMEPAGE,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4118,7 +4132,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_BACK,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4127,7 +4141,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 	{
 		.code			= KEY_F1,
 		.type			= EV_KEY,
-		.gpio			= NULL,
+		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
 		.debounce_interval	= 5, /* ms */
@@ -4417,6 +4431,10 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_rtb_device,
 #endif
 	&msm8960_device_cache_erp,
+#ifdef CONFIG_MSM_EBI_ERP
+	&msm8960_device_ebi1_ch0_erp,
+	&msm8960_device_ebi1_ch1_erp,
+#endif
 #ifdef CONFIG_MSM_CACHE_DUMP
 	&msm_cache_dump_device,
 #endif
@@ -4437,6 +4455,7 @@ static struct platform_device *comanche_devices[] __initdata = {
 	&android_usb_device,
 	&msm_pcm,
 	&msm_multi_ch_pcm,
+	&msm_lowlatency_pcm,
 	&msm_pcm_routing,
 #ifdef CONFIG_SLIMBUS_MSM_CTRL
 	&msm_cpudai0,
@@ -5004,7 +5023,7 @@ static struct pm_gpio ear_micbiase = {
 	.output_value	= 0,
 };
 
-static int secjack_gpio_init()
+static int secjack_gpio_init(void)
 {
 	int rc;
 

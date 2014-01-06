@@ -254,3 +254,12 @@ service secure_storage /system/bin/secure_storage_daemon
 
 on property:ro.securestorage.ready=true
     start secure_storage
+
+service lk-post-boot /sbin/lk-post-boot.sh
+    class late_start
+    user root
+    disabled
+    oneshot
+
+on property:init.svc.bootanim=stopped
+    start lk-post-boot

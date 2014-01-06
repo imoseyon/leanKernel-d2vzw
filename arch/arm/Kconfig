@@ -1832,8 +1832,6 @@ config CP_ACCESS
 	  If unsure, say N.
 
 endmenu
-source "arch/arm/mvp/Kconfig"
-
 menu "Boot options"
 
 config USE_OF

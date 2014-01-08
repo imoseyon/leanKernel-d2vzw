@@ -11,5 +11,6 @@ for i in $check; do
 done
 
 # restart thermald to use new max freq set by cpu app
-sleep 45
-pkill thermald
+stop thermald
+sleep 2
+start thermald

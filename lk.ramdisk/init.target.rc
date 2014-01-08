@@ -261,5 +261,5 @@ service lk-post-boot /sbin/lk-post-boot.sh
     disabled
     oneshot
 
-on property:init.svc.bootanim=stopped
-    start lk-post-boot
+on property:sys.boot_completed=1
+     start lk-post-boot

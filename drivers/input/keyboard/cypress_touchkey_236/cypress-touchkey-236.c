@@ -196,11 +196,6 @@ static irqreturn_t cypress_touchkey_interrupt(int irq, void *dev_id)
 	int press;
 	int ret;
 
-#if defined(CONFIG_KEYBOARD_CYPRESS_TOUCH_BLN)
-	if (bln_is_on)
-		goto out;
-#endif
-
 	ret = gpio_get_value(info->pdata->gpio_int);
 	if (ret) {
 		dev_err(&info->client->dev, "not real interrupt (%d).\n", ret);
@@ -858,7 +853,6 @@ static ssize_t touchkey_bln_control(struct device *dev,
 
 		msleep(100);
 		cypress_touchkey_led_on(info);
-		enable_irq(info->irq);
 	}
 	return size;
 }
@@ -1233,9 +1227,10 @@ static int cypress_touchkey_resume(struct device *dev)
 	int ret = 0;
 
 #if defined(CONFIG_KEYBOARD_CYPRESS_TOUCH_BLN)
-	if (bln_is_on)
+	if (bln_is_on) {
 		bln_is_on = 0;
-	else {
+		enable_irq(info->irq);
+	} else {
 #endif
 	info->power_onoff(1);
 	if (info->pdata->gpio_led_en)

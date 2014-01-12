@@ -29,11 +29,8 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
-#include <linux/sched.h>
 
 #include <trace/events/power.h>
-
-unsigned int thermal_max = 1512000;
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -417,11 +414,6 @@ show_one(scaling_max_freq, max);
 show_one(scaling_cur_freq, cur);
 show_one(cpu_utilization, util);
 
-static ssize_t show_thermal_max_freq(struct cpufreq_policy *policy, char *buf)
-{
-	return sprintf(buf, "%u\n", thermal_max);
-}
-
 static int __cpufreq_set_policy(struct cpufreq_policy *data,
 				struct cpufreq_policy *policy);
 
@@ -454,49 +446,7 @@ static ssize_t store_##file_name					\
 }
 
 store_one(scaling_min_freq, min);
-
-static ssize_t store_scaling_max_freq
-        (struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-        unsigned int ret = -EINVAL;
-        struct cpufreq_policy new_policy;
-
-        ret = cpufreq_get_policy(&new_policy, policy->cpu);
-        if (ret)
-                return -EINVAL;
-
-        ret = sscanf(buf, "%u", &new_policy.max);
-        if (ret != 1)
-                return -EINVAL;
-
-        ret = __cpufreq_set_policy(policy, &new_policy);
-        policy->user_policy.max = policy->max;
-
-	if (policy->max > thermal_max) {
-	  struct task_struct *tsk;
-	  thermal_max = policy->max;
-	  for_each_process(tsk)
-		if (!strcmp(tsk->comm,"thermald"))
-			send_sig(SIGKILL, tsk, 0);
-	  pr_info("[imoseyon] thermald restarted at %d max.\n", thermal_max);
-	}
-
-        return ret ? ret : count;
-}
-
-static ssize_t store_thermal_max_freq
-        (struct cpufreq_policy *policy, const char *buf, size_t count)
-{
-        unsigned int ret = -EINVAL;
-        unsigned int value = 0;
-
-        ret = sscanf(buf, "%u", &value);
-        if (ret != 1)
-                return -EINVAL;
-
-        thermal_max = value;
-	return count;
-}
+store_one(scaling_max_freq, max);
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -716,12 +666,10 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
-cpufreq_freq_attr_rw(thermal_max_freq);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
 	&cpuinfo_max_freq.attr,
-	&thermal_max_freq.attr,
 	&cpuinfo_transition_latency.attr,
 	&scaling_min_freq.attr,
 	&scaling_max_freq.attr,

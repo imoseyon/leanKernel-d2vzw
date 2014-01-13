@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 381717 2013-01-29 07:10:21Z $
+ * $Id: bcmsdh_sdmmc_linux.c 425714 2013-09-25 06:43:11Z $
  */
 
 #include <typedefs.h>
@@ -196,13 +196,11 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	if (func->num != 2)
 		return 0;
 
-#ifdef CUSTOMER_HW4
-	sd_err(("%s Enter\n", __FUNCTION__));
-#else
-	sd_trace(("%s Enter\n", __FUNCTION__));
-#endif
+	sd_trace_hw4(("%s Enter\n", __FUNCTION__));
+
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
+
 	sdio_flags = sdio_get_host_pm_caps(func);
 
 	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -216,10 +214,16 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 		sd_err(("%s: error while trying to keep power\n", __FUNCTION__));
 		return ret;
 	}
-#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
+
+#if !defined(CUSTOMER_HW4)
+#if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
-#endif /* OOB_INTR_ONLY && !CUSTOMER_HW4 */
+#endif	/* defined(OOB_INTR_ONLY) */
+#endif  /* !defined(CUSTOMER_HW4) */
 	dhd_mmc_suspend = TRUE;
+#if defined(CUSTOMER_HW4) && defined(CONFIG_ARCH_TEGRA)
+	irq_set_irq_wake(390, 1);
+#endif
 	smp_mb();
 
 	return 0;
@@ -227,20 +231,24 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
-#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
+#if !defined(CUSTOMER_HW4)
+#if defined(OOB_INTR_ONLY)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-#endif /* OOB_INTR_ONLY && !CUSTOMER_HW4 */
-#ifdef CUSTOMER_HW4
-	sd_err(("%s Enter\n", __FUNCTION__));
-#else
-	sd_trace(("%s Enter\n", __FUNCTION__));
-#endif
+#endif /* defined(OOB_INTR_ONLY) */
+#endif /* defined(CUSTOMER_HW4) */
+	sd_trace_hw4(("%s Enter\n", __FUNCTION__));
+
 	dhd_mmc_suspend = FALSE;
-#if defined(OOB_INTR_ONLY) && !defined(CUSTOMER_HW4)
+#if !defined(CUSTOMER_HW4)
+#if defined(OOB_INTR_ONLY)
 	if ((func->num == 2) && dhd_os_check_if_up(bcmsdh_get_drvdata()))
 		bcmsdh_oob_intr_set(1);
-#endif /* OOB_INTR_ONLY && !CUSTOMER_HW4 */
-
+#endif /* (OOB_INTR_ONLY) */
+#endif /* !(CUSTOMER_HW4) */
+#if defined(CUSTOMER_HW4) && defined(CONFIG_ARCH_TEGRA)
+	if (func->num == 2)
+		irq_set_irq_wake(390, 0);
+#endif
 	smp_mb();
 	return 0;
 }
@@ -257,6 +265,10 @@ static struct semaphore *notify_semaphore = NULL;
 static int dummy_probe(struct sdio_func *func,
                               const struct sdio_device_id *id)
 {
+	if (func && (func->num != 2)) {
+		return 0;
+	}
+
 	if (notify_semaphore)
 		up(notify_semaphore);
 	return 0;
@@ -281,6 +293,7 @@ int sdio_func_reg_notify(void* semaphore)
 
 void sdio_func_unreg_notify(void)
 {
+	OSL_SLEEP(15);
 	sdio_unregister_driver(&dummy_sdmmc_driver);
 }
 
@@ -408,7 +421,7 @@ int sdio_function_init(void)
 	error = sdio_register_driver(&bcmsdh_sdmmc_driver);
 	if (error && gInstance) {
 		kfree(gInstance);
-		gInstance = NULL;
+		gInstance = 0;
 	}
 
 	return error;
@@ -425,8 +438,6 @@ void sdio_function_cleanup(void)
 
 	sdio_unregister_driver(&bcmsdh_sdmmc_driver);
 
-	if (gInstance) {
+	if (gInstance)
 		kfree(gInstance);
-		gInstance = NULL;
-	}
 }

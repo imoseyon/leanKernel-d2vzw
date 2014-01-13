@@ -28,34 +28,29 @@
 #include <osl.h>
 #include <bcmwifi_channels.h>
 #include <wlioctl.h>
-#include <bcmutils.h>
-#include <wl_cfg80211.h>
+
+#if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
 #include <wldev_common.h>
 
-#define MAX_ROAM_CACHE		100
-#define MAX_CHANNEL_LIST	20
-#define MAX_SSID_BUFSIZE	36
+#define WL_ERROR(x) printk x
+#endif
 
-#define ROAMSCAN_MODE_NORMAL	0
-#define ROAMSCAN_MODE_WES		1
+#define WL_DBG(x)
+
+#define MAX_ROAM_CACHE 100
 
 typedef struct {
 	chanspec_t chanspec;
 	int ssid_len;
-	char ssid[MAX_SSID_BUFSIZE];
+	char ssid[36];
 } roam_channel_cache;
-
-typedef struct {
-	int n;
-	chanspec_t channels[MAX_CHANNEL_LIST];
-} channel_list_t;
 
 static int n_roam_cache = 0;
 static int roam_band = WLC_BAND_AUTO;
 static roam_channel_cache roam_cache[MAX_ROAM_CACHE];
 static uint band2G, band5G, band_bw;
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
-static int roamscan_mode = ROAMSCAN_MODE_NORMAL;
+static int roamscan_mode = 0;
 #endif
 
 void init_roam(int ioctl_ver)
@@ -94,7 +89,7 @@ int set_roamscan_mode(struct net_device *dev, int mode)
 
 	error = wldev_iovar_setint(dev, "roamscan_mode", mode);
 	if (error) {
-		WL_ERR(("Failed to set roamscan mode to %d, error = %d\n", mode, error));
+		WL_ERROR(("Failed to set roamscan mode to %d, error = %d\n", mode, error));
 	}
 
 	return error;
@@ -104,11 +99,11 @@ int get_roamscan_channel_list(struct net_device *dev, unsigned char channels[])
 {
 	int n = 0;
 
-	if (roamscan_mode == ROAMSCAN_MODE_WES) {
+	if (roamscan_mode) {
 		for (n = 0; n < n_roam_cache; n++) {
 			channels[n] = roam_cache[n].chanspec & WL_CHANSPEC_CHAN_MASK;
 
-			WL_DBG(("channel[%d] - [%02d] \n", n, channels[n]));
+			WL_DBG(("%s: channel[%d] - [%02d] \n", __FUNCTION__, n, channels[n]));
 		}
 	}
 
@@ -120,17 +115,21 @@ int set_roamscan_channel_list(struct net_device *dev,
 {
 	int i;
 	int error;
-	channel_list_t channel_list;
-	char iobuf[WLC_IOCTL_SMLEN];
-	roamscan_mode = ROAMSCAN_MODE_WES;
+	struct {
+		int n;
+		chanspec_t channels[20];
+	} channel_list;
+	char iobuf[200];
 
-	if (n > MAX_CHANNEL_LIST)
-		n = MAX_CHANNEL_LIST;
+	roamscan_mode = 1;
+
+	if (n > 20)
+		n = 20;
 
 	for (i = 0; i < n; i++) {
 		chanspec_t chanspec;
 
-		if (channels[i] <= CH_MAX_2G_CHANNEL) {
+		if (channels[i] <= 14) {
 			chanspec = band2G | band_bw | channels[i];
 		} else {
 			chanspec = band5G | band_bw | channels[i];
@@ -138,22 +137,17 @@ int set_roamscan_channel_list(struct net_device *dev,
 		roam_cache[i].chanspec = chanspec;
 		channel_list.channels[i] = chanspec;
 
-		WL_DBG(("channel[%d] - [%02d] \n", i, channels[i]));
+		WL_DBG(("%s: channel[%d] - [%02d] \n", __FUNCTION__, i, channels[i]));
 	}
 
 	n_roam_cache = n;
 	channel_list.n = n;
 
-	/* need to set ROAMSCAN_MODE_NORMAL to update roamscan_channels,
-	   otherwise, it won't be updated
-	*/
-	wldev_iovar_setint(dev, "roamscan_mode", ROAMSCAN_MODE_NORMAL);
 	error = wldev_iovar_setbuf(dev, "roamscan_channels", &channel_list,
 		sizeof(channel_list), iobuf, sizeof(iobuf), NULL);
 	if (error) {
-		WL_DBG(("Failed to set roamscan channels, error = %d\n", error));
+		WL_ERROR(("Failed to set roamscan channels, error = %d\n", error));
 	}
-	wldev_iovar_setint(dev, "roamscan_mode", ROAMSCAN_MODE_WES);
 
 	return error;
 }
@@ -167,7 +161,7 @@ void set_roam_band(int band)
 void reset_roam_cache(void)
 {
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
-	if (roamscan_mode == ROAMSCAN_MODE_WES)
+	if (roamscan_mode)
 		return;
 #endif
 
@@ -180,7 +174,7 @@ void add_roam_cache(wl_bss_info_t *bi)
 	uint8 channel;
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
-	if (roamscan_mode == ROAMSCAN_MODE_WES)
+	if (roamscan_mode)
 		return;
 #endif
 
@@ -198,10 +192,7 @@ void add_roam_cache(wl_bss_info_t *bi)
 
 	roam_cache[n_roam_cache].ssid_len = bi->SSID_len;
 	channel = (bi->ctl_ch == 0) ? CHSPEC_CHANNEL(bi->chanspec) : bi->ctl_ch;
-	WL_DBG(("CHSPEC 0x%X %d, CTL %d\n",
-		bi->chanspec, CHSPEC_CHANNEL(bi->chanspec), bi->ctl_ch));
-	roam_cache[n_roam_cache].chanspec =
-		(channel <= CH_MAX_2G_CHANNEL ? band2G : band5G) | band_bw | channel;
+	roam_cache[n_roam_cache].chanspec = (channel <= 14 ? band2G : band5G) | band_bw | channel;
 	memcpy(roam_cache[n_roam_cache].ssid, bi->SSID, bi->SSID_len);
 
 	n_roam_cache++;
@@ -226,12 +217,12 @@ int get_roam_channel_list(int target_chan,
 
 	/* first index is filled with the given target channel */
 	channels[0] = (target_chan & WL_CHANSPEC_CHAN_MASK) |
-		(target_chan <= CH_MAX_2G_CHANNEL ? band2G : band5G) | band_bw;
+		(target_chan <= 14 ? band2G : band5G) | band_bw;
 
 	WL_DBG((" %s: %03d 0x%04X\n", __FUNCTION__, target_chan, channels[0]));
 
 #if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
-	if (roamscan_mode == ROAMSCAN_MODE_WES) {
+	if (roamscan_mode) {
 		for (i = 0; i < n_roam_cache; i++) {
 			chanspec_t ch = roam_cache[i].chanspec;
 			bool is_2G = ioctl_ver == 1 ? LCHSPEC_IS2G(ch) : CHSPEC_IS2G(ch);
@@ -278,90 +269,11 @@ void print_roam_cache(void)
 {
 	int i;
 
-	WL_DBG(("%d cache\n", n_roam_cache));
+	WL_DBG((" %d cache\n", n_roam_cache));
 
 	for (i = 0; i < n_roam_cache; i++) {
 		roam_cache[i].ssid[roam_cache[i].ssid_len] = 0;
 		WL_DBG(("0x%02X %02d %s\n", roam_cache[i].chanspec,
 			roam_cache[i].ssid_len, roam_cache[i].ssid));
-	}
-}
-
-static void add_roamcache_channel(channel_list_t *channels, chanspec_t ch)
-{
-	int i;
-
-	if (channels->n >= MAX_CHANNEL_LIST) /* buffer full */
-		return;
-
-	for (i = 0; i < channels->n; i++) {
-		if (channels->channels[i] == ch) /* already in the list */
-			return;
-	}
-
-	channels->channels[i] = ch;
-	channels->n++;
-
-	WL_DBG((" RCC: %02d 0x%04X\n",
-		ch & WL_CHANSPEC_CHAN_MASK, ch));
-}
-
-void update_roam_cache(struct wl_priv *wl, int ioctl_ver)
-{
-	int error, i, prev_channels;
-	channel_list_t channel_list;
-	char iobuf[WLC_IOCTL_SMLEN];
-	struct net_device *dev = wl_to_prmry_ndev(wl);
-	wlc_ssid_t ssid;
-
-#if defined(CUSTOMER_HW4) && defined(WES_SUPPORT)
-	if (roamscan_mode == ROAMSCAN_MODE_WES) {
-		/* no update when ROAMSCAN_MODE_WES */
-		return;
-	}
-#endif
-
-	if (!wl_get_drv_status(wl, CONNECTED, dev)) {
-		WL_DBG(("Not associated\n"));
-		return;
-	}
-
-	/* need to read out the current cache list
-	   as the firmware may change dynamically
-	*/
-	error = wldev_iovar_getbuf(dev, "roamscan_channels", 0, 0,
-		(void *)&channel_list, sizeof(channel_list), NULL);
-
-	WL_DBG(("%d AP, %d cache item(s), err=%d\n", n_roam_cache, channel_list.n, error));
-
-	error = wldev_get_ssid(dev, &ssid);
-	if (error) {
-		WL_ERR(("Failed to get SSID, err=%d\n", error));
-		return;
-	}
-
-	prev_channels = channel_list.n;
-	for (i = 0; i < n_roam_cache; i++) {
-		chanspec_t ch = roam_cache[i].chanspec;
-		bool is_2G = ioctl_ver == 1 ? LCHSPEC_IS2G(ch) : CHSPEC_IS2G(ch);
-		bool is_5G = ioctl_ver == 1 ? LCHSPEC_IS5G(ch) : CHSPEC_IS5G(ch);
-		bool band_match = ((roam_band == WLC_BAND_AUTO) ||
-			((roam_band == WLC_BAND_2G) && is_2G) ||
-			((roam_band == WLC_BAND_5G) && is_5G));
-
-		if ((roam_cache[i].ssid_len == ssid.SSID_len) &&
-			band_match && (memcmp(roam_cache[i].ssid, ssid.SSID, ssid.SSID_len) == 0)) {
-			/* match found, add it */
-			ch = CHSPEC_CHANNEL(ch) | (is_2G ? band2G : band5G) | band_bw;
-			add_roamcache_channel(&channel_list, ch);
-		}
-	}
-	if (prev_channels != channel_list.n) {
-		/* channel list updated */
-		error = wldev_iovar_setbuf(dev, "roamscan_channels", &channel_list,
-			sizeof(channel_list), iobuf, sizeof(iobuf), NULL);
-		if (error) {
-			WL_ERR(("Failed to update roamscan channels, error = %d\n", error));
-		}
 	}
 }

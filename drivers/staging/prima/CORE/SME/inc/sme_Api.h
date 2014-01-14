@@ -2698,14 +2698,26 @@ eHalStatus sme_UpdateRoamScanOffloadEnabled(tHalHandle hHal, v_BOOL_t nRoamScanO
 
 /* ---------------------------------------------------------------------------
     \fn sme_IsFeatureSupportedByFW
-    \brief  Check if an feature is enabled by FW
-            
-    \param  feattEnumValue - Enumeration value of the feature to be checked.
+    \brief  Check if a feature is enabled by FW
+
+    \param  featEnumValue - Enumeration value of the feature to be checked.
                 A value from enum placeHolderInCapBitmap
                               
     \- return 1/0 (TRUE/FALSE) 
     -------------------------------------------------------------------------*/
 tANI_U8 sme_IsFeatureSupportedByFW(tANI_U8 featEnumValue);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_IsFeatureSupportedByDriver
+    \brief  Check if a feature is enabled by driver
+
+    \param  featEnumValue - Enumeration value of the feature to be checked.
+                A value from enum placeHolderInCapBitmap
+
+    \- return 1/0 (TRUE/FALSE)
+    -------------------------------------------------------------------------*/
+tANI_U8 sme_IsFeatureSupportedByDriver(tANI_U8 featEnumValue);
+
 #ifdef FEATURE_WLAN_TDLS
 /* ---------------------------------------------------------------------------
     \fn sme_SendTdlsMgmtFrame
@@ -2835,4 +2847,6 @@ void sme_enable_disable_split_scan (tHalHandle hHal, tANI_U8 nNumStaChan,
                                     tANI_U8 nNumP2PChan);
 
 void smeGetCommandQStatus( tHalHandle hHal );
+
+eHalStatus sme_RoamDelPMKIDfromCache( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *pBSSId );
 #endif //#if !defined( __SME_API_H )

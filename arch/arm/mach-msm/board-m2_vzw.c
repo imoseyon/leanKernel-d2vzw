@@ -2098,6 +2098,14 @@ static struct platform_device opt_gp2a = {
 			0, 0, -1},
 	};
 
+    struct mpu_platform_data mpu6050_data_spr = {
+	.int_config = 0x10,
+	.orientation = {0, 1, 0,
+			1, 0, 0,
+			0, 0, -1},
+	.poweron = mpu_power_on,
+	};
+
 	struct mpu_platform_data mpu6050_data_04 = {
 	.int_config = 0x10,
 	.orientation = {1, 0, 0,
@@ -2312,6 +2320,9 @@ static void mpl_init(void)
 	} else if (system_rev < BOARD_REV01) {
 		mpu6050_data = mpu6050_data_00;
 		inv_mpu_ak8963_data = inv_mpu_ak8963_data_00;
+	}
+    if (system_rev == BOARD_REV14) {
+		mpu6050_data = mpu6050_data_spr;
 	}
 	if (system_rev < BOARD_REV13)
 		mpu6050_data.reset = gpio_rev(GPIO_MAG_RST);

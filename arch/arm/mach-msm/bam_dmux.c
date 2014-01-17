@@ -1873,7 +1873,9 @@ static void disconnect_to_bam(void)
 			__memzero(rx_desc_mem_buf.base, rx_desc_mem_buf.size);
 			__memzero(tx_desc_mem_buf.base, tx_desc_mem_buf.size);
 			BAM_DMUX_LOG("%s: device reset\n", __func__);
+#ifndef CONFIG_MACH_APEXQ
 			sps_device_reset(a2_device_handle);
+#endif
 		} else {
 			ssr_skipped_disconnect = 1;
 		}

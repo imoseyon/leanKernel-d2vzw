@@ -713,7 +713,8 @@ dhd_wlfc_hanger_get_free_slot(void* hanger)
 				h->slot_pos = i;
 				return (uint16)i;
 			}
-			(i == h->max_items)? i = 0 : i++;
+			if (++i == h->max_items)
+				i = 0;
 		}
 		h->failed_slotfind++;
 	}

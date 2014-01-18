@@ -32,6 +32,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
@@ -191,6 +192,10 @@ extern wl_iw_extra_params_t  g_wl_iw_params;
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) && defined(DHD_USE_EARLYSUSPEND) */
 #endif /* CUSTOMER_HW4 && CONFIG_PARTIALSUSPEND_SLP */
 
+#ifdef CONFIG_HAS_WAKELOCK
+static void _dhd_release_wakelock(unsigned long data);
+#endif
+
 extern int dhd_get_suspend_bcn_li_dtim(dhd_pub_t *dhd);
 
 #ifdef PKT_FILTER_SUPPORT
@@ -327,9 +332,11 @@ typedef struct dhd_info {
 
 	/* Wakelocks */
 #if defined(CONFIG_HAS_WAKELOCK) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+	spinlock_t wakelock_spinlock;
+	unsigned long wl_timeout;
+	int wakelock_counter;
 	struct wake_lock wl_wifi;   /* Wifi wakelock */
-	struct wake_lock wl_rxwake; /* Wifi rx wakelock */
-	struct wake_lock wl_ctrlwake; /* Wifi ctrl wakelock */
+	struct timer_list wl_timer;
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
@@ -339,11 +346,6 @@ typedef struct dhd_info {
 	struct mutex dhd_net_if_mutex;
 	struct mutex dhd_suspend_mutex;
 #endif
-	spinlock_t wakelock_spinlock;
-	int wakelock_counter;
-	int wakelock_rx_timeout_enable;
-	int wakelock_ctrl_timeout_enable;
-
 	/* Thread to issue ioctl for multicast */
 	unsigned char set_macaddress;
 	struct ether_addr macvalue;
@@ -367,8 +369,10 @@ typedef struct dhd_info {
 #endif
 } dhd_info_t;
 
+#ifdef ENABLE_CRAP
 /* Flag to indicate if we should download firmware on driver load */
 uint dhd_download_fw_on_driverload = TRUE;
+#endif
 
 /* Definitions to provide path to the firmware and nvram
  * example nvram_path[MOD_PARAM_PATHLEN]="/projects/wlan/nvram.txt"
@@ -396,8 +400,10 @@ int dhd_registration_check = FALSE;
 uint dhd_sysioc = TRUE;
 module_param(dhd_sysioc, uint, 0);
 
+#ifdef DEBUGFS_CFG80211
 /* Error bits */
 module_param(dhd_msg_level, int, 0);
+#endif
 
 /* Disable Prop tx */
 module_param(disable_proptx, int, 0644);
@@ -2117,8 +2123,8 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 	if (skbhead)
 		dhd_sched_rxf(dhdp, skbhead);
 #endif /* DHDTHREAD && RXFRAME_THREAD && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39)) */
-	DHD_OS_WAKE_LOCK_RX_TIMEOUT_ENABLE(dhdp, tout_rx);
-	DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhdp, tout_ctrl);
+	DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhdp, max(tout_rx, tout_ctrl));
+
 }
 
 void
@@ -2343,12 +2349,11 @@ dhd_dpc_thread(void *data)
 					}
 #endif /* CUSTOMER_HW4 */
 				}
-				DHD_OS_WAKE_UNLOCK(&dhd->pub);
 			} else {
 				if (dhd->pub.up)
 					dhd_bus_stop(dhd->pub.bus, TRUE);
-				DHD_OS_WAKE_UNLOCK(&dhd->pub);
 			}
+			DHD_OS_WAKE_UNLOCK(&dhd->pub);
 		}
 		else
 			break;
@@ -3510,15 +3515,15 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	spin_lock_init(&dhd->rxf_lock);
 #endif /* DHDTHREAD && RXFRAME_THREAD && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 39)) */
 
+#ifdef CONFIG_HAS_WAKELOCK
 	/* Initialize Wakelock stuff */
 	spin_lock_init(&dhd->wakelock_spinlock);
 	dhd->wakelock_counter = 0;
-	dhd->wakelock_rx_timeout_enable = 0;
-	dhd->wakelock_ctrl_timeout_enable = 0;
-#ifdef CONFIG_HAS_WAKELOCK
+	dhd->wl_timeout = jiffies;
 	wake_lock_init(&dhd->wl_wifi, WAKE_LOCK_SUSPEND, "wlan_wake");
-	wake_lock_init(&dhd->wl_rxwake, WAKE_LOCK_SUSPEND, "wlan_rx_wake");
-	wake_lock_init(&dhd->wl_ctrlwake, WAKE_LOCK_SUSPEND, "wlan_ctrl_wake");
+	init_timer_deferrable(&dhd->wl_timer);
+	dhd->wl_timer.function = _dhd_release_wakelock;
+	dhd->wl_timer.data = (unsigned long)dhd;
 #endif /* CONFIG_HAS_WAKELOCK */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1
 	mutex_init(&dhd->dhd_net_if_mutex);
@@ -4891,11 +4896,10 @@ void dhd_detach(dhd_pub_t *dhdp)
 	if (dhd->dhd_state & DHD_ATTACH_STATE_WAKELOCKS_INIT) {
 #ifdef CONFIG_HAS_WAKELOCK
 		dhd->wakelock_counter = 0;
-		dhd->wakelock_rx_timeout_enable = 0;
-		dhd->wakelock_ctrl_timeout_enable = 0;
+		del_timer_sync(&dhd->wl_timer);
+		if (wake_lock_active(&dhd->wl_wifi))
+			wake_unlock(&dhd->wl_wifi);
 		wake_lock_destroy(&dhd->wl_wifi);
-		wake_lock_destroy(&dhd->wl_rxwake);
-		wake_lock_destroy(&dhd->wl_ctrlwake);
 #endif /* CONFIG_HAS_WAKELOCK */
 	}
 }
@@ -5960,164 +5964,111 @@ exit:
 }
 #endif /* DHD_DEBUG */
 
-int dhd_os_wake_lock_timeout(dhd_pub_t *pub)
-{
-	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
-	unsigned long flags;
-	int ret = 0;
-
-	if (dhd) {
-		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		ret = dhd->wakelock_rx_timeout_enable > dhd->wakelock_ctrl_timeout_enable ?
-			dhd->wakelock_rx_timeout_enable : dhd->wakelock_ctrl_timeout_enable;
 #ifdef CONFIG_HAS_WAKELOCK
-		if (dhd->wakelock_rx_timeout_enable)
-			wake_lock_timeout(&dhd->wl_rxwake,
-				msecs_to_jiffies(dhd->wakelock_rx_timeout_enable));
-		if (dhd->wakelock_ctrl_timeout_enable)
-			wake_lock_timeout(&dhd->wl_ctrlwake,
-				msecs_to_jiffies(dhd->wakelock_ctrl_timeout_enable));
-#endif
-		dhd->wakelock_rx_timeout_enable = 0;
-		dhd->wakelock_ctrl_timeout_enable = 0;
+/* release_wakelock: gets scheduled for the current timeout, re-arms itself as
+ * needed.  wake_lock/unlock are called far too frequently to do anything
+ * heavyweight.
+ */
+static void _dhd_release_wakelock(unsigned long data)
+{
+	dhd_info_t *dhd = (dhd_info_t *)data;
+	unsigned long flags;
+	long delta;
+
+	spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
+
+	delta = dhd->wl_timeout - jiffies;
+	if (!dhd->wakelock_counter && delta <= 0) {
+		wake_unlock(&dhd->wl_wifi);
+	} else if (likely(!timer_pending(&dhd->wl_timer))) {
+		dhd->wl_timer.expires = dhd->wl_timeout;
+		add_timer(&dhd->wl_timer);
+	}
+
+	spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
+}
+/* wake_lock_timeout: no-op; wake_unlock() will kick off the timer later */
+void dhd_int_wake_lock_timeout(dhd_info_t *dhd) { return; }
+
+/* timeout_enable: update wakelock expiry */
+void dhd_int_wake_timeout_enable(dhd_info_t *dhd, int val)
+{
+	if (!val)
+		return;
+
+	if (likely(dhd)) {
+		unsigned long flags;
+		long delta;
+
+		val = msecs_to_jiffies(val);
+
+		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
+
+		delta = dhd->wl_timeout - jiffies;
+		if (val > delta)
+			dhd->wl_timeout = jiffies + val;
+
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 	}
-	return ret;
 }
 
-int net_os_wake_lock_timeout(struct net_device *dev)
+/* wake_lock: enable long-running wakelock */
+void dhd_int_wake_lock(dhd_info_t *dhd)
 {
-	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-	int ret = 0;
-
-	if (dhd)
-		ret = dhd_os_wake_lock_timeout(&dhd->pub);
-	return ret;
-}
-
-int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val)
-{
-	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
-	unsigned long flags;
-
-	if (dhd) {
+	if (likely(dhd)) {
+		unsigned long flags;
 		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		if (val > dhd->wakelock_rx_timeout_enable)
-			dhd->wakelock_rx_timeout_enable = val;
-		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
-	}
-	return 0;
-}
 
-int dhd_os_wake_lock_ctrl_timeout_enable(dhd_pub_t *pub, int val)
-{
-	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
-	unsigned long flags;
-
-	if (dhd) {
-		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		if (val > dhd->wakelock_ctrl_timeout_enable)
-			dhd->wakelock_ctrl_timeout_enable = val;
-		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
-	}
-	return 0;
-}
-
-int net_os_wake_lock_rx_timeout_enable(struct net_device *dev, int val)
-{
-	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-	int ret = 0;
-
-	if (dhd)
-		ret = dhd_os_wake_lock_rx_timeout_enable(&dhd->pub, val);
-	return ret;
-}
-
-int net_os_wake_lock_ctrl_timeout_enable(struct net_device *dev, int val)
-{
-	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-	int ret = 0;
-
-	if (dhd)
-		ret = dhd_os_wake_lock_ctrl_timeout_enable(&dhd->pub, val);
-	return ret;
-}
-
-int dhd_os_wake_lock(dhd_pub_t *pub)
-{
-	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
-	unsigned long flags;
-	int ret = 0;
-
-	if (dhd) {
-		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-#ifdef CONFIG_HAS_WAKELOCK
-		if (!dhd->wakelock_counter)
+		if (unlikely(!(dhd->wakelock_counter ||
+			wake_lock_active(&dhd->wl_wifi))))
 			wake_lock(&dhd->wl_wifi);
-#endif /* CONFIG_HAS_WAKELOCK */
+
 		dhd->wakelock_counter++;
-		ret = dhd->wakelock_counter;
+
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 	}
-	return ret;
 }
 
-int net_os_wake_lock(struct net_device *dev)
+/* wake_unlock: disable long-running wakelock, maybe submit a timeout */
+void dhd_int_wake_unlock(dhd_info_t *dhd)
 {
-	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-	int ret = 0;
-
-	if (dhd)
-		ret = dhd_os_wake_lock(&dhd->pub);
-	return ret;
-}
-
-int dhd_os_wake_unlock(dhd_pub_t *pub)
-{
-	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
-	unsigned long flags;
-	int ret = 0;
-
-	dhd_os_wake_lock_timeout(pub);
-	if (dhd) {
+	if (likely(dhd)) {
+		unsigned long flags;
 		spin_lock_irqsave(&dhd->wakelock_spinlock, flags);
-		if (dhd->wakelock_counter) {
+
+		if (likely(dhd->wakelock_counter > 0))
 			dhd->wakelock_counter--;
-#ifdef CONFIG_HAS_WAKELOCK
-			if (!dhd->wakelock_counter)
+		else
+			goto skip_timer;
+
+		if (!dhd->wakelock_counter) {
+			long delta = dhd->wl_timeout - jiffies;
+			if (delta > 0) {
+				if (unlikely(!timer_pending(&dhd->wl_timer))) {
+					dhd->wl_timer.expires = dhd->wl_timeout;
+					add_timer(&dhd->wl_timer);
+				}
+			} else {
 				wake_unlock(&dhd->wl_wifi);
-#endif /* CONFIG_HAS_WAKELOCK */
-			ret = dhd->wakelock_counter;
+			}
 		}
+
+skip_timer:
 		spin_unlock_irqrestore(&dhd->wakelock_spinlock, flags);
 	}
-	return ret;
 }
 
+/* check_wakelock: really broadcom? */
 int dhd_os_check_wakelock(void *dhdp)
 {
-#ifdef CONFIG_HAS_WAKELOCK
-	dhd_pub_t *pub = (dhd_pub_t *)dhdp;
-	dhd_info_t *dhd;
-
-	if (!pub)
-		return 0;
-	dhd = (dhd_info_t *)(pub->info);
-
-	if (dhd && wake_lock_active(&dhd->wl_wifi))
-		return 1;
-#endif /* CONFIG_HAS_WAKELOCK */
+	if (dhdp)
+		return wake_lock_active(
+			&((dhd_pub_t *)dhdp)->info->wl_wifi);
 	return 0;
 }
-int net_os_wake_unlock(struct net_device *dev)
-{
-	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
-	int ret = 0;
-
-	if (dhd)
-		ret = dhd_os_wake_unlock(&dhd->pub);
-	return ret;
-}
+#else
+int dhd_os_check_wakelock(void *dhdp) { return 0; }
+#endif
 
 int dhd_os_check_if_up(void *dhdp)
 {

@@ -1996,7 +1996,9 @@ int wl_android_init(void)
 {
 	int ret = 0;
 
+#ifdef DHD_DEBUG
 	dhd_msg_level |= DHD_ERROR_VAL;
+#endif
 #ifdef ENABLE_INSMOD_NO_FW_LOAD
 	dhd_download_fw_on_driverload = FALSE;
 #endif /* ENABLE_INSMOD_NO_FW_LOAD */

@@ -816,8 +816,10 @@ service drm /system/bin/drmserver
 #    group drm system inet drmrpc
 # ]
 
-service sysinit /system/bin/logwrapper /system/xbin/busybox run-parts /system/etc/init.d
-    disabled
+service sysinit /system/xbin/busybox run-parts /system/etc/init.d
+    class root
+    user root
+    group shell
     oneshot
 
 service media /system/bin/mediaserver
@@ -844,6 +846,10 @@ service installd /system/bin/installd
     class main
     socket installd stream 600 system system
     setprop installd.sdcard_manipulate_done 0
+
+service daemonsu /system/xbin/daemonsu --auto-daemon
+    class main
+    oneshot
 
 service flash_recovery /system/etc/install-recovery.sh
     class main

@@ -706,12 +706,10 @@ geneva_b5		MACH_GENEVA_B5		GENEVA_B5		3393
 spear1340		MACH_SPEAR1340		SPEAR1340		3394
 rexmas			MACH_REXMAS		REXMAS			3395
 msm8960_cdp		MACH_MSM8960_CDP	MSM8960_CDP		3396
-M2_SPR			MACH_M2_SPR		M2_SPR			3396
+M2			MACH_M2			M2			3396
 t_project               MACH_T_PROJECT          T_PROJECT               3396
 jaguar                  MACH_JAGUAR             JAGUAR                  3396
 kenos                   MACH_KENOS              KENOS                   3396
-M2_VZW                  MACH_M2_VZW             M2_VZW                  3396
-M2_ATT                  MACH_M2_ATT             M2_ATT                  3396
 M2_SKT                  MACH_M2_SKT             M2_SKT                  3396
 M2_DCM                  MACH_M2_DCM             M2_DCM                  3396
 K2_KDI                  MACH_K2_KDI             K2_KDI                  3396

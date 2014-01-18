@@ -920,27 +920,6 @@ config MACH_M2
         help
           Support for Samsung M2 devices.
 
-config MACH_M2_ATT
-	depends on MACH_M2
-	default n
-        bool "MSM8960 Samsung M2_ATT"
-        help
-          Support for the Samsung M2 AT&T device.
-
-config MACH_M2_SPR
-	depends on MACH_M2
-	default n
-        bool "MSM8960 Samsung M2_SPR"
-        help
-          Support for the Samsung M2 Sprint device.
-
-config MACH_M2_VZW
-	depends on MACH_M2
-	default n
-        bool "MSM8960 Samsung M2_VZW"
-        help
-          Support for the Samsung M2 Verizon device.
-
 config MACH_APEXQ
 	depends on ARCH_MSM8960
 	default n
@@ -1399,11 +1378,6 @@ config MSM_BAM_DMUX
 	  BAM has a limited number of pipes.  This driver
 	  provides a means to support more logical channels
 	  via muxing than BAM could without muxing.
-
-config MSM_BAM_DMUX_NOLOCK
-	bool "BAM Data Mux Driver: workaround for modem crash"
-	depends on MSM_BAM_DMUX
-	default n
 
 config MSM_N_WAY_SMD
 	depends on (MSM_SMD && !(ARCH_MSM7X01A))

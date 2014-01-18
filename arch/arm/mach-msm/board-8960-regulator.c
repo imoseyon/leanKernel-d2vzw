@@ -565,9 +565,7 @@ static struct rpm_regulator_init_data
 msm_rpm_regulator_init_data[] __devinitdata = {
 	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
 	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
-#if defined(CONFIG_MACH_M2_ATT)
-	RPM_SMPS(S2, 0, 1, 1, 1350000, 1350000, NULL, 0, 1p60, NONE, NONE),
-#elif defined(CONFIG_MACH_APEXQ)
+#if defined(CONFIG_MACH_APEXQ)
 	RPM_SMPS(S2, 0, 1, 1, 1300000, 1300000, NULL, 0, 1p60, NONE, NONE),
 #else
 	RPM_SMPS(S2, 0, 1, 0, 1300000, 1300000, NULL, 0, 1p60, NONE, NONE),
@@ -615,11 +613,7 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L18,	 0, 1, 0, 1200000, 1500000, "8921_s4", 0, 0),
 #endif
 	RPM_LDO(L21,	 0, 1, 0, 1900000, 1900000, "8921_s8", 0, 0),
-#if defined(CONFIG_MACH_M2_ATT)
-	RPM_LDO(L22,     0, 1, 0, 2800000, 2800000, NULL,      0, 0),
-#else
 	RPM_LDO(L22,	 0, 1, 0, 2750000, 2750000, NULL,      0, 0),
-#endif
 	RPM_LDO(L23,	 1, 1, 1, 1800000, 1800000, "8921_s8", 10000, 10000),
 	RPM_LDO(L24,	 0, 1, 1,  750000, 1150000, "8921_s1", 10000, 10000),
 #if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_EXPRESS)

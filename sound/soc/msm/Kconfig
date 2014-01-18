@@ -155,12 +155,6 @@ config SND_SOC_MSM8960
 	help
 	 To add support for SoC audio on MSM8960 and APQ8064 boards
 
-config VZW_VOLUME
-	tristate "Verizon wireless 8 level volume"
-	default n
-	help
-	 To add support for Verizon wireless 8 level volume
-
 config AUDIO_OCMEM
 	bool "Enable OCMEM for audio/voice usecase"
 	depends on MSM_OCMEM

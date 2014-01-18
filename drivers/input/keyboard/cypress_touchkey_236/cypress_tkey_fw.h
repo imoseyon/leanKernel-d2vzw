@@ -15,8 +15,7 @@
 #include "jaguar_tkey_fw.h"
 #endif
 
-#elif defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_VZW) \
-	|| defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_DCM) \
+#elif defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM) \
 	|| defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_K2_KDI)
 #define BIN_FW_VERSION		0x06
 #ifdef _CYPRESS_TKEY_FW_H

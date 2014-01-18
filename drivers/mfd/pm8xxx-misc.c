@@ -1246,7 +1246,7 @@ static int __devinit pm8xxx_misc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, chip);
 
-#if defined(CONFIG_MACH_M2_VZW)
+#if defined(CONFIG_MACH_M2)
         rc = pm8xxx_hard_reset_config(PM8XXX_DISABLE_HARD_RESET);
         if (!rc)
                 pr_info("%s : Hard reset is disabled, rc = %d\n", __func__, rc);

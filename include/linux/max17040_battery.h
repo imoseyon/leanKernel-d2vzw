@@ -39,8 +39,7 @@ struct max17040_platform_data {
 #define FULL_SOC_HIGH		10000
 #define FULL_KEEP_SOC		50
 #define RCOMP0_TEMP	20 /* 'C */
-#elif defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_SPR) || \
-	defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_SKT) || \
+#elif defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_SKT) || \
 	defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_GOGH) || \
 	defined(CONFIG_MACH_JASPER) || defined(CONFIG_MACH_AEGIS2) || \
 	defined(CONFIG_MACH_INFINITE) || defined(CONFIG_MACH_K2_KDI)

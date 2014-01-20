@@ -31,8 +31,7 @@ const  u8 MELFAS_binary[] = {
 
 #elif defined(CONFIG_TOUCHSCREEN_MMS144)
 
-#if defined(CONFIG_MACH_M2_VZW) || defined(CONFIG_MACH_M2_ATT)\
-	|| defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_SKT)\
+#if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_SKT)\
 	|| defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_STRETTO)\
 	|| defined(CONFIG_MACH_SUPERIORLTE_SKT)\
 	|| defined(CONFIG_MACH_K2_KDI)

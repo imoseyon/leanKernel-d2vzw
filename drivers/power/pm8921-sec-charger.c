@@ -318,13 +318,7 @@ static int is_pm8921_sec_charger_using(void)
 #if defined(CONFIG_MACH_JAGUAR)
 	if (system_rev >= 0xD)
 		return 0;
-#elif defined(CONFIG_MACH_M2_ATT)
-	if (system_rev >= 0x4)
-		return 0;
-#elif defined(CONFIG_MACH_M2_SPR)
-	if (system_rev >= 0x3)
-		return 0;
-#elif defined(CONFIG_MACH_M2_VZW)
+#elif defined(CONFIG_MACH_M2)
 	if (system_rev >= 0x9)
 		return 0;
 #elif defined(CONFIG_MACH_M2_SKT)

@@ -329,8 +329,7 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 	/* This condition will be removed,after all board files changes done */
 	if (pdev->dev.platform_data == NULL) {
 		vibrator_drvdata.is_pmic_vib_en = 0;
-#if defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_VZW) || \
-defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_DCM) || \
+#if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM) || \
 defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_JAGUAR) || \
 defined(CONFIG_MACH_AEGIS2) || defined(CONFIG_MACH_COMANCHE)
 		vibrator_drvdata.vib_pwm_gpio = GPIO_VIB_PWM;
@@ -345,27 +344,8 @@ defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_ESPRESSO_ATT)
 		vibrator_drvdata.haptic_pwr_en_gpio = GPIO_MOTOR_EN;
 		vibrator_drvdata.vib_model = HAPTIC_MOTOR;
 #endif
-#ifdef CONFIG_MACH_M2_ATT
-		if (system_rev >= BOARD_REV04) {
-			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
-						PMIC_GPIO_VIB_ON);
-			vibrator_drvdata.is_pmic_vib_en = 1;
-		}
-		if (system_rev >= BOARD_REV08) {
-			vibrator_drvdata.haptic_pwr_en_gpio = PM8921_GPIO_PM_TO_SYS(\
-						PMIC_GPIO_HAPTIC_PWR_EN);
-			vibrator_drvdata.is_pmic_haptic_pwr_en = 1;
-		}
-#endif
-#ifdef CONFIG_MACH_M2_VZW
+#ifdef CONFIG_MACH_M2
 		if (system_rev >= BOARD_REV09) {
-			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
-						PMIC_GPIO_VIB_ON);
-			vibrator_drvdata.is_pmic_vib_en = 1;
-		}
-#endif
-#ifdef CONFIG_MACH_M2_SPR
-	if (system_rev >= BOARD_REV03) {
 			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
 						PMIC_GPIO_VIB_ON);
 			vibrator_drvdata.is_pmic_vib_en = 1;

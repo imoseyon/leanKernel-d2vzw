@@ -1,5 +1,5 @@
 /*
- * m2_spr-gpio.h
+ * m2-gpio.h
  *
  * header file supporting gpio functions for Samsung device
  *
@@ -24,7 +24,7 @@
 #define GPIO_MDP_VSYNC			0
 #define GPIO_MHL_RST			1
 #define GPIO_MSM_FLASH_CNTL_EN		2
-#define GPIO_CAM_MCLK2			2 /* > Rev08 */
+#define GPIO_CAM_MCLK2			2 /* > Rev13 */
 #define GPIO_MSM_FLASH_NOW		3
 #define GPIO_VFE_CAMIF_TIMER3_INT	4
 #define GPIO_CAM_MCLK0			5
@@ -40,6 +40,7 @@
 #endif
 #define GPIO_FPGA_CS			14
 #define GPIO_MHL_WAKE_UP		15
+
 #define GPIO_MAIN_MIC_BIAS		18
 #define GPIO_MHL_EN			19
 #define GPIO_FUELGAUGE_I2C_SDA		24
@@ -63,7 +64,7 @@
 #define GPIO_SENSOR_SNS_SDA		44
 #define GPIO_SENSOR_SNS_SCL		45
 #define GPIO_CAM_A_EN			46
-#define GPIO_HAPTIC_PWR_EN		47 /* < BOARD_REV06 */
+#define GPIO_HAPTIC_PWR_EN		47 /* < BOARD_REV13 */
 
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 #define GPIO_TOUCH_KEY_INT		42
@@ -71,7 +72,7 @@
 #define GPIO_TOUCHKEY_SDA		48
 #endif
 
-#define GPIO_HOME_KEY			49 /* >= BOARD_REV06 */
+#define GPIO_HOME_KEY			49 /* >= BOARD_REV13 */
 
 #define GPIO_MXT_TS_LDO_EN		50
 #define GPIO_CAM_SENSOR_EN		51
@@ -96,7 +97,7 @@
 #define GPIO_USB_I2C_SDA		73
 #define GPIO_USB_I2C_SCL		74
 #define CAM2_RST_N			76
-#define GPIO_VIB_ON                     77 /* < BOARD_REV03 */
+#define GPIO_VIB_ON                     77 /* < BOARD_REV09 */
 
 #define GPIO_KS8851_RST			89
 #define GPIO_KS8851_IRQ			90
@@ -107,6 +108,7 @@
 #ifdef CONFIG_S5K6A3YX
 #define GPIO_VT_CAM_SEN_DET		98
 #endif
+
 #define GPIO_MHL_INT			99
 
 #define GPIO_NFC_IRQ			106
@@ -147,7 +149,6 @@
 #define PMIC_GPIO_CHG_EN		PMIC_GPIO_OTG_EN
 #define PMIC_GPIO_CHG_STAT		17
 #endif
-
 #define PMIC_GPIO_BATT_INT		37
 
 /* gpio for changed list */
@@ -185,6 +186,8 @@ enum {
 	MDP_VSYNC,
 	VOLUME_UP,
 	VOLUME_DOWN,
+	MHL_EN,
+	MHL_SDA,
 	GPIO_MAG_RST,
 	ALS_INT,
 #if defined(CONFIG_OPTICAL_GP2A) || defined(CONFIG_OPTICAL_GP2AP020A00F) \
@@ -194,11 +197,11 @@ enum {
 #endif
 	LCD_22V_EN,
 	LINEOUT_EN,
+	CAM_AF_EN,
+	CAM_FLASH_SW,
 	A2220_WAKEUP,
 	A2220_SDA,
 	A2220_SCL,
-	CAM_AF_EN,
-	CAM_FLASH_SW,
 	BT_HOST_WAKE,
 	BT_WAKE,
 	BT_EN,

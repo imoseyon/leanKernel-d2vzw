@@ -182,6 +182,7 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
     }
 
     vos_mem_free( pRemainChanCtx );
+    pRemainChanCtx = NULL;
     complete(&pAdapter->cancel_rem_on_chan_var);
     return eHAL_STATUS_SUCCESS;
 }
@@ -704,7 +705,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
             extendedWait = (tANI_U16)wait;
             goto send_frame;
         }
-        remain_on_channel:
+
         INIT_COMPLETION(pAdapter->offchannel_tx_event);
 
         status = wlan_hdd_request_remain_on_channel(wiphy, dev,
@@ -769,15 +770,6 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
 #endif
             *cookie = (tANI_U32) cfgState->buf;
             cfgState->action_cookie = *cookie;
-            /*There is race between expiration of remain on channel
-              in driver and also sending an action frame in wlan_hdd_action.
-              As the remain on chan context is NULL here , which means
-              LIM remain on channel timer expired and
-              wlan_hdd_remain_on_channel_callback has cleared
-              cfgState->remain_on_chan_ctx to NULL so let's
-              do a fresh remain on channel.
-            */
-            goto remain_on_channel;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
         }
 #endif
@@ -954,12 +946,21 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
     tP2pPsConfig NoA;
     int count, duration, start_time;
     char *param;
+    tANI_U8 ret = 0;
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
       return -EINVAL;
     param++;
-    sscanf(param, "%d %d %d", &count, &start_time, &duration);
+    ret = sscanf(param, "%d %d %d", &count, &start_time, &duration);
+    if (ret < 3)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: P2P_SET GO NoA: fail to read param "
+               "count=%d duration=%d interval=%d \n",
+                __func__, count, start_time, duration);
+        return -EINVAL;
+    }
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                "%s: P2P_SET GO NoA: count=%d duration=%d interval=%d \n",
                 __func__, count, start_time, duration);
@@ -1027,12 +1028,21 @@ int hdd_setP2pOpps( struct net_device *dev, tANI_U8 *command )
     tP2pPsConfig NoA;
     char *param;
     int legacy_ps, opp_ps, ctwindow;
+    tANI_U8 ret = 0;
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
         return -EINVAL;
     param++;
-    sscanf(param, "%d %d %d", &legacy_ps, &opp_ps, &ctwindow);
+    ret = sscanf(param, "%d %d %d", &legacy_ps, &opp_ps, &ctwindow);
+    if (ret < 3)
+    {
+        VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: P2P_SET GO PS: fail to read param "
+                 " legacy_ps=%d opp_ps=%d ctwindow=%d \n",
+                 __func__, legacy_ps, opp_ps, ctwindow);
+        return -EINVAL;
+    }
     VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                  "%s: P2P_SET GO PS: legacy_ps=%d opp_ps=%d ctwindow=%d \n",
                  __func__, legacy_ps, opp_ps, ctwindow);

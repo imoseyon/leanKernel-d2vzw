@@ -985,7 +985,7 @@ static void *def_tabla_mbhc_cal(void)
 	btn_cfg = TABLA_MBHC_CAL_BTN_DET_PTR(tabla_cal);
 	btn_low = tabla_mbhc_cal_btn_det_mp(btn_cfg, TABLA_BTN_DET_V_BTN_LOW);
 	btn_high = tabla_mbhc_cal_btn_det_mp(btn_cfg, TABLA_BTN_DET_V_BTN_HIGH);
-	if (machine_is_M2_VZW() && system_rev >= BOARD_REV10) {
+	if (machine_is_M2() && system_rev >= BOARD_REV10) {
 		btn_low[0] = -105;
 		btn_high[0] = 65;
 		btn_low[1] = 66;
@@ -1091,9 +1091,7 @@ static int msm8960_i2s_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_jack_set_key(volumedown_jack.jack,
 			SND_JACK_BTN_2, KEY_VOLUMEDOWN);
 
-	if (!(machine_is_M2_ATT() && system_rev >= BOARD_REV10) &&
-		!(machine_is_M2_VZW() && system_rev >= BOARD_REV13) &&
-		!(machine_is_M2_SPR() && system_rev >= BOARD_REV08) &&
+	if (!(machine_is_M2() && system_rev >= BOARD_REV13) &&
 		!(machine_is_AEGIS2() && system_rev >= BOARD_REV04) &&
 		!(machine_is_JASPER() && system_rev >= BOARD_REV04) &&
 		!(machine_is_COMANCHE() && system_rev >= BOARD_REV02) &&

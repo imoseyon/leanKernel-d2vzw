@@ -2121,6 +2121,14 @@ static struct platform_device opt_gp2a = {
 			0, 0, -1},
 	};
 
+    struct mpu_platform_data mpu6050_data_spr = {
+	.int_config = 0x10,
+	.orientation = {0, 1, 0,
+			1, 0, 0,
+			0, 0, -1},
+	.poweron = mpu_power_on,
+	};
+
 	struct mpu_platform_data mpu6050_data_04 = {
 	.int_config = 0x10,
 	.orientation = {1, 0, 0,
@@ -2335,6 +2343,9 @@ static void mpl_init(void)
 	} else if (system_rev < BOARD_REV01) {
 		mpu6050_data = mpu6050_data_00;
 		inv_mpu_ak8963_data = inv_mpu_ak8963_data_00;
+	}
+    if (system_rev == BOARD_REV14) {
+		mpu6050_data = mpu6050_data_spr;
 	}
 	if (system_rev < BOARD_REV13)
 		mpu6050_data.reset = gpio_rev(GPIO_MAG_RST);
@@ -4464,7 +4475,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_cpu_slp_status,
 };
 
-static struct platform_device *m2_vzw_devices[] __initdata = {
+static struct platform_device *m2_devices[] __initdata = {
 	&msm_8960_q6_lpass,
 	&msm_8960_q6_mss_sw,
 	&msm_8960_q6_mss_fw,
@@ -5032,7 +5043,7 @@ struct i2c_registry cmc624_max8952_i2c_devices = {
 		mach_mask = I2C_LIQUID;
 	else if (machine_is_msm8960_mtp())
 		mach_mask = I2C_FFA;
-	else if (machine_is_M2_VZW())
+	else if (machine_is_M2())
 		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
@@ -5280,7 +5291,7 @@ static void __init msm8960_tsens_init(void)
 	msm_tsens_early_init(&msm_tsens_pdata);
 }
 
-static void __init samsung_m2_vzw_init(void)
+static void __init samsung_m2_init(void)
 {
 #ifdef CONFIG_SEC_DEBUG
 	sec_debug_init();
@@ -5372,7 +5383,7 @@ static void __init samsung_m2_vzw_init(void)
 		platform_device_register(&msm8960_device_acpuclk);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8960_pm8921_gpio_mpp_init();
-	platform_add_devices(m2_vzw_devices, ARRAY_SIZE(m2_vzw_devices));
+	platform_add_devices(m2_devices, ARRAY_SIZE(m2_devices));
 	msm8960_init_hsic();
 	msm8960_init_cam();
 	msm8960_init_mmc();
@@ -5438,13 +5449,13 @@ static void __init samsung_m2_vzw_init(void)
 	ion_adjust_secure_allocation();
 }
 
-MACHINE_START(M2_VZW, "SAMSUNG M2_VZW")
+MACHINE_START(M2, "SAMSUNG M2")
 	.map_io = msm8960_map_io,
 	.reserve = msm8960_reserve,
 	.init_irq = msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
-	.init_machine = samsung_m2_vzw_init,
+	.init_machine = samsung_m2_init,
 	.init_early = msm8960_allocate_memory_regions,
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,

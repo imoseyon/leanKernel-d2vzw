@@ -8,7 +8,7 @@
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmspibrcm.h 358377 2012-09-23 11:30:22Z $
+ * $Id: bcmspibrcm.h 373329 2012-12-07 04:46:09Z $
  */
 #ifndef	_BCM_SPI_BRCM_H
 #define	_BCM_SPI_BRCM_H
@@ -80,19 +80,15 @@ struct sdioh_info {
 #endif /* !BCMSPI_ANDROID */
 	osl_t		*osh;			/* osh handler */
 	void		*controller;	/* Pointer to SPI Controller's private data struct */
-#ifndef BCMSPI_ANDROID
 	uint		lockcount;		/* nest count of spi_lock() calls */
 	bool		client_intr_enabled;	/* interrupt connnected flag */
 	bool		intr_handler_valid;	/* client driver interrupt handler valid */
 	sdioh_cb_fn_t	intr_handler;		/* registered interrupt handler */
 	void		*intr_handler_arg;	/* argument to call interrupt handler */
-#endif /* !BCMSPI_ANDROID */
 	bool		initialized;		/* card initialized */
 	uint32		target_dev;		/* Target device ID */
 	uint32		intmask;		/* Current active interrupts */
-#ifndef BCMSPI_ANDROID
 	void		*sdos_info;		/* Pointer to per-OS private data */
-#endif /* !BCMSPI_ANDROID */
 	uint32		controller_type;	/* Host controller type */
 	uint8		version;		/* Host Controller Spec Compliance Version */
 	uint		irq;			/* Client irq */

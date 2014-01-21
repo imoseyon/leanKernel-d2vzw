@@ -5259,6 +5259,11 @@ WLANTL_RxFrames
     return VOS_STATUS_E_INVAL;
   }
 
+ /*------------------------------------------------------------------------
+   Popolaute timestamp as the time when packet arrives
+   ---------------------------------------------------------------------- */
+   vosDataBuff->timestamp = vos_timer_get_system_ticks();
+
   /*------------------------------------------------------------------------
     Extract TL control block
    ------------------------------------------------------------------------*/
@@ -7575,15 +7580,16 @@ WLANTL_FwdPktToHDD
       wRxMetaInfo.ucUP = (v_U8_t)(STAMetaInfo & WLANTL_AC_MASK);
       wRxMetaInfo.ucDesSTAId = ucDesSTAId;
      
-   vosStatus = pClientSTA->pfnSTARx( pvosGCtx, vosDataBuff, ucDesSTAId,
+      vosStatus = pClientSTA->pfnSTARx( pvosGCtx, vosDataBuff, ucDesSTAId,
                                             &wRxMetaInfo );
-  if ( VOS_STATUS_SUCCESS != vosStatus )
-  {
-     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      if ( VOS_STATUS_SUCCESS != vosStatus )
+      {
+          TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                 "WLAN TL: failed to send pkt to HDD \n"));
-     vos_pkt_return_packet(vosDataBuff);
-     return vosStatus;
-   }
+          vos_pkt_return_packet(vosDataBuff);
+
+          return vosStatus;
+      }
       vosDataBuff = vosNextDataBuff;
    }
    return VOS_STATUS_SUCCESS;
@@ -10174,7 +10180,7 @@ WLANTL_MgmtFrmRxDefaultCb
 
 /*==========================================================================
 
-  FUNCTION    WLANTL_STARxDefaultCb
+  FUNCTION   WLANTL_BAPRxDefaultCb
 
   DESCRIPTION
     Default BAP rx callback: asserts all the time. If this function gets
@@ -10238,7 +10244,7 @@ WLANTL_STARxDefaultCb
        "WLAN TL: No registered STA client rx cb for STAID: %d dropping pkt",
                ucSTAId));
   vos_pkt_return_packet(vosDataBuff);
-  return VOS_STATUS_E_FAILURE;
+  return VOS_STATUS_SUCCESS;
 }/*WLANTL_MgmtFrmRxDefaultCb*/
 
 

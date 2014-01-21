@@ -109,7 +109,7 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 	{
 		.func = GPIOMUX_FUNC_1, /* drive strength for D2*/
-#if defined(CONFIG_MACH_M2_VZW)
+#if defined(CONFIG_MACH_M2)
 		.drv = GPIOMUX_DRV_2MA,
 #else
 		.drv = GPIOMUX_DRV_4MA,
@@ -702,40 +702,9 @@ static void cam_ldo_power_on(int mode, int num)
 			usleep(1*1000);
 
 			/* ISP CORE 1.2V */
-#ifdef CONFIG_MACH_M2_ATT
-			if (system_rev >= BOARD_REV03) {
-				printk(KERN_DEBUG "[s5c73m3] check vddCore : %d\n",
-					vddCore);
-
-				isp_core = regulator_get(NULL, "cam_isp_core");
-				ret = regulator_set_voltage(isp_core,
-					vddCore, vddCore);
-				if (ret)
-					cam_err("error setting voltage\n");
-
-				ret = regulator_enable(isp_core);
-				if (ret)
-					cam_err("error enabling regulator.");
-			}
-#elif defined(CONFIG_MACH_M2_VZW)
+#if defined(CONFIG_MACH_M2)
 			if (system_rev >= BOARD_REV08) {
-				printk(KERN_DEBUG "[s5c73m3] vzw check vddCore : %d\n",
-					vddCore);
-
-				isp_core = regulator_get(NULL, "cam_isp_core");
-				ret = regulator_set_voltage(isp_core,
-					vddCore, vddCore);
-				if (ret)
-					cam_err("error setting voltage\n");
-
-				ret = regulator_enable(isp_core);
-				if (ret)
-					cam_err("error enabling regulator.");
-			} else
-				gpio_set_value_cansleep(CAM_CORE_EN, 1);
-#elif defined(CONFIG_MACH_M2_SPR)
-			if (system_rev >= BOARD_REV03) {
-				printk(KERN_DEBUG "[s5c73m3] spr check vddCore : %d\n",
+				printk(KERN_DEBUG "[s5c73m3] m2 check vddCore : %d\n",
 					vddCore);
 
 				isp_core = regulator_get(NULL, "cam_isp_core");
@@ -876,20 +845,8 @@ static void cam_ldo_power_off(int mode)
 		usleep(1*1000);
 
 		/* ISP CORE 1.2V */
-#ifdef CONFIG_MACH_M2_ATT
-		if (system_rev >= BOARD_REV03)
-			ret = regulator_disable(isp_core);
-		if (ret)
-			cam_err("error disabling regulator");
-		regulator_put(isp_core);
-#elif defined(CONFIG_MACH_M2_VZW)
+#if defined(CONFIG_MACH_M2)
 		if (system_rev >= BOARD_REV08)
-			ret = regulator_disable(isp_core);
-		if (ret)
-			cam_err("error disabling regulator");
-		regulator_put(isp_core);
-#elif defined(CONFIG_MACH_M2_SPR)
-		if (system_rev >= BOARD_REV03)
 			ret = regulator_disable(isp_core);
 		if (ret)
 			cam_err("error disabling regulator");
@@ -1418,12 +1375,8 @@ static int32_t msm_camera_8960_ext_power_ctrl(int enable)
 #endif
 static int get_mclk_rev(void)
 {
-#if defined(CONFIG_MACH_M2_ATT)
-	return ((system_rev >= BOARD_REV10) ? 1 : 0);
-#elif defined(CONFIG_MACH_M2_VZW)
+#if defined(CONFIG_MACH_M2)
 	return ((system_rev >= BOARD_REV13) ? 1 : 0);
-#elif defined(CONFIG_MACH_M2_SPR)
-	return ((system_rev >= BOARD_REV08) ? 1 : 0);
 #elif defined(CONFIG_MACH_M2_SKT)
 	return ((system_rev >= BOARD_REV09) ? 1 : 0);
 #elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)

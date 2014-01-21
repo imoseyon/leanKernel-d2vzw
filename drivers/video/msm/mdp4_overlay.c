@@ -333,7 +333,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 		pipe->pipe_ndx, plane);
 	if (ion_map_iommu(display_iclient, *srcp_ihdl,
 		DISPLAY_READ_DOMAIN, GEN_POOL, SZ_4K, 0, start,
-		len, 0, ION_IOMMU_UNMAP_DELAYED)) {
+		len, 0, 0)) {
 		ion_free(display_iclient, *srcp_ihdl);
 		pr_err("ion_map_iommu() failed\n");
 		return -EINVAL;
@@ -1025,14 +1025,8 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	outpdw(vg_base + 0x0008, dst_size);	/* MDP_RGB_DST_SIZE */
 	outpdw(vg_base + 0x000c, dst_xy);	/* MDP_RGB_DST_XY */
 
-	/* TILE frame size */
-	if (pipe->frame_format != MDP4_FRAME_FORMAT_LINEAR) {
-		if ((ctrl->panel_mode & MDP4_PANEL_DSI_CMD && pipe->mixer_num == 0) ||
-			(ctrl->panel_mode & MDP4_PANEL_WRITEBACK && pipe->mixer_num == 2))
-			outpdw(vg_base + 0x0048, frame_size);
-		else
-			pipe->frame_size = frame_size;
-	}
+	if (pipe->frame_format != MDP4_FRAME_FORMAT_LINEAR)
+		outpdw(vg_base + 0x0048, frame_size);	/* TILE frame size */
 
 	/*
 	 * Adjust src X offset to avoid MDP from overfetching pixels
@@ -2630,8 +2624,8 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 		int xres;
 		int yres;
 
-		xres = mfd->panel_info.xres;
-		yres = mfd->panel_info.yres;
+		xres = mfd->var_xres;
+		yres = mfd->var_yres;
 
 		if (((req->dst_rect.x + req->dst_rect.w) > xres) ||
 			((req->dst_rect.y + req->dst_rect.h) > yres)) {
@@ -3770,24 +3764,6 @@ void mdp4_overlay_dma_commit(int mixer)
 	* non double buffer register update here
 	* perf level, new clock rate should be done here
 	*/
-	struct mdp4_overlay_pipe *pipe;
-	char *vg_base;
-	int i, pnum;
-	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
-		pipe = ctrl->stage[mixer][i];
-		if (pipe) {
-			if (pipe->pipe_type == OVERLAY_TYPE_VIDEO &&
-						(pipe->frame_format !=
-						MDP4_FRAME_FORMAT_LINEAR) &&
-						pipe->frame_size) {
-				pnum = pipe->pipe_num - OVERLAY_PIPE_VG1;
-				vg_base = MDP_BASE + MDP4_VIDEO_BASE;
-				vg_base += (MDP4_VIDEO_OFF * pnum);
-				outpdw(vg_base + 0x0048, pipe->frame_size);
-				pipe->frame_size = 0;
-			}
-		}
-	}
 }
 
 /*

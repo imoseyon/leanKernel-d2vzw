@@ -61,10 +61,6 @@
 #define MSM_FB_NUM	3
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#undef CONFIG_HAS_EARLYSUSPEND
-#endif
-
 static unsigned char *fbram;
 static unsigned char *fbram_phys;
 static int fbram_size;
@@ -1971,12 +1967,17 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 	struct fb_var_screeninfo *var = &disp_commit->var;
 	u32 wait_for_finish = disp_commit->wait_for_finish;
 	int ret = 0;
-
 	if (disp_commit->flags &
 		MDP_DISPLAY_COMMIT_OVERLAY) {
 		if (!mfd->panel_power_on) /* suspended */
 			return -EPERM;
 	} else {
+	        /*
+                WFD panel info was not getting updated,
+		in case of resolution other than 1280x720
+                */
+                mfd->var_xres = info->var.xres;
+                mfd->var_yres = info->var.yres;
 		/*
 		 * If framebuffer is 2, io pan display is not allowed.
 		 */

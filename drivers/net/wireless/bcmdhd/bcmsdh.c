@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh.c 369547 2012-11-19 08:57:31Z $
+ * $Id: bcmsdh.c 373329 2012-12-07 04:46:09Z $
  */
 
 /**
@@ -44,10 +44,6 @@
 #include <sbsdio.h>	/* SDIO device core hardware definitions. */
 
 #include <sdio.h>	/* SDIO Device and Protocol Specs */
-
-#ifdef CUSTOMER_HW4
-#include <dhd_sec_feature.h>
-#endif /* CUSTOMER_HW4 */
 
 #define SDIOH_API_ACCESS_RETRY_LIMIT	2
 const uint bcmsdh_msglevel = BCMSDH_ERROR_VAL;
@@ -161,9 +157,17 @@ bcmsdh_intr_enable(void *sdh)
 {
 	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
 	SDIOH_API_RC status;
+#ifdef BCMSPI_ANDROID
+	uint32 data;
+#endif /* BCMSPI_ANDROID */
 	ASSERT(bcmsdh);
 
 	status = sdioh_interrupt_set(bcmsdh->sdioh, TRUE);
+#ifdef BCMSPI_ANDROID
+	data = bcmsdh_cfg_read_word(sdh, 0, 4, NULL);
+	data |= 0xE0E70000;
+	bcmsdh_cfg_write_word(sdh, 0, 4, data, NULL);
+#endif /* BCMSPI_ANDROID */
 	return (SDIOH_API_SUCCESS(status) ? 0 : BCME_ERROR);
 }
 
@@ -172,9 +176,17 @@ bcmsdh_intr_disable(void *sdh)
 {
 	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
 	SDIOH_API_RC status;
+#ifdef BCMSPI_ANDROID
+	uint32 data;
+#endif /* BCMSPI_ANDROID */
 	ASSERT(bcmsdh);
 
 	status = sdioh_interrupt_set(bcmsdh->sdioh, FALSE);
+#ifdef BCMSPI_ANDROID
+	data = bcmsdh_cfg_read_word(sdh, 0, 4, NULL);
+	data &= ~0xE0E70000;
+	bcmsdh_cfg_write_word(sdh, 0, 4, data, NULL);
+#endif /* BCMSPI_ANDROID */
 	return (SDIOH_API_SUCCESS(status) ? 0 : BCME_ERROR);
 }
 
@@ -766,10 +778,10 @@ bcmsdh_gpioout(void *sdh, uint32 gpio, bool enab)
 
 #ifdef BCMSDIOH_TXGLOM
 void
-bcmsdh_glom_post(void *sdh, uint8 *frame, void *pkt, uint len)
+bcmsdh_glom_post(void *sdh, uint8 *frame, uint len)
 {
 	bcmsdh_info_t *bcmsdh = (bcmsdh_info_t *)sdh;
-	sdioh_glom_post(bcmsdh->sdioh, frame, pkt, len);
+	sdioh_glom_post(bcmsdh->sdioh, frame, len);
 }
 
 void

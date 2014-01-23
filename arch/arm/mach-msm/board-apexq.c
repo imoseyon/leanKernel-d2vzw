@@ -1432,10 +1432,10 @@ static void fsa9485_usb_cdp_cb(bool attached)
 		attached ? CABLE_TYPE_CDP : CABLE_TYPE_NONE;
 
 	if (system_rev >= 0x1) {
-		if (attached) {
+//		if (attached) {
 			pr_info("%s set vbus state\n", __func__);
 			msm_otg_set_vbus_state(attached);
-		}
+//		}
 	}
 
 	for (i = 0; i < 10; i++) {

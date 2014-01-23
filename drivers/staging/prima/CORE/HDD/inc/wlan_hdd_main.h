@@ -1103,6 +1103,8 @@ struct hdd_context_s
     vos_timer_t    tx_rx_trafficTmr;
     v_U8_t         drvr_miracast;
     v_U8_t         issplitscan_enabled;
+
+    v_BOOL_t btCoexModeSet;
 };
 
 

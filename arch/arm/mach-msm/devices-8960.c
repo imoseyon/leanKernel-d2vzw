@@ -84,6 +84,9 @@
 
 /* GSBI UART devices */
 #define MSM_UART2DM_PHYS	(MSM_GSBI2_PHYS + 0x40000)
+#ifdef CONFIG_FELICA
+#define MSM_UART4DM_PHYS	(MSM_GSBI4_PHYS + 0x40000)
+#endif /* CONFIG_FELICA */
 #define MSM_UART5DM_PHYS	(MSM_GSBI5_PHYS + 0x40000)
 #define MSM_UART6DM_PHYS	(MSM_GSBI6_PHYS + 0x40000)
 #define MSM_UART8DM_PHYS	(MSM_GSBI8_PHYS + 0x40000)
@@ -289,6 +292,35 @@ struct platform_device msm8960_device_uart_gsbi2 = {
 	.num_resources	= ARRAY_SIZE(resources_uart_gsbi2),
 	.resource	= resources_uart_gsbi2,
 };
+#ifdef CONFIG_FELICA
+static struct resource resources_uart_gsbi4[] = {
+	{
+		.start	= GSBI4_UARTDM_IRQ,
+		.end	= GSBI4_UARTDM_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= MSM_UART4DM_PHYS,
+		.end	= MSM_UART4DM_PHYS + PAGE_SIZE - 1,
+		.name	= "uartdm_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= MSM_GSBI4_PHYS,
+		.end	= MSM_GSBI4_PHYS + PAGE_SIZE - 1,
+		.name	= "gsbi_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8960_device_uart_gsbi4 = {
+	.name	= "msm_serial_hsl",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_uart_gsbi4),
+	.resource	= resources_uart_gsbi4,
+};
+
+#endif /* CONFIG_FELICA */
 /* GSBI 6 used into UARTDM Mode */
 static struct resource msm_uart_dm6_resources[] = {
 	{
@@ -1816,7 +1848,7 @@ int __init msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat)
 	pdev->dev.platform_data = plat;
 	return platform_device_register(pdev);
 }
-#if defined(CONFIG_MACH_M2) || defined (CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_EXPRESS)
+#if defined(CONFIG_MACH_M2) || defined (CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_M2_DCM)
 static struct resource resources_qup_i2c_gsbi1[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
@@ -2531,6 +2563,37 @@ struct platform_device msm8960_device_qup_spi_gsbi11 = {
 	.id	= 0,
 	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi11),
 	.resource	= resources_qup_spi_gsbi11,
+};
+#endif
+
+#if defined(CONFIG_TDMB) || defined(CONFIG_TDMB_MODULE) || \
+		defined(CONFIG_ISDBT_NMI)
+static struct resource resources_qup_spi_gsbi8[] = {
+	{
+		.name   = "spi_base",
+		.start  = MSM_GSBI8_QUP_PHYS,
+		.end    = MSM_GSBI8_QUP_PHYS + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "gsbi_base",
+		.start  = MSM_GSBI8_PHYS,
+		.end    = MSM_GSBI8_PHYS + 4 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.name   = "spi_irq_in",
+		.start  = GSBI8_QUP_IRQ,
+		.end    = GSBI8_QUP_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device msm8960_device_qup_spi_gsbi8 = {
+	.name	= "spi_qsd",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_qup_spi_gsbi8),
+	.resource	= resources_qup_spi_gsbi8,
 };
 #endif
 

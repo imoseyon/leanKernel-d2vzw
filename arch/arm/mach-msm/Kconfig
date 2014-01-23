@@ -920,6 +920,16 @@ config MACH_M2
         help
           Support for Samsung M2 devices.
 
+config MACH_M2_DCM
+	depends on ARCH_MSM8960
+	default n
+	select REGULATOR_MSM_GPIO
+	select MSM_IOMMU
+	select MSM_IOMMU_GPU_SYNC
+        bool "MSM8960 Samsung M2"
+        help
+          Support for Samsung M2_DCM (DoCoMo) devices.
+
 config MACH_APEXQ
 	depends on ARCH_MSM8960
 	default n

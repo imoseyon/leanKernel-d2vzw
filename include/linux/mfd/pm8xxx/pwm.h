@@ -140,6 +140,12 @@ int pm8xxx_pwm_lut_config(struct pwm_device *pwm, int period_us,
  */
 int pm8xxx_pwm_lut_enable(struct pwm_device *pwm, int start);
 
+/**
+ * pm8xxx_pwm_lut_enable_all - start PWMs in lockstep
+ * @pwms: array of PWM device pointers
+ */
+void pm8xxx_pwm_lut_enable_all(struct pwm_device **pwms);
+
 /* Standard APIs supported */
 /**
  * pwm_request - request a PWM device

@@ -36,7 +36,7 @@ const  u8 MELFAS_binary[] = {
 	|| defined(CONFIG_MACH_SUPERIORLTE_SKT)\
 	|| defined(CONFIG_MACH_K2_KDI)
 /* 4.8" OCTA LCD */
-#define FW_VERSION 0xBB
+#define FW_VERSION 0xBD
 #include "d2_fw.h"
 /* 4.65" OCTA LCD */
 #define FW_465_VERSION 0xA8

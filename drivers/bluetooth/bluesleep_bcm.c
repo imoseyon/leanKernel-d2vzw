@@ -152,8 +152,10 @@ struct proc_dir_entry *bluetooth_dir, *sleep_dir;
  */
 static void hsuart_power(int on)
 {
-	if (test_bit(BT_SUSPEND, &flags))
+	if ((test_bit(BT_SUSPEND, &flags) && !on) || !bsi->uport) {
 		return;
+	}
+
 	if (on) {
 		msm_hs_request_clock_on(bsi->uport);
 		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
@@ -183,14 +185,14 @@ void bluesleep_sleep_wakeup(void)
 {
 	if (test_bit(BT_ASLEEP, &flags)) {
 		BT_DBG("waking up...");
+		/*Activating UART */
+		hsuart_power(1);
 		wake_lock(&bsi->wake_lock);
 		/* Start the timer */
 		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 1);
 		clear_bit(BT_ASLEEP, &flags);
-		/*Activating UART */
-		hsuart_power(1);
 	}
 }
 
@@ -290,6 +292,28 @@ static int bluesleep_read_proc_lpm(char *page, char **start, off_t offset,
 	return sprintf(page, "unsupported to read\n");
 }
 
+static void bluesleep_abnormal_stop(void)
+{
+	BT_ERR("bluesleep_abnormal_stop");
+
+	if (!test_bit(BT_PROTO, &flags)) {
+		BT_ERR("(bluesleep_abnormal_stop) proto is not set. Failed to stop bluesleep");
+		bsi->uport = NULL;
+		return;
+	}
+
+	del_timer(&tx_timer);
+	clear_bit(BT_PROTO, &flags);
+#if BT_ENABLE_IRQ_WAKE
+	if (disable_irq_wake(bsi->host_wake_irq))
+		BT_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
+#endif
+	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+
+	clear_bit(BT_TXDATA, &flags);
+	bsi->uport = NULL;
+}
+
 static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 				    unsigned long count, void *data)
 {
@@ -307,7 +331,7 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 		bluesleep_stop();
 		has_lpm_enabled = false;
 		bsi->uport = NULL;
-	} else {
+	} else if (b == '1') {
 		/* HCI_DEV_REG */
 		if (!has_lpm_enabled) {
 			BT_DBG("bluesleep register");
@@ -315,6 +339,11 @@ static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
 			bsi->uport = bluesleep_get_uart_port();
 			/* if bluetooth started, start bluesleep */
 			bluesleep_start();
+		}
+	} else if (b == '2') {
+		if(has_lpm_enabled) {
+			has_lpm_enabled = false;
+			bluesleep_abnormal_stop();
 		}
 	}
 

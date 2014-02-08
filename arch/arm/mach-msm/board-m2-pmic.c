@@ -516,85 +516,17 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 #define PM8XXX_PWM_CHANNEL_NONE		-1
 
 static struct led_info pm8921_led_info[] = {
-	[PM8XXX_LED_PAT1_RED] = {
-		.name			= "led:red_chrg",
-		.default_trigger	= "red-chrg",
-	},
-	[PM8XXX_LED_PAT1_GREEN] = {
-		.name			= "led:green_chrg",
-		.default_trigger	= "green-chrg",
-	},
-	[PM8XXX_LED_PAT2_RED] = {
-		.name			= "led:red_chrg_err",
-		.default_trigger	= "red-chrg-err",
-	},
-	[PM8XXX_LED_PAT2_GREEN] = {
-		.name			= "led:green_chrg_err",
-		.default_trigger	= "green-chrg-err",
-	},
-	[PM8XXX_LED_PAT3_RED] = {
-		.name			= "led:red_miss_noti",
-		.default_trigger	= "red-miss-noti",
-	},
-	[PM8XXX_LED_PAT3_GREEN] = {
-		.name			= "led:green_miss_noti",
-		.default_trigger	= "green-miss-noti",
-	},
-	[PM8XXX_LED_PAT4_RED] = {
-		.name			= "led:red_in_lowbat",
-		.default_trigger	= "red-in-lowbat",
-	},
-	[PM8XXX_LED_PAT4_GREEN] = {
-		.name			= "led:green_in_lowbat",
-		.default_trigger	= "green-in-lowbat",
-	},
-	[PM8XXX_LED_PAT5_RED] = {
-		.name			= "led:red_full_chrg",
-		.default_trigger	= "red-full-chrg",
-	},
-	[PM8XXX_LED_PAT5_GREEN] = {
-		.name			= "led:green_full_chrg",
-		.default_trigger	= "green-full-chrg",
-	},
-	[PM8XXX_LED_PAT5_BLUE] = {
-		.name			= "led:blue_full_chrg",
-		.default_trigger	= "blue-full-chrg",
-	},
-	[PM8XXX_LED_PAT6_GREEN] = {
-		.name			= "led:green_pwr",
-		.default_trigger	= "green-pwr",
-	},
-	[PM8XXX_LED_PAT6_BLUE] = {
-		.name			= "led:blue_pwr",
-		.default_trigger	= "blue-pwr",
-	},
-	[PM8XXX_LED_PAT7_RED] = {
-		.name			= "led:r",
-		.default_trigger	= "r-trig",
-	},
-	[PM8XXX_LED_PAT7_GREEN] = {
-		.name			= "led:g",
-		.default_trigger	= "g-trig",
-	},
-	[PM8XXX_LED_PAT7_BLUE] = {
-		.name			= "led:b",
-		.default_trigger	= "b-trig",
-	},
-	[PM8XXX_LED_PAT8_RED] = {
+	{
 		.name			= "led:blink_red",
 		.default_trigger	= "blink-red",
 	},
-	[PM8XXX_LED_PAT8_GREEN] = {
+	{
 		.name			= "led:blink_green",
 		.default_trigger	= "blink-green",
 	},
-	[PM8XXX_LED_PAT8_BLUE] = {
+	{
 		.name			= "led:blink_blue",
 		.default_trigger	= "blink-blue",
-	},
-	[PM8XXX_LED_KB_LED] = {
-		.name = "kb:backlight",
-		.default_trigger	= "kb-backlight",
 	},
 };
 
@@ -603,167 +535,9 @@ static struct led_platform_data pm8921_led_core_pdata = {
 	.leds = pm8921_led_info,
 };
 
-
-int pm8921_led0_pat1_red_pwm_duty_pcts[] = {
-	100, 100
-};
-int pm8921_led0_pat1_green_pwm_duty_pcts[] = {
-	0, 0
-};
-
-int pm8921_led0_pat2_red_pwm_duty_pcts[] = {
-	0, 100
-};
-int pm8921_led0_pat2_green_pwm_duty_pcts[] = {
-	0, 0
-};
-
-int pm8921_led0_pat3_red_pwm_duty_pcts[] = {
-	0, 0
-};
-
-int pm8921_led0_pat3_green_pwm_duty_pcts[] = {
-	0, 0
-};
-
-int pm8921_led0_pat3_blue_pwm_duty_pcts[] = {
-	0, 100
-};
-
-int pm8921_led0_pat4_red_pwm_duty_pcts[] = {
-	0, 100
-};
-int pm8921_led0_pat4_green_pwm_duty_pcts[] = {
-	0, 0
-};
-
-int pm8921_led0_pat5_red_pwm_duty_pcts[] = {
-	0, 0
-};
-int pm8921_led0_pat5_green_pwm_duty_pcts[] = {
-	100, 100
-};
-int pm8921_led0_pat5_blue_pwm_duty_pcts[] = {
-	0, 0
-};
-
-
-static int pm8921_led0_pat6_green_pwm_duty_pcts[] = {
-	8, 10 , 11, 13, 15, 17, 18, 19, 20, 22, 24, 26, 28, 31, 33, 34, 37, 39,
-	41, 43, 44, 46, 48, 49, 51,
-};
-static int pm8921_led0_pat6_blue_pwm_duty_pcts[] = {
-	79, 80, 80, 81, 82, 83, 84, 85, 85, 86, 87, 88, 89, 90, 91, 92, 92, 93,
-	94, 95, 96, 97, 98, 99, 100,
-};
-
-int pm8921_led0_pat8_red_pwm_duty_pcts[] = {
-	0, 100
-};
-int pm8921_led0_pat8_green_pwm_duty_pcts[] = {
-	0, 100
-};
-int pm8921_led0_pat8_blue_pwm_duty_pcts[] = {
-	0, 100
-};
-
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat5_red_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat5_red_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat5_red_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT5_R,
-	.start_idx = 0,
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat5_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat5_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat5_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT5_G,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat5_red_pwm_duty_pcts),
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat5_blue_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat5_blue_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat5_blue_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT5_B,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat5_red_pwm_duty_pcts) +
-			ARRAY_SIZE(pm8921_led0_pat5_green_pwm_duty_pcts),
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat4_red_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat4_red_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat4_red_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT4,
-	.start_idx = 0,
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat4_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat4_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat4_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT4,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat4_red_pwm_duty_pcts),
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat3_red_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat3_red_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat3_red_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT3,
-	.start_idx = 0,
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat3_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat3_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat3_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT3,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat3_red_pwm_duty_pcts),
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat3_blue_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat3_blue_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat3_blue_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT3,
-	.start_idx =  ARRAY_SIZE(pm8921_led0_pat3_red_pwm_duty_pcts) +
-			ARRAY_SIZE(pm8921_led0_pat3_green_pwm_duty_pcts),
-};
-
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat2_red_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat2_red_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat2_red_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT2,
-	.start_idx = 0,
-};
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat2_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat2_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat2_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT2,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat2_red_pwm_duty_pcts),
-};
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat1_red_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat1_red_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat1_red_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT1_R,
-	.start_idx = 0,
-};
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat1_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat1_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat1_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT1_G,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat1_red_pwm_duty_pcts),
-};
-
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat6_green_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat6_green_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat6_green_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT6_G,
-	.start_idx = 0,
-};
-static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat6_blue_duty_cycles = {
-	.duty_pcts = (int *)&pm8921_led0_pat6_blue_pwm_duty_pcts,
-	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pat6_blue_pwm_duty_pcts),
-	.duty_ms = PM8XXX_LED_PWM_DUTY_MS_PAT6_B,
-	.start_idx = ARRAY_SIZE(pm8921_led0_pat6_green_pwm_duty_pcts),
-};
+static int pm8921_led0_pat8_red_pwm_duty_pcts[20] = { };
+static int pm8921_led0_pat8_green_pwm_duty_pcts[20] = { };
+static int pm8921_led0_pat8_blue_pwm_duty_pcts[20] = { };
 
 static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat8_red_duty_cycles = {
 	.duty_pcts = (int *)&pm8921_led0_pat8_red_pwm_duty_pcts,
@@ -787,157 +561,8 @@ static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_pat8_blue_duty_cycles = {
 			ARRAY_SIZE(pm8921_led0_pat8_green_pwm_duty_pcts),
 };
 
-
-
-
 static struct pm8xxx_led_config pm8921_led_configs[] = {
-	/*pattern 1 Charging*/
-	[PM8XXX_LED_PAT1_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat1_red_duty_cycles,
-	},
-	[PM8XXX_LED_PAT1_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat1_green_duty_cycles
-	},
-	/*pattern 2 Charging Error*/
-
-	[PM8XXX_LED_PAT2_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat2_red_duty_cycles
-	},
-	[PM8XXX_LED_PAT2_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat2_green_duty_cycles
-	},
-	/*pattern 3 Missed Noti*/
-
-	[PM8XXX_LED_PAT3_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat3_red_duty_cycles
-	},
-	[PM8XXX_LED_PAT3_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat3_green_duty_cycles
-	},
-	[PM8XXX_LED_PAT3_BLUE] = {
-		.id = PM8XXX_ID_LED_2,
-		.mode = PM8XXX_LED_MODE_PWM3,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 6,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat3_blue_duty_cycles
-	},
-	/*pattern 4 Low Batt*/
-	[PM8XXX_LED_PAT4_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat4_red_duty_cycles
-	},
-	[PM8XXX_LED_PAT4_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat4_green_duty_cycles
-	},
-	/*pattern 5 Fully Charged*/
-
-	[PM8XXX_LED_PAT5_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat5_red_duty_cycles
-	},
-	[PM8XXX_LED_PAT5_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat5_green_duty_cycles
-	},
-	[PM8XXX_LED_PAT5_BLUE] = {
-		.id = PM8XXX_ID_LED_2,
-		.mode = PM8XXX_LED_MODE_PWM3,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 6,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat5_blue_duty_cycles
-	},
-
-	/*pattern 6 Powering */
-	[PM8XXX_LED_PAT6_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat6_green_duty_cycles
-	},
-	[PM8XXX_LED_PAT6_BLUE] = {
-		.id = PM8XXX_ID_LED_2,
-		.mode = PM8XXX_LED_MODE_PWM3,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 6,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-		.pwm_duty_cycles = &pm8921_led0_pwm_pat6_blue_duty_cycles
-	},
-	/*pattern 7*/
-	[PM8XXX_LED_PAT7_RED] = {
-		.id = PM8XXX_ID_LED_0,
-		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 5,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-	},
-	[PM8XXX_LED_PAT7_GREEN] = {
-		.id = PM8XXX_ID_LED_1,
-		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 4,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-	},
-	[PM8XXX_LED_PAT7_BLUE] = {
-		.id = PM8XXX_ID_LED_2,
-		.mode = PM8XXX_LED_MODE_PWM3,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
-		.pwm_channel = 6,
-		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
-	},
-
-	/*pattern 8*/
-	[PM8XXX_LED_PAT8_RED] = {
+	{
 		.id = PM8XXX_ID_LED_0,
 		.mode = PM8XXX_LED_MODE_PWM2,
 		.max_current = PM8921_LC_LED_MAX_CURRENT,
@@ -945,7 +570,7 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led0_pwm_pat8_red_duty_cycles,
 	},
-	[PM8XXX_LED_PAT8_GREEN] = {
+	{
 		.id = PM8XXX_ID_LED_1,
 		.mode = PM8XXX_LED_MODE_PWM1,
 		.max_current = PM8921_LC_LED_MAX_CURRENT,
@@ -953,7 +578,7 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led0_pwm_pat8_green_duty_cycles,
 	},
-	[PM8XXX_LED_PAT8_BLUE] = {
+	{
 		.id = PM8XXX_ID_LED_2,
 		.mode = PM8XXX_LED_MODE_PWM3,
 		.max_current = PM8921_LC_LED_MAX_CURRENT,
@@ -961,14 +586,6 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led0_pwm_pat8_blue_duty_cycles,
 	},
-
-	[PM8XXX_LED_KB_LED] = {
-		.id = PM8XXX_ID_LED_KB_LIGHT,
-		.mode = PM8XXX_LED_MODE_MANUAL,
-		.max_current = 30,
-		.pwm_channel = 7,
-	},
-
 };
 
 static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {

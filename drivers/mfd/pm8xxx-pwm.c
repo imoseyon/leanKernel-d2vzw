@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/pwm.h>
@@ -1120,6 +1121,30 @@ int pm8xxx_pwm_lut_enable(struct pwm_device *pwm, int start)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pm8xxx_pwm_lut_enable);
+
+/**
+ * pm8xxx_pwm_lut_enable_all - start PWMs in lockstep
+ * @pwms: array of PWM device pointers
+ */
+void pm8xxx_pwm_lut_enable_all(struct pwm_device **pwms)
+{
+	int i;
+
+	if (!pwms)
+		return;
+
+	mutex_lock(&pwms[0]->chip->pwm_mutex);
+
+	for (i = 0; pwms[i]; i++)
+		pm8xxx_pwm_bank_enable(pwms[i], 1);
+	for (i = 0; pwms[i]; i++) {
+		pm8xxx_pwm_bank_sel(pwms[i]);
+		pm8xxx_pwm_start(pwms[i], 1, 1);
+	}
+
+	mutex_unlock(&pwms[0]->chip->pwm_mutex);
+}
+EXPORT_SYMBOL_GPL(pm8xxx_pwm_lut_enable_all);
 
 #if defined(CONFIG_DEBUG_FS)
 

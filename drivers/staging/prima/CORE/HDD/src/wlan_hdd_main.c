@@ -2113,6 +2113,25 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            pHddCtx->drvr_miracast = filterType;
            hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
         }
+        else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
+        {
+            char *dhcpPhase;
+            dhcpPhase = command + 11;
+            if ('1' == *dhcpPhase)
+            {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         FL("BTCOEXMODE %d"), *dhcpPhase);
+
+               pHddCtx->btCoexModeSet = TRUE;
+            }
+            else if ('2' == *dhcpPhase)
+            {
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         FL("BTCOEXMODE %d"), *dhcpPhase);
+
+               pHddCtx->btCoexModeSet = FALSE;
+            }
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
@@ -2263,7 +2282,7 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(tempBuf, 10, &tempInt);
-    if ( v < 0 || tempInt <= 0) return -EINVAL;
+    if ( v < 0 || tempInt < 0) return -EINVAL;
 
     *pDwellTime = tempInt;
 
@@ -3918,13 +3937,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
             goto err_free_netdev;
          }
 
-         // Workqueue which gets scheduled in IPv4 notification callback.
-         INIT_WORK(&pAdapter->ipv4NotifierWorkQueue, hdd_ipv4_notifier_work_queue);
-
-#ifdef WLAN_NS_OFFLOAD
-         // Workqueue which gets scheduled in IPv6 notification callback.
-         INIT_WORK(&pAdapter->ipv6NotifierWorkQueue, hdd_ipv6_notifier_work_queue);
-#endif
          //Stop the Interface TX queue.
          netif_tx_disable(pAdapter->dev);
          //netif_tx_disable(pWlanDev);
@@ -4239,16 +4251,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
          {
             hdd_abort_mac_scan(pHddCtx);
          }
-#ifdef WLAN_OPEN_SOURCE
-#ifdef WLAN_NS_OFFLOAD
-         cancel_work_sync(&pAdapter->ipv6NotifierWorkQueue);
-#endif
-#endif
 
-#ifdef WLAN_OPEN_SOURCE
-         cancel_work_sync(&pAdapter->ipv4NotifierWorkQueue);
-#endif
-         if (test_bit(SME_SESSION_OPENED, &pAdapter->event_flags)) 
+         if (test_bit(SME_SESSION_OPENED, &pAdapter->event_flags))
          {
             INIT_COMPLETION(pAdapter->session_close_comp_var);
             if (eHAL_STATUS_SUCCESS ==

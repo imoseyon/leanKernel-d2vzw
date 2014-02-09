@@ -4047,8 +4047,7 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
         ((ie_length != 0) ? (const char *)&bss_desc->ieFields: NULL);
     unsigned int freq;
     struct ieee80211_channel *chan;
-    struct ieee80211_mgmt *mgmt =
-        kzalloc((sizeof (struct ieee80211_mgmt) + ie_length), GFP_KERNEL);
+    struct ieee80211_mgmt *mgmt = NULL;
     struct cfg80211_bss *bss_status = NULL;
     size_t frame_len = sizeof (struct ieee80211_mgmt) + ie_length;
     int rssi = 0;
@@ -4079,7 +4078,7 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
         return NULL;
     }
 
-
+    mgmt = kzalloc((sizeof (struct ieee80211_mgmt) + ie_length), GFP_KERNEL);
     if (!mgmt)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -4655,6 +4654,13 @@ v_BOOL_t hdd_isScanAllowed( hdd_context_t *pHddCtx )
     VOS_STATUS status = 0;
     v_U8_t staId = 0;
     v_U8_t *staMac = NULL;
+
+    if (TRUE == pHddCtx->btCoexModeSet)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+           FL("BTCoex Mode operation in progress, Do not allow scan"));
+        return VOS_FALSE;
+    }
 
     status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
 
@@ -7557,6 +7563,7 @@ static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
 {
    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
    hdd_adapter_t *pTempAdapter = NULL;
+   hdd_station_ctx_t *pStaCtx;
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    int status = 0;
    status = hdd_get_front_adapter(pHddCtx, &pAdapterNode);
@@ -7564,22 +7571,21 @@ static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
    while ((NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status))
    {
         pTempAdapter = pAdapterNode->pAdapter;
+        pStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pTempAdapter);
 
-        if (pTempAdapter != pAdapter)
+        if (((WLAN_HDD_INFRA_STATION == pTempAdapter->device_mode)
+          && (eConnectionState_NotConnected != pStaCtx->conn_info.connState))
+          || (WLAN_HDD_P2P_CLIENT == pTempAdapter->device_mode)
+          || (WLAN_HDD_P2P_GO == pTempAdapter->device_mode)
+          || (WLAN_HDD_SOFTAP == pTempAdapter->device_mode)
+          )
         {
-            if (((WLAN_HDD_INFRA_STATION == pTempAdapter->device_mode) &&
-                 (eConnectionState_NotConnected != (WLAN_HDD_GET_STATION_CTX_PTR(pTempAdapter))->conn_info.connState)) ||
-                 (WLAN_HDD_P2P_CLIENT == pTempAdapter->device_mode) ||
-                 (WLAN_HDD_P2P_GO == pTempAdapter->device_mode) ||
-                 (WLAN_HDD_SOFTAP == pTempAdapter->device_mode))
-            {
-                return eHAL_STATUS_SUCCESS;
-            }
+            return eHAL_STATUS_FAILURE;
         }
         status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
         pAdapterNode = pNext;
    }
-   return eHAL_STATUS_FAILURE;
+   return eHAL_STATUS_SUCCESS;
 }
 
 /*
@@ -7624,15 +7630,16 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
                   "%s: HAL context  is Null!!!", __func__);
         return -EINVAL;
     }
+
     /* The current firmware design for PNO does not consider concurrent
      * active sessions.Hence , determine the concurrent active sessions
      * and return a failure to the framework on a request for schedule
      * scan.
      */
-    if (eHAL_STATUS_SUCCESS == wlan_hdd_is_pno_allowed(pAdapter))
+    if (eHAL_STATUS_SUCCESS != wlan_hdd_is_pno_allowed(pAdapter))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Cannot handle sched_scan as p2p session is active", __func__);
+                  FL("Cannot handle sched_scan"));
         return -EBUSY;
     }
 

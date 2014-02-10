@@ -762,7 +762,7 @@ static void qup_i2c_recover_bus_busy(struct qup_i2c_dev *dev)
 recovery_end:
 	enable_irq(dev->err_irq);
 }
-#if defined(CONFIG_MACH_M2)
+#if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM)
 void qup_i2c_bwreset(struct i2c_adapter *adap) {
 	struct qup_i2c_dev *dev = i2c_get_adapdata(adap);
 	mutex_lock(&dev->mlock);

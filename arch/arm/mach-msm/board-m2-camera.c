@@ -109,7 +109,7 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 	{
 		.func = GPIOMUX_FUNC_1, /* drive strength for D2*/
-#if defined(CONFIG_MACH_M2)
+#if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM)
 		.drv = GPIOMUX_DRV_2MA,
 #else
 		.drv = GPIOMUX_DRV_4MA,
@@ -601,7 +601,10 @@ static struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
 };
 #endif
 
-static struct regulator *l29, *l28, *isp_core;
+static struct regulator *l29, *l28;
+#if !defined(CONFIG_MACH_M2_DCM) && !defined(CONFIG_MACH_K2_KDI)
+static struct regulator *isp_core;
+#endif
 /* CAM power
 	CAM_SENSOR_A_2.8		:  GPIO_CAM_A_EN(GPIO 46)
 	CAM_SENSOR_IO_1.8		: VREG_L29		: l29

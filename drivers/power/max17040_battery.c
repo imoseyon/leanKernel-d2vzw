@@ -111,7 +111,7 @@ static void check_using_max17048(void)
 		is_max17048 = 0;
 		return;
 	}
-#elif defined(CONFIG_MACH_M2)
+#elif defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM)
 	if (system_rev <  0x02) {
 		is_max17048 = 0;
 		return;

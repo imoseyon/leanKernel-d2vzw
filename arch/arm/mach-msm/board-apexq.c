@@ -3726,9 +3726,8 @@ static void mxt224_register_callback(void *function)
 	pr_debug("[TSP]mxt224_register_callback\n");
 }
 
-static void mxt224_read_ta_status(void *ta_status)
+static void mxt224_read_ta_status(bool *ta_status)
 {
-#if 0
 #if defined(CONFIG_USB_SWITCH_FSA9485)
 	if (set_cable_status == CABLE_TYPE_AC
 		|| set_cable_status == CABLE_TYPE_USB
@@ -3736,7 +3735,6 @@ static void mxt224_read_ta_status(void *ta_status)
 		*ta_status = set_cable_status;
 #endif
 	pr_debug("[TSP]mxt224_ta_status = %d\n", set_cable_status);
-#endif
 }
 
 
@@ -5377,3 +5375,4 @@ MACHINE_START(APEXQ, "SAMSUNG APEXQ")
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,
 MACHINE_END
+

@@ -123,7 +123,7 @@ static int modem_shutdown(const struct subsys_desc *subsys)
 	return 0;
 }
 
-#define MODEM_WDOG_CHECK_TIMEOUT_MS 10000
+#define MODEM_WDOG_CHECK_TIMEOUT_MS 15000
 
 static int modem_powerup(const struct subsys_desc *subsys)
 {

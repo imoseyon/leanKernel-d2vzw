@@ -184,6 +184,7 @@ static struct fsa9485_usbsw *local_usbsw;
 static int isDeskdockconnected;
 #endif
 
+#if !defined(CONFIG_MACH_COMANCHE) && !defined(CONFIG_MACH_JASPER) && !defined(CONFIG_MACH_GOGH)
 static void DisableFSA9480Interrupts(void)
 {
 	struct i2c_client *client = local_usbsw->client;
@@ -212,6 +213,7 @@ static void EnableFSA9480Interrupts(void)
 
 }
 
+#endif
 #if defined(CONFIG_MACH_AEGIS2)
 void fsa9485_checkandhookaudiodockfornoise(int value)
 {
@@ -667,7 +669,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 	if (usbsw->dock_attached)
 		pdata->dock_cb(FSA9485_DETACHED_DOCK);
 
-	if (local_usbsw->dock_ready == 1)
+	if (local_usbsw->dock_ready == 1) 
 #if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		if (adc == 0x10)
 			val2 = DEV_SMARTDOCK;
@@ -949,11 +951,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 				pdata->smartdock_cb(FSA9485_DETACHED);
 			usbsw->adc = 0;
 #if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2)
-#if defined CONFIG_MHL_D3_SUPPORT
 			mhl_onoff_ex(false);
-			detached_status = 1;
-#endif
-			isDeskdockconnected = 0;
 #endif
 #endif
 		} else if (usbsw->adc == 0x12) {
@@ -999,8 +997,8 @@ static int fsa9485_handle_dock_vol_key(struct fsa9485_usbsw *info, int adc)
 {
 	struct input_dev *input = info->input;
 	int pre_key = info->previous_key;
-	unsigned int code;
-	int state;
+	unsigned int code = 0;
+	int state = 0;
 
 	if (adc == ADC_OPEN) {
 		switch (pre_key) {

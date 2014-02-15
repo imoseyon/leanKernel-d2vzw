@@ -496,9 +496,10 @@ struct msc_packet {
 	u8	data_2;
 	struct list_head p_msc_packet_list;
 };
-
-
+#if !defined (CONFIG_MACH_ESPRESSO10_SPR) && !defined (CONFIG_MACH_ESPRESSO10_VZW)
 static struct device *sii9244_mhldev;
+#endif
+
 extern void mhl_hpd_handler(bool state);
 extern u8 mhl_onoff_ex(bool onoff);
 #endif

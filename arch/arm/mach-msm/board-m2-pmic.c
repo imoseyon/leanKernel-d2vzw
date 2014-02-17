@@ -662,10 +662,8 @@ void __init msm8960_init_pmic(void)
 {
 	msm8921_sec_charger_init();
 
-#if !defined(CONFIG_MACH_AEGIS2) && !defined(CONFIG_MACH_JASPER)\
-	&& !defined(CONFIG_MACH_M2) && !defined(CONFIG_MACH_M2_DCM)
 	pmic_reset_irq = PM8921_IRQ_BASE + PM8921_RESOUT_IRQ;
-#endif
+
 	msm8960_device_ssbi_pmic.dev.platform_data =
 				&msm8960_ssbi_pm8921_pdata;
 	pm8921_platform_data.num_regulators = msm_pm8921_regulator_pdata_len;

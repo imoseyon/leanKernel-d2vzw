@@ -2083,72 +2083,55 @@ static struct platform_device opt_gp2a = {
 #endif
 #endif
 #ifdef CONFIG_MPU_SENSORS_MPU6050B1_411
-	struct mpu_platform_data mpu6050_data = {
-	.int_config = 0x10,
-	.orientation = {0, -1, 0,
-			1, 0, 0,
-			0, 0, 1},
-	.poweron = mpu_power_on,
-	};
-	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {-1, 0, 0,
-			0, 1, 0,
-			0, 0, -1},
-	};
+struct mpu_platform_data mpu6050_data;
+struct ext_slave_platform_data inv_mpu_ak8963_data;
 
-    struct mpu_platform_data mpu6050_data_spr = {
+/* orientation */
+struct mpu_platform_data mpu6050_data_spr = {
 	.int_config = 0x10,
-	.orientation = {0, 1, 0,
-			1, 0, 0,
-			0, 0, -1},
+	.orientation = { 0,  1,  0,
+			 1,  0,  0,
+			 0,  0, -1},
 	.poweron = mpu_power_on,
-	};
+};
 
-	struct mpu_platform_data mpu6050_data_04 = {
+struct mpu_platform_data mpu6050_data_vzw = {
 	.int_config = 0x10,
-	.orientation = {1, 0, 0,
-	                0, -1, 0,
-	                0, 0, -1},
+	.orientation = { 0, -1,  0,
+			 1,  0,  0,
+			 0,  0,  1},
 	.poweron = mpu_power_on,
-	};
-	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data_04 = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	};
+};
 
-	struct mpu_platform_data mpu6050_data_01 = {
+struct mpu_platform_data mpu6050_data_att = {
 	.int_config = 0x10,
-	.orientation = {-1, 0, 0,
-			0, 1, 0,
-			0, 0, -1},
+	.orientation = { 0, -1,  0,
+			 1,  0,  0,
+			 0,  0,  1},
 	.poweron = mpu_power_on,
-	};
-	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data_01 = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	};
-	struct mpu_platform_data mpu6050_data_00 = {
-	.int_config = 0x10,
-	.orientation = {1, 0, 0,
-			0, 1, 0,
-			0, 0, 1},
-	.poweron = mpu_power_on,
-	};
-	/* compass */
-	static struct ext_slave_platform_data inv_mpu_ak8963_data_00 = {
-	.bus		= EXT_SLAVE_BUS_PRIMARY,
-	.orientation = {0, -1, 0,
-			1, 0, 0,
-			0, 0, 1},
-	};
+};
+
+/* compass */
+static struct ext_slave_platform_data inv_mpu_ak8963_data_spr = {
+.bus		= EXT_SLAVE_BUS_PRIMARY,
+.orientation = { 1,  0,  0,
+		 0,  1,  0,
+		 0,  0,  1},
+};
+
+static struct ext_slave_platform_data inv_mpu_ak8963_data_vzw = {
+.bus		= EXT_SLAVE_BUS_PRIMARY,
+.orientation = {-1,  0,  0,
+		 0,  1,  0,
+		 0,  0, -1},
+};
+
+static struct ext_slave_platform_data inv_mpu_ak8963_data_att = {
+.bus		= EXT_SLAVE_BUS_PRIMARY,
+.orientation = { 0,  1,  0,
+		-1,  0,  0,
+		 0,  0,  1},
+};
 #endif
 
 #ifdef CONFIG_MPU_SENSORS_MPU6050B1
@@ -2311,19 +2294,17 @@ static void mpl_init(void)
 		mpu_data = mpu_data_00;
 	mpu_data.reset = gpio_rev(GPIO_MAG_RST);
 #elif defined(CONFIG_MPU_SENSORS_MPU6050B1_411)
-	if (system_rev <= BOARD_REV04 && system_rev > BOARD_REV01) {
-		mpu6050_data = mpu6050_data_04;
-		inv_mpu_ak8963_data = inv_mpu_ak8963_data_04;
-	} else if (system_rev == BOARD_REV01) {
-		mpu6050_data = mpu6050_data_01;
-		inv_mpu_ak8963_data = inv_mpu_ak8963_data_01;
-	} else if (system_rev < BOARD_REV01) {
-		mpu6050_data = mpu6050_data_00;
-		inv_mpu_ak8963_data = inv_mpu_ak8963_data_00;
-	}
-    if (system_rev == BOARD_REV14) {
+	if (system_rev == BOARD_REV14) {
 		mpu6050_data = mpu6050_data_spr;
+		inv_mpu_ak8963_data = inv_mpu_ak8963_data_spr;
+	} else if (system_rev == BOARD_REV15) {
+		mpu6050_data = mpu6050_data_vzw;
+		inv_mpu_ak8963_data = inv_mpu_ak8963_data_vzw;
+	} else if (system_rev == BOARD_REV16) {
+		mpu6050_data = mpu6050_data_att;
+		inv_mpu_ak8963_data = inv_mpu_ak8963_data_att;
 	}
+
 	if (system_rev < BOARD_REV13)
 		mpu6050_data.reset = gpio_rev(GPIO_MAG_RST);
 	else

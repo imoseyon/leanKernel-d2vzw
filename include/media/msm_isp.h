@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -199,6 +199,36 @@
 #define VFE_CMD_SCALE_OUTPUT2_CONFIG                    135
 #define VFE_CMD_CAPTURE_RAW                             136
 #define VFE_CMD_STOP_LIVESHOT                           137
+#define VFE_CMD_RECONFIG_VFE                            138
+#define VFE_CMD_STATS_REQBUF                            139
+#define VFE_CMD_STATS_ENQUEUEBUF                        140
+#define VFE_CMD_STATS_FLUSH_BUFQ                        141
+#define VFE_CMD_STATS_UNREGBUF                          142
+#define VFE_CMD_STATS_BG_START                          143
+#define VFE_CMD_STATS_BG_STOP                           144
+#define VFE_CMD_STATS_BF_START                          145
+#define VFE_CMD_STATS_BF_STOP                           146
+#define VFE_CMD_STATS_BHIST_START                       147
+#define VFE_CMD_STATS_BHIST_STOP                        148
+#define VFE_CMD_RESET_2                                 149
+#define VFE_CMD_FOV_ENC_CFG                             150
+#define VFE_CMD_FOV_VIEW_CFG                            151
+#define VFE_CMD_FOV_ENC_UPDATE                          152
+#define VFE_CMD_FOV_VIEW_UPDATE                         153
+#define VFE_CMD_SCALER_ENC_CFG                          154
+#define VFE_CMD_SCALER_VIEW_CFG                         155
+#define VFE_CMD_SCALER_ENC_UPDATE                       156
+#define VFE_CMD_SCALER_VIEW_UPDATE                      157
+#define VFE_CMD_COLORXFORM_ENC_CFG                      158
+#define VFE_CMD_COLORXFORM_VIEW_CFG                     159
+#define VFE_CMD_COLORXFORM_ENC_UPDATE                   160
+#define VFE_CMD_COLORXFORM_VIEW_UPDATE                  161
+#define VFE_CMD_TEST_GEN_CFG                            162
+#define VFE_CMD_SELECT_RDI                              163
+#define VFE_CMD_SET_STATS_VER                           164
+#define VFE_CMD_RGB_ALL_CFG                             165
+#define VFE_CMD_RGB_ALL_UPDATE                          166
+#define VFE_CMD_MAX                                     167
 
 struct msm_isp_cmd {
 	int32_t  id;

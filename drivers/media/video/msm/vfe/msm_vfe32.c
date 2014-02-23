@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -754,7 +754,6 @@ static void vfe32_subdev_notify(int id, int path, uint32_t inst_handle,
 
 static void vfe32_complete_reset(struct axi_ctrl_t *axi_ctrl)
 {
-	unsigned int i = 0;
 	pr_info("%s E", __func__);
 	/* Clear all IRQs from MASK 0 */
 	msm_camera_io_w(0x0, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
@@ -772,11 +771,6 @@ static void vfe32_complete_reset(struct axi_ctrl_t *axi_ctrl)
 		VFE_CAMIF_COMMAND);
 	msm_camera_io_w(AXI_HALT,
 		axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
-	/* Disable the 7 write master paths - VFE_BUS_IMAGE_MASTER_*_WR_CFG*/
-	for (i = 0; i < ARRAY_SIZE(vfe32_AXI_WM_CFG); i++) {
-		msm_camera_io_w_mb(0x00000000,
-			axi_ctrl->share_ctrl->vfebase + vfe32_AXI_WM_CFG[i]);
-	}
 	wmb();
 	pr_info("%s X", __func__);
 }
@@ -3660,6 +3654,9 @@ static int vfe32_proc_general(
 
 		break;
 	default:
+		if (cmd->id < 0 || cmd->id > VFE_CMD_MAX)
+			return -EINVAL;
+
 		if (cmd->length != vfe32_cmd[cmd->id].length)
 			return -EINVAL;
 
@@ -4269,7 +4266,6 @@ static void vfe32_process_reset_irq(
 		struct vfe32_ctrl_type *vfe32_ctrl)
 {
 	unsigned long flags;
-	unsigned int i = 0;
 
 	if (atomic_read(&recovery_active) == 1) {
 		vfe32_ctrl->share_ctrl->overflow_count++;
@@ -4328,12 +4324,6 @@ static void vfe32_process_reset_irq(
 			vfe32_ctrl->share_ctrl->liveshot_state =
 				VFE_STATE_START_REQUESTED;
 		}
-		/* Enable the 7 write master paths - - VFE_BUS_IMAGE_MASTER_*_WR_CFG*/
-		for (i = 0; i < ARRAY_SIZE(vfe32_AXI_WM_CFG); i++) {
-			msm_camera_io_w_mb(0x00000001,
-				vfe32_ctrl->share_ctrl->vfebase + vfe32_AXI_WM_CFG[i]);
-		}
-
 		msm_camera_io_w_mb(1,
 			vfe32_ctrl->share_ctrl->vfebase + VFE_REG_UPDATE_CMD);
 		pr_info("camif cfg: 0x%x\n",

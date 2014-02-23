@@ -358,3 +358,5 @@ extern u32 hwpoison_filter_enable;
 #define ALLOC_HIGH		0x20 /* __GFP_HIGH set */
 #define ALLOC_CPUSET		0x40 /* check for correct cpuset */
 #define ALLOC_CMA		0x80 /* allow allocations from CMA areas */
+
+extern void set_pageblock_order(void);

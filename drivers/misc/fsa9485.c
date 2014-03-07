@@ -669,7 +669,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 	if (usbsw->dock_attached)
 		pdata->dock_cb(FSA9485_DETACHED_DOCK);
 
-	if (local_usbsw->dock_ready == 1) 
+	if (local_usbsw->dock_ready == 1) {
 #if defined(CONFIG_USB_SWITCH_SMART_DOCK_ENABLE)
 		if (adc == 0x10)
 			val2 = DEV_SMARTDOCK;
@@ -679,7 +679,7 @@ static int fsa9485_detect_dev(struct fsa9485_usbsw *usbsw)
 		if (adc == 0x12)
 			val2 = DEV_AUDIO_DOCK;
 #endif
-
+		}
 	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x adc : 0x%x\n",
 		val1, val2, adc);
 

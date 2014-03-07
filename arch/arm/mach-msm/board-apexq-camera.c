@@ -840,7 +840,8 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 		gpio_set_value_cansleep(gpio_flash_set, 0);
 #endif
 		torchonoff = 0;
-	} else {
+	} 
+	else if (value == 1) {
 		pr_err("[Torch flash]ON\n");
 		gpio_set_value_cansleep(gpio_flash_en, 0);
 #ifdef CONFIG_MACH_EXPRESS
@@ -862,6 +863,14 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 #endif
 		torchonoff = 1;
 	}
+#if defined(CONFIG_MACH_APEXQ)
+	else {
+		pr_err("[Torch flash]HIGH\n");
+		gpio_set_value_cansleep(gpio_flash_en, 1);
+		gpio_set_value_cansleep(gpio_flash_set, 0);
+		torchonoff = 1;
+	}
+#endif
 	return size;
 }
 

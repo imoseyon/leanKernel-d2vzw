@@ -849,15 +849,6 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 		gpio_set_value_cansleep(gpio_flash_en, 1);
 		udelay(1);
 #else
-		int i = 0;
-		for (i = 5; i > 1; i--) {
-			gpio_set_value_cansleep(
-				gpio_flash_set, 1);
-			udelay(1);
-			gpio_set_value_cansleep(
-				gpio_flash_set, 0);
-			udelay(1);
-		}
 		gpio_set_value_cansleep(gpio_flash_set, 1);
 		usleep(2*1000);
 #endif

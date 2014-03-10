@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 3.4.78 Kernel Configuration
+# Linux/arm 3.4.82 Kernel Configuration
 #
 CONFIG_ARM=y
 CONFIG_ARM_HAS_SG_CHAIN=y
@@ -44,7 +44,7 @@ CONFIG_IRQ_WORK=y
 CONFIG_EXPERIMENTAL=y
 CONFIG_INIT_ENV_ARG_LIMIT=32
 CONFIG_CROSS_COMPILE=""
-CONFIG_LOCALVERSION="-leanKernel-aosp_kitkat-9.4-"
+CONFIG_LOCALVERSION="-leanKernel-aosp_kitkat-9.5-"
 # CONFIG_LOCALVERSION_AUTO is not set
 CONFIG_HAVE_KERNEL_GZIP=y
 CONFIG_HAVE_KERNEL_LZMA=y
@@ -369,6 +369,7 @@ CONFIG_MSM_REMOTE_SPINLOCK_SFPB=y
 # CONFIG_MACH_MPQ8064_DTV is not set
 # CONFIG_MACH_MSM_DUMMY is not set
 CONFIG_MACH_M2=y
+# CONFIG_MACH_M2_DCM is not set
 # CONFIG_MACH_APEXQ is not set
 # CONFIG_MACH_EXPRESS is not set
 
@@ -1378,6 +1379,7 @@ CONFIG_SCSI_LOWLEVEL=y
 # CONFIG_ATA is not set
 CONFIG_MD=y
 # CONFIG_BLK_DEV_MD is not set
+CONFIG_BLK_DEV_DM_BUILTIN=y
 CONFIG_BLK_DEV_DM=y
 # CONFIG_DM_DEBUG is not set
 CONFIG_DM_CRYPT=y
@@ -2386,6 +2388,8 @@ CONFIG_QUP_EXCLUSIVE_TO_CAMERA=y
 # CONFIG_V4L_MEM2MEM_DRIVERS is not set
 CONFIG_MSM_WFD=y
 # CONFIG_RADIO_ADAPTERS is not set
+# CONFIG_TDMB is not set
+# CONFIG_ISDBT_NMI is not set
 
 #
 # Graphics support
@@ -3075,6 +3079,9 @@ CONFIG_LEDS_TRIGGERS=y
 #
 # iptables trigger is under Netfilter config (LED target)
 #
+# CONFIG_FELICA is not set
+# CONFIG_FELICA_DIAG is not set
+# CONFIG_FELICA_NO_SECURE is not set
 CONFIG_SWITCH=y
 # CONFIG_SWITCH_GPIO is not set
 # CONFIG_SWITCH_FSA8008 is not set

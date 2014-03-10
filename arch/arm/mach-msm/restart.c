@@ -330,6 +330,8 @@ void msm_restart(char mode, const char *cmd)
 			__raw_writel(0xabcd494d, restart_reason);
 		} else if (!strncmp(cmd, "debug-low", 9)) {
 			__raw_writel(0xabcd4f4c, restart_reason);
+		} else if (!strcmp(cmd, "rtc")) {
+			__raw_writel(0x77665503, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;

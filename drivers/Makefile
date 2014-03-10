@@ -146,3 +146,5 @@ obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
 obj-y                           += exfat/
 
 obj-$(CONFIG_CORESIGHT)		+= coresight/
+
+obj-$(CONFIG_FELICA)		+= felica/

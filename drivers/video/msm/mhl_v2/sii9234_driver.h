@@ -39,7 +39,7 @@
 #define T_WAIT_TIMEOUT_RSEN_INT		200
 
 #define T_SRC_VBUS_CBUS_TO_STABLE	200
-#define T_SRC_WAKE_PULSE_WIDTH_1	19
+#define T_SRC_WAKE_PULSE_WIDTH_1	18
 #define T_SRC_WAKE_PULSE_WIDTH_2	60
 #define T_SRC_WAKE_TO_DISCOVER		500
 #define T_SRC_VBUS_CBUS_T0_STABLE	500
@@ -363,6 +363,7 @@ enum mhl_state {
 	STATE_DISCOVERY_FAILED,
 	STATE_CBUS_LOCKOUT,
 	STATE_ESTABLISHED,
+	STATE_RGND_NOT_1K,
 };
 
 enum msc_subcommand {
@@ -497,10 +498,14 @@ struct msc_packet {
 	struct list_head p_msc_packet_list;
 };
 
+#ifdef CONFIG_MHL_NEW_CBUS_MSC_CMD
 static int sii9234_msc_req_locked(struct sii9234_data *sii9234,
 					struct msc_packet *msc_pkt);
 static int sii9234_enqueue_msc_work(struct sii9234_data *sii9234, u8 command,
 		u8 offset, u8 data_1, u8 data_2);
+#else
+static void cbus_command_response(struct sii9234_data *sii9234);
+#endif
 static struct device *sii9244_mhldev;
 extern void mhl_hpd_handler(bool state);
 extern int detached_status;
@@ -510,8 +515,5 @@ static u8 sii9234_tmds_control(struct sii9234_data *sii9234, bool enable);
 static bool cbus_command_request(struct sii9234_data *sii9234,
 				 enum cbus_command command,
 				 u8 offset, u8 data);
-#ifndef CONFIG_MHL_NEW_CBUS_MSC_CMD
-static void cbus_command_response(struct sii9234_data *sii9234);
-#endif
 static irqreturn_t sii9234_irq_thread(int irq, void *data);
 #endif

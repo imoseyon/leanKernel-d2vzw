@@ -288,11 +288,10 @@ static ssize_t led_pattern_store(struct device *dev,
 		info->color2 = 0xff00;
 		break;
 	case '6':
-		info->color1 = 0x14ca;
 		info->color2 = 0x82ff;
-		info->time1 = 200;
-		info->time2 = 200;
-		info->timetrans = 800;
+		info->time1 = 50;
+		info->time2 = 50;
+		info->timetrans = 1000;
 		break;
 	default:
 		info->pattern = 0;

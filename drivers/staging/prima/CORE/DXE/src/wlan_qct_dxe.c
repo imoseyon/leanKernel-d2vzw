@@ -97,12 +97,20 @@ when           who        what, where, why
 #define T_WLANDXE_TX_INT_ENABLE_FCOUNT     1
 #define T_WLANDXE_MEMDUMP_BYTE_PER_LINE    16
 #define T_WLANDXE_MAX_RX_PACKET_WAIT       6000
+#define T_WLANDXE_SSR_TIMEOUT              5000
 #define T_WLANDXE_PERIODIC_HEALTH_M_TIME   2500
 #define T_WLANDXE_MAX_HW_ACCESS_WAIT       2000
 #define WLANDXE_MAX_REAPED_RX_FRAMES       512
 
 #define WLANPAL_RX_INTERRUPT_PRO_MASK      0x20
 #define WLANDXE_RX_INTERRUPT_PRO_UNMASK    0x5F
+
+/* 1msec busy wait in case CSR is not valid */
+#define WLANDXE_CSR_NEXT_READ_WAIT         1000
+/* CSR max retry count */
+#define WLANDXE_CSR_MAX_READ_COUNT         30
+
+
 /* This is temporary fot the compile
  * WDI will release official version
  * This must be removed */
@@ -146,6 +154,11 @@ static wpt_status dxeNotifySmsm
 (
   wpt_boolean kickDxe,
   wpt_boolean ringEmpty
+);
+
+static void dxeStartSSRTimer
+(
+  WLANDXE_CtrlBlkType     *dxeCtxt
 );
 
 /*-------------------------------------------------------------------------
@@ -1278,24 +1291,54 @@ static wpt_status dxeEngineCoreStart
 {
    wpt_status                 status = eWLAN_PAL_STATUS_SUCCESS;
    wpt_uint32                 registerData = 0;
+   wpt_uint8                  readRetry;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Enter", __func__);
 
+#ifdef WCN_PRONTO
+   /* Read default */
+   wpalReadRegister(WLANDXE_CCU_SOFT_RESET, &registerData);
+   registerData |= WLANDXE_DMA_CCU_DXE_RESET_MASK;
+
+   /* Make reset */
+   wpalWriteRegister(WLANDXE_CCU_SOFT_RESET, registerData);
+
+   /* Clear reset */
+   registerData &= ~WLANDXE_DMA_CCU_DXE_RESET_MASK;
+   wpalWriteRegister(WLANDXE_CCU_SOFT_RESET, registerData);
+#else
    /* START This core init is not needed for the integrated system */
    /* Reset First */
    registerData = WLANDXE_DMA_CSR_RESET_MASK;
    wpalWriteRegister(WALNDEX_DMA_CSR_ADDRESS,
                           registerData);
+#endif /* WCN_PRONTO */
 
-   registerData  = WLANDXE_DMA_CSR_EN_MASK;  
-   registerData |= WLANDXE_DMA_CSR_ECTR_EN_MASK;
-   registerData |= WLANDXE_DMA_CSR_TSTMP_EN_MASK;
-   registerData |= WLANDXE_DMA_CSR_H2H_SYNC_EN_MASK;
-
-   registerData = 0x00005c89;
-   wpalWriteRegister(WALNDEX_DMA_CSR_ADDRESS,
-                          registerData);
+   for(readRetry = 0; readRetry < WLANDXE_CSR_MAX_READ_COUNT; readRetry++)
+   {
+      wpalWriteRegister(WALNDEX_DMA_CSR_ADDRESS,
+                        WLANDXE_CSR_DEFAULT_ENABLE);
+      wpalReadRegister(WALNDEX_DMA_CSR_ADDRESS, &registerData);
+      if(!(registerData & WLANDXE_DMA_CSR_EN_MASK))
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "%s CSR 0x%x, count %d",
+                  __func__, registerData, readRetry);
+         /* CSR is not valid value, re-try to write */
+         wpalBusyWait(WLANDXE_CSR_NEXT_READ_WAIT);
+      }
+      else
+      {
+         break;
+      }
+   }
+   if(WLANDXE_CSR_MAX_READ_COUNT == readRetry)
+   {
+      /* MAX wait, still cannot write correct value
+       * Panic device */
+      wpalDevicePanic();
+   }
 
    /* Is This needed?
     * Not sure, revisit with integrated system */
@@ -1820,10 +1863,81 @@ void dxeRXResourceAvailableTimerExpHandler
    void    *usrData
 )
 {
+   WLANDXE_CtrlBlkType      *dxeCtxt    = NULL;
+
+   dxeCtxt = (WLANDXE_CtrlBlkType *)usrData;
+
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "RX Low resource, Durign wait time period %d, RX resource not allocated",
             T_WLANDXE_MAX_RX_PACKET_WAIT);
+
+   if(0 != dxeCtxt)
+      dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
+
    wpalWlanReload();
+
+   if (NULL != usrData)
+      dxeStartSSRTimer((WLANDXE_CtrlBlkType *)usrData);
+
+   return;
+}
+
+/*==========================================================================
+  @  Function Name
+     dxeStartSSRTimer
+
+  @  Description
+      Start the dxeSSRTimer after issuing the FIQ to restart the WCN chip,
+      this makes sure that if the chip does not respond to the FIQ within
+      the timeout period the dxeSSRTimer expiration handler will take the
+      appropriate action.
+
+  @  Parameters
+      NONE
+
+  @  Return
+      NONE
+
+===========================================================================*/
+static void dxeStartSSRTimer
+(
+  WLANDXE_CtrlBlkType     *dxeCtxt
+)
+{
+   if(VOS_TIMER_STATE_RUNNING !=
+      wpalTimerGetCurStatus(&dxeCtxt->dxeSSRTimer))
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Starting SSR Timer",__func__);
+      wpalTimerStart(&dxeCtxt->dxeSSRTimer,
+                     T_WLANDXE_SSR_TIMEOUT);
+   }
+}
+
+/*==========================================================================
+  @  Function Name
+     dxeSSRTimerExpHandler
+
+  @  Description
+      Issue an explicit subsystem restart of the wcnss subsystem if the
+      WCN chip does not respond to the FIQ within the timeout period
+
+  @  Parameters
+   v_VOID_t     *usrData
+
+  @  Return
+      NONE
+
+===========================================================================*/
+void dxeSSRTimerExpHandler
+(
+   void    *usrData
+)
+{
+   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+            "DXE not shutdown %d ms after FIQ!! Issue SSR",
+            T_WLANDXE_SSR_TIMEOUT);
+   wpalRivaSubystemRestart();
 
    return;
 }
@@ -2399,6 +2513,7 @@ static wpt_status dxeRXFrameReady
                      "RX successive empty interrupt, Could not find invalidated DESC reload driver");
             dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
             wpalWlanReload();
+            dxeStartSSRTimer(dxeCtxt);
          }
       }
    }
@@ -2602,6 +2717,13 @@ void dxeRXEventHandler
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeRXEventHandler Pull from RX high channel fail");        
       }
+      /* In case FW could not power collapse in IMPS mode
+       * Next power restore might have empty interrupt
+       * If IMPS mode has empty interrupt since RX thread race,
+       * Invalid re-load driver might happen
+       * To prevent invalid re-load driver,
+       * IMPS event handler set dummpy frame count */
+      channelCb->numFragmentCurrentChain = 1;
 
        /* Second low priority */
       channelCb = &dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI];
@@ -2613,6 +2735,8 @@ void dxeRXEventHandler
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeRXEventHandler Pull from RX low channel fail");        
       }
+      /* LOW Priority CH same above */
+      channelCb->numFragmentCurrentChain = 1;
 
       /* Interrupt will not enabled at here, it will be enabled at PS mode change */
       tempDxeCtrlBlk->rxIntDisabledByIMPS = eWLAN_PAL_TRUE;
@@ -2656,6 +2780,7 @@ void dxeRXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if((WLANDXE_CH_STAT_INT_DONE_MASK & chHighStat) ||
               (WLANDXE_CH_STAT_INT_ED_MASK & chHighStat))
@@ -2708,6 +2833,7 @@ void dxeRXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if(WLANDXE_CH_STAT_INT_ED_MASK & chStat)
       {
@@ -2755,6 +2881,7 @@ void dxeRXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if(WLANDXE_CH_STAT_INT_ED_MASK & chLowStat)
       {
@@ -3687,6 +3814,7 @@ void dxeTXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if(WLANDXE_CH_STAT_INT_DONE_MASK & chStat)
       {
@@ -3740,6 +3868,7 @@ void dxeTXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if(WLANDXE_CH_STAT_INT_DONE_MASK & chStat)
       {
@@ -3795,6 +3924,7 @@ void dxeTXEventHandler
 
          dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
          wpalWlanReload();
+         dxeStartSSRTimer(dxeCtxt);
       }
       else if(WLANDXE_CH_STAT_INT_DONE_MASK & chStat)
       {
@@ -4386,6 +4516,9 @@ void *WLANDXE_Open
                  dxeRXResourceAvailableTimerExpHandler,
                  tempDxeCtrlBlk);
 
+   wpalTimerInit(&tempDxeCtrlBlk->dxeSSRTimer,
+                 dxeSSRTimerExpHandler, tempDxeCtrlBlk);
+
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
             "WLANDXE_Open Success");
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
@@ -4953,6 +5086,7 @@ wpt_status WLANDXE_Close
    dxeCtxt = (WLANDXE_CtrlBlkType *)pDXEContext;
 
    wpalTimerDelete(&dxeCtxt->rxResourceAvailableTimer);
+   wpalTimerDelete(&dxeCtxt->dxeSSRTimer);
 
    for(idx = 0; idx < WDTS_CHANNEL_MAX; idx++)
    {

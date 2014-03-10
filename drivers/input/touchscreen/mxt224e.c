@@ -155,7 +155,7 @@ struct mxt224_data {
 	const u8 *t48_config_chrg_e;
 	void (*power_onoff)(int);
 	void (*register_cb)(void *);
-	void (*read_ta_status)(void *);
+	void (*read_ta_status)(bool *);
 	const u8 *config_fw_version;
 	int num_fingers;
 #ifdef VIRTUAL_KEYPAD_ISSUE

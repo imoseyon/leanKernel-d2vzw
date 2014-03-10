@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -488,6 +488,13 @@ int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
         hddLog( LOGE, 
                 "%s: timeout waiting for remain on channel ready indication",
                 __func__);
+
+        if (pHddCtx->isLogpInProgress)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: LOGP in Progress. Ignore!!!", __func__);
+            return -EAGAIN;
+        }
     }
     INIT_COMPLETION(pAdapter->cancel_rem_on_chan_var);
     /* Issue abort remain on chan request to sme.
@@ -1531,7 +1538,8 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                     {
                         hddLog(LOGE,"Action frame received when Scanning is in"
                                     " progress. Abort Scan.");
-                        hdd_abort_mac_scan(pAdapter->pHddCtx);
+                        hdd_abort_mac_scan(pAdapter->pHddCtx,
+                                           eCSR_SCAN_ABORT_DEFAULT);
                     }
                 }
                 if (((actionFrmType == WLAN_HDD_PROV_DIS_RESP) &&

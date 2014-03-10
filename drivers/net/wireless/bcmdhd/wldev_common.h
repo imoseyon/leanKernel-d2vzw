@@ -87,15 +87,25 @@ extern void get_customized_country_code(char *country_iso_code, wl_country_t *cs
 extern void dhd_bus_country_set(struct net_device *dev, wl_country_t *cspec);
 extern void dhd_bus_band_set(struct net_device *dev, uint band);
 extern int wldev_set_country(struct net_device *dev, char *country_code);
-extern int net_os_wake_lock(struct net_device *dev);
-extern int net_os_wake_unlock(struct net_device *dev);
-extern int net_os_wake_lock_timeout(struct net_device *dev);
-extern int net_os_wake_lock_timeout_enable(struct net_device *dev, int val);
 extern int net_os_set_dtim_skip(struct net_device *dev, int val);
 extern int net_os_set_suspend_disable(struct net_device *dev, int val);
 extern int net_os_set_suspend(struct net_device *dev, int val, int force);
 extern int wl_iw_parse_ssid_list_tlv(char** list_str, wlc_ssid_t* ssid,
 	int max, int *bytes_left);
+
+#ifdef CONFIG_HAS_WAKELOCK
+typedef struct dhd_info dhd_info_t;
+#define net_wake_func(fn) \
+	extern void dhd_int_wake_##fn (dhd_info_t *dhd); \
+	static inline void net_os_wake_##fn (struct net_device *dev) \
+	{ dhd_int_wake_##fn (*(dhd_info_t **)netdev_priv(dev)); }
+#else
+#define net_wake_func(fn) \
+	static inline void net_os_wake_##fn (struct net_device *dev) { }
+#endif
+net_wake_func(lock);
+net_wake_func(unlock);
+net_wake_func(lock_timeout);
 
 /* Get the link speed from dongle, speed is in kpbs */
 int wldev_get_link_speed(struct net_device *dev, int *plink_speed);

@@ -25,6 +25,7 @@
 #include <net/udp.h>
 #include <net/transp_v6.h>
 #include <net/ping.h>
+#include <linux/module.h>
 
 struct proto pingv6_prot = {
 	.name =		"PINGv6",

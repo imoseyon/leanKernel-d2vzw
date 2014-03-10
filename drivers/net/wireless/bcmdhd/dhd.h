@@ -373,11 +373,31 @@ unsigned long dhd_os_spin_lock(dhd_pub_t *pub);
 void dhd_os_spin_unlock(dhd_pub_t *pub, unsigned long flags);
 
 /*  Wakelock Functions */
-extern int dhd_os_wake_lock(dhd_pub_t *pub);
-extern int dhd_os_wake_unlock(dhd_pub_t *pub);
-extern int dhd_os_wake_lock_timeout(dhd_pub_t *pub);
-extern int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val);
-extern int dhd_os_wake_lock_ctrl_timeout_enable(dhd_pub_t *pub, int val);
+#ifdef CONFIG_HAS_WAKELOCK
+typedef struct dhd_info dhd_info_t;
+#define dhd_wake_func(fn) \
+        extern void dhd_int_wake_##fn (dhd_info_t *dhd); \
+        static inline void dhd_os_wake_##fn (dhd_pub_t *pub) \
+        { dhd_int_wake_##fn ((dhd_info_t *)pub->info); }
+extern void dhd_int_wake_timeout_enable(dhd_info_t *dhd, int val);
+#define dhd_tmout_func(fn) \
+	static inline void dhd_os_wake_lock_##fn##_timeout_enable \
+			(dhd_pub_t *pub, int val) \
+	{ dhd_int_wake_timeout_enable((dhd_info_t *)pub->info, val); }
+#else
+#define dhd_wake_func(fn) \
+	static inline void dhd_os_wake##fn (dhd_pub_t *pub) { }
+#define dhd_tmout_func(fn) \
+	static inline void dhd_os_wake_lock##fn##_timeout_enable \
+			(dhd_pub_t *pub, int val) { }
+#endif
+dhd_wake_func(lock);
+dhd_wake_func(unlock);
+dhd_wake_func(lock_timeout);
+dhd_tmout_func(rx);
+dhd_tmout_func(ctrl);
+#undef dhd_wake_func
+#undef dhd_tmout_func
 
 inline static void MUTEX_LOCK_SOFTAP_SET_INIT(dhd_pub_t * dhdp)
 {
@@ -775,8 +795,12 @@ extern char nv_path[MOD_PARAM_PATHLEN];
 extern char fw_path2[MOD_PARAM_PATHLEN];
 #endif
 
+#ifdef ENABLE_CRAP
 /* Flag to indicate if we should download firmware on driver load */
 extern uint dhd_download_fw_on_driverload;
+#else
+#define dhd_download_fw_on_driverload (TRUE)
+#endif
 
 #if defined(WL_CFG80211) && defined(SUPPORT_DEEP_SLEEP)
 /* Flags to indicate if we distingish power off policy when

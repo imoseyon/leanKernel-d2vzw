@@ -869,7 +869,11 @@ extern s32 wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len);
 extern int wl_cfg80211_hang(struct net_device *dev, u16 reason);
 extern s32 wl_mode_to_nl80211_iftype(s32 mode);
 int wl_cfg80211_do_driver_init(struct net_device *net);
+#ifdef DEBUGFS_CFG80211
 void wl_cfg80211_enable_trace(bool set, u32 level);
+#else
+static inline void wl_cfg80211_enable_trace(bool set, u32 level) { }
+#endif
 extern s32 wl_update_wiphybands(struct wl_priv *wl);
 extern s32 wl_cfg80211_if_is_group_owner(void);
 extern chanspec_t wl_ch_host_to_driver(u16 channel);

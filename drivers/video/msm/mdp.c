@@ -3194,6 +3194,15 @@ static int mdp_probe(struct platform_device *pdev)
 			mfd->dma = &dma2_data;
 			mdp4_display_intf_sel(PRIMARY_INTF_SEL, LCDC_RGB_INTF);
 		}
+		/*
+		 * There is just a single underrun when lcdc timing
+		 * generator is enabled for no obvious reasons.  As a
+		 * workaround the underrun color is disabled here, so
+		 * that the single underrun won't have any visual
+		 * effect. Later, when the underrun is recoved, the
+		 * underrun color is restored.
+		 */
+		MDP_OUTP(MDP_BASE + 0xc002c, 0x80000000);
 #else
 		mfd->dma = &dma2_data;
 		mfd->vsync_ctrl = mdp_dma_lcdc_vsync_ctrl;

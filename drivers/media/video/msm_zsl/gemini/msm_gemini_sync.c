@@ -511,11 +511,12 @@ int msm_gemini_input_buf_enqueue(struct msm_gemini_device *pgmn_dev,
 			&buf_p->msm_buffer, buf_p->subsystem_id, &buf_p->handle)
 			+ buf_cmd.offset;
 #else
-			&buf_p->handle)	+ buf_cmd.offset;
+			&buf_p->handle)	+ buf_cmd.offset + buf_cmd.y_off;
 #endif
 	buf_p->y_len          = buf_cmd.y_len;
 
-	buf_p->cbcr_buffer_addr = buf_p->y_buffer_addr + buf_cmd.y_len;
+	buf_p->cbcr_buffer_addr = buf_p->y_buffer_addr + buf_cmd.y_len +
+					buf_cmd.cbcr_off;
 	buf_p->cbcr_len       = buf_cmd.cbcr_len;
 
 	buf_p->num_of_mcu_rows = buf_cmd.num_of_mcu_rows;

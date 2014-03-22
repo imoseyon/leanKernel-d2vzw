@@ -3842,6 +3842,9 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 	struct vfe32_irq_status irq;
 	struct vfe32_isr_queue_cmd *qcmd;
 
+	if (!vfe32_ctrl->vfebase)
+		return IRQ_HANDLED; /* null check */
+
 	CDBG("vfe_parse_irq\n");
 
 	vfe32_read_irq_status(&irq);
@@ -4396,6 +4399,8 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 	rc = request_irq(vfe32_ctrl->vfeirq->start, vfe32_parse_irq,
 				IRQF_TRIGGER_RISING, "vfe", 0);
 	if (rc < 0) {
+		release_mem_region(vfe32_ctrl->vfemem->start,
+			resource_size(vfe32_ctrl->vfemem));
 		pr_err("%s: irq request fail\n", __func__);
 		rc = -EBUSY;
 		goto vfe32_no_resource;
@@ -4411,7 +4416,7 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 
 vfe32_no_resource:
 	kfree(vfe32_ctrl);
-	return 0;
+	return rc;
 }
 
 static struct platform_driver vfe32_driver = {

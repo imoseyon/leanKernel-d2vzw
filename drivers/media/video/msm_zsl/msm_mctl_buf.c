@@ -144,14 +144,13 @@ static int msm_vb2_ops_buf_prepare(struct vb2_buffer *vb)
 	struct msm_cam_v4l2_dev_inst *pcam_inst;
 	struct msm_cam_v4l2_device *pcam;
 	struct msm_frame_buffer *buf;
-	struct vb2_queue	*vq = NULL;
+	struct vb2_queue	*vq = vb->vb2_queue;
 
 	D("%s\n", __func__);
-	if (!vb) {
+	if (!vb || !vq) {
 		pr_err("%s error : input is NULL\n", __func__);
 		return -EINVAL;
 	}
-	vq = vb->vb2_queue;
 	pcam_inst = vb2_get_drv_priv(vq);
 	pcam = pcam_inst->pcam;
 	buf = container_of(vb, struct msm_frame_buffer, vidbuf);
@@ -262,12 +261,6 @@ static int msm_vb2_ops_start_streaming(struct vb2_queue *q, unsigned int count)
 
 static int msm_vb2_ops_stop_streaming(struct vb2_queue *q)
 {
-	int rc = 0;
-	struct msm_free_buf *free_buf = NULL;
-	struct msm_cam_v4l2_dev_inst *pcam_inst = vb2_get_drv_priv(q);
-	if (rc != 0)
-		msm_mctl_release_free_buf(&pcam_inst->pcam->mctl,
-					pcam_inst->path, free_buf);
 	return 0;
 }
 
@@ -276,15 +269,13 @@ static void msm_vb2_ops_buf_queue(struct vb2_buffer *vb)
 	struct msm_cam_v4l2_dev_inst *pcam_inst = NULL;
 	struct msm_cam_v4l2_device *pcam = NULL;
 	unsigned long flags = 0;
-	struct vb2_queue *vq = NULL;
+	struct vb2_queue *vq = vb->vb2_queue;
 	struct msm_frame_buffer *buf;
-
 	D("%s\n", __func__);
-	if (!vb) {
+	if (!vb || !vq) {
 		pr_err("%s error : input is NULL\n", __func__);
 		return ;
 	}
-	vq = vb->vb2_queue;
 	pcam_inst = vb2_get_drv_priv(vq);
 	pcam = pcam_inst->pcam;
 	D("%s pcam_inst=%p,(vb=0x%p),idx=%d,len=%d\n",

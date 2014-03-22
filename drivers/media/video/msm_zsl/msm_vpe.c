@@ -641,10 +641,7 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	}
 	case VPE_CMD_ENABLE: {
-		struct msm_vpe_clock_rate *clk_rate = cmd->value;
-		int turbo_mode = (int)clk_rate->rate;
-		rc = turbo_mode ? vpe_enable(VPE_TURBO_MODE_CLOCK_RATE) :
-			vpe_enable(VPE_NORMAL_MODE_CLOCK_RATE);
+		rc = vpe_enable(VPE_TURBO_MODE_CLOCK_RATE);
 		break;
 	}
 	case VPE_CMD_DISABLE:

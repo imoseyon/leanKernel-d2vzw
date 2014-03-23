@@ -24,7 +24,7 @@
 #include <mach/msm8960-gpio.h>
 #include "board-8960.h"
 
-extern int system_rev;
+extern unsigned int system_rev;
 
 #define MSM_8960_GSBI3_QUP_I2C_BUS_ID 3
 

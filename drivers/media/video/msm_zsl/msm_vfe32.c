@@ -386,8 +386,8 @@ static void vfe32_stop(void)
 	unsigned long flags;
 
 	atomic_set(&vfe32_ctrl->vstate, 0);
-
-	/* for reset hw modules, and send msg when reset_irq comes. */
+	mutex_lock(&vfe32_ctrl->vfe_lock);
+	/* for reset hw modules, and send msg when reset_irq comes.*/
 	spin_lock_irqsave(&vfe32_ctrl->stop_flag_lock, flags);
 	vfe32_ctrl->stop_ack_pending = TRUE;
 	spin_unlock_irqrestore(&vfe32_ctrl->stop_flag_lock, flags);
@@ -440,7 +440,8 @@ static void vfe32_stop(void)
 	/* Ensure the write order while writing
 	   to the command register using the barrier */
 	msm_io_w_mb(VFE_RESET_UPON_STOP_CMD,
-		    vfe32_ctrl->vfebase + VFE_GLOBAL_RESET);
+		vfe32_ctrl->vfebase + VFE_GLOBAL_RESET);
+	mutex_unlock(&vfe32_ctrl->vfe_lock);
 }
 
 static void vfe32_subdev_notify(int id, int path)
@@ -857,6 +858,7 @@ static int vfe32_zsl(void)
 {
 	uint32_t irq_comp_mask = 0;
 	/* capture command is valid for both idle and active state. */
+	mutex_lock(&vfe32_ctrl->vfe_lock);
 	irq_comp_mask = msm_io_r(vfe32_ctrl->vfebase + VFE_IRQ_COMP_MASK);
 
 	CDBG("%s:op mode %d O/P Mode %d\n", __func__,
@@ -980,6 +982,7 @@ static int vfe32_zsl(void)
 	/* nishu hack : see how often thumbnail IRQs show up */
 
 	msm_io_w(irq_comp_mask, vfe32_ctrl->vfebase + VFE_IRQ_COMP_MASK);
+	mutex_unlock(&vfe32_ctrl->vfe_lock);
 
 
 /* Test
@@ -1083,6 +1086,7 @@ static int vfe32_start(void)
 	if ((vfe32_ctrl->operation_mode != VFE_MODE_OF_OPERATION_CONTINUOUS) &&
 	    (vfe32_ctrl->operation_mode != VFE_MODE_OF_OPERATION_VIDEO))
 		return 0;
+	mutex_lock(&vfe32_ctrl->vfe_lock);
 	irq_comp_mask = msm_io_r(vfe32_ctrl->vfebase + VFE_IRQ_COMP_MASK);
 
 	if (vfe32_ctrl->outpath.output_mode & VFE32_OUTPUT_MODE_PT) {
@@ -1123,6 +1127,7 @@ static int vfe32_start(void)
 #else
 	vfe32_start_common();
 #endif
+	mutex_unlock(&vfe32_ctrl->vfe_lock);
 	return 0;
 }
 
@@ -4000,7 +4005,12 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 		case CMD_STATS_CS_ENABLE:
 			rc = vfe_stats_cs_buf_init(scfg);
 			break;
+		default:
+			pr_err("%s Unsupported cmd type %d",
+				__func__, cmd->cmd_type);
+			break;
 		}
+		goto vfe32_config_done;
 	}
 	switch (cmd->cmd_type) {
 	case CMD_GENERAL:
@@ -4268,12 +4278,15 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 	spin_lock_init(&vfe32_ctrl->ihist_ack_lock);
 	spin_lock_init(&vfe32_ctrl->rs_ack_lock);
 	spin_lock_init(&vfe32_ctrl->cs_ack_lock);
+	mutex_init(&vfe32_ctrl->vfe_lock);
 	INIT_LIST_HEAD(&vfe32_ctrl->tasklet_q);
 
 	vfe32_ctrl->update_linear = false;
 	vfe32_ctrl->update_rolloff = false;
 	vfe32_ctrl->update_la = false;
 	vfe32_ctrl->update_gamma = false;
+
+	enable_irq(vfe32_ctrl->vfeirq->start);
 
 	vfe32_ctrl->vfebase = ioremap(vfe32_ctrl->vfemem->start,
 				      resource_size(vfe32_ctrl->vfemem));
@@ -4314,8 +4327,6 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd, void *data,
 		vfe32_ctrl->register_total = VFE32_REGISTER_TOTAL;
 	else
 		vfe32_ctrl->register_total = VFE33_REGISTER_TOTAL;
-
-	enable_irq(vfe32_ctrl->vfeirq->start);
 
 	return rc;
 

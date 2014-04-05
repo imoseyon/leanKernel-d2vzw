@@ -162,6 +162,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 #if defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_HD_PT)
         u32 tmp_reg0c, tmp_rega8;
 #endif
+	int old_nice;
 
 	pr_debug("%s+:\n", __func__);
 
@@ -169,6 +170,14 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	fbi = mfd->fbi;
 	var = &fbi->var;
 	pinfo = &mfd->panel_info;
+	/*
+	 * Now first priority is to turn on LCD quickly for better
+	 * user experience. We set current task to higher priority
+	 * and restore it after panel is on.
+	 */
+	old_nice = task_nice(current);
+	if (old_nice > -20)
+		set_user_nice(current, -20);
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(1);
@@ -355,6 +364,10 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		mutex_unlock(&mfd->dma->ov_mutex);
 	else
 		up(&mfd->dma->mutex);
+
+	/* Restore current priority */
+	if (old_nice > -20)
+		set_user_nice(current, old_nice);
 
 	pr_debug("%s-:\n", __func__);
 

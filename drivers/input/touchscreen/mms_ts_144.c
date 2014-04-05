@@ -51,7 +51,7 @@
 
 #define MAX_FINGERS		10
 #define MAX_WIDTH		30
-#define MAX_PRESSURE		255
+#define MAX_PRESSURE		4095
 #define MAX_ANGLE		90
 #define MIN_ANGLE		-90
 

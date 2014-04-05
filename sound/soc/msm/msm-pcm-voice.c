@@ -549,7 +549,7 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 				msm_voice_rx_device_mute_put),
 	SOC_SINGLE_EXT("Voice Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_voice_mute_get, msm_voice_mute_put),
-#ifdef CONFIG_MACH_M2
+#if defined(CONFIG_MACH_M2) || defined(CONFIG_MACH_M2_DCM)
 	SOC_SINGLE_EXT("Voice Rx Volume", SND_SOC_NOPM, 0, 7, 0,
 				msm_voice_volume_get, msm_voice_volume_put),
 #else

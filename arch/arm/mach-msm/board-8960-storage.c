@@ -385,7 +385,7 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC1_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
-	.uhs_caps2	= MMC_CAP2_HS200_1_8V_SDR,
+	.uhs_caps       = (MMC_CAP_1_8V_DDR | MMC_CAP_UHS_DDR50),
 	.packed_write	= MMC_CAP2_PACKED_WR | MMC_CAP2_PACKED_WR_CONTROL,
 };
 #endif
@@ -427,7 +427,7 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.xpc_cap	= 1,
 	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
-			MMC_CAP_UHS_SDR104 | MMC_CAP_MAX_CURRENT_600),
+			MMC_CAP_MAX_CURRENT_600),
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC3_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
 };

@@ -776,9 +776,7 @@ static int vpe_proc_general(struct msm_vpe_cmd *cmd)
 			rc = -EFAULT;
 			goto vpe_proc_general_done;
 		}
-		turbo_mode = *((int *)(cmd->value));
-		rc = turbo_mode ? vpe_enable(VPE_TURBO_MODE_CLOCK_RATE)
-			: vpe_enable(VPE_NORMAL_MODE_CLOCK_RATE);
+		rc = vpe_enable(VPE_TURBO_MODE_CLOCK_RATE);
 		break;
 	case VPE_DISABLE:
 		rc = vpe_disable();

@@ -369,10 +369,8 @@ typedef struct dhd_info {
 #endif
 } dhd_info_t;
 
-#ifdef ENABLE_CRAP
 /* Flag to indicate if we should download firmware on driver load */
 uint dhd_download_fw_on_driverload = TRUE;
-#endif
 
 /* Definitions to provide path to the firmware and nvram
  * example nvram_path[MOD_PARAM_PATHLEN]="/projects/wlan/nvram.txt"

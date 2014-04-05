@@ -84,6 +84,8 @@ struct max17040_chip {
 	int soc;
 	/* raw soc */
 	int raw_soc;
+	/* previous soc */
+	int lasttime_soc;
 	/* work interval */
 	unsigned int fg_interval;
 	/* log count */
@@ -334,7 +336,13 @@ static void max17040_get_soc(struct i2c_client *client)
 	/* ]] calculate adjust soc */
 
 	soc = min(soc, (uint)100);
-	chip->soc = soc;
+
+	if (chip->lasttime_soc && soc > chip->lasttime_soc
+			&& chip->chg_state == POWER_SUPPLY_STATUS_DISCHARGING) {
+		chip->soc = chip->lasttime_soc;
+	} else {
+		chip->soc = soc;
+	}
 }
 
 static void max17040_get_version(struct i2c_client *client)
@@ -450,6 +458,10 @@ static void max17040_work(struct work_struct *work)
 
 	max17040_get_vcell(chip->client);
 	max17040_get_soc(chip->client);
+
+	if (chip->soc != chip->lasttime_soc)
+		chip->lasttime_soc = chip->soc;
+
 	pr_debug("%s : VCELL:%dmV, AVGVCELL:%dmV\n", __func__,
 		chip->vcell/1000, chip->avgvcell/1000);
 	pr_debug("%s : Raw SOC:%d%%, SOC:%d%%\n", __func__,

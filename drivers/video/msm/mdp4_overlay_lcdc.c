@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -99,14 +99,31 @@ static void vsync_irq_disable(int intr, int term)
 	pr_debug("%s: IRQ-dis done, term=%x\n", __func__, term);
 }
 
-static void mdp4_overlay_lcdc_start(void)
+static void mdp4_lcdc_wait4dmap_done(int cndx);
+
+static void mdp4_overlay_lcdc_start(struct vsycn_ctrl *vctrl)
 {
 	if (!lcdc_enabled) {
 		/* enable DSI block */
+		unsigned long flag;
+
 		mdp4_iommu_attach();
-		mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-		MDP_OUTP(MDP_BASE + LCDC_BASE, 1);
+		spin_lock_irqsave(&mdp_spin_lock, flag);
+		if (!inpdw(MDP_BASE + LCDC_BASE))
+			MDP_OUTP(MDP_BASE + LCDC_BASE, 1);
 		lcdc_enabled = 1;
+		spin_unlock_irqrestore(&mdp_spin_lock, flag);
+		/*
+		 * A single unknown-cause underrun may happen. Wait
+		 * until the underrun instance is over and restore
+		 * underrun color.
+		 */
+		mdp4_lcdc_wait4dmap_done(0);
+		if (vctrl->mfd) {
+			vctrl->mfd->panel_info.lcdc.underflow_clr |= 0x80000000;
+			MDP_OUTP(MDP_BASE + LCDC_BASE + 0x2c,
+				vctrl->mfd->panel_info.lcdc.underflow_clr);
+		}
 	}
 }
 
@@ -246,7 +263,7 @@ int mdp4_lcdc_pipe_commit(int cndx, int wait)
 	mdp4_mixer_stage_commit(mixer);
 
 	/* start timing generator & mmu if they are not started yet */
-	mdp4_overlay_lcdc_start();
+	mdp4_overlay_lcdc_start(vctrl);
 
 	/*
 	 * there has possibility that pipe commit come very close to next vsync
@@ -389,6 +406,24 @@ static void mdp4_lcdc_wait4dmap(int cndx)
 		return;
 
 	wait_for_completion(&vctrl->dmap_comp);
+}
+
+static void mdp4_lcdc_wait4dmap_done(int cndx)
+{
+	unsigned long flags;
+	struct vsycn_ctrl *vctrl;
+
+	if (cndx >= MAX_CONTROLLER) {
+		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
+		return;
+	}
+
+	vctrl = &vsync_ctrl_db[cndx];
+	spin_lock_irqsave(&vctrl->spin_lock, flags);
+	INIT_COMPLETION(vctrl->dmap_comp);
+	vsync_irq_enable(INTR_DMA_P_DONE, MDP_DMAP_TERM);
+	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+	mdp4_lcdc_wait4dmap(cndx);
 }
 
 static void mdp4_lcdc_wait4ov(int cndx)
@@ -603,8 +638,6 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 	pipe->srcp0_ystride = fbi->fix.line_length;
 	pipe->bpp = bpp;
 
-	mdp4_overlay_solidfill_init(pipe);
-
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
 
@@ -619,6 +652,7 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 	mdp4_mixer_stage_up(pipe, 0);
 	mdp4_mixer_stage_commit(pipe->mixer_num);
 
+	mdp4_overlay_solidfill_init(pipe);
 
 	/*
 	 * LCDC timing setting
@@ -703,16 +737,17 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x14, display_v_start);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x18, display_v_end);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x28, lcdc_border_clr);
-	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x2c, lcdc_underflow_clr);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x30, lcdc_hsync_skew);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x38, ctrl_polarity);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x1c, active_hctl);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x20, active_v_start);
 	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x24, active_v_end);
+	 /* enable underrun hiding ctrl  */
+	MDP_OUTP(MDP_BASE + LCDC_BASE + 0x44, 0x70fff);
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
 	mdp_histogram_ctrl_all(TRUE);
-	mdp4_overlay_lcdc_start();
+
 	mutex_unlock(&mfd->dma->ov_mutex);
 
 	return ret;

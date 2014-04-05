@@ -795,12 +795,8 @@ extern char nv_path[MOD_PARAM_PATHLEN];
 extern char fw_path2[MOD_PARAM_PATHLEN];
 #endif
 
-#ifdef ENABLE_CRAP
 /* Flag to indicate if we should download firmware on driver load */
 extern uint dhd_download_fw_on_driverload;
-#else
-#define dhd_download_fw_on_driverload (TRUE)
-#endif
 
 #if defined(WL_CFG80211) && defined(SUPPORT_DEEP_SLEEP)
 /* Flags to indicate if we distingish power off policy when

@@ -36,6 +36,7 @@ static struct res_trk_context resource_context;
 
 #define VIDC_FW	"vidc_1080p.fw"
 #define VIDC_FW_SIZE SZ_1M
+#define DVB_CONT_MODE_DPB_COUNT 14
 
 struct res_trk_vidc_mmu_clk {
 	char *mmu_clk_name;
@@ -900,7 +901,9 @@ u32 res_trk_get_disable_dmx(void){
 	return resource_context.disable_dmx;
 }
 
-u32 res_trk_get_min_dpb_count(void){
+u32 res_trk_get_min_dpb_count(struct ddl_decoder_data *decoder){
+	if (decoder->dvb_cont_mode)
+		return DVB_CONT_MODE_DPB_COUNT;
 	return resource_context.vidc_platform_data->cont_mode_dpb_count;
 }
 

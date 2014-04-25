@@ -863,13 +863,25 @@ static ssize_t cameraflash_file_cmd_store(struct device *dev,
 #endif
 		torchonoff = 1;
 	}
-#if defined(CONFIG_MACH_APEXQ)
 	if (value > 1) {
 		pr_err("[Torch flash]HIGH\n");
+#ifdef CONFIG_MACH_EXPRESS
+		/* expressatt has multiple steps for brightness, so
+		   we incrementally turn it up */
+		int i = 0;
+		for (i = 15; i > 1; i--) {
+			gpio_set_value_cansleep(
+				gpio_flash_en, 0);
+			udelay(0);
+			gpio_set_value_cansleep(
+				gpio_flash_en, 1);
+			udelay(1);
+		}
+#else
 		gpio_set_value_cansleep(gpio_flash_en, 1);
 		gpio_set_value_cansleep(gpio_flash_set, 0);
-	}
 #endif
+	}
 	return size;
 }
 

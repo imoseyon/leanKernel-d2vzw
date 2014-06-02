@@ -173,6 +173,15 @@ static ssize_t sii9234_swing_test_store(struct device *dev,
 static CLASS_ATTR(swing, 0664,
 		sii9234_swing_test_show, sii9234_swing_test_store);
 #endif
+
+u8 sii9234_mhl_get_version(void)
+{
+	struct sii9234_data *sii9234 = dev_get_drvdata(sii9244_mhldev);
+	pr_debug("sii9234: MHL_VERSION: %X\n", sii9234->devcap.mhl_ver);
+	return sii9234->devcap.mhl_ver;
+}
+EXPORT_SYMBOL(sii9234_mhl_get_version);
+
 u8 mhl_onoff_ex(bool onoff)
 {
 	struct sii9234_data *sii9234 = dev_get_drvdata(sii9244_mhldev);
@@ -192,6 +201,7 @@ u8 mhl_onoff_ex(bool onoff)
 		sii9234->pdata->mhl_sel(onoff);
 
 	if (onoff) {
+		wake_lock(&sii9234->mhl_wake_lock);
 		if (sii9234->pdata->hw_onoff)
 			sii9234->pdata->hw_onoff(1);
 
@@ -206,6 +216,7 @@ u8 mhl_onoff_ex(bool onoff)
 
 #endif
 	} else {
+		wake_unlock(&sii9234->mhl_wake_lock);
 		sii9234_cancel_callback();
 
 		if (sii9234->pdata->hw_onoff)
@@ -460,13 +471,13 @@ static int sii9234_cbus_reset(struct sii9234_data *sii9234)
 	for (idx = 0; idx < 4; idx++) {
 		/* Enable WRITE_STAT interrupt for writes to all
 				 4 MSC Status registers.*/
-		ret = cbus_write_reg(sii9234, 0xE0 + idx, 0xF2);
+		ret = cbus_write_reg(sii9234, 0xE0 + idx, 0xFF);
 		if (ret < 0)
 			return ret;
 
 		/*Enable SET_INT interrupt for writes to all
 					4 MSC Interrupt registers.*/
-		ret = cbus_write_reg(sii9234, 0xF0 + idx, 0xF2);
+		ret = cbus_write_reg(sii9234, 0xF0 + idx, 0xFF);
 		if (ret < 0)
 			return ret;
 	}
@@ -513,7 +524,11 @@ static int sii9234_cbus_init(struct sii9234_data *sii9234)
 	ret = cbus_write_reg(sii9234, 0x80, 0x00);/*To meet cts 6.3.10.1 spec*/
 	if (ret < 0)
 		goto i2c_error_exit;
+#ifdef CONFIG_MACH_M2_REFRESHSPR
+	ret = cbus_write_reg(sii9234, 0x81, 0x13);/*mhl version 1.3*/
+#else
 	ret = cbus_write_reg(sii9234, 0x81, 0x12);/*mhl version 1.2*/
+#endif
 	if (ret < 0)
 		goto i2c_error_exit;
 	ret = cbus_write_reg(sii9234, 0x82, 0x02);
@@ -880,7 +895,7 @@ void mhl_path_enable(struct sii9234_data *sii9234, bool path_en)
 
 	if (path_en)
 		sii9234->mhl_status_value.linkmode |= MHL_STATUS_PATH_ENABLED;
-		else
+	else
 		sii9234->mhl_status_value.linkmode &= ~MHL_STATUS_PATH_ENABLED;
 #ifndef CONFIG_MHL_NEW_CBUS_MSC_CMD
 	cbus_command_request(sii9234, CBUS_WRITE_STAT,
@@ -928,6 +943,7 @@ static void cbus_handle_wrt_stat_recd(struct sii9234_data *sii9234)
 			 & MHL_STATUS_PATH_ENABLED) &&
 				!(MHL_STATUS_PATH_ENABLED & status_reg1)) {
 		mhl_path_enable(sii9234, false);
+		sii9234_tmds_control(sii9234, false);
 	}
 
 	if (status_reg0 & MHL_STATUS_DCAP_READY) {
@@ -1236,6 +1252,12 @@ static void goto_d3(struct work_struct *work)
 	u8 value;
 
 	pr_debug("sii9234: detection started d3\n");
+
+	if (sii9234->pdata->power_state == false) {
+		pr_info("goto d3 : mhl power_state is false (exit recommended)\n");
+		goto exit;
+	}
+
 	sii9234_callback_sched = 0;
 
 	sii9234->mhl_status_value.linkmode = MHL_STATUS_CLK_MODE_NORMAL;
@@ -1458,6 +1480,10 @@ void sii9234_process_msc_work(struct work_struct *work)
 			}
 			break;
 		case CBUS_WRITE_STAT:
+			pr_debug("sii9234: cbus_command_response"
+					"CBUS_WRITE_STAT\n");
+			cbus_read_reg(sii9234, CBUS_MSC_FIRST_DATA_IN_REG,
+					&p_msc_pkt->data_1);
 			break;
 		case CBUS_SET_INT:
 			if ((p_msc_pkt->offset == MHL_RCHANGE_INT) &&
@@ -1629,6 +1655,9 @@ static int sii9234_msc_req_locked(struct sii9234_data *sii9234,
 	int ret;
 	u8 start_command;
 
+	sii9234_mutex_unlock(&sii9234->lock);
+	mutex_lock(&sii9234->msc_lock);
+
 	if (sii9234->state != STATE_ESTABLISHED)
 		return -ENOENT;
 
@@ -1679,14 +1708,14 @@ static int sii9234_msc_req_locked(struct sii9234_data *sii9234,
 
 	cbus_write_reg(sii9234, CBUS_MSC_COMMAND_START_REG, start_command);
 
-	mutex_unlock(&sii9234->lock);
 	ret = wait_for_completion_timeout(&sii9234->msc_complete,
 					  msecs_to_jiffies(300));
 	if (ret == 0)
 		printk(KERN_ERR	"[ERROR] %s() MSC_REQ_DONE timeout\n",
 			__func__);
 
-	mutex_lock(&sii9234->lock);
+	mutex_unlock(&sii9234->msc_lock);
+	sii9234_mutex_lock(&sii9234->lock);
 
 	return ret ? 0 : -EIO;
 }
@@ -2968,6 +2997,7 @@ static int __devinit sii9234_mhl_tx_i2c_probe(struct i2c_client *client,
 
 	init_waitqueue_head(&sii9234->wq);
 	mutex_init(&sii9234->lock);
+	mutex_init(&sii9234->msc_lock);
 	mutex_init(&sii9234->cbus_lock);
 	INIT_WORK(&sii9234->mhl_cbus_write_stat_work,
 		  mhl_cbus_write_stat_worker);
@@ -3025,6 +3055,8 @@ static int __devinit sii9234_mhl_tx_i2c_probe(struct i2c_client *client,
 		goto err_exit2b;
 	}
 #endif
+	wake_lock_init(&sii9234->mhl_wake_lock,
+                        WAKE_LOCK_SUSPEND, "mhl_wake_lock");
 
 	sii9234->cbus_pkt.command = CBUS_IDLE;
 	sii9234->cbus_pkt.offset = DEVCAP_DEV_STATE;

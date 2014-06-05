@@ -12,6 +12,9 @@
 
 #define WLAN_STATIC_SCAN_BUF0		5
 #define WLAN_STATIC_SCAN_BUF1		6
+#define WLAN_STATIC_DHD_INFO_BUF	7
+#define WLAN_SCAN_BUF_SIZE		(64 * 1024)
+#define WLAN_DHD_INFO_BUF_SIZE	(16 * 1024)
 #define PREALLOC_WLAN_SEC_NUM		4
 #define PREALLOC_WLAN_BUF_NUM		160
 #define PREALLOC_WLAN_SECTION_HEADER	24
@@ -44,14 +47,27 @@ static struct wlan_mem_prealloc wlan_mem_array[PREALLOC_WLAN_SEC_NUM] = {
 
 void *wlan_static_scan_buf0;
 void *wlan_static_scan_buf1;
+void *wlan_static_dhd_info_buf;
+
 static void *brcm_wlan_mem_prealloc(int section, unsigned long size)
 {
 	if (section == PREALLOC_WLAN_SEC_NUM)
 		return wlan_static_skb;
+
 	if (section == WLAN_STATIC_SCAN_BUF0)
 		return wlan_static_scan_buf0;
+
 	if (section == WLAN_STATIC_SCAN_BUF1)
 		return wlan_static_scan_buf1;
+
+	if (section == WLAN_STATIC_DHD_INFO_BUF) {
+		if (size > WLAN_DHD_INFO_BUF_SIZE) {
+			pr_err("request DHD_INFO size(%lu) is bigger than static size(%d).\n", size, WLAN_DHD_INFO_BUF_SIZE);
+			return NULL;
+		}
+		return wlan_static_dhd_info_buf;
+	}
+
 	if ((section < 0) || (section > PREALLOC_WLAN_SEC_NUM))
 		return NULL;
 
@@ -89,11 +105,17 @@ static int brcm_init_wlan_mem(void)
 		if (!wlan_mem_array[i].mem_ptr)
 			goto err_mem_alloc;
 	}
-	wlan_static_scan_buf0 = kmalloc(65536, GFP_KERNEL);
+
+	wlan_static_scan_buf0 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_scan_buf0)
 		goto err_mem_alloc;
-	wlan_static_scan_buf1 = kmalloc(65536, GFP_KERNEL);
+
+	wlan_static_scan_buf1 = kmalloc(WLAN_SCAN_BUF_SIZE, GFP_KERNEL);
 	if (!wlan_static_scan_buf1)
+		goto err_mem_alloc;
+
+	wlan_static_dhd_info_buf = kmalloc(WLAN_DHD_INFO_BUF_SIZE, GFP_KERNEL);
+	if (!wlan_static_dhd_info_buf)
 		goto err_mem_alloc;
 
 	printk(KERN_INFO"%s: WIFI MEM Allocated\n", __func__);
@@ -205,21 +227,25 @@ int brcm_wifi_status_register(
 		void (*callback)(int card_present, void *dev_id),
 		void *dev_id)
 {
+   int * p = (int *)dev_id;
 	if (wifi_status_cb)
 		return -EAGAIN;
 	wifi_status_cb = callback;
 	wifi_status_cb_devid = dev_id;
-	printk(KERN_INFO "%s: callback is %p, devid is %p\n",
-		__func__, wifi_status_cb, dev_id);
+	printk(KERN_ERR "check print\n");
+	printk(KERN_ERR "%s: callback is %p, devid is %d\n",
+		__func__, wifi_status_cb, *p);
 	return 0;
 }
 
-#if 0
-static unsigned int brcm_wifi_status(struct device *dev)
+#if 1
+unsigned int brcm_wifi_status(struct device *dev)
 {
+	printk("%s:%d status %d\n",__func__,__LINE__,brcm_wifi_cd);
 	return brcm_wifi_cd;
 }
 #endif
+
 
 static int brcm_wlan_set_carddetect(int val)
 {
@@ -227,7 +253,11 @@ static int brcm_wlan_set_carddetect(int val)
 		__func__, wifi_status_cb, wifi_status_cb_devid, val);
 	brcm_wifi_cd = val;
 	if (wifi_status_cb)
+	{
+		printk(KERN_ERR "%s: callback is %p, devid is %p\n",
+		__func__, wifi_status_cb, wifi_status_cb_devid);
 		wifi_status_cb(val, wifi_status_cb_devid);
+	}
 	else
 		pr_warning("%s: Nobody to notify\n", __func__);
 

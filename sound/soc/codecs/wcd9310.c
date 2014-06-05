@@ -2183,8 +2183,11 @@ static int tabla_codec_enable_clock_block(struct snd_soc_codec *codec,
 			tabla_codec_enable_config_mode(codec, 0);
 		}
 	}
-
+#ifndef CONFIG_MACH_M2
 	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN1, 0x01, 0x01);
+#else
+	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN1, 0x05, 0x05);
+#endif
 	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN2, 0x02, 0x00);
 	/* on MCLK */
 	snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN2, 0x04, 0x04);
@@ -8165,7 +8168,7 @@ static int tabla_handle_pdata(struct tabla_priv *tabla)
 		snd_soc_update_bits(codec, TABLA_A_RX_HPH_OCP_CTL,
 			0xE0, (pdata->ocp.hph_ocp_limit << 5));
 	}
-
+#ifndef CONFIG_MACH_M2
 	for (i = 0; i < ARRAY_SIZE(pdata->regulator); i++) {
 		if (!strncmp(pdata->regulator[i].name, "CDC_VDDA_RX", 11)) {
 			if (pdata->regulator[i].min_uV == 1800000 &&
@@ -8186,6 +8189,7 @@ static int tabla_handle_pdata(struct tabla_priv *tabla)
 			break;
 		}
 	}
+#endif
 done:
 	return rc;
 }
@@ -8230,7 +8234,11 @@ static const struct tabla_reg_mask_val tabla_1_1_reg_defaults[] = {
 	TABLA_REG_VAL(TABLA_A_CDC_RX7_B6_CTL, 0x80),
 
 	/* Tabla 1.1 CLASSG Changes */
-	TABLA_REG_VAL(TABLA_A_CDC_CLSG_FREQ_THRESH_B3_CTL, 0x1B),
+	TABLA_REG_VAL(TABLA_A_CDC_CLSG_FREQ_THRESH_B1_CTL, 0x02),
+	TABLA_REG_VAL(TABLA_A_CDC_CLSG_FREQ_THRESH_B2_CTL, 0x05),
+	TABLA_REG_VAL(TABLA_A_CDC_CLSG_FREQ_THRESH_B3_CTL, 0x06),
+	TABLA_REG_VAL(TABLA_A_CDC_CLSG_FREQ_THRESH_B4_CTL, 0x0C),
+	TABLA_REG_VAL(TABLA_A_CDC_CLSG_GAIN_THRESH_CTL, 0x0D)	
 };
 
 static const struct tabla_reg_mask_val tabla_2_0_reg_defaults[] = {
@@ -8387,6 +8395,9 @@ static void tabla_codec_init_reg(struct snd_soc_codec *codec)
 				      tabla_2_higher_codec_reg_init_val[i].mask,
 				      tabla_2_higher_codec_reg_init_val[i].val);
 	}
+#ifdef CONFIG_MACH_M2
+	snd_soc_write(codec, TABLA_A_BIAS_REF_CTL, 0x1E);
+#endif
 }
 
 static void tabla_update_reg_address(struct tabla_priv *priv)

@@ -1755,13 +1755,7 @@ static struct i2c_board_info mhl_i2c_board_info[] = {
 #endif
 
 #ifdef CONFIG_BATTERY_SEC
-static int is_sec_battery_using(void)
-{
-	if (system_rev >= 0x9)
-		return 1;
-	else
-		return 0;
-}
+static int is_sec_battery_using(void);
 
 int check_battery_type(void)
 {
@@ -1774,27 +1768,22 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.iterm = 100,
-	.charge_duration = 8 * 60 * 60,
-	.recharge_duration = 2 * 60 * 60,
+	.iterm = 150,
+	.charge_duration = 6 * 60 * 60,
+	.wpc_charge_duration = 8 * 60 * 60,
+	.recharge_duration = 1.5 * 60 * 60,
 	.max_voltage = 4350 * 1000,
 	.recharge_voltage = 4280 * 1000,
 	.event_block = 600,
-#if defined(_d2usc_)
-	.high_block = 600,
-	.lpm_high_block = 600,
-#else
-	.high_block = 510,
-	.lpm_high_block = 470,
-#endif
-	.high_recovery = 440,
-	.high_recovery_wpc = 490,
+	.high_block = 500,
+	.high_recovery = 450,
 	.low_block = -50,
-	.low_recovery = -10,
-	.lpm_high_recovery = 440,
-	.lpm_low_block = -40,
-	.lpm_low_recovery = -10,
-	.wpc_charging_current = 700,
+	.low_recovery = 0,
+	.lpm_high_block = 480,
+	.lpm_high_recovery = 450,
+	.lpm_low_block = -50,
+	.lpm_low_recovery = 0,
+	.wpc_charging_current = 500,
 };
 
 static struct platform_device sec_device_battery = {
@@ -1803,10 +1792,15 @@ static struct platform_device sec_device_battery = {
 	.dev.platform_data = &sec_bat_pdata,
 };
 
-static void check_highblock_temp(void)
+static int is_sec_battery_using(void)
 {
 	if (system_rev < 0xd)
 		sec_bat_pdata.high_block = 600;
+
+	if (system_rev >= 0x9)
+		return 1;
+	else
+		return 0;
 }
 
 #endif /* CONFIG_BATTERY_SEC */
@@ -5319,9 +5313,6 @@ static void __init samsung_m2_init(void)
 #ifndef CONFIG_S5C73M3
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
 #endif
-#ifdef CONFIG_BATTERY_SEC
-	check_highblock_temp();
-#endif /*CONFIG_BATTERY_SEC*/
 	msm8960_init_pmic();
 	msm8960_i2c_init();
 	msm8960_gfx_init();

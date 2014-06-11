@@ -24,6 +24,7 @@ $(INV_MODULE_NAME)-objs += mpu-dev.o
 $(INV_MODULE_NAME)-objs += mlsl-kernel.o
 $(INV_MODULE_NAME)-objs += mldl_cfg.o
 $(INV_MODULE_NAME)-objs += mldl_print_cfg.o
+$(INV_MODULE_NAME)-objs += mpu6050_selftest.o
 
 ifdef CONFIG_INPUT_YAS_MAGNETOMETER
 $(INV_MODULE_NAME)-objs += compass/yas530_ext.o

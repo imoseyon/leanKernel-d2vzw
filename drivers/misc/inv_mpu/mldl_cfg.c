@@ -746,7 +746,7 @@ static int mpu_set_slave_mpu60xx(struct mldl_cfg *mldl_cfg,
 		    0))
 		return 0;
 
-	result = mpu_set_i2c_bypass(mldl_cfg, gyro_handle, true);
+	mpu_set_i2c_bypass(mldl_cfg, gyro_handle, true);
 
 	/* Address */
 	result = inv_serial_single_write(gyro_handle,
@@ -942,7 +942,7 @@ static int mpu_set_slave(struct mldl_cfg *mldl_cfg,
  */
 static int mpu_was_reset(struct mldl_cfg *mldl_cfg, void *gyro_handle)
 {
-	int result = INV_SUCCESS;
+	int result;
 	unsigned char reg;
 
 	result = inv_serial_read(gyro_handle, mldl_cfg->mpu_chip_info->addr,
@@ -1124,7 +1124,7 @@ static int gyro_resume(struct mldl_cfg *mldl_cfg, void *gyro_handle,
 
 	reg = MPUREG_GYRO_CONFIG_VALUE(0, 0, 0,
 				       mldl_cfg->mpu_gyro_cfg->full_scale);
-	result = inv_serial_single_write(
+	inv_serial_single_write(
 		gyro_handle, mldl_cfg->mpu_chip_info->addr,
 		MPUREG_GYRO_CONFIG, reg);
 	reg = MPUREG_CONFIG_VALUE(mldl_cfg->mpu_gyro_cfg->ext_sync,
@@ -1685,7 +1685,7 @@ int inv_mpu_resume(struct mldl_cfg *mldl_cfg,
 	slave_handle[EXT_SLAVE_TYPE_ACCEL] = accel_handle;
 	slave_handle[EXT_SLAVE_TYPE_COMPASS] = compass_handle;
 	slave_handle[EXT_SLAVE_TYPE_PRESSURE] = pressure_handle;
-	pr_info("Sensors set: %lu\n", sensors);
+	pr_info("Sensors set: %lx\n", sensors);
 
 	mldl_print_cfg(mldl_cfg);
 
@@ -1835,7 +1835,7 @@ int inv_mpu_suspend(struct mldl_cfg *mldl_cfg,
 	bool suspend_dmp = ((sensors & INV_DMP_PROCESSOR) == INV_DMP_PROCESSOR);
 	bool suspend_slave[EXT_SLAVE_NUM_TYPES];
 	void *slave_handle[EXT_SLAVE_NUM_TYPES];
-	pr_info("Sensors unset: %lu\n", sensors);
+	pr_info("Sensors unset: %lx\n", sensors);
 	suspend_slave[EXT_SLAVE_TYPE_GYROSCOPE] =
 		((sensors & (INV_X_GYRO | INV_Y_GYRO | INV_Z_GYRO))
 			== (INV_X_GYRO | INV_Y_GYRO | INV_Z_GYRO));

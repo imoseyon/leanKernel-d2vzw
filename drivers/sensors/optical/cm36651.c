@@ -21,6 +21,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/i2c.h>
+#include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
@@ -35,9 +36,8 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/i2c/cm36651.h>
-#include <linux/module.h>
 #include <linux/regulator/consumer.h>
-
+#include <linux/sensors_core.h>
 /* Intelligent Cancelation*/
 #define CM36651_CANCELATION
 #ifdef CM36651_CANCELATION
@@ -382,7 +382,7 @@ static int proximity_store_cancelation(struct device *dev, bool do_calib)
 	set_fs(KERNEL_DS);
 
 	cancel_filp = filp_open(CANCELATION_FILE_PATH,
-			O_CREAT | O_TRUNC | O_WRONLY, 0666);
+			O_CREAT | O_TRUNC | O_WRONLY | O_SYNC, 0666);
 	if (IS_ERR(cancel_filp)) {
 		pr_err("%s: Can't open cancelation file\n", __func__);
 		set_fs(old_fs);
@@ -708,7 +708,7 @@ static DEVICE_ATTR(raw_data, S_IRUGO, lightsensor_lux_show, NULL);
 static irqreturn_t cm36651_irq_thread_fn(int irq, void *data)
 {
 	struct cm36651_data *cm36651 = data;
-	u8 val = 1;
+	u8 val;
 	u8 ps_data = 0;
 
 	val = gpio_get_value_cansleep(cm36651->pdata->irq);
@@ -777,7 +777,7 @@ static int cm36651_setup_reg(struct cm36651_data *cm36651)
 
 static int cm36651_setup_irq(struct cm36651_data *cm36651)
 {
-	int rc = -EIO;
+	int rc;
 	struct cm36651_platform_data *pdata = cm36651->pdata;
 
 	rc = gpio_request(pdata->irq, "gpio_proximity_out");
@@ -904,7 +904,6 @@ static int cm36651_i2c_probe(struct i2c_client *client,
 	int retry = 4;
 	struct cm36651_data *cm36651 = NULL;
 	struct cm36651_platform_data *pdata = client->dev.platform_data;
-
 	if (!pdata) {
 		pr_err("%s: missing pdata!\n", __func__);
 		return ret;

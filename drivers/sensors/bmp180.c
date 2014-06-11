@@ -29,7 +29,7 @@
 #include <linux/workqueue.h>
 #include <linux/uaccess.h>
 #include <linux/input/bmp180.h>
-
+#include <linux/sensors_core.h>
 #define BMP180_DRV_NAME		"bmp180"
 #define DRIVER_VERSION		"1.0"
 
@@ -189,8 +189,8 @@ static int bmp180_get_raw_pressure(struct bmp180_data *barom,
 
 static int bmp180_get_pressure_data_body(struct bmp180_data *barom)
 {
-	u16 raw_temperature = 0;
-	u32 raw_pressure = 0;
+	u16 raw_temperature;
+	u32 raw_pressure;
 	long x1, x2, x3, b3, b5, b6;
 	unsigned long b4, b7;
 	long p;

@@ -3,6 +3,7 @@
 #
 
 # Object files in subdirectories
+obj-$(CONFIG_INPUT_YAS_ACCELEROMETER)		+= accelerometer/
 obj-$(CONFIG_INPUT_YAS_MAGNETOMETER)		+= geomagnetic/
 obj-$(CONFIG_INPUT_YAS_ORIENTATION) +=  yas532_orient.o
 obj-y	+= optical/

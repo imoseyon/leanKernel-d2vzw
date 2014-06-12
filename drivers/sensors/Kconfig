@@ -6,6 +6,7 @@ menuconfig INPUT_YAS_SENSORS
 	  Sensors.
 
 if INPUT_YAS_SENSORS
+source "drivers/sensors/accelerometer/Kconfig"
 source "drivers/sensors/geomagnetic/Kconfig"
 endif # INPUT_YAS_SENSORS
 source "drivers/sensors/optical/Kconfig"

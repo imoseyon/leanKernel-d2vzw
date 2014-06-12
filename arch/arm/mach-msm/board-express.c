@@ -2078,17 +2078,6 @@ static struct mpu_platform_data mpu_data_00 = {
 };
 #endif /*CONFIG_MPU_SENSORS_MPU6050B1 */
 
-#ifdef CONFIG_INPUT_YAS_SENSORS
-static struct yas_platform_data geomagnetic_pdata;
-static int __init yas_platform_data_init(void)
-{
-if (system_rev < BOARD_REV05)
-	geomagnetic_pdata.mag_orientation = YAS532_POSITION_0;
-else
-	geomagnetic_pdata.mag_orientation = YAS532_POSITION_1;
-}
-#endif
-
 #if defined(CONFIG_SENSORS_AK8975) || defined(CONFIG_INPUT_BMP180) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1_411) || \
@@ -2158,7 +2147,6 @@ static struct i2c_board_info sns_i2c_board_info[] = {
 	},
 	{
 		I2C_BOARD_INFO("geomagnetic", 0x2e),
-		.platform_data = &geomagnetic_pdata
 	},
 
 #endif
@@ -5564,9 +5552,6 @@ static void __init samsung_express_init(void)
 	defined(CONFIG_OPTICAL_GP2AP020A00F) || \
 	defined(CONFIG_OPTICAL_TAOS_TRITON)
 	opt_init();
-#endif
-#ifdef CONFIG_INPUT_YAS_SENSORS
-	yas_platform_data_init();
 #endif
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	cypress_init();

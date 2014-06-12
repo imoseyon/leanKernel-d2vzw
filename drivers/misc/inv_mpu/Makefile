@@ -4,15 +4,11 @@
 #
 
 # MPU
-ifdef CONFIG_MPU_SENSORS_MPU3050_411
+ifdef CONFIG_MPU_SENSORS_MPU3050_GYRO
 INV_MODULE_NAME := mpu3050
 endif
 
-ifdef CONFIG_MPU_SENSORS_MPU6050A2_411
-INV_MODULE_NAME := mpu6050
-endif
-
-ifdef CONFIG_MPU_SENSORS_MPU6050B1_411
+ifdef CONFIG_MPU_SENSORS_MPU6050_GYRO
 INV_MODULE_NAME := mpu6050
 endif
 
@@ -24,17 +20,15 @@ $(INV_MODULE_NAME)-objs += mpu-dev.o
 $(INV_MODULE_NAME)-objs += mlsl-kernel.o
 $(INV_MODULE_NAME)-objs += mldl_cfg.o
 $(INV_MODULE_NAME)-objs += mldl_print_cfg.o
+ifdef CONFIG_MPU_SENSORS_MPU6050_SELFTEST
 $(INV_MODULE_NAME)-objs += mpu6050_selftest.o
+endif
 
 ifdef CONFIG_INPUT_YAS_MAGNETOMETER
 $(INV_MODULE_NAME)-objs += compass/yas530_ext.o
 endif
 
-ifdef CONFIG_MPU_SENSORS_MPU6050A2_411
-$(INV_MODULE_NAME)-objs += accel/mpu6050.o
-endif
-
-ifdef CONFIG_MPU_SENSORS_MPU6050B1_411
+ifdef CONFIG_MPU_SENSORS_MPU6050_GYRO
 $(INV_MODULE_NAME)-objs += accel/mpu6050.o
 endif
 

@@ -414,6 +414,7 @@ static int __init do_early_param(char *param, char *val)
 		if ((strncmp(val, "charger", 7) == 0) ||
 		    (strncmp(val, "true", 4) == 0)) {
 			poweroff_charging = 1;
+		}
 	}
 #endif
 

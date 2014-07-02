@@ -4429,25 +4429,25 @@ static struct platform_device msm_rpm_log_device = {
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[1] = {
 		.adc_high	= 630,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
 		.adc_high	= 1720,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
 	[3] = {
 		.adc_high	= 9999,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
@@ -4471,7 +4471,7 @@ static struct sec_jack_buttons_zone jack_buttons_zones[] = {
 		.adc_high	= 450,
 	},
 };
-
+/*
 static int get_sec_det_jack_state(void)
 {
 	return (gpio_get_value_cansleep(
@@ -4505,7 +4505,7 @@ static int get_sec_send_key_state(void)
 
 	return 0;
 }
-
+*/
 static void set_sec_micbias_state(bool state)
 {
 	pr_info("sec_jack: ear micbias %s\n", state ? "on" : "off");
@@ -4534,18 +4534,15 @@ static int sec_jack_get_adc_value(void)
 }
 
 static struct sec_jack_platform_data sec_jack_data = {
-	.get_det_jack_state	= get_sec_det_jack_state,
-	.get_send_key_state	= get_sec_send_key_state,
 	.set_micbias_state	= set_sec_micbias_state,
 	.get_adc_value		= sec_jack_get_adc_value,
 	.zones			= jack_zones,
 	.num_zones		= ARRAY_SIZE(jack_zones),
 	.buttons_zones		= jack_buttons_zones,
 	.num_buttons_zones	= ARRAY_SIZE(jack_buttons_zones),
-	.det_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_EAR_DET),
-	.send_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_SHORT_SENDEND),
+	.det_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_DET),
+	.send_end_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_SHORT_SENDEND),
+	.send_end_active_high	= false,
 };
 
 static struct platform_device sec_device_jack = {
@@ -5374,7 +5371,7 @@ static void codec_power_en_gpio_init(void)
 	}
 }
 
-void main_mic_bias_init(void)
+int main_mic_bias_init(void)
 {
 	int ret;
 	ret = gpio_request(gpio_rev(GPIO_MAIN_MIC_BIAS), "LDO_BIAS");
@@ -5382,9 +5379,10 @@ void main_mic_bias_init(void)
 		pr_err("%s: ldo bias gpio %d request"
 				"failed\n", __func__,
 				gpio_rev(GPIO_MAIN_MIC_BIAS));
-		return;
+		return ret;
 	}
 	gpio_direction_output(gpio_rev(GPIO_MAIN_MIC_BIAS), 0);
+	return 0
 }
 
 static void __init msm8960ab_update_krait_spm(void)

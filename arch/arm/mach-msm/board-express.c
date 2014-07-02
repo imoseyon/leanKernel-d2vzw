@@ -2078,17 +2078,6 @@ static struct mpu_platform_data mpu_data_00 = {
 };
 #endif /*CONFIG_MPU_SENSORS_MPU6050B1 */
 
-#ifdef CONFIG_INPUT_YAS_SENSORS
-static struct yas_platform_data geomagnetic_pdata;
-static int __init yas_platform_data_init(void)
-{
-if (system_rev < BOARD_REV05)
-	geomagnetic_pdata.mag_orientation = YAS532_POSITION_0;
-else
-	geomagnetic_pdata.mag_orientation = YAS532_POSITION_1;
-}
-#endif
-
 #if defined(CONFIG_SENSORS_AK8975) || defined(CONFIG_INPUT_BMP180) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1) || \
 	defined(CONFIG_MPU_SENSORS_MPU6050B1_411) || \
@@ -2158,7 +2147,6 @@ static struct i2c_board_info sns_i2c_board_info[] = {
 	},
 	{
 		I2C_BOARD_INFO("geomagnetic", 0x2e),
-		.platform_data = &geomagnetic_pdata
 	},
 
 #endif
@@ -4568,19 +4556,19 @@ static struct platform_device msm_rpm_log_device = {
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[1] = {
 		.adc_high	= 630,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
 		.adc_high	= 9999,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
@@ -4616,7 +4604,7 @@ static int get_sec_l_jack_state(void)
 		return 1;
 }
 #endif
-
+/*
 static int get_sec_det_jack_state(void)
 {
 	return (gpio_get_value_cansleep(
@@ -4650,7 +4638,7 @@ static int get_sec_send_key_state(void)
 
 	return 0;
 }
-
+*/
 static void set_sec_micbias_state(bool state)
 {
 	pr_info("sec_jack: ear micbias %s\n", state ? "on" : "off");
@@ -4682,18 +4670,15 @@ static struct sec_jack_platform_data sec_jack_data = {
 #if defined(CONFIG_SAMSUNG_JACK_GNDLDET)
 	.get_gnd_jack_state	= get_sec_l_jack_state,
 #endif
-	.get_det_jack_state	= get_sec_det_jack_state,
-	.get_send_key_state	= get_sec_send_key_state,
 	.set_micbias_state	= set_sec_micbias_state,
 	.get_adc_value		= sec_jack_get_adc_value,
 	.zones			= jack_zones,
 	.num_zones		= ARRAY_SIZE(jack_zones),
 	.buttons_zones		= jack_buttons_zones,
 	.num_buttons_zones	= ARRAY_SIZE(jack_buttons_zones),
-	.det_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_EAR_DET),
-	.send_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_SHORT_SENDEND),
+	.det_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_DET),
+	.send_end_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_SHORT_SENDEND),
+	.send_end_active_high	= false,
 };
 
 static struct platform_device sec_device_jack = {
@@ -5567,9 +5552,6 @@ static void __init samsung_express_init(void)
 	defined(CONFIG_OPTICAL_GP2AP020A00F) || \
 	defined(CONFIG_OPTICAL_TAOS_TRITON)
 	opt_init();
-#endif
-#ifdef CONFIG_INPUT_YAS_SENSORS
-	yas_platform_data_init();
 #endif
 #ifdef CONFIG_KEYBOARD_CYPRESS_TOUCH_236
 	cypress_init();

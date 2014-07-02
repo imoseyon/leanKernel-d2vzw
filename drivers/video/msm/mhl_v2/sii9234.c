@@ -198,7 +198,6 @@ u8 mhl_onoff_ex(bool onoff)
 		if (sii9234->pdata->hw_reset)
 			sii9234->pdata->hw_reset();
 #ifdef CONFIG_MHL_D3_SUPPORT
-		detached_status = 0;
 		d3_mode_rgnd_state = 0;
 		schedule_work(&sii9234->rgnd_work);
 		return 2;
@@ -1237,12 +1236,6 @@ static void goto_d3(struct work_struct *work)
 	u8 value;
 
 	pr_debug("sii9234: detection started d3\n");
-
-	if (sii9234->pdata->power_state == false) {
-		pr_info("goto_d3: mhl power_state is false  (exit recommended)\n");
-		goto exit;
-	}
-
 	sii9234_callback_sched = 0;
 
 	sii9234->mhl_status_value.linkmode = MHL_STATUS_CLK_MODE_NORMAL;
@@ -1409,7 +1402,7 @@ static void goto_d3(struct work_struct *work)
 		sii9234_enable_irq();
 	goto exit;
 unhandled:
-	if (detached_status == 1)
+	if (sii9234->pdata->power_state == false)
 		pr_info("already mhl_state off\n");
 	else {
 		if (sii9234->pdata->hw_reset)

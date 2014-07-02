@@ -14,6 +14,7 @@
 #define __HDMI_MSM_H__
 
 #include <mach/msm_iomap.h>
+#include <linux/switch.h>
 #include "external_common.h"
 /* #define PORT_DEBUG */
 
@@ -104,13 +105,17 @@ struct hdmi_msm_state_type {
 	struct clk *hdmi_s_pclk;
 	void __iomem *qfprom_io;
 	void __iomem *hdmi_io;
-#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
-		defined(CONFIG_VIDEO_MHL_TAB_V2)
-	boolean mhl_hpd_state;
-#endif
+
 	struct external_common_state_type common;
 	boolean is_mhl_enabled;
 	struct completion hpd_event_processed;
+	struct switch_dev	hdmi_audio_switch;
+	struct switch_dev	hdmi_audio_ch;
+	boolean hpd_on_offline;
+	boolean mhl_hpd_state;
+#if !defined CONFIG_SAMSUNG_MHL_8240
+	boolean boot_completion;
+#endif
 };
 
 extern struct hdmi_msm_state_type *hdmi_msm_state;

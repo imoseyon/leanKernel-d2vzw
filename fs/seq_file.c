@@ -134,6 +134,7 @@ static int traverse(struct seq_file *m, loff_t offset)
 Eoverflow:
 	m->op->stop(m, p);
 	is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
+	m->count = 0;
 	m->buf = kmalloc(m->size <<= 1, GFP_KERNEL | __GFP_NOWARN);
 	if (!m->buf)
 		m->buf = vmalloc(m->size);
@@ -232,12 +233,12 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 			goto Fill;
 		m->op->stop(m, p);
 		is_vmalloc_addr(m->buf) ? vfree(m->buf) : kfree(m->buf);
+		m->count = 0;
 		m->buf = kmalloc(m->size <<= 1, GFP_KERNEL | __GFP_NOWARN);
 		if (!m->buf)
 			m->buf = vmalloc(m->size);
 		if (!m->buf)
 			goto Enomem;
-		m->count = 0;
 		m->version = 0;
 		pos = m->index;
 		p = m->op->start(m, &pos);
@@ -330,6 +331,8 @@ loff_t seq_lseek(struct file *file, loff_t offset, int origin)
 					m->read_pos = offset;
 					retval = file->f_pos = offset;
 				}
+			} else {
+				file->f_pos = offset;
 			}
 	}
 	file->f_version = m->version;

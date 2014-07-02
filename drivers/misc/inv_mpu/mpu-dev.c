@@ -35,7 +35,7 @@
 #include <linux/suspend.h>
 #include <linux/poll.h>
 #include <linux/delay.h>
-
+#include <linux/sensors_core.h>
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
@@ -74,7 +74,9 @@
 #define MPU_EARLY_SUSPEND_IN_DRIVER 1
 
 #define CALIBRATION_FILE_PATH	"/efs/calibration_data"
+#define CALIBRATION_GYRO_FILE_PATH	"/efs/gyro_cal_data"
 #define CALIBRATION_DATA_AMOUNT	100
+#include "mpu6050_selftest.h"
 
 struct acc_data cal_data = {0, 0, 0};
 
@@ -114,6 +116,7 @@ struct mpu_private_data {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
+	int gyro_bias[3];
 };
 
 static struct i2c_client *this_client;
@@ -179,7 +182,6 @@ int read_accel_raw_xyz(struct acc_data *acc)
 	    (struct mpu_private_data *) i2c_get_clientdata(this_client);
 	struct i2c_client *client = mpu->client;
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
-	int retval = 0;
 	unsigned char data[6];
 
 	struct i2c_adapter *slave_adapter[EXT_SLAVE_NUM_TYPES];
@@ -197,7 +199,7 @@ int read_accel_raw_xyz(struct acc_data *acc)
 	slave_adapter[EXT_SLAVE_TYPE_GYROSCOPE] = client->adapter;
 
 
-	retval = inv_serial_read(slave_adapter[EXT_SLAVE_TYPE_ACCEL],
+	inv_serial_read(slave_adapter[EXT_SLAVE_TYPE_ACCEL],
 		0x68, 0x3B, 6, data);
 
 	x = (s16)((data[0] << 8) | data[1]) / cal_div;
@@ -1563,6 +1565,97 @@ static ssize_t mpu3050_get_temp(struct device *dev,
 	return count;
 }
 
+static int gyro_do_calibrate(void)
+{
+	struct file *cal_filp;
+	int err;
+	mm_segment_t old_fs = {0};
+		struct mpu_private_data *mpu =
+	    (struct mpu_private_data *) i2c_get_clientdata(this_client);
+	pr_info("%s: cal data (%d,%d,%d)\n", __func__,
+			mpu->gyro_bias[0], mpu->gyro_bias[1],
+				mpu->gyro_bias[2]);
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+	cal_filp = filp_open(CALIBRATION_GYRO_FILE_PATH,
+			O_CREAT | O_TRUNC | O_WRONLY,
+			S_IRUGO | S_IWUSR | S_IWGRP);
+	if (IS_ERR(cal_filp)) {
+		pr_err("%s: Can't open calibration file\n", __func__);
+		set_fs(old_fs);
+		err = PTR_ERR(cal_filp);
+		goto done;
+	}
+	err = cal_filp->f_op->write(cal_filp,
+		(char *)&mpu->gyro_bias, 3 * sizeof(int),
+			&cal_filp->f_pos);
+	if (err != 3 * sizeof(int)) {
+		pr_err("%s: Can't write the cal data to file\n", __func__);
+		err = -EIO;
+	}
+
+	filp_close(cal_filp, current->files);
+done:
+	set_fs(old_fs);
+	return err;
+}
+
+static ssize_t mpu6050_input_gyro_selftest_show(struct device *dev,
+					struct device_attribute *attr,
+						char *buf)
+{
+	int scaled_gyro_bias[3] = {0};
+	int scaled_gyro_rms[3] = {0};
+	int packet_count[3] = {0};
+	int ratio[3] = {0};
+	int result;
+	int hw_result;
+	struct mpu_private_data *mpu =
+	    (struct mpu_private_data *) i2c_get_clientdata(this_client);
+	hw_result = mpu6050_gyro_hw_self_check(mpu->client,
+					ratio);
+
+	result = mpu6050_selftest_run(mpu->client,
+					packet_count,
+					scaled_gyro_bias,
+					scaled_gyro_rms,
+					mpu->gyro_bias);
+	if (!result) {
+			gyro_do_calibrate();
+	} else {
+		mpu->gyro_bias[0] = 0;
+		mpu->gyro_bias[1] = 0;
+		mpu->gyro_bias[2] = 0;
+		result = -1;
+	}
+
+	return sprintf(buf, "%d,"
+		       "%d.%03d,%d.%03d,%d.%03d,"
+		       "%d.%03d,%d.%03d,%d.%03d,"
+			"%d.%01d,%d.%01d,%d.%01d,"
+		       "%d,%d,%d\n",
+		       result | hw_result,
+		       (int)abs(scaled_gyro_bias[0] / 1000),
+		       (int)abs(scaled_gyro_bias[0]) % 1000,
+		       (int)abs(scaled_gyro_bias[1] / 1000),
+		       (int)abs(scaled_gyro_bias[1]) % 1000,
+		       (int)abs(scaled_gyro_bias[2] / 1000),
+		       (int)abs(scaled_gyro_bias[2]) % 1000,
+		       scaled_gyro_rms[0] / 1000,
+		       (int)abs(scaled_gyro_rms[0]) % 1000,
+		       scaled_gyro_rms[1] / 1000,
+		       (int)abs(scaled_gyro_rms[1]) % 1000,
+		       scaled_gyro_rms[2] / 1000,
+		       (int)abs(scaled_gyro_rms[2]) % 1000,
+		       (int)abs(ratio[0]/10),
+		       (int)abs(ratio[0])%10,
+		       (int)abs(ratio[1]/10),
+		       (int)abs(ratio[1])%10,
+		       (int)abs(ratio[2]/10),
+		       (int)abs(ratio[2])%10,
+		       packet_count[0], packet_count[1], packet_count[2]);
+}
 static ssize_t mpu3050_acc_read(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1573,7 +1666,6 @@ static ssize_t mpu3050_acc_read(struct device *dev,
 	    (struct mpu_private_data *) i2c_get_clientdata(this_client);
 	struct i2c_client *client = mpu->client;
 	struct mldl_cfg *mldl_cfg = &mpu->mldl_cfg;
-	int retval = 0;
 	unsigned char data[6];
 
 	struct i2c_adapter *slave_adapter[EXT_SLAVE_NUM_TYPES];
@@ -1590,7 +1682,7 @@ static ssize_t mpu3050_acc_read(struct device *dev,
 	slave_adapter[EXT_SLAVE_TYPE_GYROSCOPE] = client->adapter;
 
 
-	retval = inv_serial_read(slave_adapter[EXT_SLAVE_TYPE_ACCEL],
+	inv_serial_read(slave_adapter[EXT_SLAVE_TYPE_ACCEL],
 		0x68, 0x3B, 6, data);
 
 	x = (s16)(((data[0] << 8) | data[1]) - cal_data.x);/*CAL_DIV;*/
@@ -2062,24 +2154,23 @@ static ssize_t ak8975c_get_status(struct device *dev,
 int ak8975c_selftest(struct i2c_adapter *slave_adapter,
 	struct ak8975_private_data *private_data, int *sf)
 {
-	int err;
 	u8 data;
 	u8 buf[6];
 	int count = 20;
 	s16 x, y, z;
 
 	/* set ATSC self test bit to 1 */
-	err = inv_serial_single_write(slave_adapter, 0x0C,
+	inv_serial_single_write(slave_adapter, 0x0C,
 	AK8975_REG_ASTC, 0x40);
 
 	/* start self test */
-	err = inv_serial_single_write(slave_adapter, 0x0C,
+	inv_serial_single_write(slave_adapter, 0x0C,
 	AK8975_REG_CNTL, AK8975_MODE_SELF_TEST);
 
 	/* wait for data ready */
 	while (1) {
 		msleep(20);
-		err = inv_serial_read(slave_adapter, 0x0C,
+		inv_serial_read(slave_adapter, 0x0C,
 			AK8975_REG_ST1, sizeof(data), &data);
 
 		if (data == 1)
@@ -2088,11 +2179,11 @@ int ak8975c_selftest(struct i2c_adapter *slave_adapter,
 		if (!count)
 			break;
 	}
-	err = inv_serial_read(slave_adapter, 0x0C,
+	inv_serial_read(slave_adapter, 0x0C,
 					AK8975_REG_HXL, sizeof(buf), buf);
 
 		/* set ATSC self test bit to 0 */
-	err = inv_serial_single_write(slave_adapter, 0x0C,
+	inv_serial_single_write(slave_adapter, 0x0C,
 					AK8975_REG_ASTC, 0x00);
 
 	x = buf[0] | (buf[1] << 8);
@@ -2200,7 +2291,8 @@ static ssize_t akm_name_show(struct device *dev,
 static DEVICE_ATTR(power_on, S_IRUGO, mpu3050_power_on, NULL);
 
 static DEVICE_ATTR(temperature, S_IRUGO,	mpu3050_get_temp, NULL);
-
+static struct device_attribute dev_attr_gyro_selftest =
+	__ATTR(selftest, S_IRUGO, mpu6050_input_gyro_selftest_show, NULL);
 static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP,
 	accel_calibration_show, accel_calibration_store);
 
@@ -2242,7 +2334,7 @@ static struct device_attribute *gyro_sensor_attrs[] = {
 	&dev_attr_temperature,
 	&dev_attr_vendor,
 	&dev_attr_name,
-/*	&dev_attr_selftest,*/
+	&dev_attr_gyro_selftest,
 	NULL,
 };
 

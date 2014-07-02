@@ -47,6 +47,14 @@ config MPU_SENSORS_MPU6050B1_411
 	  This driver can also be built as a module.  If so, the module
 	  will be called mpu6050b1.
 
+config MPU_SENSORS_MPU6050B1_411
+	bool "Self-test of Invensense MPU-6050 sensor"
+	default n
+	help
+	  Say Y here if you want support for self-test of the MPU-6050 sensor
+	  device.
+	  To compile this driver as a module, choose M here: the
+	  module will be called MPU6050.
 endchoice
 
 choice

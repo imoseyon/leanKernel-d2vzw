@@ -5,7 +5,6 @@ menuconfig INV_SENSORS_ACCELEROMETERS
 	  Say Y here to get to see options for device drivers for various
 	  accelerometrs for integration with the MPU3050 or MPU6050 driver.
 	  This option alone does not add any kernel code.
-
 	  If you say N, all options in this submenu will be skipped and disabled.
 
 if INV_SENSORS_ACCELEROMETERS

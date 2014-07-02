@@ -1509,7 +1509,7 @@ static void fsa9485_smartdock_cb(bool attached)
 static void fsa9485_audio_dock_cb(bool attached)
 {
 	pr_info("fsa9485_audio_dock_cb attached %d\n", attached);
-	switch_set_state(&switch_dock, attached ? 7 : 0);
+
 //	msm_otg_set_smartdock_state(attached);
 }
 
@@ -1755,13 +1755,7 @@ static struct i2c_board_info mhl_i2c_board_info[] = {
 #endif
 
 #ifdef CONFIG_BATTERY_SEC
-static int is_sec_battery_using(void)
-{
-	if (system_rev >= 0x9)
-		return 1;
-	else
-		return 0;
-}
+static int is_sec_battery_using(void);
 
 int check_battery_type(void)
 {
@@ -1774,50 +1768,22 @@ static struct sec_bat_platform_data sec_bat_pdata = {
 	.get_cable_type	= msm8960_get_cable_type,
 	.sec_battery_using = is_sec_battery_using,
 	.check_batt_type = check_battery_type,
-	.charge_duration = 8 * 60 * 60,
-	.recharge_duration = 2 * 60 * 60,
-	.max_voltage = 4350 * 1000,
-#if defined(_d2mtr_) || defined(_d2cri_)
 	.iterm = 150,
-	.recharge_voltage = 4300 * 1000,
-#else
-	.iterm = 100,
+	.charge_duration = 6 * 60 * 60,
+	.wpc_charge_duration = 8 * 60 * 60,
+	.recharge_duration = 1.5 * 60 * 60,
+	.max_voltage = 4350 * 1000,
 	.recharge_voltage = 4280 * 1000,
-#endif
-
-#if defined(_d2usc_)
 	.event_block = 600,
-	.high_block = 600,
-	.high_recovery = 440,
+	.high_block = 500,
+	.high_recovery = 450,
 	.low_block = -50,
-	.low_recovery = -10,
-	.lpm_high_block = 600,
-	.lpm_high_recovery = 440,
-	.lpm_low_block = -40,
-	.lpm_low_recovery = -10,
-#elif defined(_d2mtr_) || defined(_d2cri_)
-	.event_block = 610,
-	.high_block = 610,
-	.high_recovery = 440,
-	.low_block = -40,
-	.low_recovery = -5,
-	.lpm_high_block = 610,
-	.lpm_high_recovery = 440,
-	.lpm_low_block = -40,
-	.lpm_low_recovery = -5,
-#else /* _d2vzw_ */
-	.event_block = 600,
-	.high_block = 510,
-	.high_recovery = 440,
-	.high_recovery_wpc = 490,
-	.low_block = -50,
-	.low_recovery = -10,
-	.lpm_high_block = 470,
-	.lpm_high_recovery = 440,
-	.lpm_low_block = -40,
-	.lpm_low_recovery = -10,
-#endif
-	.wpc_charging_current = 700,
+	.low_recovery = 0,
+	.lpm_high_block = 480,
+	.lpm_high_recovery = 450,
+	.lpm_low_block = -50,
+	.lpm_low_recovery = 0,
+	.wpc_charging_current = 500,
 };
 
 static struct platform_device sec_device_battery = {
@@ -1826,10 +1792,15 @@ static struct platform_device sec_device_battery = {
 	.dev.platform_data = &sec_bat_pdata,
 };
 
-static void check_highblock_temp(void)
+static int is_sec_battery_using(void)
 {
 	if (system_rev < 0xd)
 		sec_bat_pdata.high_block = 600;
+
+	if (system_rev >= 0x9)
+		return 1;
+	else
+		return 0;
 }
 
 #endif /* CONFIG_BATTERY_SEC */
@@ -3994,12 +3965,9 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi1_pdata = {
 #endif
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi3_pdata = {
-	.clk_freq = 400000,
+	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
 };
-void msm_i2c_bwreset(int freq) {
-	msm8960_i2c_qup_gsbi3_pdata.clk_freq = freq;
-}
 
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi7_pdata = {
 	.clk_freq = 100000,
@@ -4233,25 +4201,25 @@ static struct platform_device msm_rpm_log_device = {
 static struct sec_jack_zone jack_zones[] = {
 	[0] = {
 		.adc_high	= 3,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[1] = {
 		.adc_high	= 630,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_3POLE,
 	},
 	[2] = {
 		.adc_high	= 1720,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
 	[3] = {
 		.adc_high	= 9999,
-		.delay_ms	= 10,
+		.delay_us	= 10000,
 		.check_count	= 10,
 		.jack_type	= SEC_HEADSET_4POLE,
 	},
@@ -4275,7 +4243,7 @@ static struct sec_jack_buttons_zone jack_buttons_zones[] = {
 		.adc_high	= 450,
 	},
 };
-
+/*
 static int get_sec_det_jack_state(void)
 {
 	return (gpio_get_value_cansleep(
@@ -4309,7 +4277,7 @@ static int get_sec_send_key_state(void)
 
 	return 0;
 }
-
+*/
 static void set_sec_micbias_state(bool state)
 {
 	pr_info("sec_jack: ear micbias %s\n", state ? "on" : "off");
@@ -4338,18 +4306,15 @@ static int sec_jack_get_adc_value(void)
 }
 
 static struct sec_jack_platform_data sec_jack_data = {
-	.get_det_jack_state	= get_sec_det_jack_state,
-	.get_send_key_state	= get_sec_send_key_state,
 	.set_micbias_state	= set_sec_micbias_state,
 	.get_adc_value		= sec_jack_get_adc_value,
 	.zones			= jack_zones,
 	.num_zones		= ARRAY_SIZE(jack_zones),
 	.buttons_zones		= jack_buttons_zones,
 	.num_buttons_zones	= ARRAY_SIZE(jack_buttons_zones),
-	.det_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_EAR_DET),
-	.send_int		= PM8921_GPIO_IRQ(PM8921_IRQ_BASE,
-						PMIC_GPIO_SHORT_SENDEND),
+	.det_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_EAR_DET),
+	.send_end_gpio		= PM8921_GPIO_PM_TO_SYS(PMIC_GPIO_SHORT_SENDEND),
+	.send_end_active_high	= false,
 };
 
 static struct platform_device sec_device_jack = {
@@ -5018,6 +4983,10 @@ struct i2c_registry cmc624_max8952_i2c_devices = {
 	/* Build the matching 'supported_machs' bitmask */
 	if (machine_is_msm8960_cdp())
 		mach_mask = I2C_SURF;
+	else if (machine_is_msm8960_rumi3())
+		mach_mask = I2C_RUMI;
+	else if (machine_is_msm8960_sim())
+		mach_mask = I2C_SIM;
 	else if (machine_is_msm8960_fluid())
 		mach_mask = I2C_FLUID;
 	else if (machine_is_msm8960_liquid())
@@ -5181,16 +5150,17 @@ static int secjack_gpio_init(void)
 }
 #endif
 
-void main_mic_bias_init(void)
+int main_mic_bias_init(void)
 {
 	int ret;
 	ret = gpio_request(GPIO_MAIN_MIC_BIAS, "LDO_BIAS");
 	if (ret) {
 		pr_err("%s: ldo bias gpio %d request"
 				"failed\n", __func__, GPIO_MAIN_MIC_BIAS);
-		return;
+		return ret;
 	}
 	gpio_direction_output(GPIO_MAIN_MIC_BIAS, 0);
+	return 0;
 }
 
 static int configure_codec_lineout_gpio(void)
@@ -5338,9 +5308,6 @@ static void __init samsung_m2_init(void)
 #ifndef CONFIG_S5C73M3
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
 #endif
-#ifdef CONFIG_BATTERY_SEC
-	check_highblock_temp();
-#endif /*CONFIG_BATTERY_SEC*/
 	msm8960_init_pmic();
 	msm8960_i2c_init();
 	msm8960_gfx_init();

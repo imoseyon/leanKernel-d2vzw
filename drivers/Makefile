@@ -126,7 +126,7 @@ obj-y				+= platform/
 obj-y				+= ieee802154/
 #common clk code
 obj-y				+= clk/
-obj-$(CONFIG_NEW_SENSORS)       += sensors/
+obj-$(CONFIG_SENSORS_CORE)	+= sensors/
 obj-$(CONFIG_BATTERY_SAMSUNG)   += battery/
 obj-$(CONFIG_VIBETONZ)		+= motor/
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/

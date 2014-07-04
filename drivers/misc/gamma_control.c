@@ -1,5 +1,6 @@
 /*
  * Copyright 2013 Francisco Franco
+ * 	     2014 Reworked for Samsung OLED, Luis Cruz
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -10,260 +11,292 @@
 #include <linux/device.h>
 #include <linux/miscdevice.h>
 
-#define GAMMACONTROL_VERSION 1
+#define GAMMACONTROL_VERSION 2
 
-/*
-#define g_white       0x40
-#define g_mids        0x44
-#define g_black       0x76
-#define g_contrast    0x1A
-#define g_brightness  0x00
-#define g_saturation  0x48
-#define g_greys       0x0A
-*/
+		//     r      g      b
+int v255_val[3]	= {    0,     0,     0};
+int v1_val[3]	= {    0,     0,     0};
+int v171_val[3]	= {    0,     0,     0};
+int v87_val[3]	= {    0,     0,     0};
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+int v59_val[3]	= {    0,     0,     0};
+int v35_val[3]	= {    0,     0,     0};
+int v15_val[3]	= {    0,     0,     0};
+#else
+int v43_val[3]	= {    0,     0,     0};
+int v19_val[3]	= {    0,     0,     0};
+#endif
 
-int whites_val = 50;
-int mids_val = 90;
-int blacks_val = 75;
-int contrast_val = 29;
-int brightness_val = 2;
-int saturation_val = 120;
-int greys_val = 20;
+extern void panel_load_colors(void);
 
-extern void update_vals(int array_pos);
-
-inline int get_whites(void)
+static ssize_t v255_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return whites_val;
+	return sprintf(buf, "%d %d %d\n", v255_val[0], v255_val[1], v255_val[2]);
 }
 
-inline int get_mids(void)
+static ssize_t v255_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-	return mids_val;
-}
+	int new_r, new_g, new_b;
 
-inline int get_blacks(void)
-{
-	return blacks_val;
-}
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-inline int get_contrast(void)
-{
-	return contrast_val;
-}
-
-inline int get_brightness(void)
-{
-	return brightness_val;
-}
-
-inline int get_saturation(void)
-{
-	return saturation_val;
-}
-
-inline int get_greys(void)
-{
-	return greys_val;
-}
-
-static ssize_t greys_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-    return sprintf(buf, "%d\n", greys_val);
-}
-
-static ssize_t greys_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
-{
-    int new_val;
-
-	sscanf(buf, "%d", &new_val);
-
-	if (new_val != greys_val) {
-		pr_info("New mids: %d\n", new_val);
-		greys_val = new_val;
-		update_vals(1);
+	if (new_r != v255_val[0] || new_g != v255_val[1] || new_b != v255_val[2]) {
+		pr_debug("New v255: %d %d %d\n", new_r, new_g, new_b);
+		v255_val[0] = new_r;
+		v255_val[1] = new_g;
+		v255_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t mids_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t v1_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", mids_val);
+	return sprintf(buf, "%d %d %d\n", v1_val[0], v1_val[1], v1_val[2]);
 }
 
-static ssize_t mids_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v1_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != mids_val) {
-		pr_info("New mids: %d\n", new_val);
-		mids_val = new_val;
-		update_vals(2);
+	if (new_r != v1_val[0] || new_g != v1_val[1] || new_b != v1_val[2]) {
+		pr_debug("New v1: %d %d %d\n", new_r, new_g, new_b);
+		v1_val[0] = new_r;
+		v1_val[1] = new_g;
+		v1_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t blacks_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t v171_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", blacks_val);
+	return sprintf(buf, "%d %d %d\n", v171_val[0], v171_val[1], v171_val[2]);
 }
 
-static ssize_t blacks_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v171_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != blacks_val) {
-		pr_info("New mids: %d\n", new_val);
-		blacks_val = new_val;
-		update_vals(3);
+	if (new_r != v171_val[0] || new_g != v171_val[1] || new_b != v171_val[2]) {
+		pr_debug("New v171: %d %d %d\n", new_r, new_g, new_b);
+		v171_val[0] = new_r;
+		v171_val[1] = new_g;
+		v171_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t contrast_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t v87_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", contrast_val);
+	return sprintf(buf, "%d %d %d\n", v87_val[0], v87_val[1], v87_val[2]);
 }
 
-static ssize_t contrast_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v87_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != contrast_val) {
-		pr_info("New mids: %d\n", new_val);
-		contrast_val = new_val;
-		update_vals(5);
+	if (new_r != v87_val[0] || new_g != v87_val[1] || new_b != v87_val[2]) {
+		pr_debug("New v87: %d %d %d\n", new_r, new_g, new_b);
+		v87_val[0] = new_r;
+		v87_val[1] = new_g;
+		v87_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t brightness_show(struct device *dev, struct device_attribute *attr, char *buf)
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+static ssize_t v59_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", brightness_val);
+	return sprintf(buf, "%d %d %d\n", v59_val[0], v59_val[1], v59_val[2]);
 }
 
-static ssize_t brightness_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v59_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != brightness_val) {
-		pr_info("New mids: %d\n", new_val);
-		brightness_val = new_val;
-		update_vals(6);
+	if (new_r != v59_val[0] || new_g != v59_val[1] || new_b != v59_val[2]) {
+		pr_debug("New v59: %d %d %d\n", new_r, new_g, new_b);
+		v59_val[0] = new_r;
+		v59_val[1] = new_g;
+		v59_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t saturation_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t v35_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", saturation_val);
+	return sprintf(buf, "%d %d %d\n", v35_val[0], v35_val[1], v35_val[2]);
 }
 
-static ssize_t saturation_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v35_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != saturation_val) {
-		pr_info("New mids: %d\n", new_val);
-		saturation_val = new_val;
-		update_vals(7);
+	if (new_r != v35_val[0] || new_g != v35_val[1] || new_b != v35_val[2]) {
+		pr_debug("New v35: %d %d %d\n", new_r, new_g, new_b);
+		v35_val[0] = new_r;
+		v35_val[1] = new_g;
+		v35_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
 
-static ssize_t whites_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t v15_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", whites_val);
+	return sprintf(buf, "%d %d %d\n", v15_val[0], v15_val[1], v15_val[2]);
 }
 
-static ssize_t whites_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+static ssize_t v15_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
-    int new_val;
+	int new_r, new_g, new_b;
 
-	sscanf(buf, "%d", &new_val);
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_val != whites_val) {
-		pr_info("New whites: %d\n", new_val);
-		whites_val = new_val;
-		update_vals(8);
+	if (new_r != v15_val[0] || new_g != v15_val[1] || new_b != v15_val[2]) {
+		pr_debug("New v15: %d %d %d\n", new_r, new_g, new_b);
+		v15_val[0] = new_r;
+		v15_val[1] = new_g;
+		v15_val[2] = new_b;
+		panel_load_colors();
 	}
 
-    return size;
+	return size;
 }
+
+#else /* CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT */
+static ssize_t v43_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d %d %d\n", v43_val[0], v43_val[1], v43_val[2]);
+}
+
+static ssize_t v43_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	int new_r, new_g, new_b;
+
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
+
+	if (new_r != v43_val[0] || new_g != v43_val[1] || new_b != v43_val[2]) {
+		pr_debug("New v43: %d %d %d\n", new_r, new_g, new_b);
+		v43_val[0] = new_r;
+		v43_val[1] = new_g;
+		v43_val[2] = new_b;
+		panel_load_colors();
+	}
+
+	return size;
+}
+
+static ssize_t v19_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d %d %d\n", v19_val[0], v19_val[1], v19_val[2]);
+}
+
+static ssize_t v19_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
+{
+	int new_r, new_g, new_b;
+
+	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
+
+	if (new_r != v19_val[0] || new_g != v19_val[1] || new_b != v19_val[2]) {
+		pr_debug("New v19: %d %d %d\n", new_r, new_g, new_b);
+		v19_val[0] = new_r;
+		v19_val[1] = new_g;
+		v19_val[2] = new_b;
+		panel_load_colors();
+	}
+
+	return size;
+}
+#endif /* CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT */
 
 static ssize_t gammacontrol_version(struct device * dev, struct device_attribute * attr, char * buf)
 {
-    return sprintf(buf, "%u\n", GAMMACONTROL_VERSION);
+	return sprintf(buf, "%u\n", GAMMACONTROL_VERSION);
 }
 
-static DEVICE_ATTR(whites, 0644, whites_show, whites_store);
-static DEVICE_ATTR(mids, 0644, mids_show, mids_store);
-static DEVICE_ATTR(blacks, 0644, blacks_show, blacks_store);
-static DEVICE_ATTR(contrast, 0644, contrast_show, contrast_store);
-static DEVICE_ATTR(brightness, 0644, brightness_show, brightness_store);
-static DEVICE_ATTR(saturation, 0644, saturation_show, saturation_store);
-static DEVICE_ATTR(greys, 0644, greys_show, greys_store);
-static DEVICE_ATTR(version, 0644 , gammacontrol_version, NULL);
+static DEVICE_ATTR(v255rgb, 0644, v255_show, v255_store);
+static DEVICE_ATTR(v1rgb, 0644, v1_show, v1_store);
+static DEVICE_ATTR(v171rgb, 0644, v171_show, v171_store);
+static DEVICE_ATTR(v87rgb, 0644, v87_show, v87_store);
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+static DEVICE_ATTR(v59rgb, 0644, v59_show, v59_store);
+static DEVICE_ATTR(v35rgb, 0644, v35_show, v35_store);
+static DEVICE_ATTR(v15rgb, 0644, v15_show, v15_store);
+#else
+static DEVICE_ATTR(v43rgb, 0644, v43_show, v43_store);
+static DEVICE_ATTR(v19rgb, 0644, v19_show, v19_store);
+#endif
+static DEVICE_ATTR(version, 0644, gammacontrol_version, NULL);
 
-static struct attribute *gammacontrol_attributes[] = 
-    {
-	&dev_attr_whites.attr,
-	&dev_attr_mids.attr,
-	&dev_attr_blacks.attr,
-	&dev_attr_contrast.attr,
-	&dev_attr_brightness.attr,
-	&dev_attr_saturation.attr,
-	&dev_attr_greys.attr,
+static struct attribute *gammacontrol_attributes[] =
+{
+	&dev_attr_v255rgb.attr,
+	&dev_attr_v1rgb.attr,
+	&dev_attr_v171rgb.attr,
+	&dev_attr_v87rgb.attr,
+#ifndef CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT
+	&dev_attr_v59rgb.attr,
+	&dev_attr_v35rgb.attr,
+	&dev_attr_v15rgb.attr,
+#else
+	&dev_attr_v43rgb.attr,
+	&dev_attr_v19rgb.attr,
+#endif
 	&dev_attr_version.attr,
 	NULL
-    };
+};
 
-static struct attribute_group gammacontrol_group = 
-    {
+static struct attribute_group gammacontrol_group =
+{
 	.attrs  = gammacontrol_attributes,
-    };
+};
 
-static struct miscdevice gammacontrol_device = 
-    {
+static struct miscdevice gammacontrol_device =
+{
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "gammacontrol",
-    };
+};
 
 static int __init gammacontrol_init(void)
 {
-    int ret;
+	int ret;
 
-    pr_info("%s misc_register(%s)\n", __FUNCTION__, gammacontrol_device.name);
+	pr_info("%s misc_register(%s)\n", __FUNCTION__, gammacontrol_device.name);
 
-    ret = misc_register(&gammacontrol_device);
+	ret = misc_register(&gammacontrol_device);
 
-    if (ret) {
-	    pr_err("%s misc_register(%s) fail\n", __FUNCTION__, gammacontrol_device.name);
-	    return 1;
+	if (ret) {
+		pr_err("%s misc_register(%s) fail\n", __FUNCTION__, gammacontrol_device.name);
+		return 1;
 	}
 
-    if (sysfs_create_group(&gammacontrol_device.this_device->kobj, &gammacontrol_group) < 0) {
-	    pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
-	    pr_err("Failed to create sysfs group for device (%s)!\n", gammacontrol_device.name);
+	if (sysfs_create_group(&gammacontrol_device.this_device->kobj, &gammacontrol_group) < 0) {
+		pr_err("%s sysfs_create_group fail\n", __FUNCTION__);
+		pr_err("Failed to create sysfs group for device (%s)!\n", gammacontrol_device.name);
 	}
 
-    return 0;
+	return 0;
 }
 
 device_initcall(gammacontrol_init);

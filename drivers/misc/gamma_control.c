@@ -18,7 +18,7 @@ int v255_val[3]	= {    0,     0,     0};
 int v1_val[3]	= {    0,     0,     0};
 int v171_val[3]	= {    0,     0,     0};
 int v87_val[3]	= {    0,     0,     0};
-#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 int v59_val[3]	= {    0,     0,     0};
 int v35_val[3]	= {    0,     0,     0};
 int v15_val[3]	= {    0,     0,     0};
@@ -126,7 +126,7 @@ static ssize_t v87_store(struct device * dev, struct device_attribute * attr, co
 	return size;
 }
 
-#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 static ssize_t v59_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d %d %d\n", v59_val[0], v59_val[1], v59_val[2]);
@@ -260,34 +260,34 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 		tuner[1] = new_g;
 		tuner[2] = new_b;
 		v255_val[0] = color_mods[new_r][0];
-		v255_val[1] = color_mods[new_g][0];
-		v255_val[2] = color_mods[new_b][0];
-		v1_val[0] = color_mods[new_r][1];
-		v1_val[1] = color_mods[new_g][1];
-		v1_val[2] = color_mods[new_b][1];
-		v171_val[0] = color_mods[new_r][2];
-		v171_val[1] = color_mods[new_g][2];
-		v171_val[2] = color_mods[new_b][2];
-		v87_val[0] = color_mods[new_r][3];
-		v87_val[1] = color_mods[new_g][3];
-		v87_val[2] = color_mods[new_b][3];
-#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
-		v59_val[0] = color_mods[new_r][4];
-		v59_val[1] = color_mods[new_g][4];
-		v59_val[2] = color_mods[new_b][4];
-		v35_val[0] = color_mods[new_r][5];
-		v35_val[1] = color_mods[new_g][5];
-		v35_val[2] = color_mods[new_b][5];
-		v15_val[0] = color_mods[new_r][6];
-		v15_val[1] = color_mods[new_g][6];
-		v15_val[2] = color_mods[new_b][6];
+		v255_val[1] = color_mods[new_g][1];
+		v255_val[2] = color_mods[new_b][2];
+		v1_val[0] = color_mods[new_r][3];
+		v1_val[1] = color_mods[new_g][4];
+		v1_val[2] = color_mods[new_b][5];
+		v171_val[0] = color_mods[new_r][6];
+		v171_val[1] = color_mods[new_g][7];
+		v171_val[2] = color_mods[new_b][8];
+		v87_val[0] = color_mods[new_r][9];
+		v87_val[1] = color_mods[new_g][10];
+		v87_val[2] = color_mods[new_b][11];
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+		v59_val[0] = color_mods[new_r][12];
+		v59_val[1] = color_mods[new_g][14];
+		v59_val[2] = color_mods[new_b][14];
+		v35_val[0] = color_mods[new_r][15];
+		v35_val[1] = color_mods[new_g][16];
+		v35_val[2] = color_mods[new_b][17];
+		v15_val[0] = color_mods[new_r][18];
+		v15_val[1] = color_mods[new_g][19];
+		v15_val[2] = color_mods[new_b][20];
 #else
-		v43_val[0] = color_mods[new_r][4];
-		v43_val[1] = color_mods[new_g][4];
-		v43_val[2] = color_mods[new_b][4];
-		v19_val[0] = color_mods[new_r][5];
-		v19_val[1] = color_mods[new_g][5];
-		v19_val[2] = color_mods[new_b][5];
+		v43_val[0] = color_mods[new_r][11];
+		v43_val[1] = color_mods[new_g][12];
+		v43_val[2] = color_mods[new_b][13];
+		v19_val[0] = color_mods[new_r][14];
+		v19_val[1] = color_mods[new_g][15];
+		v19_val[2] = color_mods[new_b][16];
 #endif
 
 		panel_load_colors();
@@ -305,7 +305,7 @@ static DEVICE_ATTR(v255rgb, 0644, v255_show, v255_store);
 static DEVICE_ATTR(v1rgb, 0644, v1_show, v1_store);
 static DEVICE_ATTR(v171rgb, 0644, v171_show, v171_store);
 static DEVICE_ATTR(v87rgb, 0644, v87_show, v87_store);
-#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 static DEVICE_ATTR(v59rgb, 0644, v59_show, v59_store);
 static DEVICE_ATTR(v35rgb, 0644, v35_show, v35_store);
 static DEVICE_ATTR(v15rgb, 0644, v15_show, v15_store);
@@ -322,7 +322,7 @@ static struct attribute *gammacontrol_attributes[] =
 	&dev_attr_v1rgb.attr,
 	&dev_attr_v171rgb.attr,
 	&dev_attr_v87rgb.attr,
-#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT) && !defined(FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 	&dev_attr_v59rgb.attr,
 	&dev_attr_v35rgb.attr,
 	&dev_attr_v15rgb.attr,

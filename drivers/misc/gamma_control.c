@@ -28,13 +28,9 @@ int v19_val[3]	= {    0,     0,     0};
 #endif
 int tuner[3]	= {    0,     0,     0};
 
-int color_mods[5][21] = {
-    { -5, -3, -5, -6,  10,  18, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3, -3 },
-    { -2, -1, -2, -3,   5,   9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
-    {  0,  0,  0,  0,   0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },
-    {  2,  1,  2,  3,  -5,  -9,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1 },
-    {  5,  3,  5,  6, -10, -18,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3 }
-};
+int red_tint[7] = {15, 20, 9, 9, 9, 9, 9};
+int grn_tint[7] = {15, 20, 9, 9, 9, 9, 9};
+int blu_tint[7] = {15, 20, 9, 9, 9, 9, 9};
 
 extern void panel_load_colors(void);
 
@@ -244,14 +240,20 @@ static ssize_t tuner_show(struct device *dev, struct device_attribute *attr, cha
 	return sprintf(buf, "%d %d %d\n", tuner[0], tuner[1], tuner[2]);
 }
 
+#define calc_r_shift(n) \
+	(red_tint[n] * tuner[0] / 60)
+#define calc_g_shift(n) \
+	(grn_tint[n] * tuner[1] / 60)
+#define calc_b_shift(n) \
+	(blu_tint[n] * tuner[2] / 60)
 static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
 	int new_r, new_g, new_b;
 
 	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_r > 5 || new_r < 0 || new_g > 5 || new_g < 0 || new_b > 5 || new_b < 0) {
-		new_r = new_g = new_b = 2;
+	if (new_r > 60 || new_r < -60 || new_g > 60 || new_g < -60 || new_b > 60 || new_b < -60) {
+		new_r = new_g = new_b = 0;
 	}
 
 	if (new_r != tuner[0] || new_g != tuner[1] || new_b != tuner[2]) {
@@ -259,35 +261,36 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 		tuner[0] = new_r;
 		tuner[1] = new_g;
 		tuner[2] = new_b;
-		v255_val[0] = color_mods[new_r][0];
-		v255_val[1] = color_mods[new_g][1];
-		v255_val[2] = color_mods[new_b][2];
-		v1_val[0] = color_mods[new_r][3];
-		v1_val[1] = color_mods[new_g][4];
-		v1_val[2] = color_mods[new_b][5];
-		v171_val[0] = color_mods[new_r][6];
-		v171_val[1] = color_mods[new_g][7];
-		v171_val[2] = color_mods[new_b][8];
-		v87_val[0] = color_mods[new_r][9];
-		v87_val[1] = color_mods[new_g][10];
-		v87_val[2] = color_mods[new_b][11];
+
+		v255_val[0] = calc_r_shift(0);
+		v255_val[1] = calc_g_shift(0);
+		v255_val[2] = calc_b_shift(0);
+		v1_val[0] = calc_r_shift(1);
+		v1_val[1] = calc_g_shift(1);
+		v1_val[2] = calc_b_shift(1);
+		v171_val[0] = calc_r_shift(2);
+		v171_val[1] = calc_g_shift(2);
+		v171_val[2] = calc_b_shift(2);
+		v87_val[0] = calc_r_shift(3);
+		v87_val[1] = calc_g_shift(3);
+		v87_val[2] = calc_b_shift(3);
 #if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
-		v59_val[0] = color_mods[new_r][12];
-		v59_val[1] = color_mods[new_g][13];
-		v59_val[2] = color_mods[new_b][14];
-		v35_val[0] = color_mods[new_r][15];
-		v35_val[1] = color_mods[new_g][16];
-		v35_val[2] = color_mods[new_b][17];
-		v15_val[0] = color_mods[new_r][18];
-		v15_val[1] = color_mods[new_g][19];
-		v15_val[2] = color_mods[new_b][20];
+		v59_val[0] = calc_r_shift(4);
+		v59_val[1] = calc_g_shift(4);
+		v59_val[2] = calc_b_shift(4);
+		v35_val[0] = calc_r_shift(5);
+		v35_val[1] = calc_g_shift(5);
+		v35_val[2] = calc_b_shift(5);
+		v15_val[0] = calc_r_shift(6);
+		v15_val[1] = calc_g_shift(6);
+		v15_val[2] = calc_b_shift(6);
 #else
-		v43_val[0] = color_mods[new_r][12];
-		v43_val[1] = color_mods[new_g][13];
-		v43_val[2] = color_mods[new_b][14];
-		v19_val[0] = color_mods[new_r][15];
-		v19_val[1] = color_mods[new_g][16];
-		v19_val[2] = color_mods[new_b][17];
+		v43_val[0] = calc_r_shift(4);
+		v43_val[1] = calc_g_shift(4);
+		v43_val[2] = calc_b_shift(4);
+		v19_val[0] = calc_r_shift(5);
+		v19_val[1] = calc_g_shift(5);
+		v19_val[2] = calc_b_shift(5);
 #endif
 
 		panel_load_colors();

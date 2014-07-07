@@ -870,7 +870,7 @@ static int generate_gray_scale(struct SMART_DIM *pSmart)
 			cal_cnt++;
 		} else {
 			if (cnt == S6E63M0_ARRAY[6]) {
-				pr_info("%s end\n", __func__);
+				pr_debug("%s end\n", __func__);
 			} else {
 				pr_info(KERN_ERR "%s fail cnt:%d\n",
 					__func__, cnt);
@@ -975,7 +975,7 @@ static void gamma_cell_determine(int hw_revision)
 #elif defined(CONFIG_MACH_APEXQ)
 static void gamma_cell_determine(int ldi_id)
 {
-	pr_info("%s Panel type : %s", __func__,
+	pr_debug("%s Panel type : %s", __func__,
 		(((ldi_id & 0x0000FF00) >> 8) == 0xB4) ? "SM2" : "M2");
 
 	if (((ldi_id & 0x0000FF00) >> 8) == 0xB4 || \

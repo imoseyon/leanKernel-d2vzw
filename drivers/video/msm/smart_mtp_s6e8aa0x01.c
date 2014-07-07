@@ -979,7 +979,7 @@ static int generate_gray_scale(struct SMART_DIM *pSmart)
 			cal_cnt++;
 		} else {
 			if (cnt == S6E8AA0X01_ARRAY[7]) {
-				pr_info("%s end\n", __func__);
+				pr_debug("%s end\n", __func__);
 			} else {
 				pr_err("%s fail cnt:%d\n", __func__, cnt);
 				return -1;
@@ -1479,7 +1479,7 @@ void generate_gamma(struct SMART_DIM *psmart, char *str, int size)
 
 static void gamma_cell_determine(int ldi_revision)
 {
-	pr_info("%s ldi_revision:%d", __func__, ldi_revision);
+	pr_debug("%s ldi_revision:%d", __func__, ldi_revision);
 
 #if defined(CONFIG_MACH_STRETTO) || defined(CONFIG_MACH_SUPERIORLTE_SKT)
 	if (ldi_revision == 0xAE) {

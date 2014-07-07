@@ -99,9 +99,16 @@ extern int v59_val[3];
 extern int v35_val[3];
 extern int v15_val[3];
 
+extern int get_lcd_current_cd_index(void);
+extern void mipi_samsung_bump_backlight(int bl_level);
+extern void reset_gamma_level(void);
 void panel_load_colors(void)
 {
+	int old;
 	smart_dimming_init(gpsmart);
+	old = get_lcd_current_cd_index();
+	reset_gamma_level();
+	mipi_samsung_bump_backlight((old + 2) * 10);
 }
 #define v255_coefficient 100
 #define v255_denominator 600
@@ -972,7 +979,7 @@ static int generate_gray_scale(struct SMART_DIM *pSmart)
 			cal_cnt++;
 		} else {
 			if (cnt == S6E8AA0X01_ARRAY[7]) {
-				pr_info("%s end\n", __func__);
+				pr_debug("%s end\n", __func__);
 			} else {
 				pr_err("%s fail cnt:%d\n", __func__, cnt);
 				return -1;
@@ -1472,7 +1479,7 @@ void generate_gamma(struct SMART_DIM *psmart, char *str, int size)
 
 static void gamma_cell_determine(int ldi_revision)
 {
-	pr_info("%s ldi_revision:%d", __func__, ldi_revision);
+	pr_debug("%s ldi_revision:%d", __func__, ldi_revision);
 
 #if defined(CONFIG_MACH_STRETTO) || defined(CONFIG_MACH_SUPERIORLTE_SKT)
 	if (ldi_revision == 0xAE) {

@@ -1234,7 +1234,7 @@ static int set_elvss_level_4_8(int bl_level)
 
 void reset_gamma_level(void)
 {
-	pr_info("reset_gamma_level\n");
+	pr_debug("reset_gamma_level\n");
 	mipi_pd.lcd_current_cd_idx = -1;
 
 	mipi_pd.ldi_acl_stat = false;
@@ -1393,6 +1393,11 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 			bl_level, cd, gamma_lux, aid_change);
 	}
 	return aid_change;
+}
+
+int get_lcd_current_cd_index(void)
+{
+	return mipi_pd.lcd_current_cd_idx;
 }
 
 static void  prepare_fast_init_cmd_array(int lcd_type)

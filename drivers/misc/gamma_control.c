@@ -273,7 +273,7 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 		v87_val[2] = color_mods[new_b][11];
 #if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 		v59_val[0] = color_mods[new_r][12];
-		v59_val[1] = color_mods[new_g][14];
+		v59_val[1] = color_mods[new_g][13];
 		v59_val[2] = color_mods[new_b][14];
 		v35_val[0] = color_mods[new_r][15];
 		v35_val[1] = color_mods[new_g][16];
@@ -282,12 +282,12 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 		v15_val[1] = color_mods[new_g][19];
 		v15_val[2] = color_mods[new_b][20];
 #else
-		v43_val[0] = color_mods[new_r][11];
-		v43_val[1] = color_mods[new_g][12];
-		v43_val[2] = color_mods[new_b][13];
-		v19_val[0] = color_mods[new_r][14];
-		v19_val[1] = color_mods[new_g][15];
-		v19_val[2] = color_mods[new_b][16];
+		v43_val[0] = color_mods[new_r][12];
+		v43_val[1] = color_mods[new_g][13];
+		v43_val[2] = color_mods[new_b][14];
+		v19_val[0] = color_mods[new_r][15];
+		v19_val[1] = color_mods[new_g][16];
+		v19_val[2] = color_mods[new_b][17];
 #endif
 
 		panel_load_colors();

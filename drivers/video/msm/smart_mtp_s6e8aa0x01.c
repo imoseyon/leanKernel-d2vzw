@@ -99,9 +99,16 @@ extern int v59_val[3];
 extern int v35_val[3];
 extern int v15_val[3];
 
+extern int get_lcd_current_cd_index(void);
+extern void mipi_samsung_bump_backlight(int bl_level);
+extern void reset_gamma_level(void);
 void panel_load_colors(void)
 {
+	int old;
 	smart_dimming_init(gpsmart);
+	old = get_lcd_current_cd_index();
+	reset_gamma_level();
+	mipi_samsung_bump_backlight((old + 2) * 10);
 }
 #define v255_coefficient 100
 #define v255_denominator 600

@@ -1010,6 +1010,13 @@ end:
 	return;
 }
 
+void mipi_samsung_bump_backlight(int bl_level) {
+	struct msm_fb_data_type *mfd;
+	mfd = platform_get_drvdata(msd.msm_pdev);
+	mfd->bl_level = bl_level;
+	mipi_samsung_disp_backlight(mfd);
+}
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static void mipi_samsung_disp_early_suspend(struct early_suspend *h)
 {

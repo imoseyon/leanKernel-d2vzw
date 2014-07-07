@@ -1395,6 +1395,11 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 	return aid_change;
 }
 
+int get_lcd_current_cd_index(void)
+{
+	return mipi_pd.lcd_current_cd_idx;
+}
+
 static void  prepare_fast_init_cmd_array(int lcd_type)
 {
 

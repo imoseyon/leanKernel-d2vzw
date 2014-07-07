@@ -790,6 +790,11 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 	return 0;
 }
 
+int get_lcd_current_cd_index(void)
+{
+	return mipi_pd.lcd_current_cd_idx;
+}
+
 static int is_acl_para_change(int bl_level)
 {
 	int cd = get_candela_index(bl_level);

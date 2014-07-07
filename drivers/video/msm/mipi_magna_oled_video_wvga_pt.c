@@ -596,6 +596,11 @@ static int set_gamma_level(int bl_level, enum gamma_mode_list gamma_mode)
 	return 0;
 }
 
+int get_lcd_current_cd_index(void)
+{
+	return mipi_pd.lcd_current_cd_idx;
+}
+
 static struct mipi_panel_data mipi_pd = {
 	.panel_name = "SMD_AMS452GP32\n",
 	.ready_to_on = {samsung_display_on_cmds

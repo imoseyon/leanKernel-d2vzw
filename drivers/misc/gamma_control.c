@@ -254,6 +254,7 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 
 	if (new_r > 60 || new_r < -60 || new_g > 60 || new_g < -60 || new_b > 60 || new_b < -60) {
 		new_r = new_g = new_b = 0;
+		pr_err("Master tuner out of bounds, reset!\n");
 	}
 
 	if (new_r != tuner[0] || new_g != tuner[1] || new_b != tuner[2]) {

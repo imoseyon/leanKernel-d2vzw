@@ -257,43 +257,64 @@ static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, 
 		pr_err("Master tuner out of bounds, reset!\n");
 	}
 
-	if (new_r != tuner[0] || new_g != tuner[1] || new_b != tuner[2]) {
-		pr_debug("New master tuner: %d %d %d\n", new_r, new_g, new_b);
+	if (new_r != tuner[0]) {
 		tuner[0] = new_r;
-		tuner[1] = new_g;
-		tuner[2] = new_b;
 
 		v255_val[0] = calc_r_shift(0);
-		v255_val[1] = calc_g_shift(0);
-		v255_val[2] = calc_b_shift(0);
 		v1_val[0] = calc_r_shift(1);
-		v1_val[1] = calc_g_shift(1);
-		v1_val[2] = calc_b_shift(1);
 		v171_val[0] = calc_r_shift(2);
-		v171_val[1] = calc_g_shift(2);
-		v171_val[2] = calc_b_shift(2);
 		v87_val[0] = calc_r_shift(3);
-		v87_val[1] = calc_g_shift(3);
-		v87_val[2] = calc_b_shift(3);
 #if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
 		v59_val[0] = calc_r_shift(4);
-		v59_val[1] = calc_g_shift(4);
-		v59_val[2] = calc_b_shift(4);
 		v35_val[0] = calc_r_shift(5);
-		v35_val[1] = calc_g_shift(5);
-		v35_val[2] = calc_b_shift(5);
 		v15_val[0] = calc_r_shift(6);
-		v15_val[1] = calc_g_shift(6);
-		v15_val[2] = calc_b_shift(6);
 #else
 		v43_val[0] = calc_r_shift(4);
-		v43_val[1] = calc_g_shift(4);
-		v43_val[2] = calc_b_shift(4);
 		v19_val[0] = calc_r_shift(5);
+#endif
+		if (new_g == tuner[1] && new_b == tuner[2])
+			goto load_colors;
+		if (new_g == tuner[1])
+			goto blue;
+	}
+
+	if (new_g != tuner[1]) {
+		tuner[1] = new_g;
+
+		v255_val[1] = calc_g_shift(0);
+		v1_val[1] = calc_g_shift(1);
+		v171_val[1] = calc_g_shift(2);
+		v87_val[1] = calc_g_shift(3);
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+		v59_val[1] = calc_g_shift(4);
+		v35_val[1] = calc_g_shift(5);
+		v15_val[1] = calc_g_shift(6);
+#else
+		v43_val[1] = calc_g_shift(4);
 		v19_val[1] = calc_g_shift(5);
+#endif
+		if (new_b == tuner[2])
+			goto load_colors;
+	}
+
+blue:
+	if (new_b != tuner[2]) {
+		tuner[2] = new_b;
+
+		v255_val[2] = calc_b_shift(0);
+		v1_val[2] = calc_b_shift(1);
+		v171_val[2] = calc_b_shift(2);
+		v87_val[2] = calc_b_shift(3);
+#if !defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT)
+		v59_val[2] = calc_b_shift(4);
+		v35_val[2] = calc_b_shift(5);
+		v15_val[2] = calc_b_shift(6);
+#else
+		v43_val[2] = calc_b_shift(4);
 		v19_val[2] = calc_b_shift(5);
 #endif
-
+load_colors:
+		pr_debug("New master tuner: %d %d %d\n", new_r, new_g, new_b);
 		panel_load_colors();
 	}
 

@@ -241,19 +241,19 @@ static ssize_t tuner_show(struct device *dev, struct device_attribute *attr, cha
 }
 
 #define calc_r_shift(n) \
-	(red_tint[n] * tuner[0] / 60)
+	(red_tint[n] * (tuner[0] - 60) / 60)
 #define calc_g_shift(n) \
-	(grn_tint[n] * tuner[1] / 60)
+	(grn_tint[n] * (tuner[1] - 60) / 60)
 #define calc_b_shift(n) \
-	(blu_tint[n] * tuner[2] / 60)
+	(blu_tint[n] * (tuner[2] - 60) / 60)
 static ssize_t tuner_store(struct device * dev, struct device_attribute * attr, const char * buf, size_t size)
 {
 	int new_r, new_g, new_b;
 
 	sscanf(buf, "%d %d %d", &new_r, &new_g, &new_b);
 
-	if (new_r > 60 || new_r < -60 || new_g > 60 || new_g < -60 || new_b > 60 || new_b < -60) {
-		new_r = new_g = new_b = 0;
+	if (new_r > 120 || new_r < 0 || new_g > 120 || new_g < 0 || new_b > 120 || new_b < 0) {
+		new_r = new_g = new_b = 60;
 		pr_err("Master tuner out of bounds, reset!\n");
 	}
 

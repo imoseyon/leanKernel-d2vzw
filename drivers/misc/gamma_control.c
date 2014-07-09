@@ -26,7 +26,7 @@ int v15_val[3]	= {    0,     0,     0};
 int v43_val[3]	= {    0,     0,     0};
 int v19_val[3]	= {    0,     0,     0};
 #endif
-int tuner[3]	= {    0,     0,     0};
+int tuner[3]	= {   60,    60,    60};
 
 int red_tint[7] = {15, 20, 9, 9, 9, 9, 9};
 int grn_tint[7] = {15, 20, 9, 9, 9, 9, 9};

@@ -4120,7 +4120,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
-		.debounce_interval	= 5, /* ms */
+		.debounce_interval	= 8, /* ms */
 		.desc			= "Vol Up",
 	},
 	{
@@ -4129,7 +4129,7 @@ static struct gpio_keys_button gpio_keys_button[] = {
 		.gpio			= -1,
 		.active_low		= 1,
 		.wakeup			= 0,
-		.debounce_interval	= 5, /* ms */
+		.debounce_interval	= 8, /* ms */
 		.desc			= "Vol Down",
 	},
 	{

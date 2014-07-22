@@ -77,6 +77,7 @@ static int do_read_inode(struct inode *inode)
 	if (check_nid_range(sbi, inode->i_ino)) {
 		f2fs_msg(inode->i_sb, KERN_ERR, "bad inode number: %lu",
 			 (unsigned long) inode->i_ino);
+		WARN_ON(1);
 		return -EINVAL;
 	}
 
@@ -292,4 +293,5 @@ void f2fs_evict_inode(struct inode *inode)
 
 no_delete:
 	end_writeback(inode);
+	invalidate_mapping_pages(NODE_MAPPING(sbi), inode->i_ino, inode->i_ino);
 }

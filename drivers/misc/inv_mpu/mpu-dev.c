@@ -76,7 +76,10 @@
 #define CALIBRATION_FILE_PATH	"/efs/calibration_data"
 #define CALIBRATION_GYRO_FILE_PATH	"/efs/gyro_cal_data"
 #define CALIBRATION_DATA_AMOUNT	100
+
+#ifdef CONFIG_MPU_SENSORS_MPU6050_SELFTEST
 #include "mpu6050_selftest.h"
+#endif
 
 struct acc_data cal_data = {0, 0, 0};
 
@@ -1565,6 +1568,7 @@ static ssize_t mpu3050_get_temp(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_MPU_SENSORS_MPU6050_SELFTEST
 static int gyro_do_calibrate(void)
 {
 	struct file *cal_filp;
@@ -1656,6 +1660,8 @@ static ssize_t mpu6050_input_gyro_selftest_show(struct device *dev,
 		       (int)abs(ratio[2])%10,
 		       packet_count[0], packet_count[1], packet_count[2]);
 }
+#endif
+
 static ssize_t mpu3050_acc_read(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2291,8 +2297,10 @@ static ssize_t akm_name_show(struct device *dev,
 static DEVICE_ATTR(power_on, S_IRUGO, mpu3050_power_on, NULL);
 
 static DEVICE_ATTR(temperature, S_IRUGO,	mpu3050_get_temp, NULL);
+#ifdef CONFIG_MPU_SENSORS_MPU6050_SELFTEST
 static struct device_attribute dev_attr_gyro_selftest =
 	__ATTR(selftest, S_IRUGO, mpu6050_input_gyro_selftest_show, NULL);
+#endif
 static DEVICE_ATTR(calibration, S_IRUGO|S_IWUSR|S_IWGRP,
 	accel_calibration_show, accel_calibration_store);
 
@@ -2334,7 +2342,9 @@ static struct device_attribute *gyro_sensor_attrs[] = {
 	&dev_attr_temperature,
 	&dev_attr_vendor,
 	&dev_attr_name,
+#ifdef CONFIG_MPU_SENSORS_MPU6050_SELFTEST
 	&dev_attr_gyro_selftest,
+#endif
 	NULL,
 };
 

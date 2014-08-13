@@ -12,11 +12,11 @@ echo "3) Stop thermald (for running benchmarks)."
 echo "4) Restart mpdecision (when cpu1 gets stuck)."
 echo "5) Overlock 3D GPU to 480Mhz."
 echo "6) Reset 3D GPU to 400Mhz (leanKernel default)"
-echo "7) Set display color temp to cold."
-echo "8) Set display color temp to normal."
-echo "9) Set display color temp to warm."
+#echo "7) Set display color temp to cold."
+#echo "8) Set display color temp to normal."
+#echo "9) Set display color temp to warm."
 echo 
-echo -n "Please enter a number between 1 and 9 (or press enter to exit): "
+echo -n "Please enter a number between 1 and 6 (or press enter to exit): "
 
 read option
 

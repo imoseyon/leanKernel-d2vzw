@@ -25,6 +25,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 on init
+    write /sys/class/android_usb/android0/iSerial ${ro.serialno}
     write /sys/class/android_usb/android0/f_rndis/wceis 1
     chown system system /sys/class/android_usb/android0/terminal_version
     chmod 0660 /sys/class/android_usb/android0/terminal_version
@@ -33,11 +34,6 @@ on boot
     write /sys/class/android_usb/f_mass_storage/inquiry_string "Samsung"
     write /sys/class/android_usb/android0/iManufacturer samsung
     write /sys/class/android_usb/android0/iProduct d2lte
-
-service qcom-usb-sh /system/bin/sh /init.qcom.usb.sh
-    class core
-    user root
-    oneshot
 
 # This should only be used during device bringup
 on property:sys.usb.config=mtp,diag,adb
@@ -108,7 +104,7 @@ on property:sys.usb.config=ptp,adb
     write /sys/class/android_usb/android0/functions ptp,adb
     write /sys/module/ci13xxx_msm/parameters/streaming 1
     write /sys/class/android_usb/android0/enable 1
-	start adbd
+    start adbd
     setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=rndis

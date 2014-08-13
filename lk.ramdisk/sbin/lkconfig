@@ -20,7 +20,7 @@ echo -n "Please enter a number between 1 and 6 (or press enter to exit): "
 
 read option
 
-$BB mount -o rw,remount /system /system
+mount -o rw,remount /system
 
 case $option in
   1) 
@@ -67,5 +67,5 @@ case $option in
         echo "Color temp is set to Warm - turn display off/on to take effect."
         ;;
 esac
-$BB mount -r /system /system
+mount -o ro,remount /system
 echo

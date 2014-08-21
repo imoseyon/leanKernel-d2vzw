@@ -902,7 +902,6 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 		struct ipv6_pinfo *np = inet6_sk(sk);
 		struct ipv6hdr *ip6 = ipv6_hdr(skb);
 		sin6 = (struct sockaddr_in6 *) msg->msg_name;
-
 		if (sin6) {
 			sin6->sin6_family = AF_INET6;
 			sin6->sin6_port = 0;
@@ -911,9 +910,10 @@ int ping_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 			if (np->sndflow)
 				sin6->sin6_flowinfo =
 					*(__be32 *)ip6 & IPV6_FLOWINFO_MASK;
-			sin6->sin6_scope_id =
-				ipv6_iface_scope_id(&sin6->sin6_addr,
-						    IP6CB(skb)->iif);
+
+			if (__ipv6_addr_needs_scope_id(
+			    ipv6_addr_type(&sin6->sin6_addr)))
+				sin6->sin6_scope_id = IP6CB(skb)->iif;
 		}
 
 		if (inet6_sk(sk)->rxopt.all)

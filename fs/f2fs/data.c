@@ -139,7 +139,10 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 	/* change META to META_FLUSH in the checkpoint procedure */
 	if (type >= META_FLUSH) {
 		io->fio.type = META_FLUSH;
-		io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
+		if (test_opt(sbi, NOBARRIER))
+			io->fio.rw = WRITE_FLUSH | REQ_META | REQ_PRIO;
+		else
+			io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
 	}
 	__submit_merged_bio(io);
 	up_write(&io->io_rwsem);
@@ -626,8 +629,10 @@ static int __get_data_block(struct inode *inode, sector_t iblock,
 	if (check_extent_cache(inode, pgofs, bh_result))
 		goto out;
 
-	if (create)
+	if (create) {
+		f2fs_balance_fs(sbi);
 		f2fs_lock_op(sbi);
+	}
 
 	/* When reading holes, we need its node page */
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
@@ -784,9 +789,11 @@ int do_write_data_page(struct page *page, struct f2fs_io_info *fio)
 			!is_cold_data(page) &&
 			need_inplace_update(inode))) {
 		rewrite_data_page(page, old_blkaddr, fio);
+		set_inode_flag(F2FS_I(inode), FI_UPDATE_WRITE);
 	} else {
 		write_data_page(page, &dn, &new_blkaddr, fio);
 		update_extent_cache(new_blkaddr, &dn);
+		set_inode_flag(F2FS_I(inode), FI_APPEND_WRITE);
 	}
 out_writepage:
 	f2fs_put_dnode(&dn);
@@ -1084,8 +1091,14 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 
 	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
 							get_data_block);
+
+	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
+
 	if (err < 0 && (rw & WRITE))
 		f2fs_write_failed(mapping, offset + count);
+
+	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
+
 	return err;
 }
 

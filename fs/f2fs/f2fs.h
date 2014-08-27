@@ -42,6 +42,7 @@
 #define F2FS_MOUNT_INLINE_XATTR		0x00000080
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
 #define F2FS_MOUNT_FLUSH_MERGE		0x00000200
+#define F2FS_MOUNT_NOBARRIER		0x00000400
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -100,8 +101,15 @@ enum {
 	META_SSA
 };
 
-/* for the list of orphan inodes */
-struct orphan_inode_entry {
+/* for the list of ino */
+enum {
+	ORPHAN_INO,		/* for orphan ino list */
+	APPEND_INO,		/* for append ino list */
+	UPDATE_INO,		/* for update ino list */
+	MAX_INO_ENTRY,		/* max. list */
+};
+
+struct ino_entry {
 	struct list_head list;	/* list head */
 	nid_t ino;		/* inode number */
 };
@@ -445,14 +453,17 @@ struct f2fs_sb_info {
 	struct inode *meta_inode;		/* cache meta blocks */
 	struct mutex cp_mutex;			/* checkpoint procedure lock */
 	struct rw_semaphore cp_rwsem;		/* blocking FS operations */
-	struct mutex node_write;		/* locking node writes */
+	struct rw_semaphore node_write;		/* locking node writes */
 	struct mutex writepages;		/* mutex for writepages() */
 	bool por_doing;				/* recovery is doing or not */
 	wait_queue_head_t cp_wait;
 
-	/* for orphan inode management */
-	struct list_head orphan_inode_list;	/* orphan inode list */
-	spinlock_t orphan_inode_lock;		/* for orphan inode list */
+	/* for inode management */
+	struct radix_tree_root ino_root[MAX_INO_ENTRY];	/* ino entry array */
+	spinlock_t ino_lock[MAX_INO_ENTRY];		/* for ino entry lock */
+	struct list_head ino_list[MAX_INO_ENTRY];	/* inode list head */
+
+	/* for orphan inode, use 0'th array */
 	unsigned int n_orphans;			/* # of orphan inodes */
 	unsigned int max_orphans;		/* max orphan inodes */
 
@@ -771,7 +782,7 @@ static inline void *__bitmap_ptr(struct f2fs_sb_info *sbi, int flag)
 		if (flag == NAT_BITMAP)
 			return &ckpt->sit_nat_version_bitmap;
 		else
-			return ((unsigned char *)ckpt + F2FS_BLKSIZE);
+			return (unsigned char *)ckpt + F2FS_BLKSIZE;
 	} else {
 		offset = (flag == NAT_BITMAP) ?
 			le32_to_cpu(ckpt->sit_ver_bitmap_bytesize) : 0;
@@ -986,11 +997,15 @@ enum {
 	FI_NO_EXTENT,		/* not to use the extent cache */
 	FI_INLINE_XATTR,	/* used for inline xattr */
 	FI_INLINE_DATA,		/* used for inline data*/
+	FI_APPEND_WRITE,	/* inode has appended data */
+	FI_UPDATE_WRITE,	/* inode has in-place-update data */
+	FI_NEED_IPU,		/* used fo ipu for fdatasync */
 };
 
 static inline void set_inode_flag(struct f2fs_inode_info *fi, int flag)
 {
-	set_bit(flag, &fi->flags);
+	if (!test_bit(flag, &fi->flags))
+		set_bit(flag, &fi->flags);
 }
 
 static inline int is_inode_flag_set(struct f2fs_inode_info *fi, int flag)
@@ -1000,7 +1015,8 @@ static inline int is_inode_flag_set(struct f2fs_inode_info *fi, int flag)
 
 static inline void clear_inode_flag(struct f2fs_inode_info *fi, int flag)
 {
-	clear_bit(flag, &fi->flags);
+	if (test_bit(flag, &fi->flags))
+		clear_bit(flag, &fi->flags);
 }
 
 static inline void set_acl_inode(struct f2fs_inode_info *fi, umode_t mode)
@@ -1194,6 +1210,7 @@ void alloc_nid_done(struct f2fs_sb_info *, nid_t);
 void alloc_nid_failed(struct f2fs_sb_info *, nid_t);
 void recover_node_page(struct f2fs_sb_info *, struct page *,
 		struct f2fs_summary *, struct node_info *, block_t);
+void recover_inline_xattr(struct inode *, struct page *);
 bool recover_xattr_data(struct inode *, struct page *, block_t);
 int recover_inode_page(struct f2fs_sb_info *, struct page *);
 int restore_node_summary(struct f2fs_sb_info *, unsigned int,
@@ -1249,6 +1266,9 @@ struct page *grab_meta_page(struct f2fs_sb_info *, pgoff_t);
 struct page *get_meta_page(struct f2fs_sb_info *, pgoff_t);
 int ra_meta_pages(struct f2fs_sb_info *, int, int, int);
 long sync_meta_pages(struct f2fs_sb_info *, enum page_type, long);
+void add_dirty_inode(struct f2fs_sb_info *, nid_t, int type);
+void remove_dirty_inode(struct f2fs_sb_info *, nid_t, int type);
+bool exist_written_data(struct f2fs_sb_info *, nid_t, int);
 int acquire_orphan_inode(struct f2fs_sb_info *);
 void release_orphan_inode(struct f2fs_sb_info *);
 void add_orphan_inode(struct f2fs_sb_info *, nid_t);
@@ -1260,7 +1280,7 @@ void add_dirty_dir_inode(struct inode *);
 void remove_dirty_dir_inode(struct inode *);
 void sync_dirty_dir_inodes(struct f2fs_sb_info *);
 void write_checkpoint(struct f2fs_sb_info *, bool);
-void init_orphan_info(struct f2fs_sb_info *);
+void init_ino_entry_info(struct f2fs_sb_info *);
 int __init create_checkpoint_caches(void);
 void destroy_checkpoint_caches(void);
 

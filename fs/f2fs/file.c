@@ -124,10 +124,28 @@ int f2fs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 		return 0;
 
 	trace_f2fs_sync_file_enter(inode);
+
+	/* if fdatasync is triggered, let's do in-place-update */
+	if (datasync)
+		set_inode_flag(fi, FI_NEED_IPU);
+
 	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+	if (datasync)
+		clear_inode_flag(fi, FI_NEED_IPU);
 	if (ret) {
 		trace_f2fs_sync_file_exit(inode, need_cp, datasync, ret);
 		return ret;
+	}
+
+	/*
+	 * if there is no written data, don't waste time to write recovery info.
+	 */
+	if (!is_inode_flag_set(fi, FI_APPEND_WRITE) &&
+		!exist_written_data(sbi, inode->i_ino, APPEND_INO)) {
+		if (is_inode_flag_set(fi, FI_UPDATE_WRITE) ||
+			exist_written_data(sbi, inode->i_ino, UPDATE_INO))
+			goto flush_out;
+		goto out;
 	}
 
 	/* guarantee free sections for fsync */
@@ -185,6 +203,13 @@ int f2fs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 		ret = wait_on_node_pages_writeback(sbi, inode->i_ino);
 		if (ret)
 			goto out;
+
+		/* once recovery info is written, don't need to tack this */
+		remove_dirty_inode(sbi, inode->i_ino, APPEND_INO);
+		clear_inode_flag(fi, FI_APPEND_WRITE);
+flush_out:
+		remove_dirty_inode(sbi, inode->i_ino, UPDATE_INO);
+		clear_inode_flag(fi, FI_UPDATE_WRITE);
 		ret = f2fs_issue_flush(F2FS_SB(inode->i_sb));
 	}
 out:
@@ -203,8 +228,9 @@ static pgoff_t __get_first_dirty_index(struct address_space *mapping,
 
 	/* find first dirty page index */
 	pagevec_init(&pvec, 0);
-	nr_pages = pagevec_lookup_tag(&pvec, mapping, &pgofs, PAGECACHE_TAG_DIRTY, 1);
-	pgofs = nr_pages ? pvec.pages[0]->index: LONG_MAX;
+	nr_pages = pagevec_lookup_tag(&pvec, mapping, &pgofs,
+					PAGECACHE_TAG_DIRTY, 1);
+	pgofs = nr_pages ? pvec.pages[0]->index : LONG_MAX;
 	pagevec_release(&pvec);
 	return pgofs;
 }
@@ -660,6 +686,8 @@ static int expand_inode_data(struct inode *inode, loff_t offset,
 	loff_t new_size = i_size_read(inode);
 	loff_t off_start, off_end;
 	int ret = 0;
+
+	f2fs_balance_fs(sbi);
 
 	ret = inode_newsize_ok(inode, (len + offset));
 	if (ret)

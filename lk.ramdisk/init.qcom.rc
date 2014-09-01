@@ -200,6 +200,9 @@ on boot
     write /sys/devices/i2c-3/3-005b/update_fw 1
     start qcamerasvr
 
+    # enable pulsing led on boot
+    write /sys/class/sec/led/led_pattern 6
+
 on fs
     mount_all fstab.qcom
 
@@ -301,7 +304,7 @@ on post-fs-data
 
     # Touchkey
     chown root system /sys/devices/virtual/sec/sec_touchkey/touchkey_bln_enable
-    chmod 0666 /sys/devices/virtual/sec/sec_touchkey/touchkey_bln_enable
+    chmod 0660 /sys/devices/virtual/sec/sec_touchkey/touchkey_bln_enable
     chown system system /sys/class/sec/sec_touchkey/keypad_enable
     chmod 0660 /sys/class/sec/sec_touchkey/keypad_enable
 
@@ -420,8 +423,8 @@ on post-fs-data
     chown system radio /sys/class/camera/front/front_camfw
     chown system radio /sys/class/camera/front/front_camtype
     chown system camera /sys/class/flash/flash/flash_power
-    chmod 666 /sys/class/flash/flash/flash_power
-    chmod 666 /sys/class/camera/rear/rear_flash
+    chmod 0660 /sys/class/flash/flash/flash_power
+    chmod 0660 /sys/class/camera/rear/rear_flash
 
     chown system system /sys/class/sec/led/led_r
     chown system system /sys/class/sec/led/led_g
@@ -952,6 +955,11 @@ on property:ro.baseband=mdm
 
 on property:init.svc.bootanim=stopped
     start efsrestorecon
+
+# boot completed
+on property:dev.bootcomplete=1
+    # disable pulsing led on boot complete
+    exec /system/bin/sh /system/etc/init.led.sh
 
 # bugreport is triggered by holding down volume down, volume up and power
 service bugreport /system/bin/dumpstate -d -p -B \

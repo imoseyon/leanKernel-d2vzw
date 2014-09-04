@@ -2431,7 +2431,8 @@ static int mdp_on(struct platform_device *pdev)
 	if (!(mfd->cont_splash_done)) {
 		if (mfd->panel.type == MIPI_VIDEO_PANEL)
 			mdp4_dsi_video_splash_done();
-
+		else if (mfd->panel.type == LVDS_PANEL)
+			mdp4_lcdc_splash_done();
 		/* Clks are enabled in probe.
 		Disabling clocks now */
 		mdp_clk_ctrl(0);

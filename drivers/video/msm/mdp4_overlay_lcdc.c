@@ -756,14 +756,19 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 /* timing generator off */
 static void mdp4_lcdc_tg_off(struct vsycn_ctrl *vctrl)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	MDP_OUTP(MDP_BASE + LCDC_BASE, 0); /* turn off timing generator */
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-
-	mdp4_lcdc_wait4vsync(0);
+	MDP_OUTP(MDP_BASE + LCDC_BASE, 0);
+	msleep(20);		/* delay to wait for mdp transfer done */
 }
+
+int mdp4_lcdc_splash_done(void)
+{
+	struct vsycn_ctrl *vctrl = vsync_ctrl_db;
+
+	mdp4_lcdc_tg_off(vctrl);
+
+	return 0;
+}
+
 int mdp4_lcdc_off(struct platform_device *pdev)
 {
 	int ret = 0;

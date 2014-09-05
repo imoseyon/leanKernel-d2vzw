@@ -30,7 +30,7 @@ import init.qcom.usb.rc
 on early-init
     write /sys/block/mmcblk0/queue/scheduler noop
 
-    mkdir /firmware 0771 system system
+    mkdir /firmware-mdm 0771 system system
     symlink /data/tombstones /tombstones
     mkdir /efs 0771 system system
 
@@ -222,7 +222,7 @@ on fs
     restorecon_recursive /efs
 
     wait /dev/block/platform/msm_sdcc.1/by-name/modem
-    mount vfat /dev/block/platform/msm_sdcc.1/by-name/modem /firmware ro shortname=lower dmask=177 fmask=177
+    mount vfat /dev/block/platform/msm_sdcc.1/by-name/modem /firmware-mdm ro shortname=lower dmask=177 fmask=177
 
     chown system radio /dev/block/platform/msm_sdcc.1/by-name
     chmod 0775 /dev/block/platform/msm_sdcc.1/by-name
@@ -274,6 +274,9 @@ on post-fs-data
     mkdir /data/connectivity 0771 system system
     chown system system /data/connectivity
 
+    mkdir /data/connectivity/nsrm 0771 system system
+    chown system system /data/connectivity/nsrm
+
     #HDCP2.X : The directory permission is temporary.
     mkdir /efs/drm 0775  system system
     mkdir /efs/drm/dxhdcp2 0774  system system
@@ -324,7 +327,7 @@ on post-fs-data
     mkdir /data/misc/gpsone_d 0770 system gps
 
     #Create directories for QuIPS
-    mkdir /data/misc/quipc 0770 gps system
+    mkdir /data/misc/quipc 0770 system gps
 
     #Create directories for Location services
     mkdir /data/misc/location 0770 gps gps
@@ -415,6 +418,9 @@ on post-fs-data
 
     # h2k permission
     chmod 0644 /efs/redata.bin
+    chown radio radio /efs/h2k.dat
+    chmod 0644 /efs/h2k.dat
+    chown system system /efs/drm/h2k
 
     # Permissions for Camera
     chown system radio /sys/class/camera/rear/rear_camfw
@@ -558,6 +564,11 @@ on property:bluetooth.isEnabled=true
 on property:vold.decrypt=trigger_restart_framework
     start config_bluetooth
 
+service irsc_util /system/bin/logwrapper /system/bin/irsc_util "/etc/sec_config"
+    class main
+    user root
+    oneshot
+
 service rmt_storage /system/bin/rmt_storage
     class core
     user root
@@ -579,18 +590,10 @@ service port-bridge /system/bin/port-bridge /dev/smd0 /dev/ttyGS0
     disabled
 
 # QMUX must be in multiple groups to support external process connections
-# For EncryptionMode - remove disabled, Modify class main
 service qmuxd /system/bin/qmuxd
     class main
     user radio
-    group radio audio bluetooth gps qcom_diag log
-
-service netmgrd /system/bin/netmgrd
-    class main
-
-on property:ro.use_data_netmgrd=false
-    # netmgr not supported on specific target
-    stop netmgrd
+    group radio audio bluetooth gps qcom_diag
 
 # Adjust socket buffer to enlarge TCP receive window for high bandwidth
 # but only if ro.data.large_tcp_window_size property is set.
@@ -820,12 +823,11 @@ service ril-daemon /system/bin/rild
     class main
     socket rild stream 660 root radio
     socket rild-debug stream 660 radio system
-    socket rild-cas stream 666  casdrm mmb
     user root
-    group radio cache inet misc audio log qcom_diag sdcard_r shell sdcard_rw
+    group radio cache inet misc audio log qcom_diag
 
 service secril-daemon /system/bin/sec-ril
-    class main
+    class mian
     user root
     group radio cache inet misc audio sdcard_rw qcom_diag log
 
@@ -932,7 +934,9 @@ service mpdecision /system/bin/mpdecision --avg_comp
     group root system
     disabled
 
-service kickstart /system/bin/qcks -i /firmware/image
+service kickstart /system/bin/qcks -i /firmware-mdm/image/
+    user root
+    group radio cache inet misc audio sdcard_rw log system
     oneshot
     disabled
 
@@ -952,6 +956,7 @@ service efsrestorecon /system/bin/restorecon -R /efs
 on property:ro.baseband=mdm
     mkdir /data/qcks 0770 system system
     start kickstart
+    start qmuxd
 
 on property:init.svc.bootanim=stopped
     start efsrestorecon

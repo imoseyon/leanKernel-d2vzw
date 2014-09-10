@@ -1640,7 +1640,9 @@ static const u16 db8131m_common_A[] = {
 0x5402, /* MIPI PHY_HS_TX_CTRL*/
 0x3805, /* MIPI DPHY_CTRL_SET*/
 0x3C81,
-0x5011, /* MIPI Current 01 -> 11 */
+0x5012, /* MIPI Current 01 -> 11 */
+0x5884,
+0x5921,
 
 /* SXGA PR*/
 0xFF85, /*Page mode */

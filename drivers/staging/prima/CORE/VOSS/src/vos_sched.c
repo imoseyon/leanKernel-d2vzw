@@ -85,7 +85,7 @@
 /* MAX iteration count to wait for Entry point to exit before
  * we proceed with SSR in WD Thread
  */
-#define MAX_SSR_WAIT_ITERATIONS 20
+#define MAX_SSR_WAIT_ITERATIONS 200
 
 static atomic_t ssr_protect_entry_count;
 
@@ -786,7 +786,8 @@ VosWDThread
         if(!pWdContext->resetInProgress)
         {
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-          "%s: Trying to do WLAN re-init when it is not shutdown !!",__func__);
+          "%s: Do WLAN re-init only when it is shutdown !!",__func__);
+          break;
         }
         vosStatus = hdd_wlan_re_init();
 

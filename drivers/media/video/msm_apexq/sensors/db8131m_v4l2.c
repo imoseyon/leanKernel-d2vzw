@@ -769,6 +769,17 @@ void db8131m_set_preview(void)
 					CAM_DEBUG("VGA recording for M ver");
 					DB8_WRT_LIST(db8131m_common_M);
 				}
+#elif defined(CONFIG_MACH_EXPRESS) || defined(CONFIG_MACH_INFINITE)
+				unsigned char module_ver2;
+				db8131m_i2c_write_16bit(0xFF02);
+				db8131m_i2c_read(0x09, &module_ver2);
+				if (module_ver2 == 0x4) {
+					CAM_DEBUG("INIT_preview for S version");
+					DB8_WRT_LIST(db8131m_common);
+				} else {
+					CAM_DEBUG("INIT_preview for A version");
+					DB8_WRT_LIST(db8131m_common_A);
+				}
 #else
 				DB8_WRT_LIST(db8131m_common);
 #endif

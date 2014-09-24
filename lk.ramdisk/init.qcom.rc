@@ -827,7 +827,7 @@ service ril-daemon /system/bin/rild
     group radio cache inet misc audio log qcom_diag
 
 service secril-daemon /system/bin/sec-ril
-    class mian
+    class main
     user root
     group radio cache inet misc audio sdcard_rw qcom_diag log
 

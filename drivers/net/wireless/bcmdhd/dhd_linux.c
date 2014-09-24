@@ -3794,6 +3794,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 #endif /* GET_CUSTOM_MAC_ENABLE */
 #ifdef DHDTHREAD
 	dhd->pub.short_dwell_time = -1;
+#endif
 
 	dhd->thr_dpc_ctl.thr_pid = DHD_PID_KT_TL_INVALID;
 	dhd->thr_wdt_ctl.thr_pid = DHD_PID_KT_INVALID;

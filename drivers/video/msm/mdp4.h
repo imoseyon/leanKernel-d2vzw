@@ -458,6 +458,7 @@ void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,
 void mdp4_pipe_kickoff(uint32 pipe, struct msm_fb_data_type *mfd);
 int mdp4_lcdc_on(struct platform_device *pdev);
 int mdp4_lcdc_off(struct platform_device *pdev);
+int mdp4_lcdc_splash_done(void);
 void mdp4_lcdc_update(struct msm_fb_data_type *mfd);
 void mdp4_intr_clear_set(ulong clear, ulong set);
 void mdp4_dma_p_cfg(void);

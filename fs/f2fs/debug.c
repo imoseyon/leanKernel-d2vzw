@@ -46,6 +46,7 @@ static void update_general_status(struct f2fs_sb_info *sbi)
 	si->valid_node_count = valid_node_count(sbi);
 	si->valid_inode_count = valid_inode_count(sbi);
 	si->inline_inode = sbi->inline_inode;
+	si->inline_dir = sbi->inline_dir;
 	si->utilization = utilization(sbi);
 
 	si->free_segs = free_segments(sbi);
@@ -93,7 +94,7 @@ static void update_sit_info(struct f2fs_sb_info *sbi)
 	total_vblocks = 0;
 	blks_per_sec = sbi->segs_per_sec * (1 << sbi->log_blocks_per_seg);
 	hblks_per_sec = blks_per_sec / 2;
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno += sbi->segs_per_sec) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno += sbi->segs_per_sec) {
 		vblocks = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
 		dist = abs(vblocks - hblks_per_sec);
 		bimodal += dist * dist;
@@ -103,7 +104,7 @@ static void update_sit_info(struct f2fs_sb_info *sbi)
 			ndirty++;
 		}
 	}
-	dist = TOTAL_SECS(sbi) * hblks_per_sec * hblks_per_sec / 100;
+	dist = MAIN_SECS(sbi) * hblks_per_sec * hblks_per_sec / 100;
 	si->bimodal = bimodal / dist;
 	if (si->dirty_count)
 		si->avg_vblocks = total_vblocks / ndirty;
@@ -118,6 +119,7 @@ static void update_mem_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_stat_info *si = F2FS_STAT(sbi);
 	unsigned npages;
+	int i;
 
 	if (si->base_mem)
 		goto get_cache;
@@ -131,17 +133,17 @@ static void update_mem_info(struct f2fs_sb_info *sbi)
 
 	/* build sit */
 	si->base_mem += sizeof(struct sit_info);
-	si->base_mem += TOTAL_SEGS(sbi) * sizeof(struct seg_entry);
-	si->base_mem += f2fs_bitmap_size(TOTAL_SEGS(sbi));
-	si->base_mem += 2 * SIT_VBLOCK_MAP_SIZE * TOTAL_SEGS(sbi);
+	si->base_mem += MAIN_SEGS(sbi) * sizeof(struct seg_entry);
+	si->base_mem += f2fs_bitmap_size(MAIN_SEGS(sbi));
+	si->base_mem += 2 * SIT_VBLOCK_MAP_SIZE * MAIN_SEGS(sbi);
 	if (sbi->segs_per_sec > 1)
-		si->base_mem += TOTAL_SECS(sbi) * sizeof(struct sec_entry);
+		si->base_mem += MAIN_SECS(sbi) * sizeof(struct sec_entry);
 	si->base_mem += __bitmap_size(sbi, SIT_BITMAP);
 
 	/* build free segmap */
 	si->base_mem += sizeof(struct free_segmap_info);
-	si->base_mem += f2fs_bitmap_size(TOTAL_SEGS(sbi));
-	si->base_mem += f2fs_bitmap_size(TOTAL_SECS(sbi));
+	si->base_mem += f2fs_bitmap_size(MAIN_SEGS(sbi));
+	si->base_mem += f2fs_bitmap_size(MAIN_SECS(sbi));
 
 	/* build curseg */
 	si->base_mem += sizeof(struct curseg_info) * NR_CURSEG_TYPE;
@@ -149,8 +151,8 @@ static void update_mem_info(struct f2fs_sb_info *sbi)
 
 	/* build dirty segmap */
 	si->base_mem += sizeof(struct dirty_seglist_info);
-	si->base_mem += NR_DIRTY_TYPE * f2fs_bitmap_size(TOTAL_SEGS(sbi));
-	si->base_mem += f2fs_bitmap_size(TOTAL_SECS(sbi));
+	si->base_mem += NR_DIRTY_TYPE * f2fs_bitmap_size(MAIN_SEGS(sbi));
+	si->base_mem += f2fs_bitmap_size(MAIN_SECS(sbi));
 
 	/* build nm */
 	si->base_mem += sizeof(struct f2fs_nm_info);
@@ -167,8 +169,9 @@ get_cache:
 	si->cache_mem += npages << PAGE_CACHE_SHIFT;
 	npages = META_MAPPING(sbi)->nrpages;
 	si->cache_mem += npages << PAGE_CACHE_SHIFT;
-	si->cache_mem += sbi->n_orphans * sizeof(struct ino_entry);
 	si->cache_mem += sbi->n_dirty_dirs * sizeof(struct dir_inode_entry);
+	for (i = 0; i <= UPDATE_INO; i++)
+		si->cache_mem += sbi->im[i].ino_num * sizeof(struct ino_entry);
 }
 
 static int stat_show(struct seq_file *s, void *v)
@@ -200,6 +203,8 @@ static int stat_show(struct seq_file *s, void *v)
 			   si->valid_count - si->valid_node_count);
 		seq_printf(s, "  - Inline_data Inode: %u\n",
 			   si->inline_inode);
+		seq_printf(s, "  - Inline_dentry Inode: %u\n",
+			   si->inline_dir);
 		seq_printf(s, "\nMain area: %d segs, %d secs %d zones\n",
 			   si->main_area_segs, si->main_area_sections,
 			   si->main_area_zones);

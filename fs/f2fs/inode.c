@@ -66,12 +66,38 @@ static void __set_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
 	}
 }
 
+static int __recover_inline_status(struct inode *inode, struct page *ipage)
+{
+	void *inline_data = inline_data_addr(ipage);
+	struct f2fs_inode *ri;
+	void *zbuf;
+
+	zbuf = kzalloc(MAX_INLINE_DATA, GFP_NOFS);
+	if (!zbuf)
+		return -ENOMEM;
+
+	if (!memcmp(zbuf, inline_data, MAX_INLINE_DATA)) {
+		kfree(zbuf);
+		return 0;
+	}
+	kfree(zbuf);
+
+	f2fs_wait_on_page_writeback(ipage, NODE);
+	set_inode_flag(F2FS_I(inode), FI_DATA_EXIST);
+
+	ri = F2FS_INODE(ipage);
+	set_raw_inline(F2FS_I(inode), ri);
+	set_page_dirty(ipage);
+	return 0;
+}
+
 static int do_read_inode(struct inode *inode)
 {
-	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct f2fs_inode_info *fi = F2FS_I(inode);
 	struct page *node_page;
 	struct f2fs_inode *ri;
+	int err = 0;
 
 	/* Check if ino is within scope */
 	if (check_nid_range(sbi, inode->i_ino)) {
@@ -113,11 +139,15 @@ static int do_read_inode(struct inode *inode)
 	get_extent_info(&fi->ext, ri->i_ext);
 	get_inline_info(fi, ri);
 
+	/* check data exist */
+	if (f2fs_has_inline_data(inode) && !f2fs_exist_data(inode))
+		err = __recover_inline_status(inode, node_page);
+
 	/* get rdev by using inline_info */
 	__get_inode_rdev(inode, ri);
 
 	f2fs_put_page(node_page, 1);
-	return 0;
+	return err;
 }
 
 struct inode *f2fs_iget(struct super_block *sb, unsigned long ino)
@@ -155,7 +185,7 @@ make_now:
 		inode->i_op = &f2fs_dir_inode_operations;
 		inode->i_fop = &f2fs_dir_operations;
 		inode->i_mapping->a_ops = &f2fs_dblock_aops;
-		mapping_set_gfp_mask(inode->i_mapping, GFP_F2FS_ZERO);
+		mapping_set_gfp_mask(inode->i_mapping, GFP_F2FS_HIGH_ZERO);
 	} else if (S_ISLNK(inode->i_mode)) {
 		inode->i_op = &f2fs_symlink_inode_operations;
 		inode->i_mapping->a_ops = &f2fs_dblock_aops;
@@ -168,6 +198,8 @@ make_now:
 		goto bad_inode;
 	}
 	unlock_new_inode(inode);
+	stat_inc_inline_inode(inode);
+	stat_inc_inline_dir(inode);
 	trace_f2fs_iget(inode);
 	return inode;
 
@@ -217,7 +249,7 @@ void update_inode(struct inode *inode, struct page *node_page)
 
 void update_inode_page(struct inode *inode)
 {
-	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct page *node_page;
 retry:
 	node_page = get_node_page(sbi, inode->i_ino);
@@ -237,7 +269,7 @@ retry:
 
 int f2fs_write_inode(struct inode *inode, struct writeback_control *wbc)
 {
-	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 
 	if (inode->i_ino == F2FS_NODE_INO(sbi) ||
 			inode->i_ino == F2FS_META_INO(sbi))
@@ -265,17 +297,21 @@ int f2fs_write_inode(struct inode *inode, struct writeback_control *wbc)
  */
 void f2fs_evict_inode(struct inode *inode)
 {
-	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
+
+	/* some remained atomic pages should discarded */
+	if (f2fs_is_atomic_file(inode) || f2fs_is_volatile_file(inode))
+		commit_inmem_pages(inode, true);
 
 	trace_f2fs_evict_inode(inode);
 	truncate_inode_pages(&inode->i_data, 0);
 
 	if (inode->i_ino == F2FS_NODE_INO(sbi) ||
 			inode->i_ino == F2FS_META_INO(sbi))
-		goto no_delete;
+		goto out_clear;
 
-	f2fs_bug_on(get_dirty_dents(inode));
+	f2fs_bug_on(sbi, get_dirty_pages(inode));
 	remove_dirty_dir_inode(inode);
 
 	if (inode->i_nlink || is_bad_inode(inode))
@@ -289,11 +325,11 @@ void f2fs_evict_inode(struct inode *inode)
 
 	f2fs_lock_op(sbi);
 	remove_inode_page(inode);
-	stat_dec_inline_inode(inode);
 	f2fs_unlock_op(sbi);
 
 no_delete:
-	end_writeback(inode);
+	stat_dec_inline_dir(inode);
+	stat_dec_inline_inode(inode);
 	invalidate_mapping_pages(NODE_MAPPING(sbi), inode->i_ino, inode->i_ino);
 	if (xnid)
 		invalidate_mapping_pages(NODE_MAPPING(sbi), xnid, xnid);
@@ -301,4 +337,30 @@ no_delete:
 		add_dirty_inode(sbi, inode->i_ino, APPEND_INO);
 	if (is_inode_flag_set(F2FS_I(inode), FI_UPDATE_WRITE))
 		add_dirty_inode(sbi, inode->i_ino, UPDATE_INO);
+out_clear:
+	end_writeback(inode);
+}
+
+/* caller should call f2fs_lock_op() */
+void handle_failed_inode(struct inode *inode)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+
+	clear_nlink(inode);
+	make_bad_inode(inode);
+	unlock_new_inode(inode);
+
+	i_size_write(inode, 0);
+	if (F2FS_HAS_BLOCKS(inode))
+		f2fs_truncate(inode);
+
+	remove_inode_page(inode);
+
+	clear_inode_flag(F2FS_I(inode), FI_INLINE_DATA);
+	clear_inode_flag(F2FS_I(inode), FI_INLINE_DENTRY);
+	alloc_nid_failed(sbi, inode->i_ino);
+	f2fs_unlock_op(sbi);
+
+	/* iput will drop the inode object */
+	iput(inode);
 }

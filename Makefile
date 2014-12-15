@@ -372,9 +372,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -fmodulo-sched -fmodulo-sched-allow-regmoves \
-		   -mtune=cortex-a15 \
-		   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
+                   -mtune=cortex-a15 \
+                   -fmodulo-sched -fmodulo-sched-allow-regmoves -fno-tree-vectorize -ffast-math \
+                   -funswitch-loops -fpredictive-commoning -fgcse-after-reload \
 		   -fno-delete-null-pointer-checks \
 		   -D_$(TARGET_PRODUCT)_
 

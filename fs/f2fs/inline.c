@@ -79,12 +79,11 @@ int f2fs_read_inline_data(struct inode *inode, struct page *page)
 int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 {
 	void *src_addr, *dst_addr;
-	block_t new_blk_addr;
 	struct f2fs_io_info fio = {
 		.type = DATA,
 		.rw = WRITE_SYNC | REQ_PRIO,
 	};
-	int err;
+	int dirty, err;
 
 	f2fs_bug_on(F2FS_I_SB(dn->inode), page->index);
 
@@ -110,12 +109,20 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 	kunmap_atomic(dst_addr);
 	SetPageUptodate(page);
 no_update:
+	/* clear dirty state */
+	dirty = clear_page_dirty_for_io(page);
+
 	/* write data page to try to make data consistent */
 	set_page_writeback(page);
-
-	write_data_page(page, dn, &new_blk_addr, &fio);
-	update_extent_cache(new_blk_addr, dn);
+	fio.blk_addr = dn->data_blkaddr;
+	write_data_page(page, dn, &fio);
+	update_extent_cache(fio.blk_addr, dn);
 	f2fs_wait_on_page_writeback(page, DATA);
+	if (dirty)
+		inode_dec_dirty_pages(dn->inode);
+
+	/* this converted inline_data should be recovered. */
+	set_inode_flag(F2FS_I(dn->inode), FI_APPEND_WRITE);
 
 	/* clear inline data and flag after data writeback */
 	truncate_inline_data(dn->inode_page, 0);
@@ -358,7 +365,6 @@ static int f2fs_convert_inline_dir(struct inode *dir, struct page *ipage,
 	memcpy(dentry_blk->filename, inline_dentry->filename,
 					NR_INLINE_DENTRY * F2FS_SLOT_LEN);
 
-	flush_dcache_page(page);
 	kunmap_atomic(dentry_blk);
 	SetPageUptodate(page);
 	set_page_dirty(page);

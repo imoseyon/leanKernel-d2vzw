@@ -147,6 +147,10 @@ static int do_read_inode(struct inode *inode)
 	__get_inode_rdev(inode, ri);
 
 	f2fs_put_page(node_page, 1);
+
+	stat_inc_inline_inode(inode);
+	stat_inc_inline_dir(inode);
+
 	return err;
 }
 
@@ -198,8 +202,6 @@ make_now:
 		goto bad_inode;
 	}
 	unlock_new_inode(inode);
-	stat_inc_inline_inode(inode);
-	stat_inc_inline_dir(inode);
 	trace_f2fs_iget(inode);
 	return inode;
 
@@ -301,7 +303,7 @@ void f2fs_evict_inode(struct inode *inode)
 	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
 
 	/* some remained atomic pages should discarded */
-	if (f2fs_is_atomic_file(inode) || f2fs_is_volatile_file(inode))
+	if (f2fs_is_atomic_file(inode))
 		commit_inmem_pages(inode, true);
 
 	trace_f2fs_evict_inode(inode);
